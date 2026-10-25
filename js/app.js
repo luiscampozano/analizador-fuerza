@@ -6,7 +6,7 @@ import { analizarSerie, perfilCargaVelocidad } from './analisis.js';
 import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -91,13 +91,21 @@ $('btn-quitar').onclick = (e) => {
   $('drop-content').style.display = 'block'; $('file-preview').style.display = 'none'; $('dropzone').classList.remove('has-file');
 };
 
+// Cada analisis usa un reproductor nuevo: reutilizar el anterior provocaba un error falso al cambiar de video
 function cargarVideo(file) {
-  const v = $('video-trabajo');
+  const viejo = $('video-trabajo');
+  const v = viejo.cloneNode(false);
+  viejo.removeAttribute('src'); viejo.load(); viejo.replaceWith(v);
+  if (urlVideo) URL.revokeObjectURL(urlVideo);
+  urlVideo = URL.createObjectURL(file);
   return new Promise((ok, mal) => {
-    if (urlVideo) URL.revokeObjectURL(urlVideo);
-    urlVideo = URL.createObjectURL(file);
-    v.onloadeddata = () => ok(v);
-    v.onerror = () => mal(new Error('Tu teléfono no pudo abrir este video. Prueba grabarlo de nuevo en 1080p.'));
+    v.addEventListener('loadeddata', () => ok(v), { once: true });
+    v.addEventListener('error', () => {
+      const c = v.error ? v.error.code : 0;
+      mal(new Error(c === 4
+        ? 'Chrome no puede leer el formato de este video. En la cámara desactiva HDR / 10-bit / LOG y vuelve a grabar.'
+        : `No se pudo abrir el video (código ${c}). Cierra y vuelve a abrir la app e inténtalo de nuevo.`));
+    }, { once: true });
     v.src = urlVideo; v.load();
   });
 }
@@ -142,8 +150,10 @@ $('btn-analizar').onclick = async () => {
     await cargarModelo($('in-calidad').value);
     const video = await cargarVideo(archivo);
     progreso(0, 1);
+    const calidad = $('in-calidad').value;
+    const hz = { rapida: 15, normal: 30, maxima: 60 }[calidad] || 30;
     const { frames, delegado } = await detectarPose(video, {
-      calidad: $('in-calidad').value, hz: 30, cancelado: () => cancelar,
+      calidad, hz, cancelado: () => cancelar,
       alAvanzar: (f, resta, del) => progreso(1, f, `Detectando pose (${del === 'GPU' ? 'GPU' : 'CPU'})${minutos(resta)}`),
     });
     if (frames.filter((f) => f.puntos).length < frames.length * 0.3) throw new Error('No se ve bien a la persona en el video. Graba de lado, con el cuerpo completo y buena luz.');

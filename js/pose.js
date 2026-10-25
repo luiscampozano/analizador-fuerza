@@ -21,6 +21,8 @@ const MODELOS = {
 };
 let fileset = null;
 const cache = {};
+// MediaPipe exige que el reloj de los cuadros siempre avance, tambien entre un video y el siguiente
+let relojMs = 0;
 
 async function crear(calidad, delegado) {
   const { FilesetResolver, PoseLandmarker } = await libreria();
@@ -68,15 +70,22 @@ export async function detectarPose(video, { calidad = 'normal', hz = 30, alAvanz
   const { lm, delegado } = await cargarModelo(calidad);
   const W = video.videoWidth, H = video.videoHeight, dur = video.duration;
   const frames = [];
-  let centroPrev = null, ts = 0;
+  let centroPrev = null;
+  const base = relojMs + 1000;
   const t0 = performance.now();
   const total = Math.floor(dur * hz);
   for (let k = 0; k <= total; k++) {
     if (cancelado()) throw new Error('cancelado');
     const t = Math.min(k / hz, dur - 0.001);
     await esperarCuadro(video, t);
-    ts = Math.max(ts + 1, Math.round(t * 1000));
-    const r = lm.detectForVideo(video, ts);
+    const ts = Math.max(relojMs + 1, base + Math.round(t * 1000));
+    relojMs = ts;
+    let r;
+    try { r = lm.detectForVideo(video, ts); } catch (e) {
+      try { lm.close(); } catch (_) { /* nada */ }
+      delete cache[calidad]; // la proxima vez se crea de nuevo
+      throw new Error('La IA de pose tuvo un problema. Vuelve a intentarlo.');
+    }
     let puntos = null;
     if (r.landmarks && r.landmarks.length) {
       // persona principal: la mas grande y, a igualdad, la mas cercana a la del cuadro anterior
