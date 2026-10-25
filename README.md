@@ -51,4 +51,4 @@ js/historial.js    historial local, respaldo y exportación CSV
 
 ## Licencias
 
-Código © Ing. Luis Campozano, MBA. Incluye/usa MediaPipe Tasks Vision (Google, Apache 2.0) y mp4-muxer (Vanilagy, MIT).
+Código © Ing. Luis Campozano, MBA. Incluye/usa MediaPipe Tasks Vision (Google, Apache 2.0) , mp4-muxer (Vanilagy, MIT) y Mediabunny (Vanilagy, MPL-2.0) para leer videos con el decodificador del teléfono.

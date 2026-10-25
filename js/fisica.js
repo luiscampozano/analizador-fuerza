@@ -5,8 +5,16 @@ export const G = 9.81;
 // indices MediaPipe Pose (33 puntos)
 export const MP = {
   hombros: [11, 12], codos: [13, 14], manos: [15, 16], cadera: [23, 24], rodillas: [25, 26], pies: [27, 28],
+  mano_i: [15, 15], mano_d: [16, 16], hombro_i: [11, 11], hombro_d: [12, 12],
 };
-const ANCLAS = { cadera: MP.cadera, hombros: MP.hombros, tobillos: MP.pies, ninguna: null };
+const ANCLAS = { cadera: MP.cadera, hombros: MP.hombros, tobillos: MP.pies, ninguna: null,
+  hombro_i: MP.hombro_i, hombro_d: MP.hombro_d };
+// Proporciones segmento/estatura para los puntos de MediaPipe (calibradas con videos reales de pie y sentado)
+const SEGMENTOS = [
+  { a: [23, 24], b: [25, 26], r: 0.235 }, // muslo
+  { a: [25, 26], b: [27, 28], r: 0.235 }, // pierna
+  { a: [11, 12], b: [23, 24], r: 0.31 },  // torso (hombros a cadera)
+];
 
 // ------------------------------------------------------------ utilidades numericas
 function resolver(A, b) { // Gauss-Jordan pequeno
@@ -130,18 +138,35 @@ export function anguloArticular(full, cual, fps) {
 }
 
 // ------------------------------------------------------------ analisis principal
-// cfg: {ejercicio, masa (kg en el eje), alfa (grados), relacion, altura (m), inicio, fin}
-export function analizar(full, fps, ej, cfg) {
-  const n = full.length;
-  // escala: estatura en pixeles por proporciones de Drillis-Contini
-  const cad = medio(full, MP.cadera), rod = medio(full, MP.rodillas), tob = medio(full, MP.pies);
-  let alto = full.map((_, i) => {
-    const vals = [dist(rod[i], cad[i]) / 0.245, dist(tob[i], rod[i]) / 0.246].filter(Number.isFinite);
-    return vals.length ? vals.reduce((a, b) => a + b) / vals.length : NaN;
+// Escala px -> m robusta: por cuadro se usa la mediana de los segmentos bien visibles; luego se fija una escala
+// estable para el video (la mediana) que solo puede variar +-20 % si la camara se acerca o se aleja.
+export function escala(full, fps, altura) {
+  const porCuadro = full.map((f) => {
+    const est = [];
+    for (const g of SEGMENTOS) {
+      const vis = Math.min(f[g.a[0]][2], f[g.a[1]][2], f[g.b[0]][2], f[g.b[1]][2]);
+      if (!(vis > 0.6)) continue;
+      const pa = [(f[g.a[0]][0] + f[g.a[1]][0]) / 2, (f[g.a[0]][1] + f[g.a[1]][1]) / 2];
+      const pb = [(f[g.b[0]][0] + f[g.b[1]][0]) / 2, (f[g.b[0]][1] + f[g.b[1]][1]) / 2];
+      const L = dist(pa, pb) / g.r;
+      if (Number.isFinite(L) && L > 0) est.push(L);
+    }
+    return est.length ? mediana(est) : NaN;
   });
-  const med = mediana(alto) || 1;
-  alto = savgol(alto.map((x) => (Number.isFinite(x) ? x : med)), fps, 2);
-  const mPx = alto.map((a) => cfg.altura / Math.max(a, 1));
+  let base = mediana(porCuadro);
+  if (!Number.isFinite(base) || base <= 0) { // casi nada visible: se usa el torso aunque se vea poco
+    base = mediana(full.map((f) => dist([(f[11][0] + f[12][0]) / 2, (f[11][1] + f[12][1]) / 2],
+      [(f[23][0] + f[24][0]) / 2, (f[23][1] + f[24][1]) / 2]) / 0.31)) || 1000;
+  }
+  const lim = porCuadro.map((x) => (Number.isFinite(x) ? Math.min(base * 1.2, Math.max(base / 1.2, x)) : base));
+  return savgol(lim, fps, 2).map((a) => altura / Math.max(a, 1));
+}
+
+// cfg: {masa (kg en el eje), alfa (grados), relacion, altura (m), inicio, fin}
+export function analizar(full, fps, ej, cfg) {
+  if (ej.alterno) return analizarAlterno(full, fps, ej, cfg);
+  const n = full.length;
+  const mPx = cfg.mPx || escala(full, fps, cfg.altura);
 
   const punto = medio(full, MP[ej.punto]);
   const anclaPar = ANCLAS[ej.ancla];
@@ -228,4 +253,33 @@ export function analizar(full, fps, ej, cfg) {
     for (let i = ini; i <= reps[reps.length - 1].fin; i++) valido[i] = true;
   }
   return { n, fps, s, v, a, fuerza, potencia, dirs, estatico, reps, valido };
+}
+
+// Ejercicios alternos (curl alterno): cada brazo se analiza por separado y luego se unen las repeticiones en orden.
+function analizarAlterno(full, fps, ej, cfg) {
+  const mPx = escala(full, fps, cfg.altura);
+  const lados = [
+    analizar(full, fps, { ...ej, alterno: false, punto: 'mano_i', ancla: 'hombro_i' }, { ...cfg, mPx }),
+    analizar(full, fps, { ...ej, alterno: false, punto: 'mano_d', ancla: 'hombro_d' }, { ...cfg, mPx }),
+  ];
+  const n = full.length, base = lados[0];
+  const reps = [...lados[0].reps.map((r) => ({ ...r, lado: 'izq' })), ...lados[1].reps.map((r) => ({ ...r, lado: 'der' }))]
+    .sort((a, b) => a.tope - b.tope);
+  // serie mostrada en el video: en cada instante, el brazo que se esta moviendo mas
+  const elegir = (i) => (Math.abs(lados[1].v[i] || 0) > Math.abs(lados[0].v[i] || 0) ? 1 : 0);
+  const out = { n, fps, estatico: base.estatico, reps, valido: new Array(n).fill(false),
+    s: [], v: [], a: [], fuerza: [], potencia: [], dirs: [], ladoActivo: [] };
+  for (let i = 0; i < n; i++) {
+    const L = lados[elegir(i)];
+    for (const k of ['s', 'v', 'a', 'fuerza', 'potencia', 'dirs']) out[k].push(L[k][i]);
+    out.ladoActivo.push(elegir(i));
+    out.valido[i] = lados[0].valido[i] || lados[1].valido[i];
+  }
+  if (reps.length) {
+    const medRec = mediana(reps.map((x) => x.recorrido_cm));
+    reps.forEach((x) => { x.parcial = x.recorrido_cm < 0.5 * medRec; });
+    const mejor = Math.max(...reps.filter((x) => !x.parcial).map((x) => x.v_media));
+    reps.forEach((x, k) => { x.n = k + 1; x.perdida = 100 * (1 - x.v_media / mejor); });
+  }
+  return out;
 }

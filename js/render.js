@@ -1,6 +1,5 @@
 // Genera el video vertical 1080x1920 con esqueleto, flecha de fuerza y graficas, directamente en el celular.
 import { Muxer, ArrayBufferTarget } from '../vendor/mp4-muxer.mjs';
-import { esperarCuadro } from './pose.js';
 
 const OW = 1080, OH = 1920, VH = 1290, FPS_OUT = 30;
 const C = { bg: '#101218', rosa: '#ec48c8', verde: '#5adc78', blanco: '#f0f0f0', gris: '#969ba5',
@@ -28,9 +27,9 @@ function pastilla(ctx, x, y, w, h, texto, color, tam = 34) {
   ctx.fillText(texto, x + w / 2, y + h / 2 + 1);
 }
 
-export function prepararDibujo(video, full, res, opciones) {
+export function prepararDibujo(fuente, full, res, opciones) {
   const { fps, fuerza, v, potencia, reps, valido, estatico, dirs } = res;
-  const n = full.length, W = video.videoWidth, H = video.videoHeight;
+  const n = full.length, W = fuente.videoWidth, H = fuente.videoHeight;
   const esc = OW / W, Hs = H * esc;
   const cy = suavizar(full.map((f) => {
     const ys = [11, 12, 23, 24, 15, 16].map((k) => f[k][1]).filter(Number.isFinite);
@@ -52,13 +51,13 @@ export function prepararDibujo(video, full, res, opciones) {
   const vy = (x) => (VG0 + VG1) / 2 - (VG1 - VG0) / 2 * Math.min(VMAX, Math.max(-VMAX, x)) / VMAX;
   const repN = new Array(n).fill(0); reps.forEach((r, k) => { for (let i = r.tope; i < n; i++) repN[i] = k + 1; });
 
-  return function dibujar(ctx, t) {
+  return function dibujar(ctx, t, imagen) {
     const i = Math.max(0, Math.min(n - 1, Math.round(t * fps)));
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, OW, OH);
     // video recortado siguiendo al atleta
     const s0 = sup[i], yOff = Hs < VH ? (VH - Hs) / 2 : 0;
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, OW, VH); ctx.clip();
-    ctx.drawImage(video, 0, -s0 + yOff, OW, Hs);
+    if (imagen) ctx.drawImage(imagen, 0, -s0 + yOff, OW, Hs);
     const P = (k) => [full[i][k][0] * esc, full[i][k][1] * esc - s0 + yOff, full[i][k][2]];
     ctx.lineCap = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = C.rosa;
     for (const [a, b] of LINEAS) {
@@ -71,7 +70,7 @@ export function prepararDibujo(video, full, res, opciones) {
       ctx.lineWidth = 2; ctx.strokeStyle = '#141414'; ctx.stroke(); ctx.lineWidth = 6; ctx.strokeStyle = C.rosa;
     }
     const vivo = valido[i] && Number.isFinite(fuerza[i]);
-    const pt = opciones.puntoIdx.map(P);
+    const pt = (res.ladoActivo ? [[15, 15], [16, 16]][res.ladoActivo[i]] : opciones.puntoIdx).map(P);
     const base = [(pt[0][0] + pt[1][0]) / 2, (pt[0][1] + pt[1][1]) / 2];
     if (vivo) {
       const L = 60 + 220 * Math.max(fuerza[i], 0) / Math.max(hi, 1);
@@ -108,7 +107,11 @@ export function prepararDibujo(video, full, res, opciones) {
       if (r.inicio > i) return;
       const x0 = gx(r.inicio / fps), x1 = gx(Math.min(r.tope, i) / fps);
       ctx.fillStyle = r.parcial ? C.parcial : C.rep; ctx.fillRect(x0, FG0, x1 - x0, FG1 - FG0);
-      if (r.tope <= i) { ctx.fillStyle = C.verde; ctx.font = `600 24px ${FUENTE}`; ctx.textAlign = 'center'; ctx.fillText(String(k + 1), (x0 + x1) / 2, FG0 - 8); ctx.textAlign = 'left'; }
+      if (r.tope <= i) {
+        const y = r.lado === 'der' ? FG0 - 34 : FG0 - 8; // en ejercicios alternos, un brazo arriba y otro abajo
+        const txt = r.lado ? `${k + 1}${r.lado === 'der' ? 'D' : 'I'}` : String(k + 1);
+        ctx.fillStyle = C.verde; ctx.font = `600 24px ${FUENTE}`; ctx.textAlign = 'center'; ctx.fillText(txt, (x0 + x1) / 2, y); ctx.textAlign = 'left';
+      }
     });
     ctx.fillStyle = C.blanco; ctx.font = `500 28px ${FUENTE}`; ctx.fillText('Fuerza aplicada (kg)', GX0, VH + 208);
     ctx.font = `400 23px ${FUENTE}`;
@@ -169,12 +172,15 @@ async function prepararAudio(archivo, duracion) {
 }
 
 // Devuelve {blob, tipo, extension}
-export async function generarVideo(video, archivo, dibujar, { alAvanzar = () => {}, cancelado = () => false } = {}) {
+export async function generarVideo(fuente, archivo, dibujar, { alAvanzar = () => {}, cancelado = () => false } = {}) {
   const lienzo = document.createElement('canvas'); lienzo.width = OW; lienzo.height = OH;
   const ctx = lienzo.getContext('2d');
-  const dur = video.duration, total = Math.floor(dur * FPS_OUT);
+  const dur = fuente.duration, total = Math.floor(dur * FPS_OUT);
   const codec = await elegirCodec();
-  if (!codec) return grabarEnTiempoReal(video, dibujar, lienzo, ctx, alAvanzar);
+  if (!codec) {
+    if (!fuente.video) throw new Error('Este navegador no puede crear el video.');
+    return grabarEnTiempoReal(fuente.video, dibujar, lienzo, ctx, alAvanzar);
+  }
   const audio = await prepararAudio(archivo, dur);
   const muxer = new Muxer({
     target: new ArrayBufferTarget(), fastStart: 'in-memory', firstTimestampBehavior: 'offset',
@@ -184,17 +190,20 @@ export async function generarVideo(video, archivo, dibujar, { alAvanzar = () => 
   let error = null;
   const enc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: (e) => { error = e; } });
   enc.configure(codec);
-  for (let k = 0; k < total; k++) {
+  const tiempos = Array.from({ length: total }, (_, k) => Math.min(k / FPS_OUT, dur - 0.001));
+  let k = 0, ultima = null;
+  for await (const { imagen } of fuente.iterar(tiempos)) {
     if (cancelado()) throw new Error('cancelado');
     if (error) throw error;
     const t = k / FPS_OUT;
-    await esperarCuadro(video, Math.min(t, dur - 0.001));
-    dibujar(ctx, t);
+    if (imagen) ultima = imagen;
+    dibujar(ctx, t, imagen || ultima);
     const fr = new VideoFrame(lienzo, { timestamp: Math.round(t * 1e6), duration: Math.round(1e6 / FPS_OUT) });
     enc.encode(fr, { keyFrame: k % (FPS_OUT * 2) === 0 });
     fr.close();
     while (enc.encodeQueueSize > 8) await new Promise((r) => setTimeout(r, 5));
     if (k % 6 === 0) alAvanzar(k / total);
+    k++;
   }
   await enc.flush(); enc.close();
   if (audio) {
@@ -225,11 +234,11 @@ async function grabarEnTiempoReal(video, dibujar, lienzo, ctx, alAvanzar) {
   const listo = new Promise((ok) => { rec.onstop = ok; });
   video.currentTime = 0; await new Promise((ok) => video.addEventListener('seeked', ok, { once: true }));
   rec.start(500);
-  const pintar = () => { dibujar(ctx, video.currentTime); alAvanzar(video.currentTime / video.duration);
+  const pintar = () => { dibujar(ctx, video.currentTime, video); alAvanzar(video.currentTime / video.duration);
     if (!video.ended && !video.paused) video.requestVideoFrameCallback(pintar); };
   video.muted = true; await video.play(); video.requestVideoFrameCallback(pintar);
   await new Promise((ok) => video.addEventListener('ended', ok, { once: true }));
-  dibujar(ctx, video.duration); rec.stop(); await listo;
+  dibujar(ctx, video.duration, video); rec.stop(); await listo;
   const ext = tipo.includes('mp4') ? 'mp4' : 'webm';
   return { blob: new Blob(partes, { type: tipo.split(';')[0] }), tipo: tipo.split(';')[0], extension: ext };
 }
