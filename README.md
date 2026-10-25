@@ -7,7 +7,11 @@ App web (PWA) que analiza el video de una serie de gimnasio **directamente en el
 - Video vertical con el **esqueleto**, la **fuerza aplicada** en cada instante, la **velocidad** y la **potencia**, listo para redes.
 - **Repeticiones**, recorrido, velocidad media y pico, **pérdida de velocidad** (fatiga).
 - **RIR** (repeticiones en reserva), **RPE**, **1RM estimado** (peso máximo teórico) y **cargas sugeridas** para 1–15 repeticiones.
-- **Historial** en el propio teléfono, con la evolución del 1RM y el **perfil carga-velocidad** al registrar varias cargas.
+- **Modo en vivo**: cuenta las reps y la velocidad mientras entrenas y avisa (pitido, vibración y voz) al pasar el % de pérdida de velocidad elegido; al terminar analiza la serie completa.
+- **Perfil carga-velocidad personal** con nivel de confianza y velocidad mínima (MVT) propia, usado para el 1RM y el RIR de cada serie.
+- **Trayectoria de la barra** (siguiendo el disco si lo marcas, o el punto que sigue la IA) con el desvío horizontal por rep.
+- **Alertas de técnica**: profundidad en sentadilla, cadera que se adelanta, balanceo en curl y diferencia entre brazos.
+- **Sesiones** por día (kg movidos, reps, caída de velocidad entre series), progreso semanal y **exportación a Excel** (.xlsx con sesiones, series y repeticiones).
 
 Nada se sube a internet: la detección de pose (MediaPipe) y la física corren en el navegador del teléfono.
 

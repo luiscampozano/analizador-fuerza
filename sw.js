@@ -1,8 +1,9 @@
 // Service worker: la app funciona sin internet despues de la primera visita.
-const VERSION = 'af-1.3.0';
+const VERSION = 'af-1.4.0';
 const EXTERNOS = ['cdn.jsdelivr.net', 'storage.googleapis.com'];
 const BASE = ['./', 'index.html', 'style.css', 'manifest.json', 'iconos/icono-192.png', 'iconos/icono-512.png',
   'js/app.js', 'js/ejercicios.js', 'js/fisica.js', 'js/analisis.js', 'js/pose.js', 'js/render.js', 'js/historial.js', 'js/lector.js',
+  'js/excel.js', 'js/sesiones.js', 'js/trayectoria.js', 'js/tecnica.js', 'js/vivo.js',
   'vendor/mp4-muxer.mjs'];
 
 self.addEventListener('install', (e) => {

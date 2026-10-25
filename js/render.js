@@ -83,6 +83,39 @@ export function prepararDibujo(fuente, full, res, opciones) {
       ctx.lineTo(punta[0] + Math.cos(ang - 2.4) * 30, punta[1] + Math.sin(ang - 2.4) * 30); ctx.fill();
       pastilla(ctx, Math.min(OW - 195, punta[0] + 16), punta[1] - 24, 175, 50, `${Math.round(fuerza[i])} kg`, C.naranja);
     }
+    // trayectoria de la barra: estela de los ultimos ~2.5 s y linea vertical de referencia desde el inicio de la rep
+    const tr = opciones.trayectoria;
+    if (tr) {
+      const Q = (k) => [tr.x[k] * esc, tr.y[k] * esc - s0 + yOff];
+      const desde = Math.max(0, i - Math.round(2.5 * fps));
+      ctx.lineWidth = 5; ctx.lineCap = 'round';
+      for (let k = desde + 1; k <= i; k++) {
+        if (!Number.isFinite(tr.x[k]) || !Number.isFinite(tr.x[k - 1])) continue;
+        const a0 = Q(k - 1), a1 = Q(k), alfa = 0.25 + 0.75 * (k - desde) / Math.max(1, i - desde);
+        ctx.strokeStyle = `rgba(255,214,64,${alfa.toFixed(2)})`; ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.lineTo(a1[0], a1[1]); ctx.stroke();
+      }
+      const rAct = reps.find((r) => r.inicio <= i && i <= r.fin);
+      if (rAct && Number.isFinite(tr.x[rAct.inicio])) {
+        const q0 = Q(rAct.inicio); ctx.setLineDash([12, 10]); ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(q0[0], q0[1] + 40); ctx.lineTo(q0[0], q0[1] - 420); ctx.stroke(); ctx.setLineDash([]);
+      }
+      if (Number.isFinite(tr.x[i]) && tr.fuente === 'disco') {
+        const q = Q(i); ctx.strokeStyle = '#ffd640'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(q[0], q[1], 16, 0, 7); ctx.stroke();
+      }
+    }
+    // alerta de tecnica de la rep en curso (se mantiene hasta que empieza la siguiente)
+    if (opciones.alertas) {
+      let k = -1; reps.forEach((r, j) => { if (r.inicio <= i) k = j; });
+      const al = k >= 0 ? opciones.alertas[k].filter((t) => !t.startsWith('Rep parcial')) : [];
+      if (al.length && i <= (reps[k + 1] ? reps[k + 1].inicio : reps[k].fin + fps)) {
+        ctx.font = `700 30px ${FUENTE}`;
+        const txt = `⚠ Rep ${k + 1}: ${al[0]}`, w = Math.min(OW - 60, ctx.measureText(txt).width + 44);
+        ctx.fillStyle = 'rgba(40,20,0,0.88)'; ctx.beginPath(); ctx.roundRect((OW - w) / 2, 24, w, 58, 14); ctx.fill();
+        ctx.strokeStyle = C.naranja; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#ffd2a6'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, OW / 2, 54, OW - 90);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      }
+    }
     if (opciones.angulo) {
       const lado = opciones.angulo.lados[full[i][opciones.angulo.lados[0][1]][2] >= full[i][opciones.angulo.lados[1][1]][2] ? 0 : 1];
       const j = P(lado[1]);

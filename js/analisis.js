@@ -17,7 +17,9 @@ function regresion(xs, ys) {
 }
 
 // carga: kg que el usuario carga (discos+barra, pila, o lastre) · masaTotal: kg que se mueven en el eje
-export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil }) {
+export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil, pcv = null }) {
+  const usaPerfil = pcv && (pcv.confianza === 'alta' || pcv.confianza === 'media');
+  const mvt = pcv && pcv.mvtPersonal ? pcv.mvt : ej.mvt;
   const reps = res.reps.filter((r) => !r.parcial);
   const out = { reps: res.reps.length, validas: reps.length, notas: [] };
   if (!reps.length) return out;
@@ -40,10 +42,10 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil 
   let rirVel = null;
   if (desde.length >= 3) {
     const reg = regresion(desde.map((_, i) => i), desde.map((r) => r.v_media));
-    if (reg && reg.b < -0.005) rirVel = lim((out.vUltima - ej.mvt) / -reg.b, 0, 12);
+    if (reg && reg.b < -0.005) rirVel = lim((out.vUltima - mvt) / -reg.b, 0, 12);
     else out.notas.push('La velocidad casi no bajó durante la serie: te quedaron bastantes repeticiones en reserva.');
   }
-  if (rirVel === null && desde.length >= 3 && out.vUltima <= ej.mvt * 1.15) rirVel = 0;
+  if (rirVel === null && desde.length >= 3 && out.vUltima <= mvt * 1.15) rirVel = 0;
 
   // 2) %1RM por ecuacion carga-velocidad de referencia (solo ejercicios con ecuacion validada)
   let pct = null;
@@ -53,15 +55,26 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil 
   }
   let rirPct = null;
   if (pct !== null) rirPct = lim(repsAPorcentaje(pct) - reps.length, 0, 20);
+  // %1RM con TU perfil carga-velocidad (si es confiable): se desplaza tu recta hasta el punto de hoy
+  const masaHoy = perfil === 'corporal' ? masaTotal : carga;
+  let pctPerfil = null, rmPerfil = null, rirPerfil = null;
+  if (usaPerfil && masaHoy > 0) {
+    rmPerfil = masaHoy + pcv.b * (mvt - out.vMejor);
+    if (rmPerfil > masaHoy) {
+      pctPerfil = lim(100 * masaHoy / rmPerfil, 20, 100);
+      rirPerfil = lim(repsAPorcentaje(pctPerfil) - reps.length, 0, 20);
+    } else rmPerfil = null;
+  }
+  out.mvt = mvt; out.mvtPersonal = !!(pcv && pcv.mvtPersonal);
 
-  const rirs = [rirVel, rirPct].filter((x) => x !== null);
+  const rirs = [rirVel, rirPct, rirPerfil, pcv && pcv.confianza === 'alta' ? rirPerfil : null].filter((x) => x !== null);
   if (rirs.length) {
     out.rir = rirs.reduce((a, b) => a + b) / rirs.length;
   } else if (out.perdida < 10) {
     out.rir = null; out.rirTexto = '≥ 5';
   }
   // por perdida de velocidad (Rodríguez-Rosell, González-Badillo): ~20 % = mitad de las reps posibles
-  const pocas = reps.length < 3 && pct === null;
+  const pocas = reps.length < 3 && pct === null && pctPerfil === null;
   if (pocas) {
     out.rir = null; out.rirTexto = '—';
     out.notas.push('Con menos de 3 repeticiones no se puede estimar el RIR ni el 1RM con confianza. Graba la serie completa.');
@@ -89,9 +102,10 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil 
     est.push({ metodo: 'Repeticiones + RIR (Epley)', valor: epley1RM(masaRM, reps.length + rirParaRM) });
     if (pct !== null) est.push({ metodo: 'Velocidad (' + out.ecuacion + ')', valor: masaRM / (pct / 100) });
   }
+  if (rmPerfil) est.push({ metodo: `Tu perfil carga-velocidad (confianza ${pcv.confianza})`, valor: rmPerfil, peso: pcv.confianza === 'alta' ? 2 : 1 });
   if (est.length) {
-    const vals = est.map((e) => e.valor);
-    out.rm = vals.reduce((a, b) => a + b) / vals.length;
+    const vals = est.map((e) => e.valor), pesos = est.map((e) => e.peso || 1);
+    out.rm = vals.reduce((a, v, i) => a + v * pesos[i], 0) / pesos.reduce((a, b) => a + b);
     out.rmMin = Math.min(...vals); out.rmMax = Math.max(...vals);
     out.metodos = est;
     out.pct = 100 * masaRM / out.rm;
@@ -121,16 +135,46 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil 
   return out;
 }
 
-// Perfil carga-velocidad con el historial: con 2+ cargas distintas se estima el 1RM en la MVT
-export function perfilCargaVelocidad(historial, ej) {
-  const pts = historial.filter((h) => h.ejercicio === ej.id && h.vMejor > 0 && h.carga > 0);
+// Perfil carga-velocidad personal con el historial.
+// Cada serie aporta un punto (carga, velocidad de su rep mas rapida); se ajusta una recta carga = a + b*v.
+// El 1RM es la carga a la que tu velocidad llegaria a tu velocidad minima (MVT). La MVT personal sale de tus
+// series llevadas cerca del fallo (perdida >= 30 %): la velocidad de su ultima rep completa.
+export function perfilCargaVelocidad(historial, ej, { excluir = null, dias = 120 } = {}) {
+  const desde = Date.now() - dias * 86400000;
+  const corporal = ej.perfil === 'corporal';
+  const kg = (h) => (corporal ? h.masa : h.carga);
+  const series = historial.filter((h) => h.ejercicio === ej.id && h.id !== excluir && h.vMejor > 0 && kg(h) > 0 && new Date(h.fecha).getTime() >= desde);
+  // MVT personal
+  const finales = series.filter((h) => h.perdida >= 30 && (h.reps || 0) >= 4)
+    .map((h) => h.vUltima ?? (h.velocidades || []).slice(-1)[0]).filter((v) => v > 0);
+  let mvt = ej.mvt, mvtPersonal = false;
+  if (finales.length >= 2) {
+    const m = [...finales].sort((a, b) => a - b)[Math.floor((finales.length - 1) / 2)];
+    mvt = lim(m, ej.mvt * 0.5, ej.mvt * 1.6); mvtPersonal = true;
+  }
   const porCarga = new Map();
-  for (const h of pts) porCarga.set(h.carga, Math.max(porCarga.get(h.carga) || 0, h.vMejor));
-  if (porCarga.size < 2) return null;
-  const cargas = [...porCarga.keys()], vels = cargas.map((c) => porCarga.get(c));
+  for (const h of series) { const c = Math.round(kg(h) * 2) / 2; porCarga.set(c, Math.max(porCarga.get(c) || 0, h.vMejor)); }
+  const cargas = [...porCarga.keys()].sort((a, b) => a - b), vels = cargas.map((c) => porCarga.get(c));
+  const base = { n: cargas.length, cargas, vels, mvt, mvtPersonal, nFinales: finales.length };
+  if (cargas.length < 2) return { ...base, confianza: 'ninguna' };
   const reg = regresion(vels, cargas); // carga = a + b * v
-  if (!reg || reg.b >= 0) return null;
-  const rm = reg.a + reg.b * ej.mvt;
-  if (!(rm > Math.max(...cargas) * 0.9) || rm > Math.max(...cargas) * 3) return null;
-  return { rm, puntos: cargas.length, cargas, vels, reg };
+  if (!reg || reg.b >= 0) return { ...base, confianza: 'baja', motivo: 'Con más peso no saliste más lento: repite las series lo más rápido posible.' };
+  const my = cargas.reduce((a, b) => a + b) / cargas.length;
+  const ssTot = cargas.reduce((t, c) => t + (c - my) ** 2, 0), ssRes = cargas.reduce((t, c, i) => t + (c - (reg.a + reg.b * vels[i])) ** 2, 0);
+  const r2 = ssTot ? 1 - ssRes / ssTot : 0;
+  const rm = reg.a + reg.b * mvt;
+  const max = Math.max(...cargas), rango = (max - Math.min(...cargas)) / max;
+  if (!(rm > max * 0.95) || rm > max * 3) return { ...base, r2, confianza: 'baja', motivo: 'Los puntos no forman una recta coherente todavía.' };
+  let confianza = 'baja';
+  if (cargas.length >= 3 && r2 >= 0.85 && rango >= 0.2) confianza = 'alta';
+  else if ((cargas.length === 2 && rango >= 0.15) || (cargas.length >= 3 && r2 >= 0.7)) confianza = 'media';
+  return { ...base, a: reg.a, b: reg.b, r2, rm, rango, confianza,
+    v0: -reg.a / reg.b, // velocidad teorica sin carga
+    pct: (v) => lim(100 * (reg.a + reg.b * v) / rm, 20, 110) };
+}
+
+// Pesos sugeridos para completar el perfil (series cortas de 2-3 reps, lo mas rapido posible)
+export function sugerirCalibracion(rm) {
+  if (!(rm > 0)) return null;
+  return [0.4, 0.6, 0.8].map((p) => ({ pct: p * 100, carga: Math.round((rm * p) / 2.5) * 2.5 }));
 }

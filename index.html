@@ -126,11 +126,13 @@
               <button type="button" class="btn-pill" id="btn-grabar">📷 Grabar</button>
               <button type="button" class="btn-pill outline" id="btn-galeria">📁 Galería</button>
             </div>
+            <button type="button" class="btn-pill vivo" id="btn-vivo">🔴 Modo en vivo: cuenta reps mientras entrenas</button>
           </div>
           <div class="file-preview" id="file-preview" style="display:none">
             <span class="file-name" id="file-name">video.mp4</span>
             <button type="button" class="btn-remove" id="btn-quitar" aria-label="Quitar video">✕</button>
           </div>
+          <button type="button" class="btn-sec btn-marca" id="btn-marca" style="display:none">🎯 Marcar el disco (trayectoria más precisa)</button>
         </div>
       </section>
 
@@ -199,6 +201,57 @@
         <button type="button" id="btn-analizar" class="btn-primary">⚡ ANALIZAR SERIE</button>
       </div>
     </main>
+
+    <!-- ============ MARCAR DISCO ============ -->
+    <div id="marca-modal" class="modal" style="display:none">
+      <div class="modal-caja">
+        <p class="hint" style="margin:0 0 8px">Toca el <b>centro del disco</b> (el extremo de la barra). La app lo seguirá durante el video.</p>
+        <div class="marca-lienzo"><canvas id="marca-canvas"></canvas></div>
+        <div class="fila-botones">
+          <button type="button" class="btn-sec" id="marca-quitar">Sin marca</button>
+          <button type="button" class="btn-pill" id="marca-listo">Listo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ EN VIVO ============ -->
+    <div id="v-vivo" class="view">
+      <div class="vivo-pantalla" id="vivo-pantalla">
+        <video id="vivo-video" playsinline muted autoplay></video>
+        <canvas id="vivo-canvas"></canvas>
+        <div class="vivo-hud">
+          <div class="vivo-reps"><span id="vivo-n">0</span><small>reps</small></div>
+          <div class="vivo-datos">
+            <div><small>Última rep</small><b id="vivo-v">--</b><small>m/s</small></div>
+            <div><small>Pérdida</small><b id="vivo-p">--</b><small>%</small></div>
+          </div>
+        </div>
+        <div class="vivo-aviso" id="vivo-aviso" style="display:none"></div>
+        <div class="vivo-cuenta" id="vivo-cuenta" style="display:none"></div>
+        <p class="vivo-estado" id="vivo-estado">Preparando la cámara…</p>
+      </div>
+      <div class="vivo-controles">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="vivo-limite">Avisar al perder</label>
+            <select id="vivo-limite">
+              <option value="0">Sin aviso</option><option value="10">10 % (potencia)</option><option value="20" selected>20 % (fuerza)</option>
+              <option value="30">30 %</option><option value="40">40 % (hipertrofia)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="vivo-voz">Voz</label>
+            <select id="vivo-voz"><option value="si">Contar en voz alta</option><option value="aviso">Solo el aviso</option><option value="no">Silencio</option></select>
+          </div>
+        </div>
+        <div class="fila-botones">
+          <button type="button" class="btn-sec" id="vivo-salir">Salir</button>
+          <button type="button" class="btn-sec" id="vivo-camara">🔄 Cámara</button>
+          <button type="button" class="btn-pill" id="vivo-accion">▶ Empezar serie</button>
+        </div>
+        <p class="hint">Apoya el teléfono, que se vea tu cuerpo completo y pulsa Empezar: hay 5 segundos para colocarte. Al terminar, la serie se analiza completa como cualquier video.</p>
+      </div>
+    </div>
 
     <!-- ============ PROGRESO ============ -->
     <div id="v-progreso" class="view">
@@ -271,6 +324,17 @@
       </section>
 
       <section class="section">
+        <label class="section-title">Técnica</label>
+        <div class="card" id="r-tecnica"></div>
+      </section>
+
+      <section class="section" id="sec-tray">
+        <label class="section-title">Trayectoria <span id="r-tray-fuente"></span></label>
+        <div class="card"><canvas id="g-tray" class="grafica alta"></canvas>
+          <p class="hint" id="r-tray-txt" style="margin-top:6px"></p></div>
+      </section>
+
+      <section class="section">
         <label class="section-title">Velocidad por repetición</label>
         <div class="card"><canvas id="g-vel" class="grafica"></canvas>
           <p class="hint" style="margin-top:6px">Línea punteada: velocidad mínima típica de la última rep posible (MVT) en este ejercicio.</p></div>
@@ -287,7 +351,7 @@
       <section class="section">
         <label class="section-title">Repetición por repetición</label>
         <div class="table-responsive">
-          <table class="tabla"><thead><tr><th>Rep</th><th>Recorrido</th><th>V. media</th><th>Pérdida</th><th>F. pico</th><th>P. pico</th><th>Subida</th></tr></thead>
+          <table class="tabla"><thead><tr><th>Rep</th><th>Recorrido</th><th>V. media</th><th>Pérdida</th><th>F. pico</th><th>P. pico</th><th>Subida</th><th>Desvío</th><th>Técnica</th></tr></thead>
             <tbody id="r-tabla"></tbody></table>
         </div>
         <p class="hint">La 1.ª rep suele ser más lenta porque arranca desde parado. La pérdida se mide contra tu rep más rápida.</p>
@@ -296,21 +360,46 @@
 
     <!-- ============ HISTORIAL ============ -->
     <div id="v-historial" class="view">
-      <section class="section">
-        <label class="section-title">Progreso por ejercicio</label>
+      <div class="chips pestanas" id="h-pestanas">
+        <button type="button" class="chip active" data-p="h-sesiones">Sesiones</button>
+        <button type="button" class="chip" data-p="h-progreso">Progreso</button>
+        <button type="button" class="chip" data-p="h-series">Series</button>
+      </div>
+      <div id="h-sesiones" class="h-panel">
+        <section class="section">
+          <label class="section-title">Kg movidos por semana</label>
+          <div class="card"><canvas id="g-semana" class="grafica"></canvas></div>
+        </section>
+        <section class="section">
+          <label class="section-title">Tus sesiones</label>
+          <div id="h-lista-ses"></div>
+        </section>
+      </div>
+      <div id="h-progreso" class="h-panel" style="display:none">
         <select id="h-ej" class="buscar"></select>
-        <div class="card"><canvas id="g-hist" class="grafica"></canvas><p class="hint" id="h-perfil" style="margin-top:6px"></p></div>
-      </section>
+        <section class="section">
+          <label class="section-title">Tu perfil carga-velocidad</label>
+          <div class="card"><canvas id="g-perfil" class="grafica alta"></canvas><div id="h-perfil" class="hint" style="margin-top:6px"></div></div>
+        </section>
+        <section class="section">
+          <label class="section-title">1RM estimado en el tiempo</label>
+          <div class="card"><canvas id="g-hist" class="grafica"></canvas></div>
+        </section>
+      </div>
+      <div id="h-series" class="h-panel" style="display:none">
+        <section class="section">
+          <label class="section-title">Series guardadas</label>
+          <div class="card" id="h-lista"></div>
+        </section>
+      </div>
       <section class="section">
-        <label class="section-title">Series guardadas</label>
-        <div class="card" id="h-lista"></div>
         <div class="fila-botones">
+          <button type="button" class="btn-pill" id="h-excel">📊 Exportar a Excel</button>
           <button type="button" class="btn-sec" id="h-exportar">⬇️ Copia de seguridad</button>
           <button type="button" class="btn-sec" id="h-importar">⬆️ Restaurar</button>
-          <button type="button" class="btn-sec" id="h-csv">📊 Excel (CSV)</button>
           <input type="file" id="h-archivo" accept="application/json,.json" style="display:none">
         </div>
-        <p class="hint">El historial se guarda solo en este teléfono. Haz una copia de seguridad de vez en cuando.</p>
+        <p class="hint">El historial se guarda solo en este teléfono. Haz una copia de seguridad de vez en cuando. El Excel trae tres hojas: sesiones, series y repetición por repetición.</p>
       </section>
     </div>
 
@@ -329,6 +418,13 @@
         <li><b>RIR:</b> se extrapola cuánto le faltaba a tu velocidad para llegar a la velocidad mínima con la que sale la última rep (MVT). Donde hay una ecuación validada (press de banca, sentadilla) se combina con el %1RM según la velocidad.</li>
         <li><b>RPE</b> = 10 − RIR (escala de Zourdos y Helms).</li>
         <li><b>1RM estimado:</b> fórmula de Epley con tus reps + RIR, y en banca y sentadilla también por la relación carga-velocidad. Con 2 o más cargas distintas en el historial verás además tu perfil carga-velocidad.</li>
+      </ul></div>
+      <div class="card"><h3>🆕 Herramientas</h3><ul>
+        <li><b>Modo en vivo:</b> cuenta tus reps y la velocidad mientras entrenas y te avisa (pitido, vibración y voz) cuando pierdes el % de velocidad que elijas. Al terminar analiza la serie completa.</li>
+        <li><b>Perfil carga-velocidad:</b> con series de 2–3 reps lo más rápido posible a 3 pesos distintos (≈40, 60 y 80 % de tu 1RM), la app aprende TU recta y tu velocidad mínima. Desde ahí estima tu 1RM del día con cualquier serie, sin llegar al fallo.</li>
+        <li><b>Trayectoria:</b> se dibuja el recorrido de la barra y se mide cuánto se desvía en horizontal. Para más precisión toca el disco con «Marcar el disco» antes de analizar (cámara fija).</li>
+        <li><b>Técnica:</b> avisos de profundidad en sentadilla, cadera que se adelanta en sentadilla y peso muerto, balanceo en curl y diferencia entre brazos. Son orientativos y solo aparecen si el ángulo de cámara permite medir.</li>
+        <li><b>Sesiones y Excel:</b> las series del mismo día forman una sesión con kg movidos, reps y caída de velocidad entre series.</li>
       </ul></div>
       <div class="card"><h3>⚠️ Precisión</h3><ul>
         <li>Son estimaciones, no un sensor de fuerza. La carga estática es tan exacta como el peso e inclinación que indiques.</li>

@@ -67,7 +67,7 @@ export function esperarCuadro(video, t) {
 
 // Recorre el video a `hz` cuadros por segundo y devuelve los 33 puntos (en pixeles) de la persona principal.
 // `fuente` viene de lector.js: {videoWidth, videoHeight, duration, iterar(tiempos)}.
-export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvanzar = () => {}, cancelado = () => false } = {}) {
+export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvanzar = () => {}, cancelado = () => false, alCuadro = null } = {}) {
   const { lm, delegado } = await cargarModelo(calidad);
   const W = fuente.videoWidth, H = fuente.videoHeight, dur = fuente.duration;
   const tiempos = [];
@@ -104,6 +104,7 @@ export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvan
       }
     }
     frames.push({ t, puntos });
+    if (alCuadro && imagen) alCuadro(imagen, t);
     if (k % 5 === 0) {
       const hecho = k / total, trans = (performance.now() - t0) / 1000;
       alAvanzar(hecho, hecho > 0.05 ? Math.max(0, trans / hecho - trans) : null, delegado);
@@ -111,4 +112,24 @@ export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvan
     k++;
   }
   return { frames, delegado };
+}
+
+// Un cuadro en vivo (camara): usa el mismo reloj creciente que el analisis de videos.
+let centroVivo = null;
+export function detectarEnVivo(lm, video) {
+  const ts = Math.max(relojMs + 1, Math.round(performance.now()));
+  relojMs = ts;
+  const r = lm.detectForVideo(video, ts);
+  if (!r.landmarks || !r.landmarks.length) return null;
+  let mejor = -Infinity, puntos = null, cMejor = null;
+  for (const l of r.landmarks) {
+    const xs = l.map((p) => p.x), ys = l.map((p) => p.y);
+    const area = (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
+    const c = [xs.reduce((a, b) => a + b) / xs.length, ys.reduce((a, b) => a + b) / ys.length];
+    const puntaje = area - (centroVivo ? 0.2 * Math.hypot(c[0] - centroVivo[0], c[1] - centroVivo[1]) : 0);
+    if (puntaje > mejor) { mejor = puntaje; puntos = l; cMejor = c; }
+  }
+  centroVivo = cMejor;
+  const W = video.videoWidth, H = video.videoHeight;
+  return puntos.map((p) => [p.x * W, p.y * H, p.visibility ?? 1]);
 }

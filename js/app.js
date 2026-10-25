@@ -1,13 +1,17 @@
 // Analizador de Fuerza — interfaz principal. Todo el procesamiento ocurre en el dispositivo.
 import { EJERCICIOS, POR_ID, GRUPOS, GRUPOS_MUSCULO, GRUPO_PROPIOS, agregarPropio, quitarPropio } from './ejercicios.js';
 import { detectarPose, cargarModelo } from './pose.js';
-import { interpolar, analizar, anguloArticular, MP } from './fisica.js';
-import { analizarSerie, perfilCargaVelocidad } from './analisis.js';
+import { interpolar, analizar, anguloArticular, MP, escala } from './fisica.js';
+import { analizarSerie, perfilCargaVelocidad, sugerirCalibracion } from './analisis.js';
+import { crearSeguidor, calcularTrayectoria } from './trayectoria.js';
+import { revisarTecnica } from './tecnica.js';
+import { agruparSesiones, tonelajeSemanal, exportarExcel } from './sesiones.js';
+import * as vivo from './vivo.js';
 import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
 import { abrirVideo } from './lector.js';
 
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -22,6 +26,7 @@ let cancelar = false;
 
 // ------------------------------------------------------------------ navegacion
 function vista(id) {
+  if (id !== 'v-vivo') vivo.detener();
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id));
   document.querySelectorAll('.nav button').forEach((b) => b.classList.toggle('active', b.dataset.vista === id
     || (id === 'v-resultados' && b.dataset.vista === 'v-form') || (id === 'v-progreso' && b.dataset.vista === 'v-form')));
@@ -71,7 +76,7 @@ function pintarLista() {
 function elegir(e) {
   ej = e; guardar('af_ej', e.id);
   $('selector-ej').style.display = 'none';
-  pintarElegido(); pintarLista(); ajustarCampos();
+  pintarElegido(); pintarLista(); ajustarCampos(); actualizarMarca();
 }
 // ---- crear ejercicio propio
 $('p-musculo').innerHTML = GRUPOS_MUSCULO.map((g) => `<option>${g}</option>`).join('');
@@ -115,17 +120,62 @@ const inVideo = $('input-video');
 $('btn-grabar').onclick = (e) => { e.stopPropagation(); inVideo.setAttribute('capture', 'environment'); inVideo.click(); };
 $('btn-galeria').onclick = (e) => { e.stopPropagation(); inVideo.removeAttribute('capture'); inVideo.click(); };
 $('dropzone').onclick = () => { if (!archivo) { inVideo.removeAttribute('capture'); inVideo.click(); } };
-inVideo.onchange = () => {
-  if (!inVideo.files || !inVideo.files[0]) return;
-  archivo = inVideo.files[0];
+function ponerArchivo(f) {
+  archivo = f; marca = null;
   $('file-name').textContent = `${archivo.name || 'video'} · ${fmt(archivo.size / 1048576)} MB`;
   $('drop-content').style.display = 'none'; $('file-preview').style.display = 'flex';
   $('dropzone').classList.add('has-file');
-};
+  actualizarMarca();
+}
+inVideo.onchange = () => { if (inVideo.files && inVideo.files[0]) ponerArchivo(inVideo.files[0]); };
 $('btn-quitar').onclick = (e) => {
-  e.stopPropagation(); archivo = null; inVideo.value = '';
+  e.stopPropagation(); archivo = null; marca = null; inVideo.value = '';
   $('drop-content').style.display = 'block'; $('file-preview').style.display = 'none'; $('dropzone').classList.remove('has-file');
+  actualizarMarca();
 };
+
+// ---- marcar el disco para seguir la barra
+let marca = null; // {x, y (0-1), t (s)}
+const CON_DISCO = ['Barra', 'Barra Z', 'Smith', 'Máquina con discos'];
+function actualizarMarca() {
+  const b = $('btn-marca');
+  b.style.display = archivo && CON_DISCO.includes(ej.equipo) ? '' : 'none';
+  b.classList.toggle('hecho', !!marca);
+  b.textContent = marca ? '🎯 Disco marcado ✓ (toca para cambiar)' : '🎯 Marcar el disco (trayectoria más precisa)';
+}
+$('btn-marca').onclick = async (e) => {
+  e.stopPropagation();
+  const c = $('marca-canvas');
+  try {
+    const fuente = await abrirVideo(archivo);
+    const ini = parseFloat($('in-ini').value);
+    const t = Math.min(fuente.duration - 0.05, ini > 0 ? ini : 0);
+    let img = null;
+    for await (const x of fuente.iterar([t])) img = x.imagen;
+    if (!img) throw new Error('sin cuadro');
+    c.width = fuente.videoWidth; c.height = fuente.videoHeight;
+    const ctx = c.getContext('2d');
+    const pintar = () => {
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      if (marca) {
+        const r = Math.max(14, c.width * 0.035);
+        ctx.lineWidth = Math.max(3, c.width * 0.006); ctx.strokeStyle = '#ffd640';
+        ctx.beginPath(); ctx.arc(marca.x * c.width, marca.y * c.height, r, 0, 7); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(marca.x * c.width - r * 1.6, marca.y * c.height); ctx.lineTo(marca.x * c.width + r * 1.6, marca.y * c.height);
+        ctx.moveTo(marca.x * c.width, marca.y * c.height - r * 1.6); ctx.lineTo(marca.x * c.width, marca.y * c.height + r * 1.6); ctx.stroke();
+      }
+    };
+    c.onpointerdown = (ev) => {
+      const r = c.getBoundingClientRect();
+      marca = { x: (ev.clientX - r.left) / r.width, y: (ev.clientY - r.top) / r.height, t };
+      pintar();
+    };
+    pintar();
+    $('marca-modal').style.display = 'flex';
+  } catch (err) { alert('No pude mostrar el primer cuadro del video para marcar el disco.'); }
+};
+$('marca-quitar').onclick = () => { marca = null; $('marca-modal').style.display = 'none'; actualizarMarca(); };
+$('marca-listo').onclick = () => { $('marca-modal').style.display = 'none'; actualizarMarca(); };
 
 // ------------------------------------------------------------------ progreso
 let pasoActual = -1;
@@ -145,22 +195,30 @@ $('btn-cancelar').onclick = () => { cancelar = true; };
 const minutos = (s) => (s === null ? '' : s < 60 ? ` · faltan ~${Math.ceil(s)} s` : ` · faltan ~${Math.ceil(s / 60)} min`);
 
 // ------------------------------------------------------------------ analisis
-$('btn-analizar').onclick = async () => {
-  if (!archivo) return alert('Primero graba o elige el video de la serie.');
+// Lee y valida los datos del formulario (los usa el analisis de videos y el modo en vivo)
+function leerDatos() {
   const peso = parseFloat($('in-peso').value || '0');
   const pc = parseFloat($('in-pc').value || '0');
   const altura = parseFloat($('in-altura').value || '0');
-  if (ej.perfil !== 'corporal' && !(peso > 0)) return alert('Indica el peso en kg.');
-  if (!(altura > 1 && altura < 2.4)) return alert('Revisa tu estatura (en metros, por ejemplo 1.68).');
-  if (ej.perfil === 'corporal' && !(pc > 20)) return alert('Indica tu peso corporal.');
+  if (ej.perfil !== 'corporal' && !(peso > 0)) { alert('Indica el peso en kg.'); return null; }
+  if (!(altura > 1 && altura < 2.4)) { alert('Revisa tu estatura (en metros, por ejemplo 1.68).'); return null; }
+  if (ej.perfil === 'corporal' && !(pc > 20)) { alert('Indica tu peso corporal.'); return null; }
   const carro = ej.perfil === 'riel' || ej.perfil === 'libre' ? parseFloat($('in-carro').value || '0') : 0;
   const alfa = ej.perfil === 'riel' ? parseFloat($('in-incl').value || '45') : 90;
   const relacion = ej.perfil === 'polea' ? parseFloat($('in-rel').value || '1') : 1;
   guardar('af_peso_' + ej.id, peso); guardar('af_carro_' + ej.id, carro); guardar('af_incl_' + ej.id, alfa);
   guardar('af_altura', altura); guardar('af_pc', pc); guardar('af_calidad', $('in-calidad').value);
-
   const carga = peso + carro; // lo que el usuario mueve (discos + barra/carro, pila o lastre)
   const masa = ej.perfil === 'corporal' ? Math.max(5, pc * (ej.fraccion || 1) + (ej.asistido ? -peso : peso)) : carga;
+  return { peso, pc, altura, carro, alfa, relacion, carga, masa };
+}
+
+let origen = 'video';
+$('btn-analizar').onclick = () => analizarArchivo();
+async function analizarArchivo() {
+  if (!archivo) return alert('Primero graba o elige el video de la serie.');
+  const d = leerDatos(); if (!d) return;
+  const { peso, pc, altura, alfa, relacion, carga, masa } = d;
   cancelar = false; pasoActual = -1; vista('v-progreso');
   try {
     progreso(0, 0, 'Cargando la IA de pose (la primera vez descarga ~10 MB)…');
@@ -169,8 +227,9 @@ $('btn-analizar').onclick = async () => {
     progreso(0, 1);
     const calidad = $('in-calidad').value;
     const hz = { rapida: 15, normal: 30, maxima: 60 }[calidad] || 30;
+    const seguidor = marca && CON_DISCO.includes(ej.equipo) ? crearSeguidor(video.videoWidth, video.videoHeight, marca) : null;
     const { frames, delegado } = await detectarPose(video, {
-      calidad, hz, cancelado: () => cancelar,
+      calidad, hz, cancelado: () => cancelar, alCuadro: seguidor ? (img, t) => seguidor.procesar(img, t) : null,
       alAvanzar: (f, resta, del) => progreso(1, f, `Detectando pose (${del === 'GPU' ? 'GPU' : 'CPU'})${minutos(resta)}`),
     });
     if (frames.filter((f) => f.puntos).length < frames.length * 0.3) throw new Error('No se ve bien a la persona en el video. Graba de lado, con el cuerpo completo y buena luz.');
@@ -179,16 +238,25 @@ $('btn-analizar').onclick = async () => {
     const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
     const res = analizar(full, fps, ej, { masa, alfa, relacion, altura, inicio: ini > 0 ? ini : null, fin: fin > 0 ? fin : null });
     if (!res.reps.length) throw new Error('No se detectaron repeticiones. Revisa que elegiste el ejercicio correcto y que se vea todo el movimiento.');
-    const serie = analizarSerie(res, ej, { carga: ej.perfil === 'corporal' ? peso : carga, masaTotal: masa, pesoCorporal: pc, perfil: ej.perfil });
+    const pcv = perfilCargaVelocidad(hist.leer(), ej);
+    const serie = analizarSerie(res, ej, { carga: ej.perfil === 'corporal' ? peso : carga, masaTotal: masa, pesoCorporal: pc, perfil: ej.perfil, pcv });
+    const mPx = escala(full, fps, altura);
+    const tray = calcularTrayectoria(full, fps, res, ej, seguidor ? seguidor.puntos : null, mPx);
+    const tec = revisarTecnica(full, fps, res, ej, mPx);
     progreso(2, 1);
 
+    const r3 = (x, d = 3) => (Number.isFinite(x) ? +x.toFixed(d) : null);
     const registro = {
-      ejercicio: ej.id, carga: ej.perfil === 'corporal' ? peso : carga, masa, perfil: ej.perfil, alfa,
-      reps: res.reps.length, vMejor: serie.vMejor, perdida: serie.perdida, rir: serie.rir ?? null, rpe: serie.rpe,
+      ejercicio: ej.id, nombre: ej.nombre, equipo: ej.equipo || '', carga: ej.perfil === 'corporal' ? peso : carga, masa, perfil: ej.perfil, alfa,
+      reps: res.reps.length, repsValidas: serie.validas, vMejor: serie.vMejor, vUltima: serie.vUltima, perdida: serie.perdida, rir: serie.rir ?? null, rpe: serie.rpe,
       rm: serie.rm ?? null, rmLastre: serie.rmLastre ?? null, fPico: serie.fPico, pPico: serie.pPico,
       estatico: res.estatico, velocidades: res.reps.map((r) => +r.v_media.toFixed(3)), pesoCorporal: pc,
+      desvio: r3(tray.desvioMedio, 1), alertas: tec.resumen, origen,
+      repsDet: res.reps.map((r, k) => ({ n: r.n, lado: r.lado || '', rec: r3(r.recorrido_cm, 1), v: r3(r.v_media), vp: r3(r.v_pico), perd: r3(r.perdida, 1),
+        f: r3(r.f_pico, 0), p: r3(r.p_pico, 0), ts: r3(r.t_subida, 2), desvio: r3(tray.porRep[k].desvio, 1), parcial: !!r.parcial, alertas: tec.porRep[k] })),
     };
     hist.agregar(registro);
+    origen = 'video';
 
     let salida = null;
     if ($('in-video').checked) {
@@ -198,22 +266,23 @@ $('btn-analizar').onclick = async () => {
         : ej.perfil === 'corporal' ? `${ej.corto} · peso corporal ${fmt(pc, 1)} kg${peso ? (ej.asistido ? ` − asistencia ${fmt(peso, 1)} kg` : ` + lastre ${fmt(peso, 1)} kg`) : ''}`
         : `${ej.corto} · ${fmt(carga, 1)} kg${relacion !== 1 ? ` (polea ${relacion}:1)` : ''}`;
       const leyendaVel = ej.sentido === 'abajo' ? 'Velocidad de la carga (m/s)  ↑ subida  ↓ bajada' : 'Velocidad (m/s)  ↑ fase concéntrica  ↓ excéntrica';
-      const dibujar = prepararDibujo(video, full, res, { puntoIdx, angulo: ang, titulo, leyendaVel });
+      const dibujar = prepararDibujo(video, full, res, { puntoIdx, angulo: ang, titulo, leyendaVel, trayectoria: tray, alertas: tec.porRep });
       salida = await generarVideo(video, archivo, dibujar, {
         cancelado: () => cancelar, alAvanzar: (f) => progreso(3, f, 'Creando el video con telemetría…'),
       });
     }
-    mostrar(res, serie, { carga, masa, pc, alfa, salida, peso });
+    mostrar(res, serie, { carga, masa, pc, alfa, salida, peso, tray, tec, pcv });
   } catch (e) {
     console.error(e);
+    origen = 'video';
     vista('v-form');
     if (e.message !== 'cancelado') alert(e.message || String(e));
   }
-};
+}
 
 // ------------------------------------------------------------------ resultados
 let salidaActual = null;
-function mostrar(res, s, { carga, masa, pc, alfa, salida, peso }) {
+function mostrar(res, s, { carga, masa, pc, alfa, salida, peso, tray, tec, pcv }) {
   salidaActual = salida;
   const corporal = ej.perfil === 'corporal';
   $('r-titulo').textContent = `${ej.nombre} · ${corporal ? `peso corporal${peso ? (ej.asistido ? ' − ' : ' + ') + fmt(peso, 1) + ' kg' : ''}` : fmt(carga, 1) + ' kg'} · ${new Date().toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}`;
@@ -255,7 +324,21 @@ function mostrar(res, s, { carga, masa, pc, alfa, salida, peso }) {
     s.recorridoCV <= 8 ? '<span class="etiqueta verde">Recorrido constante</span>' : '',
   ].filter(Boolean).join('');
   const notaAprox = ej.aprox ? ['Este ejercicio es en arco o con palancas: la fuerza y la potencia son aproximadas. Velocidad, reps, RIR y pérdida de velocidad sí son confiables para comparar tus series.'] : [];
-  $('r-recom').innerHTML = [...s.recomendaciones, ...s.notas, ...notaAprox].map((t) => `<li>${t}</li>`).join('');
+  const notaPerfil = pcv && (pcv.confianza === 'alta' || pcv.confianza === 'media')
+    ? [`Se usó tu perfil carga-velocidad personal (confianza ${pcv.confianza}${s.mvtPersonal ? `, tu velocidad mínima: ${fmt(s.mvt, 2)} m/s` : ''}).`]
+    : ['Aún no hay perfil carga-velocidad personal para este ejercicio: se usan valores promedio. Mira «Historial → Progreso» para calibrarlo.'];
+  $('r-recom').innerHTML = [...s.recomendaciones, ...s.notas, ...notaAprox, ...notaPerfil].map((t) => `<li>${t}</li>`).join('');
+
+  // tecnica
+  $('r-tecnica').innerHTML = tec.resumen.length
+    ? `<ul class="tec-lista">${tec.resumen.map((t) => `<li>⚠ ${esc(t)}</li>`).join('')}</ul><p class="hint">Avisos orientativos según los puntos de tu cuerpo; dependen del ángulo de la cámara.</p>`
+    : '<p class="tec-ok" style="margin:0">✓ Sin alertas de técnica en esta serie.</p><p class="hint">Se revisan profundidad, cadera adelantada, balanceo y diferencia entre brazos cuando el ángulo de la cámara lo permite.</p>';
+  // trayectoria
+  $('r-tray-fuente').textContent = tray.fuente === 'disco' ? '· del disco' : `· de ${{ manos: 'las manos', hombros: 'los hombros', cadera: 'la cadera', pies: 'los pies' }[ej.punto] || 'la carga'}`;
+  $('r-tray-txt').textContent = Number.isFinite(tray.desvioMedio)
+    ? `Desvío horizontal medio en la subida: ${fmt(tray.desvioMedio, 1)} cm. ${tray.desvioMedio < 4 ? 'Muy recta.' : tray.desvioMedio < 8 ? 'Bastante recta.' : 'Se aleja bastante de la vertical: revisa la técnica o el ángulo de la cámara.'}`
+    + (tray.fuente === 'disco' ? '' : ' Para seguir la barra en sí, usa «Marcar el disco».')
+    : tray.vertical ? 'No se pudo medir el desvío en esta serie.' : 'En este ejercicio el recorrido no es vertical: la trayectoria es solo informativa (no se mide desvío).';
 
   // cargas sugeridas
   const paso = ej.perfil === 'polea' ? 2.5 : ej.carro === 0 && ej.perfil === 'libre' ? 1 : 2.5;
@@ -267,9 +350,12 @@ function mostrar(res, s, { carga, masa, pc, alfa, salida, peso }) {
   // tabla de reps
   $('r-tabla').innerHTML = res.reps.map((r) => `<tr><td><b>${r.n}</b>${r.lado ? ` <small>${r.lado === 'der' ? 'der.' : 'izq.'}</small>` : ''}${r.parcial ? ' <small>(parcial)</small>' : ''}</td>
     <td>${fmt(r.recorrido_cm)} cm</td><td class="${Math.round(r.perdida) === 0 ? 'badge-fastest' : ''}">${fmt(r.v_media, 2)}</td>
-    <td>${fmt(r.perdida)} %</td><td>${fmt(r.f_pico)} kg</td><td>${fmt(r.p_pico)} W</td><td>${fmt(r.t_subida, 1)} s</td></tr>`).join('');
+    <td>${fmt(r.perdida)} %</td><td>${fmt(r.f_pico)} kg</td><td>${fmt(r.p_pico)} W</td><td>${fmt(r.t_subida, 1)} s</td>
+    <td>${Number.isFinite(tray.porRep[r.n - 1]?.desvio) ? fmt(tray.porRep[r.n - 1].desvio, 1) + ' cm' : '--'}</td>
+    <td class="tec">${(tec.porRep[r.n - 1] || []).filter((t) => !t.startsWith('Rep parcial')).map(esc).join('<br>') || '✓'}</td></tr>`).join('');
   vista('v-resultados');
-  graficaBarras($('g-vel'), res.reps.map((r) => r.v_media), ej.mvt, res.reps.map((r) => r.parcial));
+  graficaBarras($('g-vel'), res.reps.map((r) => r.v_media), s.mvt || ej.mvt, res.reps.map((r) => r.parcial));
+  graficaTrayectoria($('g-tray'), tray, res);
 }
 $('btn-nueva').onclick = () => { $('btn-quitar').click(); vista('v-form'); };
 
@@ -313,26 +399,125 @@ function graficaLinea(c, puntos, etiqueta) {
   ctx.textAlign = 'left'; ctx.fillText(etiqueta, x0 + 4, 12);
 }
 
+function graficaTrayectoria(c, tray, res) {
+  const { ctx, w, h } = lienzo(c);
+  const colores = ['#5adc78', '#5aa0ff', '#ff9628', '#ec48c8', '#ffd640', '#7fe0e0', '#c99bff', '#ff7b7b'];
+  const caminos = res.reps.map((r) => {
+    const pts = [];
+    for (let i = r.inicio; i <= r.fin; i++) {
+      if (!Number.isFinite(tray.x[i]) || !Number.isFinite(tray.x[r.inicio])) continue;
+      pts.push([(tray.x[i] - tray.x[r.inicio]) * tray.mPx * 100, -(tray.y[i] - tray.y[r.inicio]) * tray.mPx * 100]);
+    }
+    return pts;
+  }).filter((p) => p.length > 2);
+  if (!caminos.length) { ctx.fillStyle = '#8e95a5'; ctx.textAlign = 'center'; ctx.fillText('Sin datos de trayectoria', w / 2, h / 2); return; }
+  const todos = caminos.flat();
+  const ymin = Math.min(0, ...todos.map((p) => p[1])), ymax = Math.max(...todos.map((p) => p[1]));
+  const xmax = Math.max(10, ...todos.map((p) => Math.abs(p[0])));
+  const altoCm = ymax - ymin || 1, esc = Math.min((h - 30) / altoCm, (w / 2 - 30) / xmax);
+  const cx = w / 2, by = h - 18 + ymin * esc;
+  ctx.strokeStyle = '#262c3d'; ctx.lineWidth = 1;
+  for (let x = -Math.floor(xmax / 5) * 5; x <= xmax; x += 5) { ctx.beginPath(); ctx.moveTo(cx + x * esc, 6); ctx.lineTo(cx + x * esc, h - 16); ctx.stroke(); }
+  ctx.setLineDash([6, 5]); ctx.strokeStyle = '#8e95a5'; ctx.beginPath(); ctx.moveTo(cx, 6); ctx.lineTo(cx, h - 16); ctx.stroke(); ctx.setLineDash([]);
+  caminos.forEach((pts, k) => {
+    ctx.strokeStyle = colores[k % colores.length]; ctx.lineWidth = 2.5; ctx.beginPath();
+    pts.forEach((p, j) => { const X = cx + p[0] * esc, Y = by - p[1] * esc; j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }); ctx.stroke();
+  });
+  ctx.fillStyle = '#8e95a5'; ctx.textAlign = 'center'; ctx.fillText('← cm horizontales · cada color es una rep →', cx, h - 3);
+  ctx.textAlign = 'left'; ctx.fillText(`${Math.round(ymax)} cm`, 4, by - ymax * esc + 4);
+}
+function graficaPerfil(c, p, e) {
+  const { ctx, w, h } = lienzo(c);
+  if (!p || p.n < 1) { ctx.fillStyle = '#8e95a5'; ctx.textAlign = 'center'; ctx.fillText('Aún no hay series de este ejercicio', w / 2, h / 2); return; }
+  const vmax = Math.max(...p.vels, p.v0 && p.confianza !== 'baja' ? Math.min(p.v0, Math.max(...p.vels) * 1.6) : 0) * 1.1;
+  const cmax = Math.max(...p.cargas, p.rm || 0) * 1.1;
+  const x0 = 44, y0 = h - 26, aw = w - x0 - 10, ah = y0 - 12;
+  const X = (v) => x0 + aw * v / vmax, Y = (c2) => y0 - ah * c2 / cmax;
+  ctx.fillStyle = '#8e95a5'; ctx.textAlign = 'right';
+  for (let k = 0; k <= 4; k++) { const c2 = cmax * k / 4, y = Y(c2); ctx.fillText(Math.round(c2), x0 - 6, y + 4);
+    ctx.strokeStyle = '#262c3d'; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(w, y); ctx.stroke(); }
+  ctx.textAlign = 'center';
+  for (let k = 0; k <= 4; k++) { const v = vmax * k / 4; ctx.fillText(v.toFixed(2), X(v), h - 10); }
+  ctx.fillText('velocidad de la rep más rápida (m/s) →', x0 + aw / 2, h - 0.5 + 0);
+  if (p.a !== undefined) {
+    ctx.strokeStyle = p.confianza === 'baja' ? '#6b5a2a' : '#ff9628'; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(X(p.mvt), Y(p.a + p.b * p.mvt)); const vf = Math.min(vmax, p.v0); ctx.lineTo(X(vf), Y(Math.max(0, p.a + p.b * vf))); ctx.stroke();
+  }
+  ctx.fillStyle = '#5aa0ff'; p.cargas.forEach((c2, i) => { ctx.beginPath(); ctx.arc(X(p.vels[i]), Y(c2), 5, 0, 7); ctx.fill(); });
+  ctx.setLineDash([5, 4]); ctx.strokeStyle = '#ff7b7b'; ctx.beginPath(); ctx.moveTo(X(p.mvt), 8); ctx.lineTo(X(p.mvt), y0); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#ff7b7b'; ctx.textAlign = 'left'; ctx.fillText(`MVT ${p.mvt.toFixed(2)}`, X(p.mvt) + 4, 16);
+  if (p.rm && p.confianza !== 'baja') { ctx.fillStyle = '#5adc78'; ctx.beginPath(); ctx.arc(X(p.mvt), Y(p.rm), 6, 0, 7); ctx.fill();
+    ctx.fillText(`1RM ≈ ${Math.round(p.rm)} kg`, X(p.mvt) + 8, Y(p.rm) + 4); }
+  ctx.fillStyle = '#8e95a5'; ctx.textAlign = 'left'; ctx.fillText(e.perfil === 'corporal' ? 'kg (cuerpo + lastre)' : 'kg', x0 + 4, 10);
+}
+function graficaSemanas(c, semanas) {
+  const { ctx, w, h } = lienzo(c);
+  const top = Math.max(1, ...semanas.map((s) => s.tonelaje)) * 1.15, x0 = 46, y0 = h - 22, alto = y0 - 10, ancho = (w - x0 - 6) / semanas.length;
+  ctx.fillStyle = '#8e95a5'; ctx.textAlign = 'right';
+  for (let k = 0; k <= 3; k++) { const v = top * k / 3, y = y0 - alto * v / top;
+    ctx.fillText(v >= 1000 ? (v / 1000).toFixed(1) + ' t' : Math.round(v), x0 - 6, y + 4); ctx.strokeStyle = '#262c3d'; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(w, y); ctx.stroke(); }
+  semanas.forEach((s, i) => {
+    const bh = alto * s.tonelaje / top, x = x0 + i * ancho + ancho * 0.18;
+    ctx.fillStyle = i === semanas.length - 1 ? '#5adc78' : '#5aa0ff';
+    if (bh > 0) { ctx.beginPath(); ctx.roundRect(x, y0 - bh, ancho * 0.64, bh, 4); ctx.fill(); }
+    ctx.fillStyle = '#8e95a5'; ctx.textAlign = 'center';
+    ctx.fillText(s.ini.toLocaleDateString('es-EC', { day: 'numeric', month: 'short' }).replace('.', ''), x + ancho * 0.32, h - 6);
+  });
+}
+
 // ------------------------------------------------------------------ historial
+let pestana = 'h-sesiones';
+document.querySelectorAll('#h-pestanas .chip').forEach((b) => (b.onclick = () => {
+  pestana = b.dataset.p;
+  document.querySelectorAll('#h-pestanas .chip').forEach((x) => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.h-panel').forEach((x) => (x.style.display = x.id === pestana ? '' : 'none'));
+  pintarHistorial();
+}));
+const nombreDe = (r) => (POR_ID[r.ejercicio] || {}).nombre || r.nombre || r.ejercicio;
 function pintarHistorial() {
   const lista = hist.leer();
-  const usados = [...new Set(lista.map((r) => r.ejercicio))].filter((id) => POR_ID[id]);
-  const sel = $('h-ej'), previo = sel.value;
-  sel.innerHTML = usados.length ? usados.map((id) => `<option value="${id}">${POR_ID[id].nombre}</option>`).join('') : '<option>Sin series todavía</option>';
-  if (usados.includes(previo)) sel.value = previo; else if (usados.includes(ej.id)) sel.value = ej.id;
-  const e = POR_ID[sel.value];
-  const delEj = lista.filter((r) => e && r.ejercicio === e.id && r.rm);
-  const corporal = e && e.perfil === 'corporal';
-  graficaLinea($('g-hist'), delEj.map((r) => ({ x: new Date(r.fecha).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' }),
-    y: corporal ? r.rmLastre : r.rm })), corporal ? '1RM estimado (kg de lastre)' : '1RM estimado (kg)');
-  const perfil = e ? perfilCargaVelocidad(lista, e) : null;
-  $('h-perfil').textContent = perfil
-    ? `Perfil carga-velocidad con ${perfil.puntos} cargas distintas: 1RM ≈ ${fmt(perfil.rm, 1)} kg (cuando tu velocidad llegaría a ${e.mvt} m/s).`
-    : 'Graba series con 2 o más pesos distintos del mismo ejercicio para obtener tu perfil carga-velocidad, la estimación de 1RM más confiable.';
+  if (pestana === 'h-sesiones') {
+    graficaSemanas($('g-semana'), tonelajeSemanal(lista));
+    const ses = agruparSesiones(lista, POR_ID);
+    $('h-lista-ses').innerHTML = ses.length ? ses.map((s) => `<div class="sesion">
+      <div class="sesion-cab"><strong>${s.fecha.toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long' })}</strong>
+        <small>${s.series.length} series · ${s.reps} reps</small></div>
+      <small>${fmt(s.tonelaje)} kg movidos${s.rpeMedio ? ` · RPE medio ${fmt(s.rpeMedio, 1)}` : ''}${s.duracionMin >= 5 ? ` · ${Math.round(s.duracionMin)} min` : ''}</small>
+      ${s.ejercicios.map((e) => `<div class="sesion-ej"><b>${esc(e.nombre)}</b>
+        ${e.series.map((r, k) => `<div class="serie"><span>${k + 1}. ${e.perfil === 'corporal' ? (r.carga ? '+' + fmt(r.carga, 1) + ' kg' : 'corporal') : fmt(r.carga, 1) + ' kg'} × ${r.reps}</span>
+          <span>${fmt(r.vMejor, 2)} m/s · −${fmt(r.perdida)} % · RPE ${r.rpe ?? '--'}${(r.alertas || []).length ? ' · ⚠' : ''}</span></div>`).join('')}
+        ${e.fatiga !== null ? `<div class="fatiga">Tu rep más rápida cayó ${fmt(e.fatiga)} % de la 1.ª a la última serie${e.fatiga > 15 ? ': fatiga acumulada alta.' : '.'}</div>` : ''}
+      </div>`).join('')}
+    </div>`).join('') : '<p class="vacio">Todavía no hay sesiones. Analiza tu primer video y aparecerá aquí.</p>';
+    return;
+  }
+  if (pestana === 'h-progreso') {
+    const usados = [...new Set(lista.map((r) => r.ejercicio))].filter((id) => POR_ID[id]);
+    const sel = $('h-ej'), previo = sel.value;
+    sel.innerHTML = usados.length ? usados.map((id) => `<option value="${id}">${esc(POR_ID[id].nombre)}</option>`).join('') : '<option>Sin series todavía</option>';
+    if (usados.includes(previo)) sel.value = previo; else if (usados.includes(ej.id)) sel.value = ej.id;
+    const e = POR_ID[sel.value];
+    const delEj = lista.filter((r) => e && r.ejercicio === e.id && r.rm);
+    const corporal = e && e.perfil === 'corporal';
+    graficaLinea($('g-hist'), delEj.map((r) => ({ x: new Date(r.fecha).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' }),
+      y: corporal ? r.rmLastre : r.rm })), corporal ? '1RM estimado (kg de lastre)' : '1RM estimado (kg)');
+    const p = e ? perfilCargaVelocidad(lista, e) : null;
+    graficaPerfil($('g-perfil'), p, e || ej);
+    const ultimoRM = delEj.length ? (corporal ? delEj[delEj.length - 1].rm : delEj[delEj.length - 1].rm) : null;
+    const cal = sugerirCalibracion(p && p.rm && p.confianza !== 'baja' ? p.rm : ultimoRM);
+    const guia = cal ? `Para ${p && p.confianza === 'alta' ? 'mantenerlo al día' : 'calibrarlo'}: haz series de 2–3 reps <b>lo más rápido posible</b> con ${cal.map((c) => `${fmt(c.carga, 1)} kg (~${c.pct} %)`).join(', ')}${corporal ? ' de masa total (cuerpo + lastre)' : ''}.` : 'Para calibrarlo: haz series de 2–3 reps lo más rápido posible con 3 pesos distintos (ligero, medio y pesado).';
+    const mvtTxt = p ? (p.mvtPersonal ? `Tu velocidad mínima (MVT): <b>${fmt(p.mvt, 2)} m/s</b>, medida en ${p.nFinales} series llevadas cerca del fallo.`
+      : `Velocidad mínima (MVT): ${fmt(p.mvt, 2)} m/s (valor promedio). Se personaliza cuando tengas 2 series llevadas cerca del fallo (≥30 % de pérdida y 4+ reps).`) : '';
+    $('h-perfil').innerHTML = !p || p.n < 2
+      ? `Necesitas series con al menos 2 pesos distintos de este ejercicio. ${guia}`
+      : p.confianza === 'baja' ? `Perfil con confianza baja${p.motivo ? ': ' + p.motivo : '.'} ${guia}<br>${mvtTxt}`
+      : `<b>1RM ≈ ${fmt(p.rm, 1)} kg</b> · confianza <b>${p.confianza}</b> (${p.n} pesos${p.n >= 3 ? `, ajuste R² ${fmt(p.r2, 2)}` : ''}). Desde ahora tus series de este ejercicio usan este perfil para el 1RM y el RIR.<br>${mvtTxt}<br>${guia}`;
+    return;
+  }
   $('h-lista').innerHTML = lista.length ? [...lista].reverse().map((r) => {
-    const x = POR_ID[r.ejercicio] || { nombre: r.ejercicio, perfil: '' };
-    return `<div class="historial-item"><div><strong>${x.nombre}</strong>
-      <small>${new Date(r.fecha).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })} · ${x.perfil === 'corporal' ? (r.carga ? '+' + fmt(r.carga, 1) + ' kg' : 'peso corporal') : fmt(r.carga, 1) + ' kg'} × ${r.reps} · RPE ${r.rpe ?? '--'}</small></div>
+    const x = POR_ID[r.ejercicio] || { nombre: nombreDe(r), perfil: r.perfil };
+    return `<div class="historial-item"><div><strong>${esc(x.nombre)}</strong>
+      <small>${new Date(r.fecha).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })} · ${x.perfil === 'corporal' ? (r.carga ? '+' + fmt(r.carga, 1) + ' kg' : 'peso corporal') : fmt(r.carga, 1) + ' kg'} × ${r.reps} · RPE ${r.rpe ?? '--'}${r.origen === 'vivo' ? ' · en vivo' : ''}</small></div>
       <div class="der"><b>${r.rm ? fmt(x.perfil === 'corporal' ? r.rmLastre : r.rm, 0) + ' kg' : '--'}</b><small>1RM est.</small>
       <button type="button" class="btn-sec peligro" data-borrar="${r.id}" style="padding:3px 8px;margin-top:4px;font-size:11px">Borrar</button></div></div>`;
   }).join('') : '<p class="vacio">Todavía no hay series. Analiza tu primer video y aparecerá aquí.</p>';
@@ -346,13 +531,33 @@ function descargarBlob(blob, nombre) {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 $('h-exportar').onclick = () => descargarBlob(hist.exportar(), `analizador-fuerza-respaldo-${new Date().toISOString().slice(0, 10)}.json`);
-$('h-csv').onclick = () => descargarBlob(hist.aCSV(), `analizador-fuerza-historial-${new Date().toISOString().slice(0, 10)}.csv`);
+$('h-excel').onclick = async () => {
+  const lista = hist.leer();
+  if (!lista.length) return alert('Todavía no hay series para exportar.');
+  const nombre = `analizador-fuerza-${new Date().toISOString().slice(0, 10)}.xlsx`, blob = exportarExcel(lista, POR_ID);
+  const f = new File([blob], nombre, { type: blob.type });
+  if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: 'Analizador de Fuerza' }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  descargarBlob(blob, nombre);
+};
 $('h-importar').onclick = () => $('h-archivo').click();
 $('h-archivo').onchange = async () => {
   const f = $('h-archivo').files[0]; if (!f) return;
   try { const n = await hist.importar(f); alert(`Se restauraron ${n} series.`); pintarHistorial(); }
   catch (e) { alert('Ese archivo no es una copia de seguridad válida.'); }
   $('h-archivo').value = '';
+};
+
+// ------------------------------------------------------------------ modo en vivo
+$('btn-vivo').onclick = (e) => {
+  e.stopPropagation();
+  const d = leerDatos(); if (!d) return;
+  vista('v-vivo');
+  vivo.abrir({ ej, datos: d, calidad: $('in-calidad').value, alTerminar: (archivoGrabado) => {
+    vista('v-form');
+    ponerArchivo(archivoGrabado);
+    origen = 'vivo';
+    analizarArchivo();
+  } }).catch((err) => { vista('v-form'); alert(err.message || String(err)); });
 };
 
 // ------------------------------------------------------------------ inicio
