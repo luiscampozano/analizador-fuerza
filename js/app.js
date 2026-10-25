@@ -1,5 +1,5 @@
 // Analizador de Fuerza — interfaz principal. Todo el procesamiento ocurre en el dispositivo.
-import { EJERCICIOS, POR_ID, GRUPOS } from './ejercicios.js';
+import { EJERCICIOS, POR_ID, GRUPOS, GRUPOS_MUSCULO, GRUPO_PROPIOS, agregarPropio, quitarPropio } from './ejercicios.js';
 import { detectarPose, cargarModelo } from './pose.js';
 import { interpolar, analizar, anguloArticular, MP } from './fisica.js';
 import { analizarSerie, perfilCargaVelocidad } from './analisis.js';
@@ -7,12 +7,13 @@ import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
 import { abrirVideo } from './lector.js';
 
-const VERSION = '1.2.1';
+const VERSION = '1.3.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const fmt = (x, d = 0) => (Number.isFinite(x) ? x.toLocaleString('es-EC', { minimumFractionDigits: d, maximumFractionDigits: d }) : '--');
 const redondear = (x, paso = 2.5) => Math.round(x / paso) * paso;
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 let ej = POR_ID[leer('af_ej')] || POR_ID.remo_riel;
 let grupo = 'Todos';
@@ -37,8 +38,13 @@ function aviso(txt, ok = false) {
 
 // ------------------------------------------------------------------ ejercicios
 function pintarElegido() {
-  $('ej-elegido').innerHTML = `<span class="preset-icon">${ej.icono}</span><div><strong>${ej.nombre}</strong>
-    <small>${ej.grupo}</small></div><button type="button" class="btn-sec" id="btn-cambiar">Cambiar</button>`;
+  const sub = [ej.propio ? (ej.musculo || GRUPO_PROPIOS) : ej.grupo, ej.equipo].filter(Boolean).join(' · ');
+  $('ej-elegido').innerHTML = `<span class="preset-icon">${ej.icono}</span><div><strong>${esc(ej.nombre)}</strong>
+    <small>${esc(sub)}</small></div><div class="ej-botones">${ej.propio ? '<button type="button" class="btn-sec peligro" id="btn-borrar-ej">Borrar</button>' : ''}<button type="button" class="btn-sec" id="btn-cambiar">Cambiar</button></div>`;
+  if (ej.propio) $('btn-borrar-ej').onclick = () => {
+    if (!confirm(`¿Borrar el ejercicio "${ej.nombre}"? Tu historial de ese ejercicio se conserva.`)) return;
+    quitarPropio(ej.id); elegir(POR_ID.sentadilla);
+  };
   $('btn-cambiar').onclick = () => {
     const abierto = $('selector-ej').style.display !== 'none';
     $('selector-ej').style.display = abierto ? 'none' : 'block';
@@ -50,11 +56,16 @@ function pintarLista() {
   const q = $('buscar-ej').value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   $('chips-grupo').innerHTML = ['Todos', ...GRUPOS].map((g) => `<button type="button" class="chip${g === grupo ? ' active' : ''}" data-g="${g}">${g}</button>`).join('');
   $('chips-grupo').querySelectorAll('.chip').forEach((c) => (c.onclick = () => { grupo = c.dataset.g; pintarLista(); }));
-  const lista = EJERCICIOS.filter((e) => (grupo === 'Todos' || e.grupo === grupo)
-    && (!q || (e.nombre + ' ' + e.grupo).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q)));
+  if (grupo !== 'Todos' && !GRUPOS.includes(grupo)) grupo = 'Todos';
+  const palabras = q.split(/\s+/).filter(Boolean);
+  const lista = EJERCICIOS.filter((e) => {
+    if (grupo !== 'Todos' && e.grupo !== grupo) return false;
+    const texto = [e.nombre, e.grupo, e.equipo, e.musculo, e.en].join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return palabras.every((w) => texto.includes(w));
+  });
   $('lista-ej').innerHTML = lista.map((e) => `<button type="button" class="preset-card${e.id === ej.id ? ' active' : ''}" data-id="${e.id}">
-    <span class="preset-icon">${e.icono}</span><span class="preset-name">${e.corto}</span><span class="preset-sub">${e.grupo}</span></button>`).join('')
-    || '<p class="vacio">No encontré ese ejercicio. Si es en arco (máquina de palanca, laterales) todavía no está soportado.</p>';
+    <span class="preset-icon">${e.icono}</span><span class="preset-name">${esc(e.corto)}</span><span class="preset-sub">${esc(e.equipo || e.grupo)}</span></button>`).join('')
+    || '<p class="vacio">No encontré ese ejercicio. Puedes crearlo con el botón de abajo.</p>';
   $('lista-ej').querySelectorAll('.preset-card').forEach((b) => (b.onclick = () => elegir(POR_ID[b.dataset.id])));
 }
 function elegir(e) {
@@ -62,12 +73,37 @@ function elegir(e) {
   $('selector-ej').style.display = 'none';
   pintarElegido(); pintarLista(); ajustarCampos();
 }
+// ---- crear ejercicio propio
+$('p-musculo').innerHTML = GRUPOS_MUSCULO.map((g) => `<option>${g}</option>`).join('');
+$('btn-crear-ej').onclick = () => {
+  const f = $('form-propio'), abierto = f.style.display !== 'none';
+  f.style.display = abierto ? 'none' : 'block';
+  if (!abierto) { $('p-nombre').value = $('buscar-ej').value.trim(); $('p-nombre').focus(); }
+};
+$('p-cancelar').onclick = () => { $('form-propio').style.display = 'none'; };
+$('p-equipo').onchange = () => { // ayuda: con peso corporal casi siempre se mueve todo el cuerpo
+  if ($('p-equipo').value === 'corporal') $('p-punto').value = 'hombros';
+};
+$('p-guardar').onclick = () => {
+  const nombre = $('p-nombre').value.trim();
+  if (nombre.length < 3) return alert('Ponle un nombre al ejercicio.');
+  if (EJERCICIOS.some((e) => e.nombre.toLowerCase() === nombre.toLowerCase())) return alert('Ya existe un ejercicio con ese nombre.');
+  const nuevo = agregarPropio({
+    nombre, equipo: $('p-equipo').value, musculo: $('p-musculo').value, punto: $('p-punto').value,
+    sentido: $('p-sentido').value, brazos: $('p-brazos').value, ancla: $('p-ancla').value,
+  });
+  $('form-propio').style.display = 'none'; $('buscar-ej').value = ''; grupo = 'Todos';
+  elegir(nuevo);
+  aviso(`Ejercicio "${nombre}" creado. Lo encuentras en "${GRUPO_PROPIOS}".`, true);
+};
+
 function ajustarCampos() {
   const p = ej.perfil;
   $('g-incl').style.display = p === 'riel' ? '' : 'none';
   $('g-rel').style.display = p === 'polea' ? '' : 'none';
   $('g-carro').style.display = p === 'riel' || p === 'libre' ? '' : 'none';
-  $('lbl-peso').textContent = p === 'corporal' ? 'Lastre' : p === 'polea' ? 'Peso de la pila' : ej.carro === 20 ? 'Peso de discos' : 'Peso';
+  $('lbl-peso').textContent = p === 'corporal' ? 'Lastre' : p === 'polea' ? 'Peso de la pila' : ej.carro > 0 ? 'Peso de discos' : 'Peso';
+  if (ej.asistido) $('lbl-peso').textContent = 'Asistencia';
   $('lbl-carro').textContent = p === 'riel' ? 'Carro / barra de la máquina' : 'Barra';
   $('in-incl').value = leer('af_incl_' + ej.id) || ej.alfa || 45;
   $('in-carro').value = leer('af_carro_' + ej.id) ?? ej.carro ?? 0;
@@ -124,7 +160,7 @@ $('btn-analizar').onclick = async () => {
   guardar('af_altura', altura); guardar('af_pc', pc); guardar('af_calidad', $('in-calidad').value);
 
   const carga = peso + carro; // lo que el usuario mueve (discos + barra/carro, pila o lastre)
-  const masa = ej.perfil === 'corporal' ? pc * (ej.fraccion || 1) + peso : carga;
+  const masa = ej.perfil === 'corporal' ? Math.max(5, pc * (ej.fraccion || 1) + (ej.asistido ? -peso : peso)) : carga;
   cancelar = false; pasoActual = -1; vista('v-progreso');
   try {
     progreso(0, 0, 'Cargando la IA de pose (la primera vez descarga ~10 MB)…');
@@ -159,7 +195,7 @@ $('btn-analizar').onclick = async () => {
       const ang = $('in-angulo').value ? anguloArticular(full, $('in-angulo').value, fps) : null;
       const puntoIdx = MP[ej.punto];
       const titulo = ej.perfil === 'riel' ? `${ej.corto} · ${fmt(carga, 1)} kg · peso efectivo (${alfa}°): ${fmt(res.estatico)} kg`
-        : ej.perfil === 'corporal' ? `${ej.corto} · peso corporal ${fmt(pc, 1)} kg${peso ? ` + lastre ${fmt(peso, 1)} kg` : ''}`
+        : ej.perfil === 'corporal' ? `${ej.corto} · peso corporal ${fmt(pc, 1)} kg${peso ? (ej.asistido ? ` − asistencia ${fmt(peso, 1)} kg` : ` + lastre ${fmt(peso, 1)} kg`) : ''}`
         : `${ej.corto} · ${fmt(carga, 1)} kg${relacion !== 1 ? ` (polea ${relacion}:1)` : ''}`;
       const leyendaVel = ej.sentido === 'abajo' ? 'Velocidad de la carga (m/s)  ↑ subida  ↓ bajada' : 'Velocidad (m/s)  ↑ fase concéntrica  ↓ excéntrica';
       const dibujar = prepararDibujo(video, full, res, { puntoIdx, angulo: ang, titulo, leyendaVel });
@@ -180,7 +216,7 @@ let salidaActual = null;
 function mostrar(res, s, { carga, masa, pc, alfa, salida, peso }) {
   salidaActual = salida;
   const corporal = ej.perfil === 'corporal';
-  $('r-titulo').textContent = `${ej.nombre} · ${corporal ? `peso corporal${peso ? ' + ' + fmt(peso, 1) + ' kg' : ''}` : fmt(carga, 1) + ' kg'} · ${new Date().toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}`;
+  $('r-titulo').textContent = `${ej.nombre} · ${corporal ? `peso corporal${peso ? (ej.asistido ? ' − ' : ' + ') + fmt(peso, 1) + ' kg' : ''}` : fmt(carga, 1) + ' kg'} · ${new Date().toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}`;
   if (s.rm) {
     if (corporal) {
       $('r-rm').innerHTML = `${s.rmLastre >= 0 ? '+' : ''}${fmt(s.rmLastre, 1)} <small>kg de lastre</small>`;
@@ -218,7 +254,8 @@ function mostrar(res, s, { carga, masa, pc, alfa, salida, peso }) {
     `<span class="etiqueta azul">Fatiga ${s.fatiga.toLowerCase()}</span>`,
     s.recorridoCV <= 8 ? '<span class="etiqueta verde">Recorrido constante</span>' : '',
   ].filter(Boolean).join('');
-  $('r-recom').innerHTML = [...s.recomendaciones, ...s.notas].map((t) => `<li>${t}</li>`).join('');
+  const notaAprox = ej.aprox ? ['Este ejercicio es en arco o con palancas: la fuerza y la potencia son aproximadas. Velocidad, reps, RIR y pérdida de velocidad sí son confiables para comparar tus series.'] : [];
+  $('r-recom').innerHTML = [...s.recomendaciones, ...s.notas, ...notaAprox].map((t) => `<li>${t}</li>`).join('');
 
   // cargas sugeridas
   const paso = ej.perfil === 'polea' ? 2.5 : ej.carro === 0 && ej.perfil === 'libre' ? 1 : 2.5;

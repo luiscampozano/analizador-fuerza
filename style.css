@@ -633,3 +633,11 @@ canvas.grafica { width: 100%; height: 190px; display: block; }
 .vacio { text-align: center; color: var(--text-muted); font-size: 13px; padding: 26px 10px; }
 .progress-card .btn-sec { margin-top: 18px; }
 .step-item.hecho { color: var(--accent-green); }
+.btn-crear { width: 100%; margin-top: 10px; padding: 11px 14px; }
+.form-propio { margin-top: 12px; background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: var(--radius-md); padding: 14px; }
+.form-propio .form-group.full { grid-column: 1 / -1; }
+.form-propio input[type=text] { width: 100%; }
+.fila-botones { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.ej-botones { margin-left: auto; display: flex; gap: 6px; }
+.ej-elegido .ej-botones button { margin-left: 0; }

@@ -7,7 +7,7 @@ export const MP = {
   hombros: [11, 12], codos: [13, 14], manos: [15, 16], cadera: [23, 24], rodillas: [25, 26], pies: [27, 28],
   mano_i: [15, 15], mano_d: [16, 16], hombro_i: [11, 11], hombro_d: [12, 12],
 };
-const ANCLAS = { cadera: MP.cadera, hombros: MP.hombros, tobillos: MP.pies, ninguna: null,
+const ANCLAS = { cadera: MP.cadera, hombros: MP.hombros, tobillos: MP.pies, rodillas: MP.rodillas, codos: MP.codos, ninguna: null,
   hombro_i: MP.hombro_i, hombro_d: MP.hombro_d };
 // Proporciones segmento/estatura para los puntos de MediaPipe (calibradas con videos reales de pie y sentado)
 const SEGMENTOS = [
@@ -178,6 +178,7 @@ export function escala(full, fps, altura) {
 // cfg: {masa (kg en el eje), alfa (grados), relacion, altura (m), inicio, fin}
 export function analizar(full, fps, ej, cfg) {
   if (ej.alterno) return analizarAlterno(full, fps, ej, cfg);
+  if (ej.unilateral) return analizarUnilateral(full, fps, ej, cfg);
   const n = full.length;
   const mPx = cfg.mPx || escala(full, fps, cfg.altura);
 
@@ -295,4 +296,26 @@ function analizarAlterno(full, fps, ej, cfg) {
     reps.forEach((x, k) => { x.n = k + 1; x.perdida = 100 * (1 - x.v_media / mejor); });
   }
   return out;
+}
+
+// Ejercicios a un brazo (remo con mancuerna, curl concentrado...): se sigue solo la mano que mas se mueve.
+// Con el promedio de las dos manos, la mano quieta reduciria el recorrido y la velocidad a la mitad.
+function analizarUnilateral(full, fps, ej, cfg) {
+  const mPx = cfg.mPx || escala(full, fps, cfg.altura);
+  const anclaPar = ANCLAS[ej.ancla];
+  const rango = (idx) => {
+    const ys = [], xs = [];
+    for (const f of full) {
+      const p = f[idx]; if (!p || !Number.isFinite(p[0])) continue;
+      let ax = 0, ay = 0;
+      if (anclaPar) { const a0 = f[anclaPar[0]], a1 = f[anclaPar[1]]; if (!a0 || !a1) continue; ax = (a0[0] + a1[0]) / 2; ay = (a0[1] + a1[1]) / 2; }
+      xs.push(p[0] - ax); ys.push(p[1] - ay);
+    }
+    return Math.hypot(percentil(xs, 95) - percentil(xs, 5), percentil(ys, 95) - percentil(ys, 5));
+  };
+  const lado = rango(MP.mano_d[0]) > rango(MP.mano_i[0]) ? 1 : 0;
+  const res = analizar(full, fps, { ...ej, unilateral: false, punto: lado ? 'mano_d' : 'mano_i' }, { ...cfg, mPx });
+  res.ladoActivo = new Array(res.n).fill(lado);
+  res.lado = lado ? 'der' : 'izq';
+  return res;
 }

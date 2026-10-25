@@ -21,7 +21,7 @@ La primera vez descarga la IA (~10–30 MB según la precisión); después funci
 
 ## Ejercicios
 
-28 ejercicios en 4 grupos: máquinas guiadas (remo en riel, prensa 45°, hack, Smith), peso libre (sentadilla, peso muerto, banca, press militar, remos, curl, hip thrust, zancada…), poleas (jalón, remo, tríceps, curl, face pull) y peso corporal (dominadas, fondos, flexiones, remo invertido, sentadilla). Las máquinas de palanca y los movimientos en arco (laterales, extensiones) no están soportados.
+124 ejercicios agrupados por músculo (piernas, glúteo y femoral, pecho, espalda, hombros, brazos, core y potencia), con barra, mancuernas, kettlebell, poleas, máquinas y peso corporal; el buscador también entiende los nombres en inglés (como en Hevy). Además puedes crear tus propios ejercicios respondiendo unas preguntas. En máquinas de palanca y movimientos en arco la fuerza y la potencia son aproximadas. Catálogo de referencia: free-exercise-db (dominio público).
 
 ## Cómo calcula
 
@@ -51,4 +51,4 @@ js/historial.js    historial local, respaldo y exportación CSV
 
 ## Licencias
 
-Código © Ing. Luis Campozano, MBA. Incluye/usa MediaPipe Tasks Vision (Google, Apache 2.0) , mp4-muxer (Vanilagy, MIT) y Mediabunny (Vanilagy, MPL-2.0) para leer videos con el decodificador del teléfono.
+Código © Ing. Luis Campozano, MBA. Incluye/usa MediaPipe Tasks Vision (Google, Apache 2.0) y mp4-muxer (Vanilagy, MIT).

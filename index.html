@@ -37,6 +37,77 @@
           <input id="buscar-ej" class="buscar" type="search" placeholder="Buscar ejercicio…" autocomplete="off">
           <div id="chips-grupo" class="chips"></div>
           <div id="lista-ej" class="lista-ej"></div>
+          <button type="button" class="btn-sec btn-crear" id="btn-crear-ej">➕ Crear mi propio ejercicio</button>
+          <div id="form-propio" class="form-propio" style="display:none">
+            <p class="hint" style="margin-top:0">Responde estas preguntas y la app arma el análisis. Se guarda en tu teléfono.</p>
+            <div class="form-grid">
+              <div class="form-group full">
+                <label for="p-nombre">Nombre</label>
+                <input type="text" id="p-nombre" maxlength="40" placeholder="Ej.: Press inclinado en máquina Hammer">
+              </div>
+              <div class="form-group">
+                <label for="p-equipo">¿Con qué lo haces?</label>
+                <select id="p-equipo">
+                  <option value="barra">Barra con discos</option>
+                  <option value="ez">Barra Z</option>
+                  <option value="mancuernas">Dos mancuernas</option>
+                  <option value="mancuerna">Una mancuerna</option>
+                  <option value="kettlebell">Kettlebell</option>
+                  <option value="polea">Polea (pila de placas)</option>
+                  <option value="maquina">Máquina de placas</option>
+                  <option value="palanca">Máquina con discos</option>
+                  <option value="riel">Máquina de riel</option>
+                  <option value="smith">Smith</option>
+                  <option value="corporal">Peso corporal</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="p-musculo">Músculo principal</label>
+                <select id="p-musculo"></select>
+              </div>
+              <div class="form-group">
+                <label for="p-punto">¿Qué se mueve con el peso?</label>
+                <select id="p-punto">
+                  <option value="manos">Las manos</option>
+                  <option value="hombros">Todo el cuerpo</option>
+                  <option value="cadera">La cadera</option>
+                  <option value="pies">Los pies</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="p-sentido">El esfuerzo es al…</label>
+                <select id="p-sentido">
+                  <option value="arriba">Subir</option>
+                  <option value="abajo">Bajar (jalón)</option>
+                  <option value="hacia_ancla">Jalar hacia ti</option>
+                  <option value="lejos_ancla">Empujar</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="p-brazos">Brazos</label>
+                <select id="p-brazos">
+                  <option value="dos">Los dos</option>
+                  <option value="alterno">Alternando</option>
+                  <option value="uno">Solo uno</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="p-ancla">Parte que no se mueve</label>
+                <select id="p-ancla">
+                  <option value="auto">Automático</option>
+                  <option value="cadera">Cadera</option>
+                  <option value="hombros">Hombros</option>
+                  <option value="tobillos">Pies</option>
+                  <option value="rodillas">Rodillas</option>
+                  <option value="ninguna">Ninguna (trípode)</option>
+                </select>
+              </div>
+            </div>
+            <div class="fila-botones">
+              <button type="button" class="btn-sec" id="p-cancelar">Cancelar</button>
+              <button type="button" class="btn-pill" id="p-guardar">Guardar ejercicio</button>
+            </div>
+          </div>
         </div>
         <p class="hint" id="hint-ej"></p>
       </section>
@@ -263,10 +334,10 @@
         <li>Son estimaciones, no un sensor de fuerza. La carga estática es tan exacta como el peso e inclinación que indiques.</li>
         <li>Velocidad y potencia: margen aproximado de ±15–20 %, mayor si la cámara se mueve o está en diagonal.</li>
         <li>RIR y 1RM son orientativos: úsalos para ver tendencias, no como verdad absoluta.</li>
-        <li>No sirve para máquinas de palanca (Hammer), extensiones/curl femoral en máquina ni elevaciones laterales: su movimiento es en arco.</li>
+        <li>En máquinas de palanca (Hammer) y movimientos en arco (laterales, extensiones, curl femoral) la fuerza y la potencia son aproximadas; velocidad, reps y RIR sí sirven. Si tu ejercicio no está, créalo con «Crear mi propio ejercicio».</li>
       </ul></div>
       <div class="card"><h3>🔒 Privacidad</h3><p>Todo se procesa dentro de tu teléfono. Ningún video se sube a internet. El historial queda guardado solo en este dispositivo.</p></div>
-      <div class="card"><h3>ℹ️ Créditos</h3><p>Creado por <b>Ing. Luis Campozano, MBA</b>. MediaPipe Tasks (Google, Apache 2.0) · mp4-muxer (MIT) · Mediabunny (MPL-2.0). Ecuaciones carga-velocidad: González-Badillo y Sánchez-Medina (2010); Sánchez-Medina y col. (2017).</p>
+      <div class="card"><h3>ℹ️ Créditos</h3><p>Creado por <b>Ing. Luis Campozano, MBA</b>. MediaPipe Tasks (Google, Apache 2.0) · mp4-muxer (MIT). Ecuaciones carga-velocidad: González-Badillo y Sánchez-Medina (2010); Sánchez-Medina y col. (2017).</p>
         <p class="hint" id="version"></p></div>
     </div>
   </div>
