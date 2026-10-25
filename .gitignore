@@ -1,0 +1,3 @@
+# copias locales pesadas (se usan las oficiales de jsDelivr / Google)
+vendor/mediapipe/wasm/
+modelos/

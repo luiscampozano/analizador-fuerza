@@ -1,0 +1,17 @@
+{
+  "name": "Analizador de Fuerza",
+  "short_name": "Fuerza",
+  "description": "Fuerza, velocidad, potencia, RIR, RPE y 1RM estimado de cada serie a partir de un video. Todo en tu celular.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0c10",
+  "theme_color": "#0a0c10",
+  "lang": "es",
+  "icons": [
+    {"src": "iconos/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "iconos/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0c10">
+  <meta name="description" content="Fuerza, velocidad, potencia, RIR, RPE y 1RM estimado de cada serie a partir de un video. Todo se procesa en tu celular.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Analizador de Fuerza</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="iconos/icono-192.png">
+  <link rel="apple-touch-icon" href="iconos/icono-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="brand">
+        <span class="logo-icon">⚡</span>
+        <div>
+          <h1>Analizador de Fuerza</h1>
+          <p class="subtitle">Ing. Luis Campozano, MBA</p>
+        </div>
+      </div>
+    </header>
+
+    <div id="aviso" class="aviso" style="display:none"></div>
+
+    <!-- ============ ANALIZAR ============ -->
+    <main id="v-form" class="view active">
+      <section class="section">
+        <label class="section-title">1. Ejercicio</label>
+        <div id="ej-elegido" class="ej-elegido"></div>
+        <div id="selector-ej" style="display:none">
+          <input id="buscar-ej" class="buscar" type="search" placeholder="Buscar ejercicio…" autocomplete="off">
+          <div id="chips-grupo" class="chips"></div>
+          <div id="lista-ej" class="lista-ej"></div>
+        </div>
+        <p class="hint" id="hint-ej"></p>
+      </section>
+
+      <section class="section">
+        <label class="section-title">2. Video de la serie</label>
+        <div class="video-dropzone" id="dropzone">
+          <input type="file" id="input-video" accept="video/*" style="display:none">
+          <div class="drop-content" id="drop-content">
+            <div class="camera-icon">📹</div>
+            <div class="drop-text">
+              <strong>Graba o elige un video</strong>
+              <span>De lado, teléfono fijo, cuerpo completo a la vista</span>
+            </div>
+            <div class="drop-buttons">
+              <button type="button" class="btn-pill" id="btn-grabar">📷 Grabar</button>
+              <button type="button" class="btn-pill outline" id="btn-galeria">📁 Galería</button>
+            </div>
+          </div>
+          <div class="file-preview" id="file-preview" style="display:none">
+            <span class="file-name" id="file-name">video.mp4</span>
+            <button type="button" class="btn-remove" id="btn-quitar" aria-label="Quitar video">✕</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <label class="section-title">3. Datos</label>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="in-peso" id="lbl-peso">Peso de discos</label>
+            <div class="input-unit"><input type="number" id="in-peso" inputmode="decimal" step="0.5" min="0"><span>kg</span></div>
+          </div>
+          <div class="form-group" id="g-incl">
+            <label for="in-incl">Inclinación del riel</label>
+            <div class="input-unit"><input type="number" id="in-incl" inputmode="decimal" step="1" min="5" max="90"><span>°</span></div>
+          </div>
+          <div class="form-group">
+            <label for="in-altura">Tu estatura</label>
+            <div class="input-unit"><input type="number" id="in-altura" inputmode="decimal" step="0.01" value="1.68"><span>m</span></div>
+          </div>
+          <div class="form-group">
+            <label for="in-pc">Tu peso corporal</label>
+            <div class="input-unit"><input type="number" id="in-pc" inputmode="decimal" step="0.1" value="77.8"><span>kg</span></div>
+          </div>
+        </div>
+        <details class="advanced-details">
+          <summary>⚙️ Ajustes avanzados</summary>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group" id="g-carro">
+              <label for="in-carro" id="lbl-carro">Barra / carro</label>
+              <div class="input-unit"><input type="number" id="in-carro" inputmode="decimal" step="0.5" min="0"><span>kg</span></div>
+            </div>
+            <div class="form-group" id="g-rel">
+              <label for="in-rel">Relación de la polea</label>
+              <select id="in-rel"><option value="1">1:1 (normal)</option><option value="2">2:1</option></select>
+            </div>
+            <div class="form-group">
+              <label for="in-calidad">Precisión de la IA</label>
+              <select id="in-calidad">
+                <option value="rapida">Rápida</option>
+                <option value="normal" selected>Normal</option>
+                <option value="maxima">Máxima (más lenta)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="in-angulo">Mostrar ángulo</label>
+              <select id="in-angulo">
+                <option value="">Ninguno</option><option value="codo">Codo</option>
+                <option value="rodilla">Rodilla</option><option value="cadera">Cadera</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="in-ini">La serie empieza en</label>
+              <div class="input-unit"><input type="number" id="in-ini" inputmode="decimal" step="0.5" placeholder="0"><span>s</span></div>
+            </div>
+            <div class="form-group">
+              <label for="in-fin">Termina en</label>
+              <div class="input-unit"><input type="number" id="in-fin" inputmode="decimal" step="0.5" placeholder="final"><span>s</span></div>
+            </div>
+            <div class="form-group" style="grid-column:span 2">
+              <label><input type="checkbox" id="in-video" checked style="width:auto;margin-right:6px"> Generar video con telemetría</label>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <div class="action-footer">
+        <button type="button" id="btn-analizar" class="btn-primary">⚡ ANALIZAR SERIE</button>
+      </div>
+    </main>
+
+    <!-- ============ PROGRESO ============ -->
+    <div id="v-progreso" class="view">
+      <div class="progress-card">
+        <div class="spinner-ring"></div>
+        <h2>Analizando en tu celular…</h2>
+        <p id="p-msg" class="progress-sub">Preparando…</p>
+        <div class="progress-bar-container"><div id="p-barra" class="progress-bar-fill" style="width:0%"></div></div>
+        <span id="p-pct" class="progress-pct">0%</span>
+        <div class="progress-steps">
+          <div class="step-item" id="paso-0">1. Cargar la IA de pose</div>
+          <div class="step-item" id="paso-1">2. Detectar articulaciones cuadro por cuadro</div>
+          <div class="step-item" id="paso-2">3. Física: velocidad, fuerza, potencia, RIR, 1RM</div>
+          <div class="step-item" id="paso-3">4. Crear el video con telemetría</div>
+        </div>
+        <p class="hint">Mantén la app abierta y la pantalla encendida. El video no sale de tu teléfono.</p>
+        <button type="button" class="btn-sec" id="btn-cancelar">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- ============ RESULTADOS ============ -->
+    <div id="v-resultados" class="view">
+      <div class="results-header">
+        <button type="button" class="btn-back" id="btn-nueva">← Nueva serie</button>
+        <span class="badge-success">✓ Guardado en historial</span>
+      </div>
+      <p class="hint" id="r-titulo" style="margin:-8px 0 14px"></p>
+
+      <section class="kpi-grid">
+        <div class="kpi-card highlight">
+          <span class="kpi-label">1RM ESTIMADO (PESO MÁXIMO TEÓRICO)</span>
+          <span class="kpi-value" id="r-rm">--</span>
+          <span class="kpi-sub" id="r-rm-sub">--</span>
+        </div>
+        <div class="kpi-card rpe">
+          <span class="kpi-label">RPE</span>
+          <span class="kpi-value" id="r-rpe">--</span>
+          <span class="kpi-sub">esfuerzo percibido estimado (1–10)</span>
+        </div>
+        <div class="kpi-card rpe">
+          <span class="kpi-label">RIR</span>
+          <span class="kpi-value" id="r-rir">--</span>
+          <span class="kpi-sub">repeticiones en reserva</span>
+        </div>
+      </section>
+      <section class="kpi-grid tres">
+        <div class="kpi-card"><span class="kpi-label">REPS</span><span class="kpi-value" id="r-reps">--</span><span class="kpi-sub" id="r-reps-sub"></span></div>
+        <div class="kpi-card"><span class="kpi-label">MEJOR VEL.</span><span class="kpi-value" id="r-vel">--</span><span class="kpi-sub">m/s media</span></div>
+        <div class="kpi-card"><span class="kpi-label">PÉRDIDA VEL.</span><span class="kpi-value" id="r-perd">--</span><span class="kpi-sub" id="r-fatiga"></span></div>
+        <div class="kpi-card"><span class="kpi-label">CARGA EFECTIVA</span><span class="kpi-value" id="r-est">--</span><span class="kpi-sub" id="r-est-sub"></span></div>
+        <div class="kpi-card"><span class="kpi-label">FUERZA PICO</span><span class="kpi-value" id="r-fpico">--</span><span class="kpi-sub">kg aplicados</span></div>
+        <div class="kpi-card"><span class="kpi-label">POTENCIA PICO</span><span class="kpi-value" id="r-ppico">--</span><span class="kpi-sub">watts</span></div>
+      </section>
+
+      <section class="section" id="sec-video">
+        <label class="section-title">Video con telemetría</label>
+        <div class="video-container"><video id="r-video" playsinline controls preload="metadata"></video></div>
+        <div class="download-grid">
+          <a id="btn-descargar" class="btn-download" download>📥 Guardar video</a>
+          <button type="button" id="btn-compartir" class="btn-download secondary" style="border:1px solid var(--border-color)">📤 Compartir</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <label class="section-title">Interpretación</label>
+        <div class="card">
+          <div id="r-etiquetas" style="margin-bottom:6px"></div>
+          <ul id="r-recom"></ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <label class="section-title">Velocidad por repetición</label>
+        <div class="card"><canvas id="g-vel" class="grafica"></canvas>
+          <p class="hint" style="margin-top:6px">Línea punteada: velocidad mínima típica de la última rep posible (MVT) en este ejercicio.</p></div>
+      </section>
+
+      <section class="section">
+        <label class="section-title">Cargas sugeridas según tu 1RM estimado</label>
+        <div class="table-responsive">
+          <table class="tabla"><thead><tr><th>Reps objetivo</th><th>Carga</th><th>% 1RM</th></tr></thead><tbody id="r-cargas"></tbody></table>
+        </div>
+        <p class="hint" id="r-metodos"></p>
+      </section>
+
+      <section class="section">
+        <label class="section-title">Repetición por repetición</label>
+        <div class="table-responsive">
+          <table class="tabla"><thead><tr><th>Rep</th><th>Recorrido</th><th>V. media</th><th>Pérdida</th><th>F. pico</th><th>P. pico</th><th>Subida</th></tr></thead>
+            <tbody id="r-tabla"></tbody></table>
+        </div>
+        <p class="hint">La 1.ª rep suele ser más lenta porque arranca desde parado. La pérdida se mide contra tu rep más rápida.</p>
+      </section>
+    </div>
+
+    <!-- ============ HISTORIAL ============ -->
+    <div id="v-historial" class="view">
+      <section class="section">
+        <label class="section-title">Progreso por ejercicio</label>
+        <select id="h-ej" class="buscar"></select>
+        <div class="card"><canvas id="g-hist" class="grafica"></canvas><p class="hint" id="h-perfil" style="margin-top:6px"></p></div>
+      </section>
+      <section class="section">
+        <label class="section-title">Series guardadas</label>
+        <div class="card" id="h-lista"></div>
+        <div class="fila-botones">
+          <button type="button" class="btn-sec" id="h-exportar">⬇️ Copia de seguridad</button>
+          <button type="button" class="btn-sec" id="h-importar">⬆️ Restaurar</button>
+          <button type="button" class="btn-sec" id="h-csv">📊 Excel (CSV)</button>
+          <input type="file" id="h-archivo" accept="application/json,.json" style="display:none">
+        </div>
+        <p class="hint">El historial se guarda solo en este teléfono. Haz una copia de seguridad de vez en cuando.</p>
+      </section>
+    </div>
+
+    <!-- ============ GUÍA ============ -->
+    <div id="v-guia" class="view">
+      <div class="card"><h3>📹 Cómo grabar</h3><ul>
+        <li><b>De lado</b>, perpendicular al movimiento, con el teléfono <b>fijo</b> (apoyado o en trípode) y en vertical.</li>
+        <li>Que se vea el <b>cuerpo completo</b> toda la serie, con buena luz y sin gente pasando por delante.</li>
+        <li>Empieza a grabar con la carga ya agarrada y corta al soltarla (o recorta con "empieza/termina en").</li>
+        <li>Graba en <b>1080p</b>: 4K no mejora el análisis y tarda más.</li>
+      </ul></div>
+      <div class="card"><h3>📏 Qué mide y cómo</h3><ul>
+        <li><b>Pose:</b> MediaPipe Pose (Google) detecta 33 puntos del cuerpo en tu teléfono.</li>
+        <li><b>Escala:</b> tu estatura y las proporciones de muslo y pierna convierten píxeles a metros.</li>
+        <li><b>Fuerza:</b> F = m·(g·sen θ + a). θ es la inclinación del recorrido (90° en peso libre y poleas) y a la aceleración medida.</li>
+        <li><b>RIR:</b> se extrapola cuánto le faltaba a tu velocidad para llegar a la velocidad mínima con la que sale la última rep (MVT). Donde hay una ecuación validada (press de banca, sentadilla) se combina con el %1RM según la velocidad.</li>
+        <li><b>RPE</b> = 10 − RIR (escala de Zourdos y Helms).</li>
+        <li><b>1RM estimado:</b> fórmula de Epley con tus reps + RIR, y en banca y sentadilla también por la relación carga-velocidad. Con 2 o más cargas distintas en el historial verás además tu perfil carga-velocidad.</li>
+      </ul></div>
+      <div class="card"><h3>⚠️ Precisión</h3><ul>
+        <li>Son estimaciones, no un sensor de fuerza. La carga estática es tan exacta como el peso e inclinación que indiques.</li>
+        <li>Velocidad y potencia: margen aproximado de ±15–20 %, mayor si la cámara se mueve o está en diagonal.</li>
+        <li>RIR y 1RM son orientativos: úsalos para ver tendencias, no como verdad absoluta.</li>
+        <li>No sirve para máquinas de palanca (Hammer), extensiones/curl femoral en máquina ni elevaciones laterales: su movimiento es en arco.</li>
+      </ul></div>
+      <div class="card"><h3>🔒 Privacidad</h3><p>Todo se procesa dentro de tu teléfono. Ningún video se sube a internet. El historial queda guardado solo en este dispositivo.</p></div>
+      <div class="card"><h3>ℹ️ Créditos</h3><p>Creado por <b>Ing. Luis Campozano, MBA</b>. MediaPipe Tasks (Google, Apache 2.0) · mp4-muxer (MIT). Ecuaciones carga-velocidad: González-Badillo y Sánchez-Medina (2010); Sánchez-Medina y col. (2017).</p>
+        <p class="hint" id="version"></p></div>
+    </div>
+  </div>
+
+  <nav class="nav"><div class="nav-in">
+    <button type="button" data-vista="v-form" class="active"><span>⚡</span>Analizar</button>
+    <button type="button" data-vista="v-historial"><span>📈</span>Historial</button>
+    <button type="button" data-vista="v-guia"><span>📖</span>Guía</button>
+  </div></nav>
+
+  <video id="video-trabajo" muted playsinline preload="auto" style="position:fixed;left:-9999px;width:2px;height:2px"></video>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
