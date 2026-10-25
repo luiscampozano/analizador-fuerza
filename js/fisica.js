@@ -82,13 +82,26 @@ export function picos(y, prominencia, distancia) {
     for (const q of cand) if (q !== p && !quitado.has(q) && Math.abs(q - p) < distancia && y[q] <= y[p]) quitado.add(q);
   }
   cand = cand.filter((p) => !quitado.has(p));
-  return cand.filter((p) => {
-    let izq = y[p], i = p;
-    while (i > 0 && y[i - 1] <= y[p]) { i--; izq = Math.min(izq, y[i]); }
-    let der = y[p]; i = p;
-    while (i < n - 1 && y[i + 1] <= y[p]) { i++; der = Math.min(der, y[i]); }
-    return y[p] - Math.max(izq, der) >= prominencia;
-  });
+  return cand.filter((p) => prominenciaDe(y, p) >= prominencia);
+}
+function prominenciaDe(y, p) {
+  const n = y.length;
+  let izq = y[p], i = p;
+  while (i > 0 && y[i - 1] <= y[p]) { i--; izq = Math.min(izq, y[i]); }
+  let der = y[p]; i = p;
+  while (i < n - 1 && y[i + 1] <= y[p]) { i++; der = Math.min(der, y[i]); }
+  return y[p] - Math.max(izq, der);
+}
+// Prominencia minima para contar una repeticion. Primero se usa el 35 % del rango total; pero si al inicio o al final
+// del video hay movimientos grandes (acomodarse, caminar, mover la camara) ese rango se infla y una repeticion
+// real con poco recorrido (p. ej. al tocar y subir) queda fuera. Por eso el umbral se baja hasta el 60 % de la
+// prominencia tipica de las repeticiones claras.
+export function umbralReps(s, fps) {
+  const rango = percentil(s, 98) - percentil(s, 2);
+  const base = Math.max(0.05, 0.35 * rango);
+  const claras = picos(s, base, fps * 0.8).map((p) => prominenciaDe(s, p));
+  if (claras.length < 2) return base;
+  return Math.max(0.05, Math.min(base, 0.6 * mediana(claras)));
 }
 
 // ------------------------------------------------------------ puntos
@@ -204,8 +217,7 @@ export function analizar(full, fps, ej, cfg) {
   const potencia = fuerza.map((f, i) => f * G * v[i]);
 
   // repeticiones
-  const rango = percentil(s, 98) - percentil(s, 2);
-  const prom = Math.max(0.05, 0.35 * rango);
+  const prom = umbralReps(s, fps);
   const tops = picos(s, prom, fps * 0.8), valles = picos(s.map((x) => -x), prom, fps * 0.8);
   const i0 = cfg.inicio ? Math.round(cfg.inicio * fps) : 0, i1 = cfg.fin ? Math.round(cfg.fin * fps) : n;
   let reps = [];
@@ -236,10 +248,11 @@ export function analizar(full, fps, ej, cfg) {
       const d = [relPx[x.tope][0] - relPx[x.inicio][0], relPx[x.tope][1] - relPx[x.inicio][1]];
       return Math.atan2(d[1], d[0]) * 180 / Math.PI;
     });
-    const m = mediana(ang);
-    let desv = ang.map((g) => Math.abs(((g - m + 540) % 360) - 180));
-    while (reps.length >= 3 && desv[desv.length - 1] > 10) { reps.pop(); desv.pop(); }
-    while (reps.length >= 3 && desv[0] > 10) { reps.shift(); desv.shift(); }
+    const m = mediana(ang), mr = mediana(reps.map((x) => x.recorrido_cm));
+    // atipica: otra direccion, o un recorrido mucho mayor que el resto (p. ej. pararse despues de soltar la barra)
+    const atipica = reps.map((x, k) => Math.abs(((ang[k] - m + 540) % 360) - 180) > 10 || x.recorrido_cm > 1.6 * mr);
+    while (reps.length >= 3 && atipica[atipica.length - 1]) { reps.pop(); atipica.pop(); }
+    while (reps.length >= 3 && atipica[0]) { reps.shift(); atipica.shift(); }
   }
   if (reps.length) {
     const medRec = mediana(reps.map((x) => x.recorrido_cm));

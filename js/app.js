@@ -7,7 +7,7 @@ import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
 import { abrirVideo } from './lector.js';
 
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
