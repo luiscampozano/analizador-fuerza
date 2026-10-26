@@ -372,8 +372,24 @@
     <div id="v-entrenar" class="view">
       <div id="en-inicio">
         <section class="kpi-grid tres" id="en-semana"></section>
-        <button type="button" id="en-empezar" class="btn-primary">▶ EMPEZAR ENTRENAMIENTO</button>
+        <button type="button" id="en-empezar" class="btn-primary">▶ EMPEZAR ENTRENAMIENTO VACÍO</button>
         <section class="section" style="margin-top:22px">
+          <div class="en-sec-cab"><label class="section-title">Rutinas</label><button type="button" class="btn-sec" id="en-nueva-rutina">+ Nueva rutina</button></div>
+          <div id="en-rutinas"></div>
+        </section>
+        <section class="section">
+          <label class="section-title">Constancia (12 semanas)</label>
+          <div id="en-calendario"></div>
+        </section>
+        <section class="section">
+          <label class="section-title">Series por grupo muscular</label>
+          <div id="en-musculos" class="card"></div>
+        </section>
+        <section class="section">
+          <div class="en-sec-cab"><label class="section-title">Ejercicios · récords y progreso</label><button type="button" class="btn-sec" id="en-discos">🧮 Discos</button></div>
+          <div id="en-ejs" class="card en-ejs"></div>
+        </section>
+        <section class="section">
           <label class="section-title">Mis entrenamientos</label>
           <div id="en-lista"></div>
         </section>
@@ -404,10 +420,12 @@
             <label class="en-desc-sel">Descanso
               <select id="en-descanso"><option value="0">Sin</option><option value="60">1:00</option><option value="90">1:30</option><option value="120">2:00</option>
                 <option value="180">3:00</option><option value="240">4:00</option><option value="300">5:00</option></select></label>
+            <button type="button" class="btn-sec en-discos2" id="en-discos2" title="Calculadora de discos">🧮</button>
             <button type="button" class="btn-sec peligro" id="en-descartar">Descartar</button>
             <button type="button" class="btn-sec en-terminar" id="en-terminar">Terminar</button>
           </div>
         </div>
+        <p id="en-rutina-aviso" class="hint" style="display:none;margin-top:0">✏️ Editando rutina: escribe el peso, reps y RPE objetivo de cada serie (opcional). Al entrenar con la rutina aparecerán como guía.</p>
         <div id="en-ejercicios"></div>
         <button type="button" class="btn-primary en-agregar" id="en-agregar">➕ AGREGAR EJERCICIO</button>
       </div>

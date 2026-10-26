@@ -13,7 +13,7 @@ import * as hist from './historial.js';
 import { abrirVideo } from './lector.js';
 import * as entrenar from './entrenar.js';
 
-const VERSION = '1.6.1';
+const VERSION = '1.7.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -242,7 +242,7 @@ async function analizarArchivo() {
     const res = analizar(full, fps, ej, { masa, alfa, relacion, altura, inicio: ini > 0 ? ini : null, fin: fin > 0 ? fin : null });
     if (!res.reps.length) throw new Error('No se detectaron repeticiones. Revisa que elegiste el ejercicio correcto y que se vea todo el movimiento.');
     const pcv = perfilCargaVelocidad(hist.leer(), ej);
-    const serie = analizarSerie(res, ej, { carga: ej.perfil === 'corporal' ? peso : carga, masaTotal: masa, pesoCorporal: pc, perfil: ej.perfil, pcv });
+    const serie = analizarSerie(res, ej, { carga: ej.perfil === 'corporal' ? peso : carga, masaTotal: masa, pesoCorporal: pc, perfil: ej.perfil, pcv, rmReal: entrenar.rmRealDe(ej.id) });
     const mPx = escala(full, fps, altura);
     const tray = calcularTrayectoria(full, fps, res, ej, seguidor ? seguidor.puntos : null, mPx);
     const tec = revisarTecnica(full, fps, res, ej, mPx);

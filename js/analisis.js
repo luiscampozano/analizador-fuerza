@@ -20,7 +20,7 @@ function regresion(xs, ys) {
 }
 
 // carga: kg que el usuario carga (discos+barra, pila, o lastre) · masaTotal: kg que se mueven en el eje
-export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil, pcv = null }) {
+export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil, pcv = null, rmReal = null }) {
   const usaPerfil = pcv && (pcv.confianza === 'alta' || pcv.confianza === 'media');
   const mvt = pcv && pcv.mvtPersonal ? pcv.mvt : ej.mvt;
   const reps = res.reps.filter((r) => !r.parcial && !r.atipica);
@@ -54,7 +54,13 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
 
   // 2) %1RM por ecuacion carga-velocidad de referencia (solo ejercicios con ecuacion validada)
   let pct = null;
-  if (ej.ecuacion && ECUACIONES[ej.ecuacion]) {
+  const masaReal = perfil === 'corporal' ? masaTotal : carga;
+  if (rmReal > 0 && masaReal > 0) {
+    // 1RM real registrado por el usuario: manda sobre las ecuaciones de velocidad (que son del promedio de la gente)
+    pct = lim(100 * masaReal / rmReal, 30, 100);
+    out.ecuacion = 'tu 1RM real'; out.rmReal = rmReal;
+    out.notas.push(`Se usó tu 1RM real (${r1(rmReal, 1)} kg): esta carga es el ${Math.round(100 * masaReal / rmReal)} % de tu máximo.`);
+  } else if (ej.ecuacion && ECUACIONES[ej.ecuacion]) {
     pct = lim(ECUACIONES[ej.ecuacion].f(out.vMejor), 30, 100);
     out.ecuacion = ECUACIONES[ej.ecuacion].ref;
     // control de plausibilidad: la velocidad no puede implicar un 1RM fisicamente imposible
@@ -116,7 +122,7 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
   const masaRM = perfil === 'corporal' ? masaTotal : carga;
   if (masaRM > 0 && !pocas) {
     est.push({ metodo: 'Repeticiones + RIR (Epley)', valor: epley1RM(masaRM, reps.length + rirParaRM) });
-    if (pct !== null) est.push({ metodo: 'Velocidad (' + out.ecuacion + ')', valor: masaRM / (pct / 100) });
+    if (pct !== null) est.push(out.rmReal ? { metodo: 'Tu 1RM real', valor: out.rmReal, peso: 2 } : { metodo: 'Velocidad (' + out.ecuacion + ')', valor: masaRM / (pct / 100) });
   }
   if (rmPerfil) est.push({ metodo: `Tu perfil carga-velocidad (confianza ${pcv.confianza})`, valor: rmPerfil, peso: pcv.confianza === 'alta' ? 2 : 1 });
   if (est.length) {
