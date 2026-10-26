@@ -1,6 +1,6 @@
 // Almacen del telefono (IndexedDB) para lo que no cabe en el historial simple:
 // el informe completo de cada serie (para volver a abrirla y generar el PDF) y el video con telemetria.
-const DB = 'analizador-fuerza', VERSION_DB = 2;
+const DB = 'analizador-fuerza', VERSION_DB = 3;
 export const MAX_VIDEOS = 15; // se conservan los videos de las ultimas 15 series (cada uno pesa 5-25 MB)
 
 let abierta = null;
@@ -14,8 +14,10 @@ function abrir() {
       if (!db.objectStoreNames.contains('informes')) db.createObjectStore('informes', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('videos')) db.createObjectStore('videos', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('entrenos')) db.createObjectStore('entrenos', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('comidas')) db.createObjectStore('comidas', { keyPath: 'id' }).createIndex('fecha', 'fecha');
     };
-    r.onsuccess = () => ok(r.result);
+    // si otra pestaña con una version nueva necesita actualizar la base, se cierra esta conexion
+    r.onsuccess = () => { const db = r.result; db.onversionchange = () => { db.close(); abierta = null; }; ok(db); };
     r.onerror = () => mal(r.error);
   });
   abierta.catch(() => { abierta = null; });
@@ -66,6 +68,12 @@ export function guardarEntrenos(lista) {
     t.oncomplete = () => ok(lista.length); t.onerror = () => mal(t.error); t.onabort = () => mal(t.error);
   }));
 }
+
+// registro de comidas (pestaña Nutricion); fecha = 'AAAA-MM-DD'
+export const guardarComida = (c) => tx('comidas', 'readwrite', (s) => s.put(c));
+export const borrarComida = (id) => tx('comidas', 'readwrite', (s) => s.delete(id)).catch(() => null);
+export const leerComidas = (desde, hasta = desde) => tx('comidas', 'readonly', (s) => s.index('fecha').getAll(IDBKeyRange.bound(desde, hasta)))
+  .then((x) => x || []).catch(() => []);
 
 export async function idsConVideo() {
   try { return new Set(await tx('videos', 'readonly', (s) => s.getAllKeys())); } catch (e) { return new Set(); }

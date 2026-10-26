@@ -431,6 +431,17 @@
       </div>
     </div>
 
+    <!-- ============ NUTRICION ============ -->
+    <div id="v-nutricion" class="view">
+      <div class="nu-dia"><button type="button" class="btn-sec" id="nu-ant" aria-label="Día anterior">‹</button>
+        <strong id="nu-fecha">Hoy</strong><button type="button" class="btn-sec" id="nu-sig" aria-label="Día siguiente">›</button>
+        <button type="button" class="btn-sec nu-hoy" id="nu-hoy">Hoy</button><button type="button" class="btn-sec" id="nu-btn-metas" aria-label="Metas">🎯</button></div>
+      <section class="card nu-resumen" id="nu-resumen"></section>
+      <div id="nu-comidas"></div>
+      <div id="nu-semana"></div>
+      <p class="hint">Datos de alimentos: tabla local (USDA) y <b>Open Food Facts</b> (base abierta, licencia ODbL). Revisa la etiqueta si un valor te parece raro.</p>
+    </div>
+
     <!-- ============ HISTORIAL ============ -->
     <div id="v-historial" class="view">
       <div class="chips pestanas" id="h-pestanas">
@@ -526,6 +537,20 @@
     <button type="button" class="btn-sec" id="en-det-cerrar" style="width:100%;margin-top:10px">Cerrar</button>
   </div></div>
   <div id="en-hoja" class="modal en-hoja" style="display:none"></div>
+  <div id="nu-hoja" class="modal en-modal" style="display:none"><div class="modal-caja en-sel-caja">
+    <div class="en-sec-cab"><strong id="nu-hoja-titulo">Agregar</strong><button type="button" class="btn-sec" id="nu-cerrar">Cerrar</button></div>
+    <div id="nu-paso-buscar">
+      <div class="en-sel-cab"><input id="nu-buscar" class="buscar" type="search" placeholder="Buscar alimento o producto…" autocomplete="off" enterkeyhint="search">
+        <button type="button" class="btn-sec" id="nu-escanear" aria-label="Escanear código de barras">📷</button></div>
+      <div class="en-imp-fila" style="margin:0 0 6px"><button type="button" class="btn-sec" id="nu-internet">🌐 Buscar en internet</button><button type="button" class="btn-sec" id="nu-crear">⭐ Crear alimento</button></div>
+      <div class="en-sel-lista"><div id="nu-off"></div><div id="nu-res"></div></div>
+    </div>
+    <div id="nu-paso-cant" class="en-sel-lista" style="display:none"><div id="nu-cant"></div></div>
+  </div></div>
+  <div id="nu-scan" class="modal nu-scan" style="display:none"><div class="nu-scan-caja">
+    <video id="nu-video" playsinline muted></video><div class="nu-scan-marco"></div>
+    <p>Apunta al código de barras del producto</p><button type="button" class="btn-sec" id="nu-scan-cerrar">Cancelar</button>
+  </div></div>
   <div id="en-desc" class="en-desc" style="display:none">
     <div class="en-desc-barra"><div id="desc-barra"></div></div>
     <button type="button" class="btn-sec" id="desc-menos">−15</button><b id="desc-txt">2:00</b><button type="button" class="btn-sec" id="desc-mas">+15</button>
@@ -536,6 +561,7 @@
   <nav class="nav"><div class="nav-in">
     <button type="button" data-vista="v-form" class="active"><span>⚡</span>Analizar</button>
     <button type="button" data-vista="v-entrenar"><span>🏋️</span>Entrenar</button>
+    <button type="button" data-vista="v-nutricion"><span>🥗</span>Nutrición</button>
     <button type="button" data-vista="v-historial"><span>📈</span>Historial</button>
     <button type="button" data-vista="v-guia"><span>📖</span>Guía</button>
   </div></nav>

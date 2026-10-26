@@ -12,8 +12,9 @@ import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
 import { abrirVideo } from './lector.js';
 import * as entrenar from './entrenar.js';
+import * as nutricion from './nutricion.js';
 
-const VERSION = '1.7.0';
+const VERSION = '1.8.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -35,6 +36,7 @@ function vista(id) {
   window.scrollTo({ top: 0 });
   if (id === 'v-historial') pintarHistorial();
   entrenar.alCambiarVista(id);
+  if (id === 'v-nutricion') nutricion.pintar();
 }
 document.querySelectorAll('.nav button').forEach((b) => b.addEventListener('click', () => {
   if ($('v-progreso').classList.contains('active')) return;
@@ -711,6 +713,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   $('buscar-ej').oninput = pintarLista;
   pintarElegido(); pintarLista(); ajustarCampos();
   $('version').textContent = `Versión ${VERSION}`;
+  nutricion.iniciar();
   entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar') });
   if (!('VideoEncoder' in window) && !('MediaRecorder' in window)) aviso('Tu navegador no puede crear el video con telemetría, pero sí el análisis. Usa Chrome actualizado.');
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
