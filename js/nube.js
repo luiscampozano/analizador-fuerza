@@ -9,7 +9,7 @@ export const CLIENTE_GOOGLE = '839266600135-40anun54d7qkappj2kv3oq7b6nf6vm9e.app
 const SES = 'af_sesion', EST = 'af_sync';
 // ajustes que viajan a la nube (los demas, como el ultimo ejercicio elegido, son de cada telefono)
 const AJUSTES = ['af_perfil', 'af_1rm_real', 'af_nutri_metas', 'af_nutri_perfil', 'af_peso_log', 'af_alimentos_propios',
-  'af_discos', 'af_descanso', 'af_pc', 'af_altura', 'af_ej_propios'];
+  'af_discos', 'af_descanso', 'af_pc', 'af_altura', 'af_ej_propios', 'af_compartidos'];
 const RUTINAS = 'af_rutinas';
 const LOTE = 100, LOTE_BYTES = 3_000_000, MAX_DATO = 1_400_000;
 const CADA = 2 * 60 * 1000;
@@ -26,7 +26,7 @@ export const estadoActual = () => ({ ...estado, ultima: leerJ(EST, {}).ultima ||
 function ponerEstado(cambios) { estado = { ...estado, ...cambios }; try { alEstado(estadoActual()); } catch (e) { /* nada */ } }
 
 // ------------------------------------------------------------------ API
-async function api(metodo, ruta, cuerpo) {
+export async function api(metodo, ruta, cuerpo) {
   const s = sesion();
   const r = await fetch(ruta, {
     method: metodo, cache: 'no-store',

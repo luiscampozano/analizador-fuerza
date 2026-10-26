@@ -444,13 +444,7 @@
 
     <!-- ============ COMUNIDAD ============ -->
     <div id="v-comunidad" class="view">
-      <div class="card pf-pronto">
-        <div class="pf-pronto-icono">👥</div>
-        <h3>Comunidad · próximamente</h3>
-        <p>Aquí verás los entrenamientos de las personas que sigues, como en Hevy, pero con algo que ninguna otra app tiene: series compartidas con la <b>velocidad medida por video</b>, el RPE y la trayectoria de la barra.</p>
-        <ul class="pf-lista"><li>Feed de entrenamientos de tus amigos y tu gimnasio</li><li>Seguir perfiles, likes y comentarios</li><li>Copiar la rutina de otro atleta con un toque</li><li>Rankings opcionales por puntos DOTS</li><li>Tú decides qué se publica: nada es público por defecto</li></ul>
-        <p class="hint">Necesita cuentas de usuario en la nube, que llegan en la próxima fase.</p>
-      </div>
+      <div id="co-contenido"></div>
     </div>
 
     <!-- ============ PERFIL ============ -->
@@ -567,6 +561,11 @@
       <button type="button" class="btn-sec" id="en-sel-cerrar">Cerrar</button></div>
     <div id="en-sel-lista" class="en-sel-lista"></div>
   </div></div>
+  <div id="co-modal" class="modal en-modal" style="display:none"><div class="modal-caja en-sel-caja">
+    <div id="co-modal-cuerpo" class="en-det-cuerpo"></div>
+    <button type="button" class="btn-sec" id="co-modal-cerrar" style="width:100%;margin-top:10px">Cerrar</button>
+  </div></div>
+  <div id="co-hoja" class="modal en-hoja" style="display:none"></div>
   <div id="en-detalle" class="modal en-modal" style="display:none"><div class="modal-caja en-sel-caja">
     <div id="en-det-cuerpo" class="en-det-cuerpo"></div>
     <button type="button" class="btn-sec" id="en-det-cerrar" style="width:100%;margin-top:10px">Cerrar</button>

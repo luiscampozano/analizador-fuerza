@@ -15,8 +15,9 @@ import * as entrenar from './entrenar.js';
 import * as nutricion from './nutricion.js';
 import * as perfil from './perfil.js';
 import * as nube from './nube.js';
+import * as comunidad from './comunidad.js';
 
-const VERSION = '2.1.0';
+const VERSION = '2.2.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -40,6 +41,7 @@ function vista(id) {
   entrenar.alCambiarVista(id);
   if (id === 'v-nutricion') nutricion.pintar();
   if (id === 'v-perfil') perfil.pintar();
+  if (id === 'v-comunidad') comunidad.pintar();
 }
 document.querySelectorAll('.nav button').forEach((b) => b.addEventListener('click', () => {
   if ($('v-progreso').classList.contains('active')) return;
@@ -722,9 +724,10 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   pintarElegido(); pintarLista(); ajustarCampos();
   $('version').textContent = `Versión ${VERSION}`;
   nutricion.iniciar();
+  comunidad.iniciar({ vista, porId: POR_ID, guardarRutina: (n, ejs) => entrenar.guardarRutina(n, ejs) });
   perfil.iniciar({ vista, version: VERSION });
   document.querySelectorAll('[data-volver]').forEach((b) => (b.onclick = () => vista(b.dataset.volver)));
-  entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar') }).then(() => {
+  entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar'), compartir: (en, recs) => comunidad.compartir(en, recs), compartido: (id) => comunidad.compartido(id) }).then(() => {
     entrenar.alCambiarVista('v-entrenar');
     // nube: al recibir cambios de otro dispositivo se repinta lo que este a la vista
     nube.iniciar({

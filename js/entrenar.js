@@ -224,10 +224,17 @@ function abrirDetalle(id, nuevo = null) {
       ${e.series.map((s, i) => `<div class="en-det-serie${s.tipo === 'calentamiento' ? ' cal' : ''}"><span>${TIPOS[s.tipo] || i + 1 - e.series.slice(0, i).filter((x) => x.tipo === 'calentamiento').length}</span>
         <span>${kgTxt(s.kg) || '—'} kg × ${s.reps ?? '—'}${s.rpe ? ` @${fmt(s.rpe, s.rpe % 1 ? 1 : 0)}` : ''}</span>
         ${s.analisis ? `<button type="button" class="en-vel" data-serie="${s.analisis.id}">⚡ ${fmt(s.analisis.v, 2)} m/s</button>` : ''}</div>`).join('')}</div>`).join('')}
+    <button type="button" class="btn-primary en-compartir" id="en-compartir">${deps.compartido && deps.compartido(en.id) ? '📣 Actualizar publicación' : '📣 Compartir en la comunidad'}</button>
     <div class="en-det-botones"><button type="button" class="btn-sec" id="en-repetir">🔁 Repetir</button><button type="button" class="btn-sec" id="en-a-rutina">💾 Como rutina</button><button type="button" class="btn-sec peligro" id="en-borrar">Borrar</button></div>`;
   $('en-detalle').style.display = 'flex';
   $('en-det-cuerpo').scrollTop = 0;
   $('en-det-cuerpo').querySelectorAll('[data-serie]').forEach((b) => (b.onclick = () => { $('en-detalle').style.display = 'none'; deps.abrirSerie(b.dataset.serie); }));
+  $('en-compartir').onclick = () => {
+    // records de ese entrenamiento frente a los anteriores
+    const recs = nuevo || P.recordsNuevos(en, lista.filter((x) => x.id !== en.id && x.inicio < en.inicio), nombreEj);
+    $('en-detalle').style.display = 'none';
+    if (deps.compartir) deps.compartir(en, recs);
+  };
   $('en-repetir').onclick = () => {
     if (activo && !confirm('Ya tienes un entrenamiento en curso. ¿Reemplazarlo?')) return;
     $('en-detalle').style.display = 'none';
@@ -246,6 +253,10 @@ function abrirDetalle(id, nuevo = null) {
 }
 
 // ------------------------------------------------------------------ rutinas
+// rutina copiada de otro atleta (Comunidad)
+export function guardarRutina(nombre, ejercicios) {
+  rutinas.push(rutinaDesde(nombre, ejercicios, false)); guardarRutinas(); if (deps) pintar();
+}
 // una rutina guarda los ejercicios y, por serie, el tipo y el objetivo (kg, reps, RPE)
 function rutinaDesde(nombre, ejercicios, conObjetivo, id = null) {
   return { id: id || 'r-' + Date.now(), nombre, ejercicios: ejercicios.map((e) => ({ ej: e.ej, nombre: e.nombre, notas: e.notas || '',
