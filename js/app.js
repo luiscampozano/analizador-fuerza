@@ -15,7 +15,7 @@ import * as entrenar from './entrenar.js';
 import * as nutricion from './nutricion.js';
 import * as perfil from './perfil.js';
 
-const VERSION = '2.0.2';
+const VERSION = '2.0.3';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -109,14 +109,18 @@ $('p-guardar').onclick = () => {
   aviso(`Ejercicio "${nombre}" creado. Lo encuentras en "${GRUPO_PROPIOS}".`, true);
 };
 
+// el campo de barra/carro solo aparece si el equipo lo tiene (no con mancuernas, kettlebell ni palancas sin barra)
+function usaCarro() {
+  return ej.perfil === 'riel' || (ej.perfil === 'libre' && (ej.carro > 0 || /barra/i.test(ej.equipo || '')));
+}
 function ajustarCampos() {
   const p = ej.perfil;
   $('g-incl').style.display = p === 'riel' ? '' : 'none';
   $('g-rel').style.display = p === 'polea' ? '' : 'none';
-  $('g-carro').style.display = p === 'riel' || p === 'libre' ? '' : 'none';
+  $('g-carro').style.display = usaCarro() ? '' : 'none';
   $('lbl-peso').textContent = p === 'corporal' ? 'Lastre' : p === 'polea' ? 'Peso de la pila' : ej.carro > 0 ? 'Peso de discos' : 'Peso';
   if (ej.asistido) $('lbl-peso').textContent = 'Asistencia';
-  $('lbl-carro').textContent = p === 'riel' ? 'Carro / barra de la máquina' : 'Barra';
+  $('lbl-carro').textContent = p === 'riel' ? 'Carro de la máquina' : 'Peso de la barra';
   $('in-incl').value = leer('af_incl_' + ej.id) || ej.alfa || 45;
   $('in-carro').value = leer('af_carro_' + ej.id) ?? ej.carro ?? 0;
   $('in-peso').value = leer('af_peso_' + ej.id) ?? (p === 'corporal' ? 0 : '');
@@ -210,7 +214,7 @@ function leerDatos() {
   if (ej.perfil !== 'corporal' && !(peso > 0)) { alert('Indica el peso en kg.'); return null; }
   if (!(altura > 1 && altura < 2.4)) { alert('Revisa tu estatura (en metros, por ejemplo 1.68).'); return null; }
   if (ej.perfil === 'corporal' && !(pc > 20)) { alert('Indica tu peso corporal.'); return null; }
-  const carro = ej.perfil === 'riel' || ej.perfil === 'libre' ? parseFloat($('in-carro').value || '0') : 0;
+  const carro = usaCarro() ? parseFloat($('in-carro').value || '0') : 0;
   const alfa = ej.perfil === 'riel' ? parseFloat($('in-incl').value || '45') : 90;
   const relacion = ej.perfil === 'polea' ? parseFloat($('in-rel').value || '1') : 1;
   guardar('af_peso_' + ej.id, peso); guardar('af_carro_' + ej.id, carro); guardar('af_incl_' + ej.id, alfa);
@@ -700,7 +704,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   if (!POR_ID[id]) return;
   elegir(POR_ID[id]);
   if (kg > 0) {
-    const carro = ej.perfil === 'riel' || ej.perfil === 'libre' ? parseFloat($('in-carro').value || '0') : 0;
+    const carro = usaCarro() ? parseFloat($('in-carro').value || '0') : 0;
     const peso = Math.round((kg - carro) * 100) / 100;
     $('in-peso').value = peso > 0 ? peso : kg;
   }

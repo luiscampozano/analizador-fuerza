@@ -279,6 +279,7 @@ export function analizar(full, fps, ej, cfg) {
     while (reps.length >= 3 && atipica[atipica.length - 1]) { reps.pop(); atipica.pop(); }
     while (reps.length >= 3 && atipica[0]) { reps.shift(); atipica.shift(); }
   }
+  if (reps.length >= 3) reps = quitarPreparacion(reps, full, fps, ej, rel, mPx);
   if (reps.length) marcarReps(reps);
   const valido = new Array(n).fill(false);
   if (reps.length) {
@@ -286,6 +287,45 @@ export function analizar(full, fps, ej, cfg) {
     for (let i = ini; i <= reps[reps.length - 1].fin; i++) valido[i] = true;
   }
   return { n, fps, s, v, a, fuerza, potencia, dirs, estatico, reps, valido };
+}
+
+// Movimientos de preparacion contados como rep (acomodarse en la banca, acostarse, desenganchar, pararse al final):
+// ocurren al inicio o al final del video y con otra postura que la serie. Se comparan las reps de los bordes con la
+// mediana de la serie y se quitan mientras no se parezcan: postura del torso distinta (sentado vs acostado), la
+// carga en otra posicion respecto al cuerpo, la persona mal visible o una pausa muy larga antes/despues de la serie.
+export function quitarPreparacion(reps, full, fps, ej, rel, mPx) {
+  const par = (f, ab) => [(f[ab[0]][0] + f[ab[1]][0]) / 2, (f[ab[0]][1] + f[ab[1]][1]) / 2];
+  const puntos = [...MP[ej.punto] || [], ...(ANCLAS[ej.ancla] || [])];
+  const rasgos = reps.map((r) => {
+    const f = full[r.tope], h = par(f, MP.hombros), c = par(f, MP.cadera);
+    let vis = 0, nv = 0;
+    for (let i = r.inicio; i <= r.tope; i++) for (const k of puntos) { vis += full[i][k][2] || 0; nv++; }
+    return {
+      vis: nv ? vis / nv : 1,
+      torso: Math.atan2(c[1] - h[1], c[0] - h[0]) * 180 / Math.PI,
+      largo: Math.hypot(c[0] - h[0], c[1] - h[1]) * mPx[r.tope],
+      pos: ANCLAS[ej.ancla] ? rel[r.tope] : null,
+      t: r.tope / fps,
+    };
+  });
+  const med = (f) => mediana(rasgos.map(f).filter(Number.isFinite));
+  const mVis = med((x) => x.vis), mTorso = med((x) => x.torso), mLargo = med((x) => x.largo);
+  const mPos = rasgos[0].pos ? [med((x) => x.pos[0]), med((x) => x.pos[1])] : null;
+  const mRec = mediana(reps.map((r) => r.recorrido_cm)) / 100;
+  const pasos = rasgos.slice(1).map((x, k) => x.t - rasgos[k].t), mPaso = mediana(pasos);
+  const fuera = (k, vecino) => {
+    const x = rasgos[k];
+    const dT = Math.abs(((x.torso - mTorso + 540) % 360) - 180);
+    const ratio = x.largo / mLargo;
+    const lejos = mPos && Math.hypot(x.pos[0] - mPos[0], x.pos[1] - mPos[1]) > Math.max(0.25, 0.6 * mRec);
+    const pausa = Math.abs(x.t - rasgos[vecino].t) > Math.max(6, 3 * mPaso);
+    const largaRep = reps[k].recorrido_cm / 100 > 1.35 * mRec; // acostarse, pararse o subir la barra al rack
+    return largaRep || (mVis >= 0.6 && x.vis < 0.45) || (Number.isFinite(dT) && dT > 35) || (Number.isFinite(ratio) && (ratio < 0.65 || ratio > 1.5)) || lejos || pausa;
+  };
+  let i0 = 0, i1 = reps.length - 1;
+  while (i1 - i0 >= 1 && fuera(i0, i0 + 1)) i0++;
+  while (i1 - i0 >= 1 && fuera(i1, i1 - 1)) i1--;
+  return reps.slice(i0, i1 + 1);
 }
 
 // Ejercicios alternos (curl alterno): cada brazo se analiza por separado y luego se unen las repeticiones en orden.

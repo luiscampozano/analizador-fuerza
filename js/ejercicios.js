@@ -10,10 +10,10 @@
 // en: nombres en ingles para el buscador (como aparecen en apps tipo Hevy).
 // Catalogo tomado como referencia: free-exercise-db (dominio publico) y nombres habituales de apps de gimnasio.
 
-const BARRA = 'Pon solo los discos, sin la barra: la app le suma 20 kg (cámbialo en Ajustes avanzados → Barra).';
+const BARRA = 'Pon solo los discos, sin la barra: la app le suma la barra (20 kg; cámbialo en «Peso de la barra»).';
 const EQ = {
   barra: { equipo: 'Barra', perfil: 'libre', carro: 20, hint: BARRA },
-  ez: { equipo: 'Barra Z', perfil: 'libre', carro: 10, hint: 'Pon solo los discos: la app le suma 10 kg de la barra Z (ajústalo en Ajustes avanzados → Barra).' },
+  ez: { equipo: 'Barra Z', perfil: 'libre', carro: 10, hint: 'Pon solo los discos: la app le suma 10 kg de la barra Z (ajústalo en «Peso de la barra»).' },
   mancuernas: { equipo: 'Mancuernas', perfil: 'libre', carro: 0, hint: 'Peso = suma de las dos mancuernas.' },
   mancuerna: { equipo: 'Mancuerna', perfil: 'libre', carro: 0, hint: 'Peso = la mancuerna.' },
   kettlebell: { equipo: 'Kettlebell', perfil: 'libre', carro: 0, hint: 'Peso = la kettlebell (o la suma si usas dos).' },
@@ -23,8 +23,8 @@ const EQ = {
   palanca: { equipo: 'Máquina con discos', perfil: 'libre', carro: 0, aprox: true,
     hint: 'Peso = discos cargados. La palanca cambia la carga real: fuerza y potencia son aproximadas.' },
   riel: { equipo: 'Máquina de riel', perfil: 'riel', alfa: 45, carro: 0,
-    hint: 'Mide la inclinación del riel con el inclinómetro del celular. Si sabes cuánto pesa el carro, ponlo en avanzados.' },
-  smith: { equipo: 'Smith', perfil: 'riel', alfa: 90, carro: 15, hint: 'La barra Smith suele pesar 10–20 kg (contrapesada): ajústalo en avanzados.' },
+    hint: 'Mide la inclinación del riel con el inclinómetro del celular. Si sabes cuánto pesa el carro, ponlo en «Carro de la máquina».' },
+  smith: { equipo: 'Smith', perfil: 'riel', alfa: 90, carro: 15, hint: 'La barra Smith suele pesar 10–20 kg (contrapesada): ajústalo en «Carro de la máquina».' },
   corporal: { equipo: 'Peso corporal', perfil: 'corporal', hint: 'Peso = lastre o chaleco (0 si no usas).' },
 };
 const SENT = { punto: 'hombros', ancla: 'tobillos', sentido: 'arriba' }; // el cuerpo sube y baja
@@ -45,7 +45,7 @@ export const EJERCICIOS = [
   E('smith_sentadilla', 'Piernas', 'smith', '🏗️', 'Sentadilla en Smith', 'Smith sentadilla', { ...SENT, mvt: 0.32 }, 'smith machine squat'),
   E('hack', 'Piernas', 'riel', '🏋️', 'Hack squat / péndulo', 'Hack squat', { ...SENT, mvt: 0.30, hint: 'Graba de lado. Ajusta la inclinación del riel de tu máquina.' }, 'hack squat pendulum squat'),
   E('prensa_45', 'Piernas', 'riel', '🦵', 'Prensa 45°', 'Prensa 45°', { punto: 'pies', ancla: 'cadera', sentido: 'lejos_ancla', mvt: 0.25,
-    hint: 'Graba de lado. El carro de la prensa también pesa (30–50 kg): ponlo en avanzados si lo sabes.' }, 'leg press 45'),
+    hint: 'Graba de lado. El carro de la prensa también pesa (30–50 kg): ponlo en «Carro de la máquina» si lo sabes.' }, 'leg press 45'),
   E('prensa_horizontal', 'Piernas', 'maquina', '🦵', 'Prensa horizontal (sentado)', 'Prensa horizontal', { punto: 'pies', ancla: 'cadera', sentido: 'lejos_ancla', mvt: 0.25 }, 'seated leg press horizontal'),
   E('belt_squat', 'Piernas', 'palanca', '🏋️', 'Belt squat', 'Belt squat', { ...SENT, punto: 'cadera', mvt: 0.30 }, 'belt squat'),
   E('zancada', 'Piernas', 'mancuernas', '🚶', 'Zancada / búlgara', 'Zancada', { ...SENT, mvt: 0.30, hint: 'Pon el peso total de las mancuernas o de la barra con discos.' }, 'lunge bulgarian split squat'),
@@ -76,7 +76,7 @@ export const EJERCICIOS = [
   E('rumano_mancuernas', 'Glúteo y femoral', 'mancuernas', '⬆️', 'Peso muerto rumano con mancuernas', 'Rumano mancuernas', { ...MANOS('arriba', 'tobillos'), mvt: 0.25 }, 'dumbbell romanian deadlift rdl'),
   E('peso_muerto_rigido', 'Glúteo y femoral', 'barra', '⬆️', 'Peso muerto piernas rígidas', 'P. muerto rígido', { ...MANOS('arriba', 'tobillos'), mvt: 0.25 }, 'stiff leg deadlift'),
   E('peso_muerto_hex', 'Glúteo y femoral', 'barra', '⬡', 'Peso muerto con barra hexagonal', 'Barra hexagonal', { ...MANOS('arriba', 'tobillos'), mvt: 0.15, carro: 25,
-    hint: 'Pon solo los discos: la app le suma 25 kg de la barra hexagonal (pésala o pregunta y ajústalo en avanzados).' }, 'trap bar deadlift hex bar'),
+    hint: 'Pon solo los discos: la app le suma 25 kg de la barra hexagonal (pésala o pregunta y ajústalo en «Peso de la barra»).' }, 'trap bar deadlift hex bar'),
   E('peso_muerto_deficit', 'Glúteo y femoral', 'barra', '⬆️', 'Peso muerto en déficit', 'P. muerto déficit', { ...MANOS('arriba', 'tobillos'), mvt: 0.15 }, 'deficit deadlift'),
   E('rack_pull', 'Glúteo y femoral', 'barra', '⬆️', 'Rack pull (desde bloques)', 'Rack pull', { ...MANOS('arriba', 'tobillos'), mvt: 0.15 }, 'rack pull block pull'),
   E('buenos_dias', 'Glúteo y femoral', 'barra', '🌅', 'Buenos días', 'Buenos días', { ...SENT, mvt: 0.30 }, 'good morning'),
@@ -172,7 +172,7 @@ export const EJERCICIOS = [
 
   // ---------------------------------------------------------------- BRAZOS
   E('curl', 'Brazos', 'barra', '💪', 'Curl de bíceps con barra', 'Curl barra', { ...MANOS('arriba', 'hombros'), mvt: 0.25,
-    hint: 'Pon los discos y en Ajustes avanzados → Barra el peso de tu barra (20 kg olímpica, ~10 kg Z, 0 con mancuernas).' }, 'barbell curl biceps'),
+    hint: 'Pon los discos y en «Peso de la barra» el de tu barra (20 kg olímpica, ~10 kg Z, 0 con mancuernas).' }, 'barbell curl biceps'),
   E('curl_z', 'Brazos', 'ez', '💪', 'Curl con barra Z', 'Curl barra Z', { ...MANOS('arriba', 'hombros'), mvt: 0.25 }, 'ez bar curl'),
   E('curl_mancuernas', 'Brazos', 'mancuernas', '💪', 'Curl con mancuernas (a la vez)', 'Curl mancuernas', { ...MANOS('arriba', 'hombros'), mvt: 0.25 }, 'dumbbell curl'),
   E('curl_alterno', 'Brazos', 'mancuerna', '💪', 'Curl alterno con mancuernas', 'Curl alterno', { ...MANOS('arriba', 'hombros'), mvt: 0.25, alterno: true,

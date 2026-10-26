@@ -143,6 +143,10 @@
             <label for="in-peso" id="lbl-peso">Peso de discos</label>
             <div class="input-unit"><input type="number" id="in-peso" inputmode="decimal" step="0.5" min="0"><span>kg</span></div>
           </div>
+          <div class="form-group" id="g-carro">
+            <label for="in-carro" id="lbl-carro">Peso de la barra</label>
+            <div class="input-unit"><input type="number" id="in-carro" inputmode="decimal" step="0.5" min="0"><span>kg</span></div>
+          </div>
           <div class="form-group" id="g-incl">
             <label for="in-incl">Inclinación del riel</label>
             <div class="input-unit"><input type="number" id="in-incl" inputmode="decimal" step="1" min="5" max="90"><span>°</span></div>
@@ -159,10 +163,6 @@
         <details class="advanced-details">
           <summary>⚙️ Ajustes avanzados</summary>
           <div class="form-grid" style="margin-top:14px">
-            <div class="form-group" id="g-carro">
-              <label for="in-carro" id="lbl-carro">Barra / carro</label>
-              <div class="input-unit"><input type="number" id="in-carro" inputmode="decimal" step="0.5" min="0"><span>kg</span></div>
-            </div>
             <div class="form-group" id="g-rel">
               <label for="in-rel">Relación de la polea</label>
               <select id="in-rel"><option value="1">1:1 (normal)</option><option value="2">2:1</option></select>

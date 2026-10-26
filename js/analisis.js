@@ -10,6 +10,10 @@ export const cargaParaReps = (rm, reps) => rm / (1 + reps / 30);
 
 // tope de 1RM relativo al peso corporal (por encima de esto la medicion es casi seguro un error)
 const TOPE_BW = { sentadilla: 4, banca: 3 };
+// pendiente general de la relacion %1RM-velocidad (puntos de %1RM por m/s)
+const PENDIENTE_GEN = 60;
+// 1RM a partir de una carga y reps totales posibles (reps hechas + RIR); 1 rep al fallo = la carga misma
+const rmDesde = (w, total) => (total <= 1 ? w : epley1RM(w, total));
 
 function regresion(xs, ys) {
   const n = xs.length; if (n < 2) return null;
@@ -75,8 +79,29 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
       }
     }
   }
+  // 2b) Series de 1-2 reps (singles, dobles, tests de maximo): no hay tendencia de velocidad, pero la velocidad en si
+  // dice cuan cerca del maximo estas. Sin ecuacion validada se usa una relacion general: %1RM ~ 100 en la velocidad
+  // minima del ejercicio (MVT) y baja ~60 puntos por cada m/s mas rapido (promedio de sentadilla, banca y peso muerto).
+  const pocasReps = reps.length < 3;
+  let rirUltima = null;
+  if (pocasReps && mvt > 0) {
+    if (pct === null && !usaPerfil && masaReal > 0) {
+      const pg = lim(100 - PENDIENTE_GEN * (out.vMejor - mvt), 30, 100);
+      const rmVel = masaReal / (pg / 100);
+      const topeBW = pesoCorporal > 0 ? pesoCorporal * (TOPE_BW[ej.ecuacion] || 4) : Infinity;
+      if (rmVel <= epley1RM(masaReal, reps.length + 25) && rmVel <= topeBW) {
+        pct = pg; out.ecuacion = 'relación general velocidad–%1RM, aprox.'; out.pctGenerico = true;
+      }
+    }
+    // cerca del maximo cada rep que te queda vale ~0,08 m/s por encima de tu velocidad minima
+    rirUltima = lim((out.vUltima - mvt) / 0.08, 0, 10);
+    out.notas.push(`Con ${reps.length === 1 ? '1 repetición' : '2 repeticiones'} el RIR, el RPE y el 1RM se estimaron con la velocidad de la barra (${out.vUltima.toFixed(2)} m/s frente a ${mvt.toFixed(2)} m/s, la velocidad típica de una rep al máximo${out.mvtPersonal || (pcv && pcv.mvtPersonal) ? ', la tuya' : ''}). Es una estimación aproximada: si registras tu 1RM real en Entrenar → progreso del ejercicio, se ajusta a ti.`);
+  }
   let rirPct = null;
   if (pct !== null) rirPct = lim(repsAPorcentaje(pct) - reps.length, 0, 20);
+  // la velocidad de la ultima rep es fiable cerca del maximo (RIR <= 3); lejos del maximo manda el %1RM
+  if (rirUltima !== null && rirUltima <= 3) rirPct = rirPct === null ? rirUltima : (rirPct + rirUltima) / 2;
+  else if (rirUltima !== null && rirPct === null) rirPct = rirUltima;
   // %1RM con TU perfil carga-velocidad (si es confiable): se desplaza tu recta hasta el punto de hoy
   const masaHoy = perfil === 'corporal' ? masaTotal : carga;
   let pctPerfil = null, rmPerfil = null, rirPerfil = null;
@@ -96,10 +121,10 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
     out.rir = null; out.rirTexto = '≥ 5';
   }
   // por perdida de velocidad (Rodríguez-Rosell, González-Badillo): ~20 % = mitad de las reps posibles
-  const pocas = reps.length < 3 && pct === null && pctPerfil === null;
+  const pocas = reps.length < 3 && pct === null && pctPerfil === null && rirUltima === null;
   if (pocas) {
     out.rir = null; out.rirTexto = '—';
-    out.notas.push('Con menos de 3 repeticiones no se puede estimar el RIR ni el 1RM con confianza. Graba la serie completa.');
+    out.notas.push('Con menos de 3 repeticiones y sin la velocidad mínima del ejercicio no se puede estimar el RIR ni el 1RM. Graba la serie completa.');
   }
   if (!pocas && (out.rir === undefined || out.rir === null)) {
     if (!out.rirTexto && out.perdida >= 10) {
@@ -121,7 +146,7 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
   const rirParaRM = out.rir ?? 5;
   const masaRM = perfil === 'corporal' ? masaTotal : carga;
   if (masaRM > 0 && !pocas) {
-    est.push({ metodo: 'Repeticiones + RIR (Epley)', valor: epley1RM(masaRM, reps.length + rirParaRM) });
+    est.push({ metodo: 'Repeticiones + RIR (Epley)', valor: rmDesde(masaRM, reps.length + rirParaRM) });
     if (pct !== null) est.push(out.rmReal ? { metodo: 'Tu 1RM real', valor: out.rmReal, peso: 2 } : { metodo: 'Velocidad (' + out.ecuacion + ')', valor: masaRM / (pct / 100) });
   }
   if (rmPerfil) est.push({ metodo: `Tu perfil carga-velocidad (confianza ${pcv.confianza})`, valor: rmPerfil, peso: pcv.confianza === 'alta' ? 2 : 1 });
