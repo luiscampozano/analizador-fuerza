@@ -15,7 +15,7 @@ import * as entrenar from './entrenar.js';
 import * as nutricion from './nutricion.js';
 import * as perfil from './perfil.js';
 
-const VERSION = '2.0.0';
+const VERSION = '2.0.1';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -719,6 +719,12 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   perfil.iniciar({ vista, version: VERSION });
   document.querySelectorAll('[data-volver]').forEach((b) => (b.onclick = () => vista(b.dataset.volver)));
   entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar') }).then(() => entrenar.alCambiarVista('v-entrenar'));
+  // la app se mudo a Cloudflare: en la direccion vieja se indica como llevarse los datos
+  if (location.hostname.endsWith('github.io')) {
+    const a = $('aviso');
+    a.innerHTML = '📦 <b>FuerzaPro se mudó a <a href="https://fuerzapro.pages.dev" style="color:inherit">fuerzapro.pages.dev</a></b>. Para llevar tus datos: aquí ve a Perfil → 💾 Guardar respaldo; luego abre la nueva dirección, instálala y usa Perfil → ♻️ Restaurar.';
+    a.style.display = 'block'; a.classList.add('ok');
+  }
   if (!('VideoEncoder' in window) && !('MediaRecorder' in window)) aviso('Tu navegador no puede crear el video con telemetría, pero sí el análisis. Usa Chrome actualizado.');
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
