@@ -8,6 +8,9 @@ export const epley1RM = (w, reps) => w * (1 + reps / 30);
 export const repsAPorcentaje = (pct) => Math.max(0, 30 * (100 / pct - 1));
 export const cargaParaReps = (rm, reps) => rm / (1 + reps / 30);
 
+// tope de 1RM relativo al peso corporal (por encima de esto la medicion es casi seguro un error)
+const TOPE_BW = { sentadilla: 4, banca: 3 };
+
 function regresion(xs, ys) {
   const n = xs.length; if (n < 2) return null;
   const mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
@@ -54,6 +57,17 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
   if (ej.ecuacion && ECUACIONES[ej.ecuacion]) {
     pct = lim(ECUACIONES[ej.ecuacion].f(out.vMejor), 30, 100);
     out.ecuacion = ECUACIONES[ej.ecuacion].ref;
+    // control de plausibilidad: la velocidad no puede implicar un 1RM fisicamente imposible
+    const masaV = perfil === 'corporal' ? masaTotal : carga;
+    if (masaV > 0) {
+      const rmVel = masaV / (pct / 100);
+      const topeReps = epley1RM(masaV, reps.length + 25); // mas de ~25 reps en reserva con esa carga no es creible
+      const topeBW = pesoCorporal > 0 ? pesoCorporal * (TOPE_BW[ej.ecuacion] || 4) : Infinity;
+      if (rmVel > topeReps || rmVel > topeBW) {
+        pct = null; delete out.ecuacion;
+        out.notas.push(`La velocidad medida (${out.vMejor.toFixed(2)} m/s) no cuadra con ${Math.round(masaV)} kg (implicaría un 1RM imposible): probablemente se contó el desenganche de la barra, la cámara se movió o la carga es muy ligera para estimar. El 1RM se estimó solo con las repeticiones.`);
+      }
+    }
   }
   let rirPct = null;
   if (pct !== null) rirPct = lim(repsAPorcentaje(pct) - reps.length, 0, 20);
@@ -108,6 +122,7 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
   if (est.length) {
     const vals = est.map((e) => e.valor), pesos = est.map((e) => e.peso || 1);
     out.rm = vals.reduce((a, v, i) => a + v * pesos[i], 0) / pesos.reduce((a, b) => a + b);
+    out.rm = Math.min(out.rm, epley1RM(masaRM, reps.length + 25)); // tope fisico
     out.rmMin = Math.min(...vals); out.rmMax = Math.max(...vals);
     out.metodos = est;
     out.pct = 100 * masaRM / out.rm;

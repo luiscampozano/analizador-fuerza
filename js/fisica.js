@@ -159,6 +159,15 @@ export function marcarReps(reps) {
   if (normales.length >= 4) {
     const mv = mediana(normales.map((x) => x.v_media)), mr = mediana(normales.map((x) => x.recorrido_cm));
     normales.forEach((x) => { x.atipica = x.v_media > 1.5 * mv || (x.v_media > 1.3 * mv && x.recorrido_cm > 1.3 * mr); });
+  } else if (normales.length === 3) {
+    // con pocas reps se compara cada una contra las otras dos (p. ej. el desenganche o la camara movida contados como rep)
+    normales.forEach((x) => {
+      const otras = normales.filter((y) => y !== x);
+      const mv = mediana(otras.map((y) => y.v_media)), mr = mediana(otras.map((y) => y.recorrido_cm));
+      const sim = Math.abs(otras[0].v_media - otras[1].v_media) <= 0.25 * mv; // las otras dos se parecen entre si
+      x.atipica = sim && (x.v_media > 1.6 * mv || (x.v_media > 1.35 * mv && x.recorrido_cm > 1.35 * mr));
+    });
+    if (normales.filter((x) => x.atipica).length > 1) normales.forEach((x) => { x.atipica = false; });
   }
   const ref = reps.filter((x) => !x.parcial && !x.atipica);
   const mejor = Math.max(...(ref.length ? ref : reps).map((x) => x.v_media));
