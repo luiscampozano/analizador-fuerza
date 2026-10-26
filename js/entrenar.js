@@ -54,6 +54,8 @@ const serieVacia = (tipo = 'normal') => ({ kg: null, reps: null, rpe: null, tipo
 // ------------------------------------------------------------------ inicio
 export async function iniciar(d) {
   deps = d;
+  // pide al navegador no borrar los datos de la app aunque el telefono se quede sin espacio
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* nada */ }
   try { activo = JSON.parse(leerLS(BORRADOR) || 'null'); } catch (e) { activo = null; }
   lista = (await almacen.leerEntrenos()).sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
   $('en-empezar').onclick = () => empezar();

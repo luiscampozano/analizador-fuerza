@@ -182,7 +182,18 @@ const VACIAS = new Set(['con', 'de', 'del', 'en', 'la', 'el', 'al', 'a', 'y', 't
 const raiz = (w) => (w.length > 4 && w.endsWith('s') ? w.slice(0, -1) : w);
 const fichas = (t) => norm(t).replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(Boolean).map(raiz);
 
+const cacheFichas = new WeakMap(), cacheNombres = new Map();
+function fichasEj(e) {
+  let c = cacheFichas.get(e);
+  if (!c) { c = { fe: new Set(fichas(`${e.en || ''} ${e.nombre}`)), en: fichas(e.en || '').filter((w) => !VACIAS.has(w)) }; cacheFichas.set(e, c); }
+  return c;
+}
 export function emparejar(nombre, ejercicios) {
+  const k = norm(nombre);
+  if (!cacheNombres.has(k)) cacheNombres.set(k, emparejarSinCache(nombre, ejercicios));
+  return cacheNombres.get(k);
+}
+function emparejarSinCache(nombre, ejercicios) {
   const n = norm(nombre);
   const exacto = ejercicios.find((e) => norm(e.nombre) === n || norm(e.corto) === n);
   if (exacto) return exacto.id;
@@ -191,10 +202,10 @@ export function emparejar(nombre, ejercicios) {
   const equipos = todas.flatMap((w) => EQUIPO[w] || []);
   let mejor = null;
   for (const e of ejercicios) {
-    const fe = new Set(fichas(`${e.en || ''} ${e.nombre}`));
+    const { fe, en } = fichasEj(e);
     const cubiertas = clave.filter((w) => fe.has(w)).length;
     if (cubiertas / clave.length < 0.6) continue;
-    const extra = fichas(e.en || '').filter((w) => !VACIAS.has(w) && !todas.includes(w)).length; // palabras que el nombre importado no tiene (incline, front…)
+    const extra = en.filter((w) => !todas.includes(w)).length; // palabras que el nombre importado no tiene (incline, front…)
     const eq = equipos.length ? (equipos.includes(e.equipo) ? 1 : -0.5) : 0;
     const asis = e.asistido && !todas.some((w) => w.startsWith('assist') || w.startsWith('asist')) ? -1.5 : 0;
     const pts = todas.filter((w) => fe.has(w)).length - 0.6 * extra + eq + asis - fe.size * 0.001;

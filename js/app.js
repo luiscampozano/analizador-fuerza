@@ -13,7 +13,7 @@ import * as hist from './historial.js';
 import { abrirVideo } from './lector.js';
 import * as entrenar from './entrenar.js';
 
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
