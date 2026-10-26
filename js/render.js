@@ -8,6 +8,31 @@ const LINEAS = [[11, 13], [13, 15], [12, 14], [14, 16], [11, 12], [11, 23], [12,
   [23, 25], [25, 27], [24, 26], [26, 28]];
 const ART = [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
 const FUENTE = 'system-ui, -apple-system, Roboto, "Segoe UI", sans-serif';
+// logo para la marca en el panel de telemetria (se carga una vez; si aun no esta listo se dibuja solo el texto)
+const LOGO = typeof Image !== 'undefined' ? new Image() : null;
+if (LOGO) LOGO.src = new URL('../iconos/logo.png', import.meta.url).href;
+const logoListo = () => LOGO && LOGO.complete && LOGO.naturalWidth > 0;
+// marca de agua dentro del panel (nunca sobre el video): tenue detras de la grafica y firma clara a la derecha
+function marca(ctx, cx, cy) {
+  ctx.save();
+  ctx.globalAlpha = 0.07;
+  if (logoListo()) ctx.drawImage(LOGO, cx - 250, cy - 70, 140, 140);
+  ctx.fillStyle = '#ffffff'; ctx.font = `800 96px ${FUENTE}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('FuerzaPro', cx - (logoListo() ? 90 : 230), cy + 4);
+  ctx.restore();
+}
+function firma(ctx, x, y) { // x = borde derecho, y = linea base del nombre
+  ctx.save();
+  ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+  ctx.font = `800 34px ${FUENTE}`;
+  const ancho = ctx.measureText('FuerzaPro').width;
+  const g = ctx.createLinearGradient(x - ancho, 0, x, 0); g.addColorStop(0, '#9a82ff'); g.addColorStop(1, '#22d3ee');
+  ctx.fillStyle = g; ctx.fillText('FuerzaPro', x, y);
+  if (logoListo()) ctx.drawImage(LOGO, x - ancho - 52, y - 36, 44, 44);
+  ctx.fillStyle = 'rgba(150,155,165,0.85)'; ctx.font = `400 19px ${FUENTE}`;
+  ctx.fillText('fuerzapro.pages.dev · Ing. Luis Campozano, MBA', x, y + 26);
+  ctx.restore();
+}
 
 function ticks(lo, hi, n = 4) {
   const paso0 = (hi - lo) / n, mag = 10 ** Math.floor(Math.log10(Math.max(paso0, 1e-9)));
@@ -146,6 +171,7 @@ export function prepararDibujo(fuente, full, res, opciones) {
         ctx.fillStyle = C.verde; ctx.font = `600 24px ${FUENTE}`; ctx.textAlign = 'center'; ctx.fillText(txt, (x0 + x1) / 2, y); ctx.textAlign = 'left';
       }
     });
+    marca(ctx, (GX0 + GX1) / 2, (FG0 + VG1) / 2);
     ctx.fillStyle = C.blanco; ctx.font = `500 28px ${FUENTE}`; ctx.fillText('Fuerza aplicada (kg)', GX0, VH + 208);
     ctx.font = `400 23px ${FUENTE}`;
     for (const val of ticks(lo, hi)) {
@@ -175,8 +201,7 @@ export function prepararDibujo(fuente, full, res, opciones) {
     for (let tt = 0; tt <= TMAX + 1e-9; tt += paso) ctx.fillText(`${tt} s`, gx(tt), OH - 22);
     ctx.textAlign = 'left';
     ctx.strokeStyle = '#dcdcdc'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(gx(i / fps), FG0); ctx.lineTo(gx(i / fps), VG1); ctx.stroke();
-    ctx.fillStyle = 'rgba(150,155,165,0.75)'; ctx.font = `400 20px ${FUENTE}`; ctx.textAlign = 'right';
-    ctx.fillText('FuerzaPro · Ing. Luis Campozano, MBA', OW - 40, VH + 175); ctx.textAlign = 'left';
+    firma(ctx, OW - 40, VH + 196);
   };
 }
 

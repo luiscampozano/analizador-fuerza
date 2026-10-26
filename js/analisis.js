@@ -84,8 +84,14 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
   // minima del ejercicio (MVT) y baja ~60 puntos por cada m/s mas rapido (promedio de sentadilla, banca y peso muerto).
   const pocasReps = reps.length < 3;
   let rirUltima = null;
-  if (pocasReps && mvt > 0) {
-    if (pct === null && !usaPerfil && masaReal > 0) {
+  // Zona pesada: si la carga se movio lento (cerca de la velocidad minima del ejercicio) la serie estuvo cerca del
+  // maximo aunque la velocidad no haya caido entre reps (p. ej. todas las reps lentas). Vale para cualquier numero de reps.
+  // Solo en ejercicios con velocidad minima bien estudiada (sentadilla, banca, peso muerto y similares, MVT <= 0,32)
+  // o con tu MVT personal; en maquinas y jalones la MVT es demasiado incierta.
+  const mvtFiable = mvt > 0 && (mvt <= 0.32 || !!(pcv && pcv.mvtPersonal));
+  const pesada = mvtFiable && (out.vMejor <= mvt + 0.3 || out.vUltima <= mvt + 0.12);
+  if (mvt > 0 && (pocasReps || pesada)) {
+    if (pct === null && !usaPerfil && masaReal > 0 && (pocasReps || out.vMejor <= mvt + 0.3)) {
       const pg = lim(100 - PENDIENTE_GEN * (out.vMejor - mvt), 30, 100);
       const rmVel = masaReal / (pg / 100);
       const topeBW = pesoCorporal > 0 ? pesoCorporal * (TOPE_BW[ej.ecuacion] || 4) : Infinity;
@@ -94,8 +100,8 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
       }
     }
     // cerca del maximo cada rep que te queda vale ~0,08 m/s por encima de tu velocidad minima
-    rirUltima = lim((out.vUltima - mvt) / 0.08, 0, 10);
-    out.notas.push(`Con ${reps.length === 1 ? '1 repetición' : '2 repeticiones'} el RIR, el RPE y el 1RM se estimaron con la velocidad de la barra (${out.vUltima.toFixed(2)} m/s frente a ${mvt.toFixed(2)} m/s, la velocidad típica de una rep al máximo${out.mvtPersonal || (pcv && pcv.mvtPersonal) ? ', la tuya' : ''}). Es una estimación aproximada: si registras tu 1RM real en Entrenar → progreso del ejercicio, se ajusta a ti.`);
+    rirUltima = lim((Math.min(out.vUltima, ...vel.slice(-2)) - mvt) / 0.08, 0, 10);
+    if (pocasReps) out.notas.push(`Con ${reps.length === 1 ? '1 repetición' : '2 repeticiones'} el RIR, el RPE y el 1RM se estimaron con la velocidad de la barra (${out.vUltima.toFixed(2)} m/s frente a ${mvt.toFixed(2)} m/s, la velocidad típica de una rep al máximo${out.mvtPersonal || (pcv && pcv.mvtPersonal) ? ', la tuya' : ''}). Es una estimación aproximada: si registras tu 1RM real en Entrenar → progreso del ejercicio, se ajusta a ti.`);
   }
   let rirPct = null;
   if (pct !== null) rirPct = lim(repsAPorcentaje(pct) - reps.length, 0, 20);
