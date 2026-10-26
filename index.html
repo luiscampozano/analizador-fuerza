@@ -276,9 +276,10 @@
     <div id="v-resultados" class="view">
       <div class="results-header">
         <button type="button" class="btn-back" id="btn-nueva">← Nueva serie</button>
-        <span class="badge-success">✓ Guardado en historial</span>
+        <span class="badge-success" id="r-guardado">✓ Guardado en historial</span>
       </div>
-      <p class="hint" id="r-titulo" style="margin:-8px 0 14px"></p>
+      <p class="hint" id="r-titulo" style="margin:-8px 0 10px"></p>
+      <button type="button" class="btn-pill btn-pdf" id="btn-pdf">📄 Informe PDF de esta serie</button>
 
       <section class="kpi-grid">
         <div class="kpi-card highlight">
@@ -306,6 +307,7 @@
         <div class="kpi-card"><span class="kpi-label">POTENCIA PICO</span><span class="kpi-value" id="r-ppico">--</span><span class="kpi-sub">watts</span></div>
       </section>
 
+      <p class="hint aviso-video" id="r-sin-video" style="display:none"></p>
       <section class="section" id="sec-video">
         <label class="section-title">Video con telemetría</label>
         <div class="video-container"><video id="r-video" playsinline controls preload="metadata"></video></div>
@@ -338,6 +340,14 @@
         <label class="section-title">Velocidad por repetición</label>
         <div class="card"><canvas id="g-vel" class="grafica"></canvas>
           <p class="hint" style="margin-top:6px">Línea punteada: velocidad mínima típica de la última rep posible (MVT) en este ejercicio.</p></div>
+      </section>
+
+      <section class="section">
+        <label class="section-title">Estadística de la serie</label>
+        <div class="table-responsive">
+          <table class="tabla"><thead><tr><th>Variable</th><th>Media</th><th>DE</th><th>CV</th><th>Rango</th></tr></thead><tbody id="r-stats"></tbody></table>
+        </div>
+        <p class="hint" id="r-stats-txt"></p>
       </section>
 
       <section class="section">
@@ -426,6 +436,11 @@
         <li><b>Técnica:</b> avisos de profundidad en sentadilla, cadera que se adelanta en sentadilla y peso muerto, balanceo en curl y diferencia entre brazos. Son orientativos y solo aparecen si el ángulo de cámara permite medir.</li>
         <li><b>Sesiones y Excel:</b> las series del mismo día forman una sesión con kg movidos, reps y caída de velocidad entre series.</li>
       </ul></div>
+      <div class="card"><h3>📄 Historial e informes</h3><ul>
+        <li>Toca cualquier serie en <b>Historial</b> (en Sesiones o en Series) para volver a ver su análisis completo.</li>
+        <li>El botón <b>Informe PDF</b> crea un documento con los datos, las gráficas, la estadística, la técnica y una imagen del video, listo para guardar o compartir.</li>
+        <li>Se guardan los videos de las últimas 15 series; el análisis de todas queda guardado siempre.</li>
+      </ul></div>
       <div class="card"><h3>⚠️ Precisión</h3><ul>
         <li>Son estimaciones, no un sensor de fuerza. La carga estática es tan exacta como el peso e inclinación que indiques.</li>
         <li>Velocidad y potencia: margen aproximado de ±15–20 %, mayor si la cámara se mueve o está en diagonal.</li>
@@ -433,7 +448,7 @@
         <li>En máquinas de palanca (Hammer) y movimientos en arco (laterales, extensiones, curl femoral) la fuerza y la potencia son aproximadas; velocidad, reps y RIR sí sirven. Si tu ejercicio no está, créalo con «Crear mi propio ejercicio».</li>
       </ul></div>
       <div class="card"><h3>🔒 Privacidad</h3><p>Todo se procesa dentro de tu teléfono. Ningún video se sube a internet. El historial queda guardado solo en este dispositivo.</p></div>
-      <div class="card"><h3>ℹ️ Créditos</h3><p>Creado por <b>Ing. Luis Campozano, MBA</b>. MediaPipe Tasks (Google, Apache 2.0) · mp4-muxer (MIT). Ecuaciones carga-velocidad: González-Badillo y Sánchez-Medina (2010); Sánchez-Medina y col. (2017).</p>
+      <div class="card"><h3>ℹ️ Créditos</h3><p>Creado por <b>Ing. Luis Campozano, MBA</b>. MediaPipe Tasks (Google, Apache 2.0) · mp4-muxer (MIT) · Mediabunny (MPL-2.0) · jsPDF y jsPDF-AutoTable (MIT). Ecuaciones carga-velocidad: González-Badillo y Sánchez-Medina (2010); Sánchez-Medina y col. (2017).</p>
         <p class="hint" id="version"></p></div>
     </div>
   </div>

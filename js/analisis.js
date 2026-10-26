@@ -20,8 +20,10 @@ function regresion(xs, ys) {
 export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil, pcv = null }) {
   const usaPerfil = pcv && (pcv.confianza === 'alta' || pcv.confianza === 'media');
   const mvt = pcv && pcv.mvtPersonal ? pcv.mvt : ej.mvt;
-  const reps = res.reps.filter((r) => !r.parcial);
+  const reps = res.reps.filter((r) => !r.parcial && !r.atipica);
   const out = { reps: res.reps.length, validas: reps.length, notas: [] };
+  const atipicas = res.reps.filter((r) => r.atipica).map((r) => r.n);
+  if (atipicas.length) out.notas.push(`Rep ${atipicas.join(', ')} excluida${atipicas.length > 1 ? 's' : ''} del cálculo: recorrido y velocidad muy distintos al resto (probable error de medición, movimiento de cámara o un tirón).`);
   if (!reps.length) return out;
   const vel = reps.map((r) => r.v_media);
   const iMejor = vel.indexOf(Math.max(...vel));
@@ -177,4 +179,37 @@ export function perfilCargaVelocidad(historial, ej, { excluir = null, dias = 120
 export function sugerirCalibracion(rm) {
   if (!(rm > 0)) return null;
   return [0.4, 0.6, 0.8].map((p) => ({ pct: p * 100, carga: Math.round((rm * p) / 2.5) * 2.5 }));
+}
+
+// Estadistica descriptiva de la serie (solo reps completas) para la vista de resultados y el PDF
+export function estadisticasSerie(reps) {
+  const ok = reps.filter((r) => !r.parcial && !r.atipica);
+  if (!ok.length) return null;
+  const desc = (vals) => {
+    const n = vals.length, m = vals.reduce((a, b) => a + b, 0) / n;
+    const de = n > 1 ? Math.sqrt(vals.reduce((a, b) => a + (b - m) ** 2, 0) / (n - 1)) : 0;
+    return { media: m, de, cv: m ? 100 * de / Math.abs(m) : 0, min: Math.min(...vals), max: Math.max(...vals) };
+  };
+  const vars = {
+    v: desc(ok.map((r) => r.v_media)), vp: desc(ok.map((r) => r.v_pico)), rec: desc(ok.map((r) => r.recorrido_cm)),
+    f: desc(ok.map((r) => r.f_pico)), p: desc(ok.map((r) => r.p_pico)), ts: desc(ok.map((r) => r.t_subida)),
+  };
+  // pendiente de la velocidad por rep desde la rep mas rapida (m/s por rep) y su ajuste R2
+  const vel = ok.map((r) => r.v_media), iMejor = vel.indexOf(Math.max(...vel)), tramo = vel.slice(iMejor);
+  let pendiente = null, r2 = null;
+  if (tramo.length >= 3) {
+    const xs = tramo.map((_, i) => i), reg = regresion(xs, tramo);
+    if (reg) {
+      pendiente = reg.b;
+      const my = tramo.reduce((a, b) => a + b) / tramo.length;
+      const sst = tramo.reduce((t, y) => t + (y - my) ** 2, 0), sse = tramo.reduce((t, y, i) => t + (y - (reg.a + reg.b * i)) ** 2, 0);
+      r2 = sst ? 1 - sse / sst : null;
+    }
+  }
+  // fatiga: media de las 3 primeras vs las 3 ultimas
+  const k = Math.min(3, Math.floor(vel.length / 2));
+  const fatiga3 = k >= 1 ? 100 * (1 - (vel.slice(-k).reduce((a, b) => a + b) / k) / (vel.slice(0, k).reduce((a, b) => a + b) / k)) : null;
+  const mejor = ok.reduce((a, r) => (r.v_media > a.v_media ? r : a)), peor = ok.reduce((a, r) => (r.v_media < a.v_media ? r : a));
+  return { n: ok.length, parciales: reps.length - ok.length, vars, pendiente, r2, fatiga3, mejor: mejor.n, peor: peor.n,
+    trabajo: reps.reduce((a, r) => a + Math.max(0, r.trabajo_j || 0), 0), tut: reps.reduce((a, r) => a + (r.t_subida || 0) + (r.t_bajada || 0), 0) };
 }

@@ -9,9 +9,10 @@ function escribir(lista) {
 }
 export function agregar(registro) {
   const lista = leer();
-  lista.push({ id: Date.now().toString(36), fecha: new Date().toISOString(), ...registro });
+  const nuevo = { id: Date.now().toString(36), fecha: new Date().toISOString(), ...registro };
+  lista.push(nuevo);
   escribir(lista);
-  return lista;
+  return nuevo;
 }
 export function borrar(id) { escribir(leer().filter((r) => r.id !== id)); }
 export function exportar() {
@@ -31,5 +32,5 @@ export async function importar(archivo) {
 export function aCSV() {
   const cols = ['fecha', 'ejercicio', 'carga', 'reps', 'vMejor', 'perdida', 'rir', 'rpe', 'rm', 'fPico', 'pPico'];
   const filas = leer().map((r) => cols.map((c) => (r[c] ?? '')).join(','));
-  return new Blob(['﻿' + [cols.join(','), ...filas].join('\n')], { type: 'text/csv' });
+  return new Blob(['\ufeff' + [cols.join(','), ...filas].join('\n')], { type: 'text/csv' });
 }

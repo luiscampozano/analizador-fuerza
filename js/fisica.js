@@ -150,6 +150,21 @@ export function anguloArticular(full, cual, fps) {
   return { valores: savgol(ang.map((x) => (Number.isFinite(x) ? x : prom)), fps / 4, 2), lados: tri };
 }
 
+// Marca reps parciales (recorrido corto) y atipicas (mucho mas rapidas y largas que el resto: error de medicion,
+// movimiento de camara o un tiron). Ninguna de las dos cuenta como referencia de velocidad.
+export function marcarReps(reps) {
+  const medRec = mediana(reps.map((x) => x.recorrido_cm));
+  reps.forEach((x) => { x.parcial = x.recorrido_cm < 0.5 * medRec; x.atipica = false; });
+  const normales = reps.filter((x) => !x.parcial);
+  if (normales.length >= 4) {
+    const mv = mediana(normales.map((x) => x.v_media)), mr = mediana(normales.map((x) => x.recorrido_cm));
+    normales.forEach((x) => { x.atipica = x.v_media > 1.5 * mv || (x.v_media > 1.3 * mv && x.recorrido_cm > 1.3 * mr); });
+  }
+  const ref = reps.filter((x) => !x.parcial && !x.atipica);
+  const mejor = Math.max(...(ref.length ? ref : reps).map((x) => x.v_media));
+  reps.forEach((x, k) => { x.n = k + 1; x.perdida = 100 * (1 - x.v_media / mejor); });
+}
+
 // ------------------------------------------------------------ analisis principal
 // Escala px -> m robusta: por cuadro se usa la mediana de los segmentos bien visibles; luego se fija una escala
 // estable para el video (la mediana) que solo puede variar +-20 % si la camara se acerca o se aleja.
@@ -255,12 +270,7 @@ export function analizar(full, fps, ej, cfg) {
     while (reps.length >= 3 && atipica[atipica.length - 1]) { reps.pop(); atipica.pop(); }
     while (reps.length >= 3 && atipica[0]) { reps.shift(); atipica.shift(); }
   }
-  if (reps.length) {
-    const medRec = mediana(reps.map((x) => x.recorrido_cm));
-    reps.forEach((x) => { x.parcial = x.recorrido_cm < 0.5 * medRec; });
-    const mejor = Math.max(...reps.filter((x) => !x.parcial).map((x) => x.v_media));
-    reps.forEach((x, k) => { x.n = k + 1; x.perdida = 100 * (1 - x.v_media / mejor); });
-  }
+  if (reps.length) marcarReps(reps);
   const valido = new Array(n).fill(false);
   if (reps.length) {
     const ini = Math.max(0, reps[0].inicio - Math.round(0.5 * fps));
@@ -289,12 +299,7 @@ function analizarAlterno(full, fps, ej, cfg) {
     out.ladoActivo.push(elegir(i));
     out.valido[i] = lados[0].valido[i] || lados[1].valido[i];
   }
-  if (reps.length) {
-    const medRec = mediana(reps.map((x) => x.recorrido_cm));
-    reps.forEach((x) => { x.parcial = x.recorrido_cm < 0.5 * medRec; });
-    const mejor = Math.max(...reps.filter((x) => !x.parcial).map((x) => x.v_media));
-    reps.forEach((x, k) => { x.n = k + 1; x.perdida = 100 * (1 - x.v_media / mejor); });
-  }
+  if (reps.length) marcarReps(reps);
   return out;
 }
 

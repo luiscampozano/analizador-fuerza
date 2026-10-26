@@ -1,0 +1,59 @@
+// Almacen del telefono (IndexedDB) para lo que no cabe en el historial simple:
+// el informe completo de cada serie (para volver a abrirla y generar el PDF) y el video con telemetria.
+const DB = 'analizador-fuerza', VERSION_DB = 1;
+export const MAX_VIDEOS = 15; // se conservan los videos de las ultimas 15 series (cada uno pesa 5-25 MB)
+
+let abierta = null;
+function abrir() {
+  if (abierta) return abierta;
+  abierta = new Promise((ok, mal) => {
+    if (!('indexedDB' in window)) return mal(new Error('sin IndexedDB'));
+    const r = indexedDB.open(DB, VERSION_DB);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if (!db.objectStoreNames.contains('informes')) db.createObjectStore('informes', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('videos')) db.createObjectStore('videos', { keyPath: 'id' });
+    };
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => mal(r.error);
+  });
+  abierta.catch(() => { abierta = null; });
+  return abierta;
+}
+function tx(almacen, modo, fn) {
+  return abrir().then((db) => new Promise((ok, mal) => {
+    const t = db.transaction(almacen, modo), s = t.objectStore(almacen);
+    let res;
+    const req = fn(s);
+    if (req) req.onsuccess = () => { res = req.result; };
+    t.oncomplete = () => ok(res);
+    t.onerror = () => mal(t.error);
+    t.onabort = () => mal(t.error);
+  }));
+}
+
+export const guardarInforme = (inf) => tx('informes', 'readwrite', (s) => s.put(inf)).catch(() => null);
+export const leerInforme = (id) => tx('informes', 'readonly', (s) => s.get(id)).catch(() => null);
+export const leerVideo = (id) => tx('videos', 'readonly', (s) => s.get(id)).catch(() => null);
+
+export async function guardarVideo(id, salida) {
+  try {
+    await tx('videos', 'readwrite', (s) => s.put({ id, fecha: Date.now(), blob: salida.blob, tipo: salida.tipo, extension: salida.extension }));
+    // limpieza: solo los mas recientes
+    const todos = await tx('videos', 'readonly', (s) => s.getAll());
+    const sobran = (todos || []).sort((a, b) => b.fecha - a.fecha).slice(MAX_VIDEOS);
+    for (const v of sobran) await tx('videos', 'readwrite', (s) => s.delete(v.id));
+    return true;
+  } catch (e) { return false; } // sin espacio: el informe igual queda guardado
+}
+
+export async function borrarSerie(id) {
+  try {
+    await tx('informes', 'readwrite', (s) => s.delete(id));
+    await tx('videos', 'readwrite', (s) => s.delete(id));
+  } catch (e) { /* nada */ }
+}
+
+export async function idsConVideo() {
+  try { return new Set(await tx('videos', 'readonly', (s) => s.getAllKeys())); } catch (e) { return new Set(); }
+}
