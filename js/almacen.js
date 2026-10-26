@@ -1,6 +1,6 @@
 // Almacen del telefono (IndexedDB) para lo que no cabe en el historial simple:
 // el informe completo de cada serie (para volver a abrirla y generar el PDF) y el video con telemetria.
-const DB = 'analizador-fuerza', VERSION_DB = 1;
+const DB = 'analizador-fuerza', VERSION_DB = 2;
 export const MAX_VIDEOS = 15; // se conservan los videos de las ultimas 15 series (cada uno pesa 5-25 MB)
 
 let abierta = null;
@@ -13,6 +13,7 @@ function abrir() {
       const db = r.result;
       if (!db.objectStoreNames.contains('informes')) db.createObjectStore('informes', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('videos')) db.createObjectStore('videos', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('entrenos')) db.createObjectStore('entrenos', { keyPath: 'id' });
     };
     r.onsuccess = () => ok(r.result);
     r.onerror = () => mal(r.error);
@@ -52,6 +53,18 @@ export async function borrarSerie(id) {
     await tx('informes', 'readwrite', (s) => s.delete(id));
     await tx('videos', 'readwrite', (s) => s.delete(id));
   } catch (e) { /* nada */ }
+}
+
+// entrenamientos registrados (pestaña Entrenar)
+export const guardarEntreno = (e) => tx('entrenos', 'readwrite', (s) => s.put(e));
+export const borrarEntreno = (id) => tx('entrenos', 'readwrite', (s) => s.delete(id)).catch(() => null);
+export const leerEntrenos = () => tx('entrenos', 'readonly', (s) => s.getAll()).then((x) => x || []).catch(() => []);
+export function guardarEntrenos(lista) {
+  return abrir().then((db) => new Promise((ok, mal) => {
+    const t = db.transaction('entrenos', 'readwrite'), s = t.objectStore('entrenos');
+    lista.forEach((e) => s.put(e));
+    t.oncomplete = () => ok(lista.length); t.onerror = () => mal(t.error); t.onabort = () => mal(t.error);
+  }));
 }
 
 export async function idsConVideo() {

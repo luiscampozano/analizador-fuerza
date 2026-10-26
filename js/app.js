@@ -11,8 +11,9 @@ import * as vivo from './vivo.js';
 import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
 import { abrirVideo } from './lector.js';
+import * as entrenar from './entrenar.js';
 
-const VERSION = '1.5.1';
+const VERSION = '1.6.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -33,6 +34,7 @@ function vista(id) {
     || (id === 'v-resultados' && b.dataset.vista === 'v-form') || (id === 'v-progreso' && b.dataset.vista === 'v-form')));
   window.scrollTo({ top: 0 });
   if (id === 'v-historial') pintarHistorial();
+  entrenar.alCambiarVista(id);
 }
 document.querySelectorAll('.nav button').forEach((b) => b.addEventListener('click', () => {
   if ($('v-progreso').classList.contains('active')) return;
@@ -257,6 +259,7 @@ async function analizarArchivo() {
       repsDet: inf.reps,
     });
     inf.id = registro.id; inf.fecha = registro.fecha;
+    if (entrenar.vincular(registro)) aviso('');
     await almacen.guardarInforme(inf);
     origen = 'video';
 
@@ -686,6 +689,20 @@ $('btn-vivo').onclick = (e) => {
   } }).catch((err) => { vista('v-form'); alert(err.message || String(err)); });
 };
 
+// ------------------------------------------------------------------ enlace con la pestaña Entrenar
+// Una serie del entrenamiento pide su analisis: se elige el ejercicio y se pone el peso (sin la barra).
+function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
+  if (!POR_ID[id]) return;
+  elegir(POR_ID[id]);
+  if (kg > 0) {
+    const carro = ej.perfil === 'riel' || ej.perfil === 'libre' ? parseFloat($('in-carro').value || '0') : 0;
+    const peso = Math.round((kg - carro) * 100) / 100;
+    $('in-peso').value = peso > 0 ? peso : kg;
+  }
+  vista('v-form');
+  aviso(`🎥 Serie ${serie} de ${nombre}${kg > 0 ? ` (${fmt(kg, kg % 1 ? 1 : 0)} kg en total)` : ''}: graba o elige el video y pulsa Analizar. El resultado se guarda en tu entrenamiento.`, true);
+}
+
 // ------------------------------------------------------------------ inicio
 (function iniciar() {
   if (leer('af_altura')) $('in-altura').value = leer('af_altura');
@@ -694,6 +711,7 @@ $('btn-vivo').onclick = (e) => {
   $('buscar-ej').oninput = pintarLista;
   pintarElegido(); pintarLista(); ajustarCampos();
   $('version').textContent = `Versión ${VERSION}`;
+  entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar') });
   if (!('VideoEncoder' in window) && !('MediaRecorder' in window)) aviso('Tu navegador no puede crear el video con telemetría, pero sí el análisis. Usa Chrome actualizado.');
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
