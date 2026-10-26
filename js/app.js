@@ -14,8 +14,9 @@ import { abrirVideo } from './lector.js';
 import * as entrenar from './entrenar.js';
 import * as nutricion from './nutricion.js';
 import * as perfil from './perfil.js';
+import * as nube from './nube.js';
 
-const VERSION = '2.0.3';
+const VERSION = '2.1.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -723,7 +724,20 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   nutricion.iniciar();
   perfil.iniciar({ vista, version: VERSION });
   document.querySelectorAll('[data-volver]').forEach((b) => (b.onclick = () => vista(b.dataset.volver)));
-  entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar') }).then(() => entrenar.alCambiarVista('v-entrenar'));
+  entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar') }).then(() => {
+    entrenar.alCambiarVista('v-entrenar');
+    // nube: al recibir cambios de otro dispositivo se repinta lo que este a la vista
+    nube.iniciar({
+      alCambiar: async () => {
+        await entrenar.recargar();
+        nutricion.pintar(); perfil.pintar();
+        if (leer('af_altura')) $('in-altura').value = leer('af_altura');
+        if (leer('af_pc')) $('in-pc').value = leer('af_pc');
+        if ($('v-historial').classList.contains('active')) pintarHistorial();
+      },
+      alEstado: (e) => perfil.pintarNube(e),
+    });
+  });
   // la app se mudo a Cloudflare: en la direccion vieja se indica como llevarse los datos
   if (location.hostname.endsWith('github.io')) {
     const a = $('aviso');

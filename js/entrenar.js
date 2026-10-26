@@ -69,6 +69,13 @@ function marcadores(e, is, prev, r) {
 }
 
 // ------------------------------------------------------------------ inicio
+// vuelve a leer entrenamientos y rutinas (p. ej. despues de recibir cambios de la nube)
+export async function recargar() {
+  try { rutinas = JSON.parse(leerLS(RUTINAS) || '[]'); } catch (e) { rutinas = []; }
+  lista = (await almacen.leerEntrenos()).sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
+  if (deps) pintar();
+}
+
 export async function iniciar(d) {
   deps = d;
   // pide al navegador no borrar los datos de la app aunque el telefono se quede sin espacio

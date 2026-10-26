@@ -2,6 +2,7 @@
 // registro de peso corporal, ajustes y respaldo completo de todos los datos del telefono.
 import * as almacen from './almacen.js';
 import * as P from './progreso.js';
+import * as nube from './nube.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -40,7 +41,52 @@ export function iniciar(d) {
   $('pf-det-cerrar').onclick = () => { $('pf-modal').style.display = 'none'; };
 }
 
+// ------------------------------------------------------------------ cuenta y nube
+const hace = (iso) => {
+  if (!iso) return 'nunca';
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  return s < 60 ? 'hace un momento' : s < 3600 ? `hace ${Math.round(s / 60)} min` : s < 86400 ? `hace ${Math.round(s / 3600)} h` : new Date(iso).toLocaleDateString('es-EC');
+};
+export function pintarNube(est = nube.estadoActual()) {
+  const cont = $('pf-nube'); if (!cont) return;
+  const s = nube.sesion();
+  if (!s || !s.token) {
+    cont.innerHTML = `<p class="pf-nube-txt">Inicia sesión para guardar tus entrenamientos, comidas y análisis en la nube y tenerlos en cualquier teléfono. Sin cuenta la app sigue funcionando igual, solo en este teléfono.</p>
+      <div id="pf-google" class="pf-google"><span class="hint">Cargando Google…</span></div>
+      ${est.error ? `<p class="pf-nube-error">${esc(est.error)}</p>` : ''}
+      <p class="hint">Solo recibimos tu nombre, correo y foto de Google. <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>`;
+    nube.botonGoogle($('pf-google'), {
+      alEntrar: () => pintar(),
+      alError: (e) => { pintarNube({ ...nube.estadoActual(), error: e.message || String(e) }); },
+    }).catch((e) => { const g = $('pf-google'); if (g) g.innerHTML = `<p class="pf-nube-error">${esc(e.message)}</p>`; });
+    return;
+  }
+  const u = s.usuario || {};
+  const txt = est.fase === 'sincronizando' ? '🔄 Sincronizando…' : est.error ? `⚠️ ${esc(est.error)}` : `✅ Sincronizado ${hace(est.ultima)}`;
+  cont.innerHTML = `<div class="pf-nube-usuario">${u.foto ? `<img src="${esc(u.foto)}" alt="" referrerpolicy="no-referrer">` : ''}
+      <div><strong>${esc(u.nombre || 'Tu cuenta')}</strong><small>${esc(u.email || '')}</small></div></div>
+    <p class="pf-nube-estado${est.error ? ' error' : ''}">${txt}</p>
+    <div class="pf-menu pf-nube-menu">
+      <button type="button" id="pf-sync">🔄 Sincronizar ahora</button>
+      <button type="button" id="pf-salir">🚪 Cerrar sesión</button>
+      <button type="button" id="pf-borrar-cuenta" class="peligro">🗑️ Eliminar cuenta y datos de la nube</button>
+    </div>
+    <p class="hint">Se sincroniza solo al abrir la app, cada 2 minutos y al salir. Los videos se quedan en el teléfono.</p>`;
+  $('pf-sync').onclick = () => nube.sincronizar();
+  $('pf-salir').onclick = async () => {
+    if (!confirm('¿Cerrar sesión? Tus datos se quedan en este teléfono y en la nube.')) return;
+    await nube.sincronizar(); await nube.salir(); pintarNube();
+  };
+  $('pf-borrar-cuenta').onclick = async () => {
+    if (!confirm('¿Eliminar tu cuenta? Se borran para siempre todos tus datos de la nube. Lo que está en este teléfono se queda.')) return;
+    if (prompt('Para confirmar escribe ELIMINAR') !== 'ELIMINAR') return;
+    try { await nube.borrarCuenta(); alert('Tu cuenta y tus datos de la nube fueron eliminados.'); } catch (e) { alert(e.message || String(e)); }
+    pintarNube();
+  };
+}
+
 export async function pintar() {
+  pintarNube();
   const pf = leerJ('af_perfil', {}), cuerpo = perfilCuerpo(), pc = pesoActual();
   $('pf-cabecera').innerHTML = `<div class="pf-foto">${pf.foto ? `<img src="${pf.foto}" alt="">` : `<span>${esc((pf.nombre || '?').trim().charAt(0).toUpperCase() || '?')}</span>`}</div>
     <div class="pf-datos"><strong>${esc(pf.nombre || 'Tu nombre')}</strong>

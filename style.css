@@ -891,3 +891,16 @@ td.tec { color: #ffb070; font-size: 11.5px; max-width: 150px; }
 /* ============ Marca FuerzaPro ============ */
 .logo-icon img { width: 100%; height: 100%; display: block; }
 .btn-primary { box-shadow: 0 8px 24px rgba(124,92,255,.28); }
+
+/* ===== Cuenta y nube ===== */
+.pf-nube { padding: 14px; }
+.pf-nube-txt { margin: 0 0 12px; font-size: 14px; color: var(--text-main); line-height: 1.5; }
+.pf-google { min-height: 44px; display: flex; justify-content: center; margin-bottom: 8px; }
+.pf-nube-usuario { display: flex; align-items: center; gap: 12px; }
+.pf-nube-usuario img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+.pf-nube-usuario strong { display: block; }
+.pf-nube-usuario small { color: var(--text-muted, #A3A8B8); font-size: 13px; }
+.pf-nube-estado { font-size: 13px; margin: 10px 0 4px; color: var(--accent-blue); }
+.pf-nube-estado.error, .pf-nube-error { color: var(--accent-orange); font-size: 13px; }
+.pf-nube-menu { padding: 0; }
+.pf-menu button.peligro { color: var(--accent-pink); }
