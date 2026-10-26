@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS sesiones (token_hash TEXT PRIMARY KEY, usuario TEXT N
 CREATE INDEX IF NOT EXISTS sesiones_usuario ON sesiones(usuario);
 CREATE TABLE IF NOT EXISTS items (usuario TEXT NOT NULL, tipo TEXT NOT NULL, id TEXT NOT NULL, data TEXT, borrado INTEGER NOT NULL DEFAULT 0, seq INTEGER NOT NULL, actualizado INTEGER, PRIMARY KEY (usuario, tipo, id));
 CREATE INDEX IF NOT EXISTS items_seq ON items(usuario, seq);
+-- Cuentas con correo y contrasena (hash PBKDF2)
+CREATE TABLE IF NOT EXISTS credenciales (email TEXT PRIMARY KEY, usuario TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, sal TEXT NOT NULL, iter INTEGER NOT NULL, creado INTEGER, fallos INTEGER NOT NULL DEFAULT 0, bloqueado_hasta INTEGER NOT NULL DEFAULT 0);
 -- Comunidad
 CREATE TABLE IF NOT EXISTS perfiles (usuario TEXT PRIMARY KEY, alias TEXT NOT NULL UNIQUE COLLATE NOCASE, nombre TEXT NOT NULL, foto TEXT, bio TEXT, gimnasio TEXT, categoria TEXT, creado INTEGER, actualizado INTEGER);
 CREATE TABLE IF NOT EXISTS publicaciones (id TEXT PRIMARY KEY, usuario TEXT NOT NULL, ref TEXT NOT NULL, texto TEXT, datos TEXT, creado INTEGER NOT NULL, editado INTEGER, oculto INTEGER NOT NULL DEFAULT 0);

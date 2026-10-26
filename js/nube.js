@@ -35,7 +35,7 @@ export async function api(metodo, ruta, cuerpo) {
   });
   let datos = null;
   try { datos = await r.json(); } catch (e) { /* respuesta sin JSON */ }
-  if (r.status === 401 && ruta !== '/api/auth/google') { // la sesion ya no vale
+  if (r.status === 401 && !ruta.startsWith('/api/auth/')) { // la sesion ya no vale
     try { localStorage.removeItem(SES); } catch (e) { /* nada */ }
     ponerEstado({ fase: 'quieto', error: 'Tu sesión expiró. Vuelve a iniciar sesión.' });
   }
@@ -44,18 +44,29 @@ export async function api(metodo, ruta, cuerpo) {
 }
 
 // ------------------------------------------------------------------ iniciar sesion
-export async function entrarConGoogle(credencial) {
-  const r = await api('POST', '/api/auth/google', { credential: credencial });
+// despues de entrar (con Google o con correo)
+function abrirSesion(r) {
   const previa = leerJ(EST, {});
   // otra cuenta en este telefono: se empieza de cero la sincronizacion (los datos locales se suben a la nueva cuenta)
   if (previa.usuario && previa.usuario !== r.usuario.id) try { localStorage.removeItem(EST); } catch (e) { /* nada */ }
   guardarJ(SES, { token: r.token, usuario: r.usuario });
-  // si el perfil no tiene nombre, se usa el de Google
+  // si el perfil no tiene nombre, se usa el de la cuenta
   const pf = leerJ('af_perfil', {});
   if (!pf.nombre && r.usuario.nombre) guardarJ('af_perfil', { ...pf, nombre: r.usuario.nombre });
   ponerEstado({ error: null });
   sincronizar();
+  try { window.dispatchEvent(new CustomEvent('af-sesion', { detail: r.usuario })); } catch (e) { /* nada */ }
   return r.usuario;
+}
+export async function entrarConGoogle(credencial) {
+  return abrirSesion(await api('POST', '/api/auth/google', { credential: credencial }));
+}
+// modo: 'registro' | 'ingreso'
+export async function entrarConCorreo(modo, { email, clave, nombre }) {
+  return abrirSesion(await api('POST', '/api/auth/correo', { modo, email, clave, nombre }));
+}
+export async function cambiarClave(actual, nueva) {
+  return api('POST', '/api/auth/clave', { actual, nueva });
 }
 
 export async function salir() {

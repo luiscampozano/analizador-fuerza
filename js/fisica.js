@@ -218,7 +218,9 @@ export function analizar(full, fps, ej, cfg) {
     let sxx = 0, syy = 0, sxy = 0;
     for (const p of pts) { const dx = p[0] - mx, dy = p[1] - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; }
     const th = 0.5 * Math.atan2(2 * sxy, sxx - syy);
-    return { d: [Math.cos(th), Math.sin(th)], m: [mx, my] };
+    const tr = (sxx + syy) / pts.length, det = (sxx * syy - sxy * sxy) / pts.length / pts.length;
+    const mayor = tr / 2 + Math.sqrt(Math.max(0, tr * tr / 4 - det)); // varianza en la direccion principal
+    return { d: [Math.cos(th), Math.sin(th)], m: [mx, my], v: mayor };
   };
   const glob = ejePrincipal(rel);
   let dg = glob.d;
@@ -227,7 +229,9 @@ export function analizar(full, fps, ej, cfg) {
   if (dg[0] * ref[0] + dg[1] * ref[1] < 0) dg = [-dg[0], -dg[1]];
   const W = Math.round(1.5 * fps), dirs = new Array(n);
   for (let i = 0; i < n; i++) {
-    let d = ejePrincipal(rel.slice(Math.max(0, i - W), Math.min(n, i + W))).d;
+    const loc = ejePrincipal(rel.slice(Math.max(0, i - W), Math.min(n, i + W)));
+    // con la carga quieta (desviacion < 3 cm) la direccion local es solo ruido: se usa la global
+    let d = loc.v < 0.0009 ? dg : loc.d;
     if (d[0] * dg[0] + d[1] * dg[1] < 0) d = [-d[0], -d[1]];
     dirs[i] = d;
   }
@@ -246,11 +250,19 @@ export function analizar(full, fps, ej, cfg) {
   const tops = picos(s, prom, fps * 0.8), valles = picos(s.map((x) => -x), prom, fps * 0.8);
   const i0 = cfg.inicio ? Math.round(cfg.inicio * fps) : 0, i1 = cfg.fin ? Math.round(cfg.fin * fps) : n;
   let reps = [];
-  for (const pk of tops) {
-    if (pk < i0 || pk >= i1) continue;
-    const w0 = Math.max(i0, pk - Math.round(1.6 * fps));
-    let ini = w0; for (let i = w0; i <= pk; i++) if (s[i] < s[ini]) ini = i;
-    const sig = valles.find((x) => x > pk);
+  let topePrevio = -1;
+  for (const pk0 of tops) {
+    if (pk0 < i0 || pk0 >= i1) continue;
+    // la subida puede durar varios segundos (rep luchada): se busca hacia atras hasta la rep anterior (max. 10 s)
+    const w0 = Math.max(i0, topePrevio + 1, pk0 - Math.round(10 * fps));
+    let minV = Infinity; for (let i = w0; i <= pk0; i++) if (s[i] < minV) minV = s[i];
+    const tol = Math.max(0.003, 0.01 * (s[pk0] - minV)); // 1 % del recorrido
+    // inicio = ultimo instante en el fondo (despegue), no el primero: asi no cuenta la pausa en el piso o en el pecho
+    let ini = pk0; for (let i = pk0; i >= w0; i--) if (s[i] <= minV + tol) { ini = i; break; }
+    // tope = primer instante en que llega arriba (no el final del bloqueo)
+    let pk = pk0; for (let i = ini; i <= pk0; i++) if (s[i] >= s[pk0] - tol) { pk = i; break; }
+    topePrevio = pk0;
+    const sig = valles.find((x) => x > pk0);
     const fin = Math.min(sig ?? n - 1, i1 - 1);
     const con = [ini, pk + 1];
     const seg = (arr) => arr.slice(con[0], con[1]);
@@ -275,7 +287,7 @@ export function analizar(full, fps, ej, cfg) {
     });
     const m = mediana(ang), mr = mediana(reps.map((x) => x.recorrido_cm));
     // atipica: otra direccion, o un recorrido mucho mayor que el resto (p. ej. pararse despues de soltar la barra)
-    const atipica = reps.map((x, k) => Math.abs(((ang[k] - m + 540) % 360) - 180) > 10 || x.recorrido_cm > 1.6 * mr);
+    const atipica = reps.map((x, k) => Math.abs(((ang[k] - m + 540) % 360) - 180) > 25 || x.recorrido_cm > 1.6 * mr);
     while (reps.length >= 3 && atipica[atipica.length - 1]) { reps.pop(); atipica.pop(); }
     while (reps.length >= 3 && atipica[0]) { reps.shift(); atipica.shift(); }
   }

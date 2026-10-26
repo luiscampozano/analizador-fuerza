@@ -3,6 +3,7 @@
 import * as almacen from './almacen.js';
 import * as P from './progreso.js';
 import * as nube from './nube.js';
+import * as bienvenida from './bienvenida.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -53,8 +54,10 @@ export function pintarNube(est = nube.estadoActual()) {
   if (!s || !s.token) {
     cont.innerHTML = `<p class="pf-nube-txt">Inicia sesión para guardar tus entrenamientos, comidas y análisis en la nube y tenerlos en cualquier teléfono. Sin cuenta la app sigue funcionando igual, solo en este teléfono.</p>
       <div id="pf-google" class="pf-google"><span class="hint">Cargando Google…</span></div>
+      <button type="button" class="btn-sec pf-correo" id="pf-correo">✉️ Usar otro correo</button>
       ${est.error ? `<p class="pf-nube-error">${esc(est.error)}</p>` : ''}
       <p class="hint">Solo recibimos tu nombre, correo y foto de Google. <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>`;
+    $('pf-correo').onclick = () => bienvenida.abrir('registro');
     nube.botonGoogle($('pf-google'), {
       alEntrar: () => pintar(),
       alError: (e) => { pintarNube({ ...nube.estadoActual(), error: e.message || String(e) }); },
@@ -68,11 +71,18 @@ export function pintarNube(est = nube.estadoActual()) {
     <p class="pf-nube-estado${est.error ? ' error' : ''}">${txt}</p>
     <div class="pf-menu pf-nube-menu">
       <button type="button" id="pf-sync">🔄 Sincronizar ahora</button>
+${u.proveedor === 'correo' ? '<button type="button" id="pf-clave">🔑 Cambiar contraseña</button>' : ''}
       <button type="button" id="pf-salir">🚪 Cerrar sesión</button>
       <button type="button" id="pf-borrar-cuenta" class="peligro">🗑️ Eliminar cuenta y datos de la nube</button>
     </div>
     <p class="hint">Se sincroniza solo al abrir la app, cada 2 minutos y al salir. Los videos se quedan en el teléfono.</p>`;
   $('pf-sync').onclick = () => nube.sincronizar();
+  if ($('pf-clave')) $('pf-clave').onclick = async () => {
+    const actual = prompt('Contraseña actual'); if (!actual) return;
+    const nueva = prompt('Nueva contraseña (mínimo 8 caracteres, con letras y números)'); if (!nueva) return;
+    if (prompt('Repite la nueva contraseña') !== nueva) return alert('Las contraseñas no coinciden.');
+    try { await nube.cambiarClave(actual, nueva); alert('Contraseña cambiada. Se cerró la sesión en tus otros dispositivos.'); } catch (e) { alert(e.message || String(e)); }
+  };
   $('pf-salir').onclick = async () => {
     if (!confirm('¿Cerrar sesión? Tus datos se quedan en este teléfono y en la nube.')) return;
     await nube.sincronizar(); await nube.salir(); pintarNube();

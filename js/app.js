@@ -16,8 +16,9 @@ import * as nutricion from './nutricion.js';
 import * as perfil from './perfil.js';
 import * as nube from './nube.js';
 import * as comunidad from './comunidad.js';
+import * as bienvenida from './bienvenida.js';
 
-const VERSION = '2.2.0';
+const VERSION = '2.3.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -740,6 +741,10 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
       },
       alEstado: (e) => perfil.pintarNube(e),
     });
+    // primera vez sin cuenta: pantalla de bienvenida (Google, correo o explorar sin cuenta)
+    const repintar = () => { perfil.pintar(); if ($('v-comunidad').classList.contains('active')) comunidad.pintar(); };
+    window.addEventListener('af-sesion', repintar);
+    bienvenida.iniciar({ alTerminar: repintar });
   });
   // la app se mudo a Cloudflare: en la direccion vieja se indica como llevarse los datos
   if (location.hostname.endsWith('github.io')) {

@@ -3,6 +3,8 @@
 // Datos en Cloudflare D1 (binding DB). Inicio de sesion con Google (ID token verificado aqui).
 //
 //   POST   /api/auth/google  {credential}            -> {token, usuario}
+//   POST   /api/auth/correo  {modo: registro|ingreso, email, clave, nombre} -> {token, usuario}
+//   POST   /api/auth/clave   {actual, nueva}          -> {ok}   (cambiar contrasena, cuentas con correo)
 //   GET    /api/yo                                    -> {usuario}
 //   POST   /api/sync         {desde, cambios:[...]}   -> {cambios, cursor, mas}
 //   POST   /api/salir                                 -> {ok}
@@ -51,18 +53,20 @@ async function api(req, env, url) {
     if (origen && origen !== url.origin) throw fallo('Origen no permitido.', 403);
   }
   if (ruta === '/api/auth/google' && m === 'POST') return entrarGoogle(req, env);
+  if (ruta === '/api/auth/correo' && m === 'POST') return entrarCorreo(req, env);
   if (ruta === '/api/salir' && m === 'POST') return salir(req, env);
   if (ruta.startsWith('/api/foto/') && m === 'GET') return foto(env, decodeURIComponent(ruta.slice(10)));
   const u = await sesion(req, env);
   if (ruta.startsWith('/api/comunidad/')) return comunidad(req, env, u, ruta.slice(15), m, url);
   if (ruta.startsWith('/api/mod/')) return moderacion(req, env, u, ruta.slice(9), m);
   if (ruta === '/api/yo' && m === 'GET') return json({ usuario: publico(u) });
+  if (ruta === '/api/auth/clave' && m === 'POST') return cambiarClave(req, env, u);
   if (ruta === '/api/sync' && m === 'POST') return sincronizar(req, env, u);
   if (ruta === '/api/cuenta' && m === 'DELETE') return borrarCuenta(env, u);
   throw fallo('No encontrado.', 404);
 }
 
-const publico = (u) => ({ id: u.id, email: u.email, nombre: u.nombre, foto: u.foto, creado: u.creado });
+const publico = (u) => ({ id: u.id, email: u.email, nombre: u.nombre, foto: u.foto, creado: u.creado, proveedor: String(u.id).startsWith('c_') ? 'correo' : 'google' });
 
 async function leerJSON(req) {
   const largo = +(req.headers.get('content-length') || 0);
@@ -154,6 +158,102 @@ async function entrarGoogle(req, env) {
   return json({ token, usuario: publico(u) });
 }
 
+// ------------------------------------------------------------------ correo y contrasena
+// La contrasena nunca se guarda: solo su derivacion PBKDF2-SHA256 (100 000 iteraciones, sal aleatoria por cuenta).
+// Tras 5 intentos fallidos el correo queda bloqueado 15 minutos. Los ids de estas cuentas empiezan con "c_".
+const ITER = 100000, MAX_FALLOS = 5, BLOQUEO_MS = 15 * 60000;
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+async function derivar(clave, salHex, iter = ITER) {
+  const sal = Uint8Array.from(salHex.match(/../g).map((h) => parseInt(h, 16)));
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(clave), 'PBKDF2', false, ['deriveBits']);
+  return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: sal, iterations: iter }, k, 256));
+}
+function igual(a, b) { // comparacion en tiempo constante
+  if (a.length !== b.length) return false;
+  let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+const correoValido = (e) => /^[^\s@<>"']{1,64}@[^\s@<>"']+\.[a-z]{2,}$/i.test(e) && e.length <= 200;
+function claveValida(c) {
+  if (typeof c !== 'string' || c.length < 8) throw fallo('La contraseña debe tener al menos 8 caracteres.');
+  if (c.length > 200) throw fallo('La contraseña es demasiado larga.');
+  if (!/[a-zA-Z]/.test(c) || !/[0-9]/.test(c)) throw fallo('La contraseña debe tener letras y números.');
+}
+async function nuevaSesion(env, uid) {
+  const ahora = Date.now(), token = aleatorio();
+  await env.DB.batch([
+    env.DB.prepare('INSERT INTO sesiones (token_hash, usuario, creado, expira) VALUES (?1, ?2, ?3, ?4)').bind(await sha256(token), uid, ahora, ahora + SESION_DIAS * DIA),
+    env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1 AND expira < ?2').bind(uid, ahora),
+    env.DB.prepare('UPDATE usuarios SET visto = ?2 WHERE id = ?1').bind(uid, ahora),
+  ]);
+  return token;
+}
+async function entrarCorreo(req, env) {
+  const d = await leerJSON(req);
+  const email = String(d.email || '').trim().toLowerCase();
+  if (!correoValido(email)) throw fallo('Escribe un correo válido.');
+  const DB = env.DB, ahora = Date.now();
+  if (d.modo === 'registro') {
+    claveValida(d.clave);
+    const nombre = String(d.nombre || '').trim().slice(0, 120);
+    if (!nombre) throw fallo('Escribe tu nombre.');
+    const existe = await DB.prepare('SELECT id FROM usuarios WHERE lower(email) = ?1').bind(email).first();
+    if (existe) throw fallo(String(existe.id).startsWith('c_') ? 'Ya existe una cuenta con ese correo. Toca «Ingresar».' : 'Ese correo ya está registrado con Google. Usa «Continuar con Google».', 409);
+    const uid = 'c_' + aleatorio(12), sal = hex(crypto.getRandomValues(new Uint8Array(16)));
+    const hash = await derivar(d.clave, sal);
+    try {
+      await DB.batch([
+        DB.prepare('INSERT INTO usuarios (id, email, nombre, foto, creado, visto, seq) VALUES (?1, ?2, ?3, NULL, ?4, ?4, 0)').bind(uid, email, nombre, ahora),
+        DB.prepare('INSERT INTO credenciales (email, usuario, hash, sal, iter, creado, fallos, bloqueado_hasta) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, 0)').bind(email, uid, hash, sal, ITER, ahora),
+      ]);
+    } catch (e) {
+      if (/UNIQUE/i.test(String(e && e.message))) throw fallo('Ya existe una cuenta con ese correo. Toca «Ingresar».', 409);
+      throw e;
+    }
+    const token = await nuevaSesion(env, uid);
+    const u = await DB.prepare('SELECT * FROM usuarios WHERE id = ?1').bind(uid).first();
+    return json({ token, usuario: publico(u), nueva: true });
+  }
+  if (d.modo === 'ingreso') {
+    if (typeof d.clave !== 'string' || !d.clave) throw fallo('Escribe tu contraseña.');
+    const c = await DB.prepare('SELECT * FROM credenciales WHERE email = ?1').bind(email).first();
+    const malo = 'Correo o contraseña incorrectos.';
+    if (!c) {
+      const g = await DB.prepare('SELECT id FROM usuarios WHERE lower(email) = ?1').bind(email).first();
+      if (g) throw fallo('Ese correo entra con Google. Usa «Continuar con Google».', 401);
+      await derivar(d.clave, '00'.repeat(16)); // mismo tiempo de respuesta exista o no la cuenta
+      throw fallo(malo, 401);
+    }
+    if (c.bloqueado_hasta > ahora) throw fallo(`Demasiados intentos. Espera ${Math.ceil((c.bloqueado_hasta - ahora) / 60000)} min e inténtalo de nuevo.`, 429);
+    const ok = igual(await derivar(d.clave, c.sal, c.iter), c.hash);
+    if (!ok) {
+      const fallos = c.fallos + 1;
+      await DB.prepare('UPDATE credenciales SET fallos = ?2, bloqueado_hasta = ?3 WHERE email = ?1')
+        .bind(email, fallos >= MAX_FALLOS ? 0 : fallos, fallos >= MAX_FALLOS ? ahora + BLOQUEO_MS : 0).run();
+      throw fallo(fallos >= MAX_FALLOS ? 'Demasiados intentos. Espera 15 min e inténtalo de nuevo.' : malo, fallos >= MAX_FALLOS ? 429 : 401);
+    }
+    if (c.fallos) await DB.prepare('UPDATE credenciales SET fallos = 0, bloqueado_hasta = 0 WHERE email = ?1').bind(email).run();
+    const token = await nuevaSesion(env, c.usuario);
+    const u = await DB.prepare('SELECT * FROM usuarios WHERE id = ?1').bind(c.usuario).first();
+    return json({ token, usuario: publico(u) });
+  }
+  throw fallo('Modo inválido.');
+}
+async function cambiarClave(req, env, u) {
+  const d = await leerJSON(req);
+  const c = await env.DB.prepare('SELECT * FROM credenciales WHERE usuario = ?1').bind(u.id).first();
+  if (!c) throw fallo('Tu cuenta entra con Google: la contraseña se cambia en tu cuenta de Google.');
+  if (!igual(await derivar(String(d.actual || ''), c.sal, c.iter), c.hash)) throw fallo('La contraseña actual no es correcta.', 401);
+  claveValida(d.nueva);
+  const sal = hex(crypto.getRandomValues(new Uint8Array(16)));
+  await env.DB.batch([
+    env.DB.prepare('UPDATE credenciales SET hash = ?2, sal = ?3, iter = ?4, fallos = 0, bloqueado_hasta = 0 WHERE usuario = ?1').bind(u.id, await derivar(d.nueva, sal), sal, ITER),
+    // se cierran las demas sesiones (la actual sigue)
+    env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1 AND token_hash <> ?2').bind(u.id, await sha256(tokenDe(req))),
+  ]);
+  return json({ ok: true });
+}
+
 // ------------------------------------------------------------------ sincronizacion
 // Cada elemento (usuario, tipo, id) guarda su ultima version y un numero de secuencia por usuario.
 // El cliente envia sus cambios y recibe los de otros dispositivos con seq > desde. Todo va en un lote
@@ -202,6 +302,7 @@ async function borrarCuenta(env, u) {
     ...borrarComunidad(env, u.id),
     env.DB.prepare('DELETE FROM items WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1').bind(u.id),
+    env.DB.prepare('DELETE FROM credenciales WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM usuarios WHERE id = ?1').bind(u.id),
   ]);
   return json({ ok: true });
@@ -235,7 +336,7 @@ async function requierePerfil(env, u) {
   if (!pf) throw fallo('Primero crea tu perfil de la comunidad.', 403);
   return pf;
 }
-const esAdmin = (env, u) => !!u.email && String(env.ADMIN_EMAILS || '').toLowerCase().split(',').map((x) => x.trim()).includes(String(u.email).toLowerCase());
+const esAdmin = (env, u) => !!u.email && !String(u.id).startsWith('c_') && String(env.ADMIN_EMAILS || '').toLowerCase().split(',').map((x) => x.trim()).includes(String(u.email).toLowerCase());
 
 async function foto(env, usuario) {
   const f = await env.DB.prepare('SELECT foto FROM perfiles WHERE usuario = ?1').bind(usuario).first();

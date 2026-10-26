@@ -2,6 +2,7 @@
 // likes, comentarios, buscar, bloquear, reportar y moderacion. Publicar un entrenamiento es siempre una decision
 // del usuario (boton "Compartir"); nada se publica solo.
 import * as nube from './nube.js';
+import * as bienvenida from './bienvenida.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -63,7 +64,8 @@ export async function pintar() {
     cont.innerHTML = `<div class="card co-bienvenida"><div class="pf-pronto-icono">👥</div><h3>Comunidad FuerzaPro</h3>
       <p>Comparte tus entrenamientos, sigue a tus amigos y a tu gimnasio y mira sus series, récords y la <b>velocidad medida por video</b>.</p>
       <p class="hint">Para entrar necesitas iniciar sesión. Tú decides qué publicas: nada es público por defecto.</p>
-      <div id="co-google" class="pf-google"></div></div>`;
+      <div id="co-google" class="pf-google"></div><button type="button" class="btn-sec pf-correo" id="co-correo">✉️ Usar otro correo</button></div>`;
+    $('co-correo').onclick = () => bienvenida.abrir('registro');
     nube.botonGoogle($('co-google'), { alEntrar: () => pintar(), alError: error }).catch((e) => { $('co-google').innerHTML = `<p class="pf-nube-error">${esc(e.message)}</p>`; });
     return;
   }

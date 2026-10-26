@@ -994,3 +994,39 @@ td.tec { color: #ffb070; font-size: 11.5px; max-width: 150px; }
 .co-previa { background: var(--bg-input); border-radius: 10px; padding: 4px 12px 10px; }
 .co-rep { padding: 12px; margin-bottom: 10px; }
 .en-compartir { width: 100%; margin-top: 14px; }
+
+/* ===== Bienvenida ===== */
+body.sin-scroll { overflow: hidden; }
+.bienvenida { position: fixed; inset: 0; z-index: 100; overflow-y: auto; justify-content: center;
+  background: radial-gradient(120% 70% at 50% 0%, rgba(124,92,255,.28), transparent 60%), radial-gradient(90% 60% at 100% 100%, rgba(34,211,238,.12), transparent 60%), var(--bg-dark); }
+.bv-caja { width: 100%; max-width: 440px; padding: calc(28px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
+.bv-marca { text-align: center; margin-bottom: 22px; }
+.bv-marca img { width: 84px; height: 84px; border-radius: 22px; box-shadow: 0 12px 36px rgba(124,92,255,.35); }
+.bv-marca h1 { margin: 12px 0 4px; font-size: 32px; letter-spacing: -.5px; }
+.bv-marca h2 { margin: 10px 0 0; font-size: 22px; }
+.bv-marca p { margin: 0; color: var(--text-muted); font-size: 15px; }
+.bv-marca.chica img { width: 56px; height: 56px; border-radius: 16px; }
+.bv-lista { list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 14px; }
+.bv-lista li { display: flex; gap: 12px; align-items: flex-start; }
+.bv-lista li > span { font-size: 22px; width: 40px; height: 40px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; }
+.bv-lista b { display: block; font-size: 15px; }
+.bv-lista small { color: var(--text-muted); font-size: 13px; line-height: 1.4; }
+.bv-botones { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.bv-botones .pf-google { margin-bottom: 0; }
+.bv-correo, .pf-correo { width: 100%; padding: 12px; font-size: 15px; border-radius: 999px; }
+.pf-correo { margin-bottom: 8px; }
+.bv-omitir, .bv-atras, .bv-olvide { background: none; border: none; color: var(--text-muted); font-size: 14px; padding: 8px; cursor: pointer; }
+.bv-omitir { text-decoration: underline; }
+.bv-atras { align-self: flex-start; padding-left: 0; margin-bottom: 4px; font-size: 15px; }
+.bv-olvide { align-self: flex-end; padding: 0; color: var(--accent-blue); font-size: 13px; }
+.bv-legal { font-size: 12px; color: var(--text-muted); text-align: center; margin: 18px 0 0; line-height: 1.5; }
+.bv-legal a { color: var(--accent-blue); }
+.bv-tabs { justify-content: center; margin: 4px 0 14px; }
+.bv-form { display: flex; flex-direction: column; gap: 12px; }
+.bv-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
+.bv-form input { width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-main); padding: 13px 14px; font-size: 16px; }
+.bv-form input:focus { outline: none; border-color: var(--accent-green); }
+.bv-clave { position: relative; }
+.bv-clave input { padding-right: 46px; }
+.bv-clave button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 18px; padding: 6px; cursor: pointer; }
+.bv-form .btn-primary { margin-top: 4px; }
