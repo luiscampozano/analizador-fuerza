@@ -15,7 +15,7 @@ import * as entrenar from './entrenar.js';
 import * as nutricion from './nutricion.js';
 import * as perfil from './perfil.js';
 
-const VERSION = '2.0.1';
+const VERSION = '2.0.2';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -286,7 +286,8 @@ async function analizarArchivo() {
     console.error(e);
     origen = 'video';
     vista('v-form');
-    if (e.message !== 'cancelado') alert(e.message || String(e));
+    if (e && e.message === 'cancelado') return;
+    alert((e && e.message) || (typeof Event !== 'undefined' && e instanceof Event ? 'No pude cargar un archivo necesario para el análisis. Revisa tu conexión y vuelve a intentarlo.' : String(e)));
   }
 }
 

@@ -11,7 +11,8 @@ async function libreria() {
   return mp;
 }
 async function existe(url) {
-  try { const r = await fetch(url, { method: 'HEAD' }); return r.ok; } catch (e) { return false; }
+  // Cloudflare Pages responde con la pagina principal (text/html) cuando un archivo no existe
+  try { const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); return r.ok && !(r.headers.get('content-type') || '').includes('text/html'); } catch (e) { return false; }
 }
 
 const MODELOS = {
@@ -42,7 +43,13 @@ async function crear(calidad, delegado) {
 export async function cargarModelo(calidad = 'normal') {
   if (cache[calidad]) return cache[calidad];
   let lm, delegado = 'GPU';
-  try { lm = await crear(calidad, 'GPU'); } catch (e) { delegado = 'CPU'; lm = await crear(calidad, 'CPU'); }
+  try { lm = await crear(calidad, 'GPU'); } catch (e) {
+    delegado = 'CPU';
+    try { lm = await crear(calidad, 'CPU'); } catch (e2) {
+      fileset = null; // se vuelve a resolver en el siguiente intento
+      throw new Error('No pude cargar la IA de pose. Revisa tu conexión a internet y vuelve a intentarlo.');
+    }
+  }
   cache[calidad] = { lm, delegado };
   return cache[calidad];
 }
