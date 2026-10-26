@@ -75,6 +75,16 @@ export const borrarComida = (id) => tx('comidas', 'readwrite', (s) => s.delete(i
 export const leerComidas = (desde, hasta = desde) => tx('comidas', 'readonly', (s) => s.index('fecha').getAll(IDBKeyRange.bound(desde, hasta)))
   .then((x) => x || []).catch(() => []);
 
+// respaldo completo: leer o reemplazar todo el contenido de un almacen
+export const todos = (almacen) => tx(almacen, 'readonly', (s) => s.getAll()).then((x) => x || []).catch(() => []);
+export function ponerTodos(almacen, lista) {
+  return abrir().then((db) => new Promise((ok, mal) => {
+    const t = db.transaction(almacen, 'readwrite'), s = t.objectStore(almacen);
+    lista.forEach((e) => s.put(e));
+    t.oncomplete = () => ok(lista.length); t.onerror = () => mal(t.error); t.onabort = () => mal(t.error);
+  }));
+}
+
 export async function idsConVideo() {
   try { return new Set(await tx('videos', 'readonly', (s) => s.getAllKeys())); } catch (e) { return new Set(); }
 }

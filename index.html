@@ -29,7 +29,7 @@
     <div id="aviso" class="aviso" style="display:none"></div>
 
     <!-- ============ ANALIZAR ============ -->
-    <main id="v-form" class="view active">
+    <main id="v-form" class="view">
       <section class="section">
         <label class="section-title">1. Ejercicio</label>
         <div id="ej-elegido" class="ej-elegido"></div>
@@ -369,7 +369,7 @@
     </div>
 
     <!-- ============ ENTRENAR ============ -->
-    <div id="v-entrenar" class="view">
+    <div id="v-entrenar" class="view active">
       <div id="en-inicio">
         <section class="kpi-grid tres" id="en-semana"></section>
         <button type="button" id="en-empezar" class="btn-primary">▶ EMPEZAR ENTRENAMIENTO VACÍO</button>
@@ -442,8 +442,41 @@
       <p class="hint">Datos de alimentos: tabla local (USDA) y <b>Open Food Facts</b> (base abierta, licencia ODbL). Revisa la etiqueta si un valor te parece raro.</p>
     </div>
 
+    <!-- ============ COMUNIDAD ============ -->
+    <div id="v-comunidad" class="view">
+      <div class="card pf-pronto">
+        <div class="pf-pronto-icono">👥</div>
+        <h3>Comunidad · próximamente</h3>
+        <p>Aquí verás los entrenamientos de las personas que sigues, como en Hevy, pero con algo que ninguna otra app tiene: series compartidas con la <b>velocidad medida por video</b>, el RPE y la trayectoria de la barra.</p>
+        <ul class="pf-lista"><li>Feed de entrenamientos de tus amigos y tu gimnasio</li><li>Seguir perfiles, likes y comentarios</li><li>Copiar la rutina de otro atleta con un toque</li><li>Rankings opcionales por puntos DOTS</li><li>Tú decides qué se publica: nada es público por defecto</li></ul>
+        <p class="hint">Necesita cuentas de usuario en la nube, que llegan en la próxima fase.</p>
+      </div>
+    </div>
+
+    <!-- ============ PERFIL ============ -->
+    <div id="v-perfil" class="view">
+      <section class="card pf-cab"><div id="pf-cabecera" class="pf-cabecera"></div><button type="button" class="btn-sec" id="pf-editar">Editar</button></section>
+      <section class="section"><label class="section-title">Powerlifting</label><div id="pf-pl" class="card"></div></section>
+      <section class="kpi-grid tres" id="pf-stats"></section>
+      <section class="section" style="margin-top:22px"><label class="section-title">Peso corporal</label>
+        <div class="card"><div class="nu-cant-fila" style="margin-top:0"><input id="pf-peso-in" type="number" inputmode="decimal" step="any"><span>kg</span><button type="button" class="btn-sec en-terminar" id="pf-peso-ok">Registrar hoy</button></div>
+          <canvas id="pf-peso-graf" class="en-graf" style="display:none"></canvas><p class="hint" id="pf-peso-txt"></p></div></section>
+      <section class="section"><label class="section-title">Más</label>
+        <div class="card pf-menu">
+          <button type="button" id="pf-ir-historial">📈 Historial de análisis por video</button>
+          <button type="button" id="pf-respaldo">💾 Guardar respaldo completo</button>
+          <button type="button" id="pf-restaurar">♻️ Restaurar un respaldo</button>
+          <button type="button" id="pf-ir-guia">📖 Guía, ayuda y créditos</button>
+        </div>
+        <input type="file" id="pf-archivo" accept="application/json,.json" style="display:none">
+        <p class="hint">El respaldo incluye entrenamientos, rutinas, 1RM reales, comidas, análisis y ajustes (sin los videos). Guárdalo en Drive o mándatelo por WhatsApp; con él recuperas todo en otro celular.</p>
+        <p class="hint" id="pf-version"></p>
+      </section>
+    </div>
+
     <!-- ============ HISTORIAL ============ -->
     <div id="v-historial" class="view">
+      <button type="button" class="btn-sec pf-volver" data-volver="v-perfil">‹ Perfil</button>
       <div class="chips pestanas" id="h-pestanas">
         <button type="button" class="chip active" data-p="h-sesiones">Sesiones</button>
         <button type="button" class="chip" data-p="h-progreso">Progreso</button>
@@ -489,6 +522,7 @@
 
     <!-- ============ GUÍA ============ -->
     <div id="v-guia" class="view">
+      <button type="button" class="btn-sec pf-volver" data-volver="v-perfil">‹ Perfil</button>
       <div class="card"><h3>📹 Cómo grabar</h3><ul>
         <li><b>De lado</b>, perpendicular al movimiento, con el teléfono <b>fijo</b> (apoyado o en trípode) y en vertical.</li>
         <li>Que se vea el <b>cuerpo completo</b> toda la serie, con buena luz y sin gente pasando por delante.</li>
@@ -537,6 +571,8 @@
     <button type="button" class="btn-sec" id="en-det-cerrar" style="width:100%;margin-top:10px">Cerrar</button>
   </div></div>
   <div id="en-hoja" class="modal en-hoja" style="display:none"></div>
+  <div id="pf-modal" class="modal en-modal" style="display:none"><div class="modal-caja en-sel-caja"><div id="pf-modal-cuerpo" class="en-det-cuerpo"></div>
+    <button type="button" class="btn-sec" id="pf-det-cerrar" style="display:none">Cerrar</button></div></div>
   <div id="nu-hoja" class="modal en-modal" style="display:none"><div class="modal-caja en-sel-caja">
     <div class="en-sec-cab"><strong id="nu-hoja-titulo">Agregar</strong><button type="button" class="btn-sec" id="nu-cerrar">Cerrar</button></div>
     <div id="nu-paso-buscar">
@@ -559,11 +595,11 @@
   <div id="en-barra" class="en-barra" role="button" style="display:none"></div>
 
   <nav class="nav"><div class="nav-in">
-    <button type="button" data-vista="v-form" class="active"><span>⚡</span>Analizar</button>
-    <button type="button" data-vista="v-entrenar"><span>🏋️</span>Entrenar</button>
+    <button type="button" data-vista="v-entrenar" class="active"><span>🏋️</span>Entrenar</button>
+    <button type="button" data-vista="v-form"><span>⚡</span>Analizar</button>
     <button type="button" data-vista="v-nutricion"><span>🥗</span>Nutrición</button>
-    <button type="button" data-vista="v-historial"><span>📈</span>Historial</button>
-    <button type="button" data-vista="v-guia"><span>📖</span>Guía</button>
+    <button type="button" data-vista="v-comunidad"><span>👥</span>Comunidad</button>
+    <button type="button" data-vista="v-perfil"><span>👤</span>Perfil</button>
   </div></nav>
 
   <script type="module" src="js/app.js"></script>
