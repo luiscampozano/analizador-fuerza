@@ -93,6 +93,29 @@ function prominenciaDe(y, p) {
   while (i < n - 1 && y[i + 1] <= y[p]) { i++; der = Math.min(der, y[i]); }
   return y[p] - Math.max(izq, der);
 }
+// Zigzag: pivotes alternos bajo/alto; un pivote se confirma cuando la señal se aleja de el al menos `h`.
+export function zigzag(y, h) {
+  const n = y.length, piv = [];
+  if (n < 3) return piv;
+  let dir = 0, ext = 0, iMin = 0, iMax = 0;
+  for (let i = 1; i < n; i++) {
+    if (dir === 0) {
+      if (y[i] > y[iMax]) iMax = i;
+      if (y[i] < y[iMin]) iMin = i;
+      if (y[iMax] - y[iMin] >= h) {
+        if (iMin < iMax) { piv.push({ i: iMin, tipo: 'bajo' }); dir = 1; ext = iMax; } else { piv.push({ i: iMax, tipo: 'alto' }); dir = -1; ext = iMin; }
+      }
+    } else if (dir === 1) {
+      if (y[i] > y[ext]) ext = i;
+      else if (y[ext] - y[i] >= h) { piv.push({ i: ext, tipo: 'alto' }); dir = -1; ext = i; }
+    } else {
+      if (y[i] < y[ext]) ext = i;
+      else if (y[i] - y[ext] >= h) { piv.push({ i: ext, tipo: 'bajo' }); dir = 1; ext = i; }
+    }
+  }
+  if (dir !== 0) piv.push({ i: ext, tipo: dir === 1 ? 'alto' : 'bajo' }); // ultimo extremo (la serie puede terminar arriba)
+  return piv;
+}
 // Prominencia minima para contar una repeticion. Primero se usa el 35 % del rango total; pero si al inicio o al final
 // del video hay movimientos grandes (acomodarse, caminar, mover la camara) ese rango se infla y una repeticion
 // real con poco recorrido (p. ej. al tocar y subir) queda fuera. Por eso el umbral se baja hasta el 60 % de la
@@ -247,24 +270,27 @@ export function analizar(full, fps, ej, cfg) {
   const potencia = fuerza.map((f, i) => f * G * v[i]);
 
   // repeticiones
+  // Cada rep es una subida (fase concentrica) de un fondo a un tope. Se buscan con un zigzag: la serie se recorre como
+  // subidas y bajadas alternas y solo cuenta un cambio de direccion si el movimiento supera el recorrido minimo.
+  // Asi no cuentan desenganchar/re-rackear ni el temblor, una rep luchada con estancamiento no se parte en dos, y la
+  // primera y la ultima rep cuentan aunque esten al borde del video (antes se exigia bajada a los dos lados del tope).
   const prom = umbralReps(s, fps);
-  const tops = picos(s, prom, fps * 0.8), valles = picos(s.map((x) => -x), prom, fps * 0.8);
+  const piv = zigzag(s, prom);
   const i0 = cfg.inicio ? Math.round(cfg.inicio * fps) : 0, i1 = cfg.fin ? Math.round(cfg.fin * fps) : n;
   let reps = [];
-  let topePrevio = -1;
-  for (const pk0 of tops) {
-    if (pk0 < i0 || pk0 >= i1) continue;
-    // la subida puede durar varios segundos (rep luchada): se busca hacia atras hasta la rep anterior (max. 10 s)
-    const w0 = Math.max(i0, topePrevio + 1, pk0 - Math.round(10 * fps));
-    let minV = Infinity; for (let i = w0; i <= pk0; i++) if (s[i] < minV) minV = s[i];
+  for (let q = 0; q < piv.length - 1; q++) {
+    if (piv[q].tipo !== 'bajo' || piv[q + 1].tipo !== 'alto') continue;
+    const a = piv[q].i, pk0 = piv[q + 1].i;
+    if (pk0 < i0 || pk0 >= i1 || a < i0 - Math.round(2 * fps)) continue;
+    if ((pk0 - a) / fps < 0.25) continue; // mas rapido que eso no es una rep, es ruido
+    const minV = s[a];
     const tol = Math.max(0.003, 0.01 * (s[pk0] - minV)); // 1 % del recorrido
     // inicio = ultimo instante en el fondo (despegue), no el primero: asi no cuenta la pausa en el piso o en el pecho
-    let ini = pk0; for (let i = pk0; i >= w0; i--) if (s[i] <= minV + tol) { ini = i; break; }
+    let ini = a; for (let i = pk0; i >= a; i--) if (s[i] <= minV + tol) { ini = i; break; }
     // tope = primer instante en que llega arriba (no el final del bloqueo)
     let pk = pk0; for (let i = ini; i <= pk0; i++) if (s[i] >= s[pk0] - tol) { pk = i; break; }
-    topePrevio = pk0;
-    const sig = valles.find((x) => x > pk0);
-    const fin = Math.min(sig ?? n - 1, i1 - 1);
+    const sig = piv[q + 2] ? piv[q + 2].i : n - 1;
+    const fin = Math.min(sig, i1 - 1);
     const con = [ini, pk + 1];
     const seg = (arr) => arr.slice(con[0], con[1]);
     const media = (arr) => arr.reduce((x, y) => x + y, 0) / (arr.length || 1);
@@ -293,13 +319,26 @@ export function analizar(full, fps, ej, cfg) {
     while (reps.length >= 3 && atipica[0]) { reps.shift(); atipica.shift(); }
   }
   if (reps.length >= 3) reps = quitarPreparacion(reps, full, fps, ej, rel, mPx);
-  if (reps.length) marcarReps(reps);
+  if (reps.length) {
+    marcarReps(reps);
+    // desenganchar o re-rackear la barra, acomodarse en la maquina: movimientos cortos en los bordes de la serie.
+    // Se marcaban como "parcial" pero se contaban; no son reps. Las parciales en medio de la serie se mantienen.
+    let cambio = false;
+    while (reps.length > 1 && reps[0].parcial) { reps.shift(); cambio = true; }
+    while (reps.length > 1 && reps[reps.length - 1].parcial) { reps.pop(); cambio = true; }
+    if (cambio) marcarReps(reps);
+  }
   const valido = new Array(n).fill(false);
   if (reps.length) {
     const ini = Math.max(0, reps[0].inicio - Math.round(0.5 * fps));
     for (let i = ini; i <= reps[reps.length - 1].fin; i++) valido[i] = true;
   }
-  return { n, fps, s, v, a, fuerza, potencia, dirs, estatico, reps, valido };
+  // calidad de la deteccion: visibilidad media (segun la IA) del punto seguido durante la serie
+  let sv = 0, nv = 0;
+  const desde = reps.length ? Math.max(0, reps[0].inicio - fps) : 0, hasta = reps.length ? Math.min(n - 1, reps[reps.length - 1].fin) : n - 1;
+  for (let i = desde; i <= hasta; i++) for (const k of MP[ej.punto] || []) { sv += full[i][k][2] || 0; nv++; }
+  const visPunto = nv ? sv / nv : 1;
+  return { n, fps, s, v, a, fuerza, potencia, dirs, estatico, reps, valido, visPunto };
 }
 
 // Movimientos de preparacion contados como rep (acomodarse en la banca, acostarse, desenganchar, pararse al final):
@@ -370,15 +409,20 @@ function analizarAlterno(full, fps, ej, cfg) {
 function analizarUnilateral(full, fps, ej, cfg) {
   const mPx = cfg.mPx || escala(full, fps, cfg.altura);
   const anclaPar = ANCLAS[ej.ancla];
+  // cuanto se mueve de verdad cada lado: se suaviza (el temblor de un punto tapado no cuenta como movimiento)
+  // y se pondera por la visibilidad (un pie o mano que la IA casi no ve no se elige)
   const rango = (idx) => {
-    const ys = [], xs = [];
+    const ys = [], xs = []; let vis = 0;
     for (const f of full) {
       const p = f[idx]; if (!p || !Number.isFinite(p[0])) continue;
       let ax = 0, ay = 0;
       if (anclaPar) { const a0 = f[anclaPar[0]], a1 = f[anclaPar[1]]; if (!a0 || !a1) continue; ax = (a0[0] + a1[0]) / 2; ay = (a0[1] + a1[1]) / 2; }
-      xs.push(p[0] - ax); ys.push(p[1] - ay);
+      xs.push(p[0] - ax); ys.push(p[1] - ay); vis += p[2] || 0;
     }
-    return Math.hypot(percentil(xs, 95) - percentil(xs, 5), percentil(ys, 95) - percentil(ys, 5));
+    if (xs.length < 10) return 0;
+    const sx = savgol(xs, fps * 0.6, 2), sy = savgol(ys, fps * 0.6, 2);
+    const v = vis / xs.length;
+    return Math.hypot(percentil(sx, 95) - percentil(sx, 5), percentil(sy, 95) - percentil(sy, 5)) * v * v;
   };
   // a un brazo se sigue una mano; a una pierna, un pie o una rodilla (el lado que mas se mueve)
   const lados = { pies: ['pie_i', 'pie_d'], rodillas: ['rodilla_i', 'rodilla_d'] }[ej.punto] || ['mano_i', 'mano_d'];

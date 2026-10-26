@@ -31,6 +31,11 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
   const out = { reps: res.reps.length, validas: reps.length, notas: [] };
   const atipicas = res.reps.filter((r) => r.atipica).map((r) => r.n);
   if (atipicas.length) out.notas.push(`Rep ${atipicas.join(', ')} excluida${atipicas.length > 1 ? 's' : ''} del cálculo: recorrido y velocidad muy distintos al resto (probable error de medición, movimiento de cámara o un tirón).`);
+  if (Number.isFinite(res.visPunto) && res.visPunto < 0.6) {
+    const que = { manos: 'tus manos', pies: 'tus pies', rodillas: 'tus rodillas', cadera: 'tu cadera', hombros: 'tus hombros' }[ej.punto] || 'la parte del cuerpo que se sigue';
+    out.notas.unshift(`⚠️ La IA vio con dificultad ${que} (se tapan o salen del cuadro), así que el conteo de reps y las velocidades pueden fallar. Graba de lado, con el celular fijo, buena luz y sin que la máquina o la otra pierna tapen.`);
+    out.calidadBaja = true;
+  }
   if (!reps.length) return out;
   const vel = reps.map((r) => r.v_media);
   const iMejor = vel.indexOf(Math.max(...vel));

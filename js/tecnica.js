@@ -20,6 +20,12 @@ export function revisarTecnica(full, fps, res, ej, mPx) {
   const n = full.length;
   const medianaLargo = (fn) => { const v = []; for (let i = 0; i < n; i += 3) { const x = fn(i); if (Number.isFinite(x)) v.push(x); } v.sort((a, b) => a - b); return v[Math.floor(v.length / 2)] || NaN; };
 
+  // vista de lado: ancho de hombros y de caderas en la imagen pequeno frente al largo del torso
+  const anchoRel = medianaLargo((i) => {
+    const f = full[i], torso = Math.hypot((f[11][0] + f[12][0] - f[23][0] - f[24][0]) / 2, (f[11][1] + f[12][1] - f[23][1] - f[24][1]) / 2);
+    return (Math.abs(f[11][0] - f[12][0]) + Math.abs(f[23][0] - f[24][0])) / 2 / (torso || NaN);
+  });
+  const deLado = Number.isFinite(anchoRel) && anchoRel < 0.3;
   res.reps.forEach((r, k) => {
     if (r.parcial) alertas[k].push('Rep parcial: recorrido corto');
     const ini = r.inicio, tope = r.tope;
@@ -32,8 +38,9 @@ export function revisarTecnica(full, fps, res, ej, mPx) {
       if (vis(f, hip) > 0.5 && vis(f, rod) > 0.5) {
         const muslo = Math.hypot(f[hip][0] - f[rod][0], f[hip][1] - f[rod][1]);
         const musloPie = medianaLargo((i) => Math.hypot(full[i][hip][0] - full[i][rod][0], full[i][hip][1] - full[i][rod][1]));
-        // si el muslo se ve muy acortado la camara esta de frente: no se puede juzgar la profundidad
-        if (muslo > 0.6 * musloPie) {
+        // solo con la camara de lado: de frente, desde atras o en diagonal la perspectiva hace ver la cadera mas alta
+        // de lo que esta. De lado los hombros (y las caderas) se superponen en la imagen.
+        if (deLado && vis(f, hip) > 0.7 && vis(f, rod) > 0.7 && muslo > 0.6 * musloPie) {
           const sobre = cm(f[rod][1] - f[hip][1], mPx, ini); // > 0: cadera por encima de la rodilla
           if (sobre > 5) alertas[k].push(`Faltó profundidad (cadera ~${Math.round(sobre)} cm sobre la rodilla)`);
         }

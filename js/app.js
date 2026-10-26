@@ -18,7 +18,7 @@ import * as nube from './nube.js';
 import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 
-const VERSION = '2.4.0';
+const VERSION = '2.4.1';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -290,6 +290,7 @@ async function analizarArchivo() {
       await almacen.guardarVideo(registro.id, salida);
     }
     mostrarInforme(inf, { video: salida, nuevo: true });
+    if (serie.calidadBaja) aviso('⚠️ La IA no vio bien el movimiento en este video: revisa que el conteo de reps sea correcto (detalles en Interpretación).');
   } catch (e) {
     console.error(e);
     origen = 'video';
