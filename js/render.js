@@ -176,7 +176,7 @@ export function prepararDibujo(fuente, full, res, opciones) {
     ctx.textAlign = 'left';
     ctx.strokeStyle = '#dcdcdc'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(gx(i / fps), FG0); ctx.lineTo(gx(i / fps), VG1); ctx.stroke();
     ctx.fillStyle = 'rgba(150,155,165,0.75)'; ctx.font = `400 20px ${FUENTE}`; ctx.textAlign = 'right';
-    ctx.fillText('Analizador de Fuerza · Ing. Luis Campozano, MBA', OW - 40, VH + 175); ctx.textAlign = 'left';
+    ctx.fillText('FuerzaPro · Ing. Luis Campozano, MBA', OW - 40, VH + 175); ctx.textAlign = 'left';
   };
 }
 

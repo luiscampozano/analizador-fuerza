@@ -1,4 +1,4 @@
-// Analizador de Fuerza — interfaz principal. Todo el procesamiento ocurre en el dispositivo.
+// FuerzaPro — interfaz principal. Todo el procesamiento ocurre en el dispositivo.
 import { EJERCICIOS, POR_ID, GRUPOS, GRUPOS_MUSCULO, GRUPO_PROPIOS, agregarPropio, quitarPropio } from './ejercicios.js';
 import { detectarPose, cargarModelo } from './pose.js';
 import { interpolar, analizar, anguloArticular, MP, escala, marcarReps } from './fisica.js';
@@ -15,7 +15,7 @@ import * as entrenar from './entrenar.js';
 import * as nutricion from './nutricion.js';
 import * as perfil from './perfil.js';
 
-const VERSION = '1.9.0';
+const VERSION = '2.0.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -408,7 +408,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
     $('btn-descargar').download = `fuerza_${e.id}_${new Date(inf.fecha || Date.now()).toISOString().slice(0, 16).replace(/[-:T]/g, '')}.${video.extension}`;
     const f = new File([video.blob], $('btn-descargar').download, { type: video.tipo });
     $('btn-compartir').style.display = navigator.canShare && navigator.canShare({ files: [f] }) ? '' : 'none';
-    $('btn-compartir').onclick = () => navigator.share({ files: [f], title: 'Analizador de Fuerza' }).catch(() => {});
+    $('btn-compartir').onclick = () => navigator.share({ files: [f], title: 'FuerzaPro' }).catch(() => {});
   } else {
     $('sec-video').style.display = 'none';
     $('r-sin-video').style.display = nuevo ? 'none' : '';
@@ -669,7 +669,7 @@ $('h-excel').onclick = async () => {
   if (!lista.length) return alert('Todavía no hay series para exportar.');
   const nombre = `analizador-fuerza-${new Date().toISOString().slice(0, 10)}.xlsx`, blob = exportarExcel(lista, POR_ID);
   const f = new File([blob], nombre, { type: blob.type });
-  if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: 'Analizador de Fuerza' }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: 'FuerzaPro' }); return; } catch (e) { if (e.name === 'AbortError') return; } }
   descargarBlob(blob, nombre);
 };
 $('h-importar').onclick = () => $('h-archivo').click();

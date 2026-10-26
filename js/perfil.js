@@ -172,8 +172,8 @@ async function exportarRespaldo() {
   const datos = { app: 'analizador-fuerza', tipo: 'respaldo', version: 2, fecha: new Date().toISOString(), localStorage: ls };
   for (const a of ALMACENES) datos[a] = await almacen.todos(a);
   const blob = new Blob([JSON.stringify(datos)], { type: 'application/json' });
-  const nombre = `respaldo-analizador-${hoyISO()}.json`, f = new File([blob], nombre, { type: 'application/json' });
-  if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: 'Respaldo Analizador de Fuerza' }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  const nombre = `respaldo-fuerzapro-${hoyISO()}.json`, f = new File([blob], nombre, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: 'Respaldo FuerzaPro' }); return; } catch (e) { if (e.name === 'AbortError') return; } }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
@@ -182,7 +182,7 @@ async function restaurar() {
   if (!f) return;
   let d;
   try { d = JSON.parse(await f.text()); } catch (e) { return alert('Ese archivo no es un respaldo válido.'); }
-  if (!d || d.app !== 'analizador-fuerza' || d.tipo !== 'respaldo') return alert('Ese archivo no es un respaldo del Analizador de Fuerza.');
+  if (!d || d.app !== 'analizador-fuerza' || d.tipo !== 'respaldo') return alert('Ese archivo no es un respaldo de FuerzaPro.');
   const n = (d.entrenos || []).length, c = (d.comidas || []).length;
   if (!confirm(`Respaldo del ${new Date(d.fecha).toLocaleDateString('es-EC')}: ${n} entrenamientos, ${c} comidas registradas y tus ajustes.\n\nSe combina con lo que ya tienes (lo del respaldo reemplaza lo que tenga el mismo registro). ¿Restaurar?`)) return;
   try {

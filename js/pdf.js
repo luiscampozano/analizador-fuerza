@@ -19,7 +19,7 @@ const limpio = (t) => String(t ?? '').replace(/<[^>]+>/g, '')
   .replace(/→/g, '->').replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/≈/g, '~').replace(/−/g, '-').replace(/±/g, '+/-')
   .replace(/✓/g, 'OK').replace(/⚠️?/g, '!').replace(/[«»]/g, '"').replace(/R²/g, 'R2').replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').trim();
 
-const C = { oscuro: [16, 18, 24], verde: [46, 125, 70], verdeClaro: [90, 220, 120], naranja: [214, 110, 20], gris: [110, 116, 128], linea: [222, 226, 232], caja: [243, 245, 248], texto: [24, 26, 32] };
+const C = { oscuro: [11, 11, 18], verde: [91, 63, 224], verdeClaro: [124, 92, 255], naranja: [8, 145, 178], gris: [110, 116, 128], linea: [222, 226, 232], caja: [243, 245, 248], texto: [24, 26, 32] };
 
 async function cuadroDelVideo(video, t) {
   return new Promise((ok) => {
@@ -57,7 +57,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   // ---- encabezado
   doc.setFillColor(...C.oscuro); doc.rect(0, 0, W, 28, 'F');
   doc.setFillColor(...C.verdeClaro); doc.rect(0, 28, W, 1.2, 'F');
-  doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.text('Analizador de Fuerza', M, 13);
+  doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.text('FuerzaPro', M, 13);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(190, 196, 206);
   doc.text('Informe de serie  ·  Ing. Luis Campozano, MBA', M, 20);
   doc.setTextColor(255, 255, 255); doc.setFontSize(9.5);
@@ -100,7 +100,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   const cols = 3, gap = 3, bw = (anchoKpi - gap * (cols - 1)) / cols, bh = 19;
   kpis.forEach((k, i) => {
     const cx = M + (i % cols) * (bw + gap), cy = y + Math.floor(i / cols) * (bh + gap);
-    doc.setFillColor(...(i === 0 ? [232, 246, 236] : C.caja)); doc.setDrawColor(...(i === 0 ? C.verde : C.linea));
+    doc.setFillColor(...(i === 0 ? [238, 234, 255] : C.caja)); doc.setDrawColor(...(i === 0 ? C.verde : C.linea));
     doc.roundedRect(cx, cy, bw, bh, 2, 2, 'FD');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(6.8); doc.setTextColor(...C.gris); doc.text(k[0], cx + 3, cy + 5);
     doc.setFontSize(i === 0 ? 12.5 : 13); doc.setTextColor(...(i === 0 ? C.verde : C.texto)); doc.text(limpio(k[1]), cx + 3, cy + 12, { maxWidth: bw - 5 });
@@ -217,7 +217,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
     doc.setPage(i);
     doc.setDrawColor(...C.linea); doc.line(M, 287, W - M, 287);
     doc.setFontSize(7.5); doc.setTextColor(...C.gris);
-    doc.text(limpio(`Analizador de Fuerza ${version ? 'v' + version : ''} · Ing. Luis Campozano, MBA · luiscampozano.github.io/analizador-fuerza`), M, 291.5);
+    doc.text(limpio(`FuerzaPro ${version ? 'v' + version : ''} · Ing. Luis Campozano, MBA · fuerzapro.pages.dev`), M, 291.5);
     doc.text(`Página ${i} de ${paginas}`, W - M, 291.5, { align: 'right' });
   }
   const nombre = `informe_${e.id}_${fecha.toISOString().slice(0, 16).replace(/[-:T]/g, '')}.pdf`;
