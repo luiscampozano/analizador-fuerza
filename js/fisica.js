@@ -6,6 +6,7 @@ export const G = 9.81;
 export const MP = {
   hombros: [11, 12], codos: [13, 14], manos: [15, 16], cadera: [23, 24], rodillas: [25, 26], pies: [27, 28],
   mano_i: [15, 15], mano_d: [16, 16], hombro_i: [11, 11], hombro_d: [12, 12],
+  pie_i: [27, 27], pie_d: [28, 28], rodilla_i: [25, 25], rodilla_d: [26, 26],
 };
 const ANCLAS = { cadera: MP.cadera, hombros: MP.hombros, tobillos: MP.pies, rodillas: MP.rodillas, codos: MP.codos, ninguna: null,
   hombro_i: MP.hombro_i, hombro_d: MP.hombro_d };
@@ -379,9 +380,12 @@ function analizarUnilateral(full, fps, ej, cfg) {
     }
     return Math.hypot(percentil(xs, 95) - percentil(xs, 5), percentil(ys, 95) - percentil(ys, 5));
   };
-  const lado = rango(MP.mano_d[0]) > rango(MP.mano_i[0]) ? 1 : 0;
-  const res = analizar(full, fps, { ...ej, unilateral: false, punto: lado ? 'mano_d' : 'mano_i' }, { ...cfg, mPx });
+  // a un brazo se sigue una mano; a una pierna, un pie o una rodilla (el lado que mas se mueve)
+  const lados = { pies: ['pie_i', 'pie_d'], rodillas: ['rodilla_i', 'rodilla_d'] }[ej.punto] || ['mano_i', 'mano_d'];
+  const lado = rango(MP[lados[1]][0]) > rango(MP[lados[0]][0]) ? 1 : 0;
+  const res = analizar(full, fps, { ...ej, unilateral: false, punto: lados[lado] }, { ...cfg, mPx });
   res.ladoActivo = new Array(res.n).fill(lado);
+  res.puntosLado = [MP[lados[0]], MP[lados[1]]];
   res.lado = lado ? 'der' : 'izq';
   return res;
 }

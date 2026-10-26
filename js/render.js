@@ -95,7 +95,7 @@ export function prepararDibujo(fuente, full, res, opciones) {
       ctx.lineWidth = 2; ctx.strokeStyle = '#141414'; ctx.stroke(); ctx.lineWidth = 6; ctx.strokeStyle = C.rosa;
     }
     const vivo = valido[i] && Number.isFinite(fuerza[i]);
-    const pt = (res.ladoActivo ? [[15, 15], [16, 16]][res.ladoActivo[i]] : opciones.puntoIdx).map(P);
+    const pt = (res.ladoActivo ? (res.puntosLado || [[15, 15], [16, 16]])[res.ladoActivo[i]] : opciones.puntoIdx).map(P);
     const base = [(pt[0][0] + pt[1][0]) / 2, (pt[0][1] + pt[1][1]) / 2];
     if (vivo) {
       const L = 60 + 220 * Math.max(fuerza[i], 0) / Math.max(hi, 1);

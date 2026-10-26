@@ -18,7 +18,7 @@ import * as nube from './nube.js';
 import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 
-const VERSION = '2.3.1';
+const VERSION = '2.4.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -482,6 +482,15 @@ async function abrirSerie(id, desde) {
   const video = await almacen.leerVideo(id);
   mostrarInforme(inf, { video, desde });
 }
+$('btn-borrar-serie').onclick = () => {
+  const id = informeActual && informeActual.id; if (!id) return;
+  if (!borrarSerieHist(id)) return;
+  informeActual = null;
+  const destino = vistaPrevia && vistaPrevia !== 'v-progreso' ? vistaPrevia : 'v-form';
+  if ($('btn-nueva').textContent.includes('Nueva')) $('btn-quitar').click();
+  vista(destino);
+  aviso('Serie borrada del historial.', true);
+};
 $('btn-pdf').onclick = async () => {
   if (!informeActual) return;
   const b = $('btn-pdf'), txt = b.textContent;
@@ -612,6 +621,12 @@ document.querySelectorAll('#h-pestanas .chip').forEach((b) => (b.onclick = () =>
   pintarHistorial();
 }));
 const nombreDe = (r) => (POR_ID[r.ejercicio] || {}).nombre || r.nombre || r.ejercicio;
+// borra una serie analizada: registro, informe y video (y en la nube al sincronizar)
+function borrarSerieHist(id) {
+  if (!confirm('¿Borrar esta serie del historial? También se borran su informe y su video. No se puede deshacer.')) return false;
+  hist.borrar(id); almacen.borrarSerie(id);
+  return true;
+}
 function pintarHistorial() {
   const lista = hist.leer();
   if (pestana === 'h-sesiones') {
@@ -623,10 +638,12 @@ function pintarHistorial() {
       <small>${fmt(s.tonelaje)} kg movidos${s.rpeMedio ? ` · RPE medio ${fmt(s.rpeMedio, 1)}` : ''}${s.duracionMin >= 5 ? ` · ${Math.round(s.duracionMin)} min` : ''}</small>
       ${s.ejercicios.map((e) => `<div class="sesion-ej"><b>${esc(e.nombre)}</b>
         ${e.series.map((r, k) => `<div class="serie" data-abrir="${r.id}" role="button"><span>${k + 1}. ${e.perfil === 'corporal' ? (r.carga ? '+' + fmt(r.carga, 1) + ' kg' : 'corporal') : fmt(r.carga, 1) + ' kg'} × ${r.reps}</span>
-          <span>${fmt(r.vMejor, 2)} m/s · −${fmt(r.perdida)} % · RPE ${r.rpe ?? '--'}${(r.alertas || []).length ? ' · ⚠' : ''}</span></div>`).join('')}
+          <span>${fmt(r.vMejor, 2)} m/s · −${fmt(r.perdida)} % · RPE ${r.rpe ?? '--'}${(r.alertas || []).length ? ' · ⚠' : ''}</span>
+          <button type="button" class="serie-borrar" data-borrar="${r.id}" aria-label="Borrar serie">🗑️</button></div>`).join('')}
         ${e.fatiga !== null ? `<div class="fatiga">Tu rep más rápida cayó ${fmt(e.fatiga)} % de la 1.ª a la última serie${e.fatiga > 15 ? ': fatiga acumulada alta.' : '.'}</div>` : ''}
       </div>`).join('')}
     </div>`).join('') : '<p class="vacio">Todavía no hay sesiones. Analiza tu primer video y aparecerá aquí.</p>';
+    $('h-lista-ses').querySelectorAll('[data-borrar]').forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); if (borrarSerieHist(b.dataset.borrar)) pintarHistorial(); }));
     $('h-lista-ses').querySelectorAll('[data-abrir]').forEach((x) => (x.onclick = () => abrirSerie(x.dataset.abrir, 'v-historial')));
     return;
   }
@@ -659,11 +676,11 @@ function pintarHistorial() {
       <small class="ver">Toca para ver el análisis completo</small>
       <small>${new Date(r.fecha).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })} · ${x.perfil === 'corporal' ? (r.carga ? '+' + fmt(r.carga, 1) + ' kg' : 'peso corporal') : fmt(r.carga, 1) + ' kg'} × ${r.reps} · RPE ${r.rpe ?? '--'}${r.origen === 'vivo' ? ' · en vivo' : ''}</small></div>
       <div class="der"><b>${r.rm ? fmt(x.perfil === 'corporal' ? r.rmLastre : r.rm, 0) + ' kg' : '--'}</b><small>1RM est.</small>
-      <button type="button" class="btn-sec peligro" data-borrar="${r.id}" style="padding:3px 8px;margin-top:4px;font-size:11px">Borrar</button></div></div>`;
+      <button type="button" class="btn-sec peligro" data-borrar="${r.id}" style="padding:5px 10px;margin-top:6px;font-size:12px">🗑️ Borrar</button></div></div>`;
   }).join('') : '<p class="vacio">Todavía no hay series. Analiza tu primer video y aparecerá aquí.</p>';
   $('h-lista').querySelectorAll('[data-borrar]').forEach((b) => (b.onclick = (ev) => {
     ev.stopPropagation();
-    if (confirm('¿Borrar esta serie del historial? También se borran su informe y su video.')) { hist.borrar(b.dataset.borrar); almacen.borrarSerie(b.dataset.borrar); pintarHistorial(); }
+    if (borrarSerieHist(b.dataset.borrar)) pintarHistorial();
   }));
   $('h-lista').querySelectorAll('[data-abrir]').forEach((x) => (x.onclick = () => abrirSerie(x.dataset.abrir, 'v-historial')));
 }

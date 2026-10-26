@@ -1030,3 +1030,9 @@ body.sin-scroll { overflow: hidden; }
 .bv-clave input { padding-right: 46px; }
 .bv-clave button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 18px; padding: 6px; cursor: pointer; }
 .bv-form .btn-primary { margin-top: 4px; }
+
+/* ===== Borrar series ===== */
+.btn-borrar-serie { width: 100%; margin: 6px 0 24px; padding: 12px; }
+.sesion-ej .serie { align-items: center; }
+.serie-borrar { background: none; border: none; padding: 2px 4px 2px 8px; font-size: 15px; opacity: .65; cursor: pointer; flex: none; }
+.serie-borrar:active { opacity: 1; }

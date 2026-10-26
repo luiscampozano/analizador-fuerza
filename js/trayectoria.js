@@ -107,7 +107,7 @@ export function calcularTrayectoria(full, fps, res, ej, seguido, mPx) {
   } else {
     const par = res.ladoActivo ? null : MP[ej.punto] || MP.manos;
     for (let i = 0; i < n; i++) {
-      const pr = par || [[15, 15], [16, 16]][res.ladoActivo[i]];
+      const pr = par || (res.puntosLado || [[15, 15], [16, 16]])[res.ladoActivo[i]];
       xs[i] = (full[i][pr[0]][0] + full[i][pr[1]][0]) / 2; ys[i] = (full[i][pr[0]][1] + full[i][pr[1]][1]) / 2;
     }
   }
