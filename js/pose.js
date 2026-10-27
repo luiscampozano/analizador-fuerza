@@ -40,18 +40,20 @@ async function crear(calidad, delegado) {
   });
 }
 
-export async function cargarModelo(calidad = 'normal') {
-  if (cache[calidad]) return cache[calidad];
-  let lm, delegado = 'GPU';
-  try { lm = await crear(calidad, 'GPU'); } catch (e) {
+// soloCPU: algunos celulares devuelven resultados vacios con la GPU (controlador de video): se reintenta con CPU
+export async function cargarModelo(calidad = 'normal', { soloCPU = false } = {}) {
+  const clave = soloCPU ? calidad + ':cpu' : calidad;
+  if (cache[clave]) return cache[clave];
+  let lm, delegado = soloCPU ? 'CPU' : 'GPU';
+  try { lm = await crear(calidad, delegado); } catch (e) {
     delegado = 'CPU';
     try { lm = await crear(calidad, 'CPU'); } catch (e2) {
       fileset = null; // se vuelve a resolver en el siguiente intento
       throw new Error('No pude cargar la IA de pose. Revisa tu conexión a internet y vuelve a intentarlo.');
     }
   }
-  cache[calidad] = { lm, delegado };
-  return cache[calidad];
+  cache[clave] = { lm, delegado };
+  return cache[clave];
 }
 
 export function esperarCuadro(video, t) {
@@ -74,8 +76,8 @@ export function esperarCuadro(video, t) {
 
 // Recorre el video a `hz` cuadros por segundo y devuelve los 33 puntos (en pixeles) de la persona principal.
 // `fuente` viene de lector.js: {videoWidth, videoHeight, duration, iterar(tiempos)}.
-export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvanzar = () => {}, cancelado = () => false, alCuadro = null } = {}) {
-  const { lm, delegado } = await cargarModelo(calidad);
+export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvanzar = () => {}, cancelado = () => false, alCuadro = null, soloCPU = false } = {}) {
+  const { lm, delegado } = await cargarModelo(calidad, { soloCPU });
   const W = fuente.videoWidth, H = fuente.videoHeight, dur = fuente.duration;
   const tiempos = [];
   for (let k = 0; k <= Math.floor(dur * hz); k++) tiempos.push(Math.min(k / hz, dur - 0.001));

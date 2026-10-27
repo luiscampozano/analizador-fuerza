@@ -446,8 +446,19 @@ export function quitarPreparacion(reps, full, fps, ej, rel, mPx) {
   const mPos = rasgos[0].pos ? [med((x) => x.pos[0]), med((x) => x.pos[1])] : null;
   const mRec = mediana(reps.map((r) => r.recorrido_cm)) / 100;
   const pasos = rasgos.slice(1).map((x, k) => x.t - rasgos[k].t), mPaso = mediana(pasos);
-  const fuera = (k, vecino) => {
+  // con la barra en las manos (press, remo, curl...): el codo de cada rep llega a la misma extension; estirarse hacia la
+  // barra o acomodar el agarre no llega. Y la primera "rep" lenta y sin bloqueo claro suele ser sacar la barra del rack.
+  const conCodo = ej.punto === 'manos';
+  const codo = conCodo ? anguloArticular(full, 'codo', fps).valores : null;
+  const extCodo = conCodo ? reps.map((r) => Math.max(...codo.slice(r.inicio, r.tope + 1)) - Math.min(...codo.slice(r.inicio, r.tope + 1))) : null;
+  const mExt = conCodo ? mediana(extCodo) : 0;
+  const tsOtras = (k) => mediana(reps.filter((_, j) => j !== k).map((r) => r.t_subida));
+  const vOtras = (k) => mediana(reps.filter((_, j) => j !== k).map((r) => r.v_media));
+  let porCodo = 0;
+  const fuera = (k, vecino, primera = false) => {
     const x = rasgos[k];
+    if (conCodo && porCodo < 2 && mExt > 60 && extCodo[k] < 0.45 * mExt) { porCodo++; return true; } // el codo casi no se movio: no fue una rep
+    if (primera && reps.length >= 4 && reps[k].t_subida > 2.2 * tsOtras(k) && reps[k].v_media < 0.6 * vOtras(k)) return true;
     const dT = Math.abs(((x.torso - mTorso + 540) % 360) - 180);
     const ratio = x.largo / mLargo;
     const lejos = mPos && Math.hypot(x.pos[0] - mPos[0], x.pos[1] - mPos[1]) > Math.max(0.25, 0.6 * mRec);
@@ -456,7 +467,7 @@ export function quitarPreparacion(reps, full, fps, ej, rel, mPx) {
     return largaRep || (mVis >= 0.6 && x.vis < 0.45) || (Number.isFinite(dT) && dT > 35) || (Number.isFinite(ratio) && (ratio < 0.65 || ratio > 1.5)) || lejos || pausa;
   };
   let i0 = 0, i1 = reps.length - 1;
-  while (i1 - i0 >= 1 && fuera(i0, i0 + 1)) i0++;
+  while (i1 - i0 >= 1 && fuera(i0, i0 + 1, true)) i0++;
   while (i1 - i0 >= 1 && fuera(i1, i1 - 1)) i1--;
   return reps.slice(i0, i1 + 1);
 }

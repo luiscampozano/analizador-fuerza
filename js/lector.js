@@ -64,11 +64,12 @@ function fuenteVideo(archivo) {
 }
 
 let actual = null;
-export async function abrirVideo(archivo) {
+// conReproductor: salta WebCodecs y usa el reproductor <video> (respaldo si el decodificador entrega cuadros vacios)
+export async function abrirVideo(archivo, { conReproductor = false } = {}) {
   if (actual && actual.cerrar) actual.cerrar();
   actual = null;
   let errorWC = null;
-  try { actual = await fuenteWebCodecs(archivo); console.info('[lector] webcodecs', actual.videoWidth, actual.videoHeight); return actual; } catch (e) { errorWC = e; console.info('[lector] respaldo <video>:', e.message); }
+  if (!conReproductor) try { actual = await fuenteWebCodecs(archivo); console.info('[lector] webcodecs', actual.videoWidth, actual.videoHeight); return actual; } catch (e) { errorWC = e; console.info('[lector] respaldo <video>:', e.message); }
   try { actual = await fuenteVideo(archivo); return actual; } catch (e) {
     const detalle = errorWC && errorWC.noDecodificable ? errorWC.message : e.message;
     throw new Error(`${detalle} Prueba grabar en H.264 (en la cámara: Ajustes → Codificador de video → H.264) o en 1080p, sin HDR.`);

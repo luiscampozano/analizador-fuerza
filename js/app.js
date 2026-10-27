@@ -18,7 +18,7 @@ import * as nube from './nube.js';
 import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 
-const VERSION = '2.6.1';
+const VERSION = '2.6.2';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -238,16 +238,32 @@ async function analizarArchivo() {
   try {
     progreso(0, 0, 'Cargando la IA de pose (la primera vez descarga ~10 MB)…');
     await cargarModelo($('in-calidad').value);
-    const video = await abrirVideo(archivo);
+    let video = await abrirVideo(archivo);
     progreso(0, 1);
     const calidad = $('in-calidad').value;
     const hz = { rapida: 15, normal: 30, maxima: 60 }[calidad] || 30;
     const seguidor = marca && CON_DISCO.includes(ej.equipo) ? crearSeguidor(video.videoWidth, video.videoHeight, marca) : null;
-    const { frames, delegado } = await detectarPose(video, {
-      calidad, hz, cancelado: () => cancelar, alCuadro: seguidor ? (img, t) => seguidor.procesar(img, t) : null,
-      alAvanzar: (f, resta, del) => progreso(1, f, `Detectando pose (${del === 'GPU' ? 'GPU' : 'CPU'})${minutos(resta)}`),
-    });
-    if (frames.filter((f) => f.puntos).length < frames.length * 0.3) throw new Error('No se ve bien a la persona en el video. Graba de lado, con el cuerpo completo y buena luz.');
+    // Si la IA casi no ve a la persona puede ser el celular (la GPU o el decodificador de video entregan cuadros vacios),
+    // no el video: se reintenta con la CPU y despues con el reproductor de video antes de rendirse.
+    const intentos = [{}, { soloCPU: true }, { soloCPU: true, conReproductor: true }];
+    let frames = [], delegado = '', diag = [];
+    for (let k = 0; k < intentos.length; k++) {
+      const op = intentos[k];
+      if (op.conReproductor) { if (video.tipo !== 'webcodecs') break; video = await abrirVideo(archivo, { conReproductor: true }); }
+      const r = await detectarPose(video, {
+        calidad, hz, cancelado: () => cancelar, soloCPU: !!op.soloCPU, alCuadro: seguidor && k === 0 ? (img, t) => seguidor.procesar(img, t) : null,
+        alAvanzar: (f, resta, del) => progreso(1, f, `${k ? 'Reintentando con otro método · ' : ''}Detectando pose (${del === 'GPU' ? 'GPU' : 'CPU'})${minutos(resta)}`),
+      });
+      frames = r.frames; delegado = r.delegado;
+      const vistos = frames.filter((f) => f.puntos).length / Math.max(1, frames.length);
+      diag.push({ fuente: video.tipo, delegado, vistos: Math.round(100 * vistos) });
+      if (vistos >= 0.3) break;
+      if (k === intentos.length - 1 || (op.soloCPU && video.tipo !== 'webcodecs')) {
+        const e = new Error(`No se ve bien a la persona en el video (la IA la encontró en el ${diag[diag.length - 1].vistos} % de los cuadros). Graba con el cuerpo completo, el celular fijo y buena luz.`);
+        e.diagnostico = { intentos: diag, W: video.videoWidth, H: video.videoHeight, dur: video.duration, nav: navigator.userAgent.slice(0, 160) };
+        throw e;
+      }
+    }
     progreso(2, 0.2, 'Calculando la física…');
     const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
     d.ini = ini > 0 ? ini : null; d.fin = fin > 0 ? fin : null;
@@ -286,6 +302,12 @@ async function analizarArchivo() {
     vista('v-form');
     if (e && e.message === 'cancelado') return;
     alert((e && e.message) || (typeof Event !== 'undefined' && e instanceof Event ? 'No pude cargar un archivo necesario para el análisis. Revisa tu conexión y vuelve a intentarlo.' : String(e)));
+    // la IA no vio a la persona: con permiso, se envian los datos tecnicos (sin el video) para encontrar la causa
+    if (e && e.diagnostico && nube.conectado() && confirm('¿Enviar un diagnóstico técnico al equipo de FuerzaPro para revisar por qué falló? Solo se envían datos del celular y del análisis, nunca el video.')) {
+      nube.api('POST', '/api/fallos', { ejercicio: ej.id, nombre: ej.nombre, repsApp: 0, repsReal: null, comentario: 'Diagnóstico: la IA no vio a la persona', version: VERSION,
+        datos: { diagnostico: e.diagnostico, archivo: archivo ? { tipo: archivo.type, mb: Math.round(archivo.size / 1e5) / 10 } : null } })
+        .then(() => aviso('Diagnóstico enviado. ¡Gracias!', true)).catch(() => {});
+    }
   }
 }
 
