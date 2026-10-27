@@ -508,4 +508,11 @@ export async function compartir(en, recs) {
 }
 
 // al cerrar sesion se olvida el perfil cargado
-export function olvidar() { yo = null; }
+export function olvidar() { yo = null; try { localStorage.removeItem('af_co_alias'); } catch (e) { /* nada */ } }
+// alias publico para firmar las tarjetas; se recuerda en el telefono para no pedirlo al servidor cada vez
+export async function aliasPropio() {
+  if (yo && yo.perfil) { try { localStorage.setItem('af_co_alias', yo.perfil.alias); } catch (e) { /* nada */ } return yo.perfil.alias; }
+  try { const a = localStorage.getItem('af_co_alias'); if (a) return a; } catch (e) { /* nada */ }
+  if (!nube.conectado()) return '';
+  try { const uid = nube.sesion().usuario.id; yo = { ...(await api('GET', 'yo')), uid }; return yo.perfil ? aliasPropio() : ''; } catch (e) { return ''; }
+}

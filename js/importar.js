@@ -1,3 +1,4 @@
+import { ALIAS_IMPORTAR } from './ejercicios.js';
 // Importar entrenamientos desde otras apps (Hevy, Strong) o desde cualquier Excel/CSV con columnas
 // de fecha, ejercicio, peso y repeticiones. Todo se lee en el telefono: el archivo no se sube a ningun lado.
 
@@ -195,6 +196,8 @@ export function emparejar(nombre, ejercicios) {
 }
 function emparejarSinCache(nombre, ejercicios) {
   const n = norm(nombre);
+  const alias = ALIAS_IMPORTAR[n.replace(/\s+/g, ' ').trim()];
+  if (alias && ejercicios.some((e) => e.id === alias)) return alias;
   const exacto = ejercicios.find((e) => norm(e.nombre) === n || norm(e.corto) === n);
   if (exacto) return exacto.id;
   const todas = fichas(nombre), clave = todas.filter((w) => !VACIAS.has(w));

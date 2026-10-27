@@ -1,6 +1,7 @@
 // Pestaña Entrenar: registro de entrenamientos estilo Hevy (series, peso, reps, RPE, descanso),
 // rutinas, records personales, progreso por ejercicio, cargas sugeridas por RPE y calculadora de discos,
 // con enlace opcional al analisis por video de cada serie e importacion desde Hevy, Strong o Excel.
+import * as tarjetas from './tarjetas.js';
 import * as almacen from './almacen.js';
 import { leerArchivo, convertir } from './importar.js';
 import { crearExcel } from './excel.js';
@@ -224,11 +225,16 @@ function abrirDetalle(id, nuevo = null) {
       ${e.series.map((s, i) => `<div class="en-det-serie${s.tipo === 'calentamiento' ? ' cal' : ''}"><span>${TIPOS[s.tipo] || i + 1 - e.series.slice(0, i).filter((x) => x.tipo === 'calentamiento').length}</span>
         <span>${kgTxt(s.kg) || '—'} kg × ${s.reps ?? '—'}${s.rpe ? ` @${fmt(s.rpe, s.rpe % 1 ? 1 : 0)}` : ''}</span>
         ${s.analisis ? `<button type="button" class="en-vel" data-serie="${s.analisis.id}">⚡ ${fmt(s.analisis.v, 2)} m/s</button>` : ''}</div>`).join('')}</div>`).join('')}
+    <button type="button" class="btn-sec en-tarjetas" id="en-tarjetas">🖼️ Tarjetas para compartir</button>
     <button type="button" class="btn-primary en-compartir" id="en-compartir">${deps.compartido && deps.compartido(en.id) ? '📣 Actualizar publicación' : '📣 Compartir en la comunidad'}</button>
     <div class="en-det-botones"><button type="button" class="btn-sec" id="en-repetir">🔁 Repetir</button><button type="button" class="btn-sec" id="en-a-rutina">💾 Como rutina</button><button type="button" class="btn-sec peligro" id="en-borrar">Borrar</button></div>`;
   $('en-detalle').style.display = 'flex';
   $('en-det-cuerpo').scrollTop = 0;
   $('en-det-cuerpo').querySelectorAll('[data-serie]').forEach((b) => (b.onclick = () => { $('en-detalle').style.display = 'none'; deps.abrirSerie(b.dataset.serie); }));
+  $('en-tarjetas').onclick = () => {
+    $('en-detalle').style.display = 'none';
+    abrirTarjetas(en, nuevo || P.recordsNuevos(en, lista.filter((x) => x.id !== en.id && x.inicio < en.inicio), nombreEj), false);
+  };
   $('en-compartir').onclick = () => {
     // records de ese entrenamiento frente a los anteriores
     const recs = nuevo || P.recordsNuevos(en, lista.filter((x) => x.id !== en.id && x.inicio < en.inicio), nombreEj);
@@ -571,7 +577,7 @@ async function terminar() {
   try { await almacen.guardarEntreno(en); } catch (e) { alert('No pude guardar el entrenamiento: ' + (e.message || e)); return; }
   lista = [en, ...lista.filter((x) => x.id !== en.id)].sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
   cerrarActivo();
-  abrirDetalle(en.id, recs);
+  abrirTarjetas(en, recs, true); // como Hevy: al terminar, primero las tarjetas para compartir; «Listo» lleva al detalle
   if (nRec && navigator.vibrate) navigator.vibrate([80, 60, 80, 60, 160]);
 }
 
@@ -643,3 +649,61 @@ async function compartir(blob, nombre) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
+
+// ------------------------------------------------------------------ tarjetas para compartir
+let tjActual = null;
+async function abrirTarjetas(en, recs, nuevo) {
+  const m = $('tarjetas'), car = $('tj-carrusel');
+  tjActual = { en, recs, nuevo, lista: [], i: 0 };
+  $('tj-titulo').textContent = nuevo ? '¡Bien hecho! 💪' : 'Comparte tu entreno';
+  $('tj-sub').textContent = 'Desliza para ver las tarjetas. Descárgalas o compártelas en tus redes.';
+  car.innerHTML = '<p class="tj-cargando">Preparando tus tarjetas…</p>'; $('tj-puntos').innerHTML = ''; $('tj-nombre').textContent = '';
+  $('tj-comunidad').textContent = deps.compartido && deps.compartido(en.id) ? '📣 Actualizar' : '📣 Comunidad';
+  m.style.display = 'flex';
+  let alias = '';
+  try { alias = deps.alias ? await Promise.race([deps.alias(), new Promise((ok) => setTimeout(() => ok(''), 2500))]) : ''; } catch (e) { /* sin alias */ }
+  const lista = await tarjetas.generar(en, { lista: lista_(), porId: deps.porId, recs, alias });
+  if (tjActual.en !== en) return;
+  tjActual.lista = await Promise.all(lista.map(async (t) => ({ ...t, blob: await tarjetas.aBlob(t.canvas) })));
+  tjActual.lista.forEach((t) => { t.url = URL.createObjectURL(t.blob); });
+  car.innerHTML = tjActual.lista.map((t, i) => `<img src="${t.url}" alt="Tarjeta: ${t.nombre}" data-i="${i}">`).join('');
+  $('tj-puntos').innerHTML = tjActual.lista.map((_, i) => `<span class="${i ? '' : 'on'}"></span>`).join('');
+  $('tj-nombre').textContent = tjActual.lista[0] ? tjActual.lista[0].nombre : '';
+  car.scrollLeft = 0;
+  car.onscroll = () => {
+    const imgs = [...car.querySelectorAll('img')]; if (!imgs.length) return;
+    const centro = car.scrollLeft + car.clientWidth / 2;
+    let i = 0, mejor = Infinity;
+    imgs.forEach((im, k) => { const dd = Math.abs(im.offsetLeft + im.offsetWidth / 2 - centro); if (dd < mejor) { mejor = dd; i = k; } });
+    if (i !== tjActual.i) { tjActual.i = i; $('tj-nombre').textContent = tjActual.lista[i].nombre; $('tj-puntos').querySelectorAll('span').forEach((s, k) => s.classList.toggle('on', k === i)); }
+  };
+  const archivo = () => { const t = tjActual.lista[tjActual.i]; return t && new File([t.blob], `fuerzapro_${t.id}_${(en.inicio || '').slice(0, 10)}.png`, { type: 'image/png' }); };
+  $('tj-compartir').style.display = navigator.canShare && archivo() && navigator.canShare({ files: [archivo()] }) ? '' : 'none';
+}
+const lista_ = () => lista;
+function cerrarTarjetas(irDetalle) {
+  $('tarjetas').style.display = 'none';
+  const t = tjActual; tjActual = null;
+  if (t) t.lista.forEach((x) => URL.revokeObjectURL(x.url));
+  if (irDetalle && t) abrirDetalle(t.en.id, t.nuevo ? t.recs : null);
+}
+function archivoActual() {
+  const t = tjActual && tjActual.lista[tjActual.i]; if (!t) return null;
+  return new File([t.blob], `fuerzapro_${t.id}_${(tjActual.en.inicio || '').slice(0, 10)}.png`, { type: 'image/png' });
+}
+$('tj-cerrar').onclick = () => cerrarTarjetas(tjActual && tjActual.nuevo);
+$('tj-listo').onclick = () => cerrarTarjetas(tjActual && tjActual.nuevo);
+$('tj-descargar').onclick = () => {
+  const f = archivoActual(); if (!f) return;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+};
+$('tj-compartir').onclick = () => {
+  const f = archivoActual(); if (!f) return;
+  navigator.share({ files: [f], title: 'FuerzaPro', text: `${tjActual.en.titulo || 'Entrenamiento'} 💪 #FuerzaPro` }).catch(() => {});
+};
+$('tj-comunidad').onclick = () => {
+  const t = tjActual; if (!t) return;
+  cerrarTarjetas(false);
+  if (deps.compartir) deps.compartir(t.en, t.recs);
+};
