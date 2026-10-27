@@ -18,7 +18,7 @@ import * as nube from './nube.js';
 import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 
-const VERSION = '2.6.0';
+const VERSION = '2.6.1';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };

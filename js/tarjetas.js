@@ -1,5 +1,6 @@
 // Tarjetas para compartir un entrenamiento (como las de Hevy): imagenes 1080x1350 hechas en canvas, listas para
 // descargar, compartir en redes o acompañar la publicacion en la Comunidad. Cada tarjeta solo se genera si hay datos.
+import { FRENTE, ESPALDA } from './anatomia.js';
 const W = 1080, H = 1350;
 const C = { fondo: '#0B0B12', fondo2: '#16122B', tarjeta: '#14141F', borde: '#29293D', texto: '#F0F2F5', suave: '#8E95A5',
   morado: '#7C5CFF', amarillo: '#F2C200', cian: '#22D3EE', rojo: '#E53935', apagado: '#262638' };
@@ -23,7 +24,7 @@ export function datosTarjetas(en, { lista = [], porId = {}, recs = [], alias = '
     const def = e.ej && porId[e.ej];
     const ss = e.series.filter(cuenta);
     const mejor = ss.reduce((m, s) => (e1rm(s.kg, s.reps) > e1rm(m?.kg, m?.reps) ? s : m), null);
-    return { nombre: def ? def.nombre : e.nombre || 'Ejercicio', icono: def ? def.icono : '🏋️', grupo: def ? def.musculo || def.grupo : 'Otros', series: ss, mejor,
+    return { id: e.ej || '', nombre: def ? def.nombre : e.nombre || 'Ejercicio', icono: def ? def.icono : '🏋️', grupo: def ? def.musculo || def.grupo : 'Otros', series: ss, mejor,
       vel: e.series.map((s) => s.analisis && s.analisis.v).filter((v) => v > 0) };
   }).filter((e) => e.series.length);
   const series = ejs.reduce((a, e) => a + e.series.length, 0);
@@ -104,47 +105,71 @@ function tResumen(d) {
   marca(g, d); return c;
 }
 
-// 2) Musculos trabajados: dos siluetas (frente y espalda) coloreadas por series de cada grupo
-const ZONAS = {
-  frente: [['Hombros', [[-62, -150, 34, 30], [62, -150, 34, 30]]], ['Pecho', [[-30, -122, 34, 30], [30, -122, 34, 30]]], ['Core', [[0, -55, 40, 62]]],
-    ['Brazos', [[-88, -100, 18, 46], [88, -100, 18, 46], [-100, -20, 15, 42], [100, -20, 15, 42]]], ['Piernas', [[-30, 75, 28, 70], [30, 75, 28, 70], [-30, 220, 18, 55], [30, 220, 18, 55]]]],
-  espalda: [['Espalda', [[0, -135, 46, 26], [-38, -80, 30, 52], [38, -80, 30, 52]]], ['Hombros', [[-62, -150, 34, 30], [62, -150, 34, 30]]],
-    ['Brazos', [[-88, -100, 18, 46], [88, -100, 18, 46], [-100, -20, 15, 42], [100, -20, 15, 42]]], ['Glúteo y femoral', [[-26, 8, 30, 30], [26, 8, 30, 30], [-30, 95, 26, 58], [30, 95, 26, 58]]],
-    ['Piernas', [[-30, 220, 18, 55], [30, 220, 18, 55]]], ['Core', [[0, -18, 36, 16]]]],
-};
-function silueta(g, cx, cy, s, lado, nivel) {
-  g.save(); g.translate(cx, cy); g.scale(s, s);
-  g.fillStyle = '#1D1D2C'; // cuerpo base: torso, brazos y piernas (las zonas se pintan encima)
-  g.beginPath(); g.arc(0, -225, 34, 0, Math.PI * 2); g.fill(); // cabeza
-  g.beginPath(); g.roundRect(-14, -195, 28, 24, 8); g.fill(); // cuello
-  g.beginPath(); g.roundRect(-72, -178, 144, 200, 40); g.fill(); // torso
-  g.beginPath(); g.roundRect(-64, 0, 128, 70, 30); g.fill(); // cadera
-  for (const sx of [-1, 1]) {
-    g.beginPath(); g.roundRect(sx * 88 - 22, -160, 44, 120, 22); g.fill(); // brazo
-    g.beginPath(); g.roundRect(sx * 100 - 18, -50, 36, 100, 18); g.fill(); // antebrazo
-    g.beginPath(); g.roundRect(sx * 30 - 32, 20, 64, 140, 30); g.fill(); // muslo
-    g.beginPath(); g.roundRect(sx * 30 - 22, 160, 44, 125, 22); g.fill(); // pierna
+// 2) Musculos trabajados: cuerpo de frente y de espalda con cada musculo coloreado segun las series que recibio
+// (principales cuentan 1, secundarios 0.5). Si el ejercicio no esta en la tabla se usa su grupo muscular.
+const M = (pri, sec = []) => ({ pri, sec });
+const POR_EJ = [
+  [/^pantorrilla/, M(['calves', 'left_soleus', 'right_soleus'])],
+  [/^(extension_cuadriceps|extension_unilateral|sentadilla_sissy)/, M(['quadriceps'])],
+  [/^curl_femoral|^buenos_dias/, M(['hamstring'], ['gluteal', 'lower_back'])],
+  [/^abductores|^abduccion/, M(['abductor'], ['gluteal'])], [/^aductores/, M(['abductors'])],
+  [/^(hip_thrust|puente_gluteo|patada_gluteo|pull_through)/, M(['gluteal'], ['hamstring'])],
+  [/^(peso_muerto|rumano|rack_pull|swing)/, M(['hamstring', 'gluteal', 'lower_back'], ['trapezius', 'forearm', 'quadriceps'])],
+  [/^(hiperextension|superman)/, M(['lower_back'], ['gluteal', 'hamstring'])],
+  [/^(sentadilla|smith_sentadilla|hack|belt_squat|prensa|zancada|bulgara|step_up|pistol)/, M(['quadriceps', 'gluteal'], ['abductors', 'hamstring', 'calves'])],
+  [/^(press_banca|press_pecho|press_inclinado|press_declinado|smith_banca|smith_inclinado|press_mancuerna|flexiones|fondos$)/, M(['chest'], ['triceps', 'front_deltoids'])],
+  [/^(aperturas|pec_deck|cruce_poleas)/, M(['chest'], ['front_deltoids'])], [/^pullover/, M(['upper_back', 'chest'], ['triceps'])],
+  [/^(press_militar|press_hombro|press_arnold|push_press|smith_militar|landmine)/, M(['front_deltoids'], ['triceps', 'trapezius'])],
+  [/^(elevaciones_laterales|lateral|laterales)/, M(['front_deltoids', 'back_deltoids'], ['trapezius'])], [/^elevaciones_frontales/, M(['front_deltoids'])],
+  [/^(pajaro|reverse_pec_deck|face_pull)/, M(['back_deltoids'], ['upper_back', 'trapezius'])],
+  [/^(encogimientos|remo_menton)/, M(['trapezius'], ['front_deltoids'])],
+  [/^(remo|jalon|dominadas|chin_up|muscle_up)/, M(['upper_back'], ['biceps', 'back_deltoids', 'forearm', 'trapezius'])],
+  [/^(curl_muneca|extension_muneca|curl_detras|rodillo)/, M(['forearm'])],
+  [/^curl/, M(['biceps'], ['forearm'])],
+  [/^(triceps|press_frances|patada_triceps|fondos_banco|fondos_maquina|press_agarre_cerrado)/, M(['triceps'], ['chest'])],
+  [/^(crunch|abdominales|elevacion_piernas|rueda|lenadores|flexion_lateral)/, M(['abs', 'obliques'])],
+];
+const POR_GRUPO = { Piernas: M(['quadriceps', 'calves'], ['gluteal']), 'Glúteo y femoral': M(['gluteal', 'hamstring']), Pecho: M(['chest'], ['triceps']),
+  Espalda: M(['upper_back', 'trapezius'], ['biceps']), Hombros: M(['front_deltoids', 'back_deltoids']), Brazos: M(['biceps', 'triceps', 'forearm']), Core: M(['abs', 'obliques']) };
+const NOMBRES_MUSC = { quadriceps: 'Cuádriceps', calves: 'Pantorrillas', left_soleus: 'Pantorrillas', right_soleus: 'Pantorrillas', hamstring: 'Femorales', gluteal: 'Glúteos',
+  abductor: 'Abductores', abductors: 'Aductores', lower_back: 'Lumbares', upper_back: 'Dorsales', trapezius: 'Trapecios', chest: 'Pecho', front_deltoids: 'Hombros',
+  back_deltoids: 'Deltoide posterior', biceps: 'Bíceps', triceps: 'Tríceps', forearm: 'Antebrazos', abs: 'Abdomen', obliques: 'Oblicuos' };
+function cargaMuscular(d) {
+  const c = {};
+  for (const e of d.ejs) {
+    const m = (POR_EJ.find(([re]) => re.test(e.id || '')) || [])[1] || POR_GRUPO[e.grupo];
+    if (!m) continue;
+    m.pri.forEach((k) => { c[k] = (c[k] || 0) + e.series.length; });
+    m.sec.forEach((k) => { c[k] = (c[k] || 0) + 0.5 * e.series.length; });
   }
-  for (const [grupo, elipses] of ZONAS[lado]) {
-    const n = nivel(grupo);
-    g.fillStyle = n > 0 ? `rgba(124,92,255,${0.35 + 0.65 * n})` : C.apagado;
-    for (const [x, y, rx, ry] of elipses) { g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.fill(); }
+  return c;
+}
+function cuerpo(g, poligonos, x0, y0, esc, carga, max) {
+  for (const [musculo, polys] of poligonos) {
+    const n = (carga[musculo] || 0) / max;
+    const neutro = musculo === 'head' || musculo === 'neck' || musculo === 'knees';
+    g.fillStyle = neutro ? '#2B2B3E' : n > 0 ? `rgba(${Math.round(124 + 118 * (1 - n))},${Math.round(92 + 70 * (1 - n))},255,${0.55 + 0.45 * n})` : '#34344A';
+    g.strokeStyle = C.fondo; g.lineWidth = 2; g.lineJoin = 'round';
+    for (const p of polys) {
+      g.beginPath(); g.moveTo(x0 + p[0] * esc, y0 + p[1] * esc);
+      for (let k = 2; k < p.length; k += 2) g.lineTo(x0 + p[k] * esc, y0 + p[k + 1] * esc);
+      g.closePath(); g.fill(); g.stroke();
+    }
   }
-  g.restore();
 }
 function tMusculos(d) {
   const [c, g] = lienzo(); fondo(g); encabezado(g, d, 'Músculos trabajados');
-  const max = Math.max(...Object.values(d.grupos), 1);
-  const nivel = (gr) => (d.grupos[gr] || 0) / max;
-  silueta(g, 300, 620, 1.3, 'frente', nivel); silueta(g, 780, 620, 1.3, 'espalda', nivel);
-  texto(g, 'Frente', 300, 1040, { tam: 28, color: C.suave, alin: 'center' }); texto(g, 'Espalda', 780, 1040, { tam: 28, color: C.suave, alin: 'center' });
-  const top = Object.entries(d.grupos).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  const tot = Object.values(d.grupos).reduce((a, b) => a + b, 0) || 1;
-  top.forEach(([gr, n], i) => {
-    const x = 64 + i * ((W - 128) / 3);
-    texto(g, `${Math.round(100 * n / tot)} %`, x, 1130, { tam: 52, peso: 800, color: i ? C.texto : C.amarillo });
-    texto(g, gr, x, 1172, { tam: 28, peso: 500, color: C.suave, max: (W - 128) / 3 - 20 });
-  });
+  const carga = cargaMuscular(d);
+  const max = Math.max(...Object.values(carga), 1);
+  const esc = 4.1; // lienzo de 100x200 -> 410x820
+  cuerpo(g, FRENTE, 64 + 20, 270, esc, carga, max);
+  cuerpo(g, ESPALDA, W - 64 - 20 - 100 * esc, 270, esc, carga, max);
+  texto(g, 'Frente', 64 + 20 + 50 * esc, 1120, { tam: 28, color: C.suave, alin: 'center' });
+  texto(g, 'Espalda', W - 64 - 20 - 50 * esc, 1120, { tam: 28, color: C.suave, alin: 'center' });
+  const vistos = {};
+  Object.entries(carga).forEach(([k, v]) => { const n = NOMBRES_MUSC[k]; if (n) vistos[n] = Math.max(vistos[n] || 0, v); });
+  const top = Object.entries(vistos).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n]) => n);
+  texto(g, top.join(' · '), W / 2, 1185, { tam: 36, peso: 800, color: C.amarillo, alin: 'center', max: W - 128 });
   marca(g, d); return c;
 }
 
@@ -211,19 +236,34 @@ function tMejor(d) {
   marca(g, d); return c;
 }
 
-// 7) Volumen con una comparacion divertida
-const COSAS = [[6000, 'elefantes africanos 🐘'], [1500, 'autos compactos 🚗'], [600, 'pianos de cola 🎹'], [450, 'osos polares 🐻‍❄️'], [100, 'refrigeradoras 🧊']];
+// 7) Volumen con una comparacion divertida: se elige el objeto que da entre 1 y 6 unidades y se dibujan grandes
+const COSAS = [[7000, '🦖', 'Tiranosaurios rex', 'Tiranosaurio rex'], [6000, '🐘', 'elefantes africanos', 'elefante africano'], [3000, '🦛', 'hipopótamos', 'hipopótamo'],
+  [1300, '🚗', 'autos compactos', 'auto compacto'], [700, '🐂', 'toros', 'toro'], [450, '🐻‍❄️', 'osos polares', 'oso polar'], [250, '🦍', 'gorilas', 'gorila'],
+  [120, '🐼', 'pandas', 'panda'], [60, '🐕', 'perros grandes', 'perro grande'], [5, '🐈', 'gatos', 'gato']];
+function emoji(g, e, x, y, tam) { g.font = `${tam}px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(e, x, y); }
 function tVolumen(d) {
   if (!(d.volumen > 0)) return null;
   const [c, g] = lienzo(); fondo(g); encabezado(g, d, 'Volumen total');
-  texto(g, kg(Math.round(d.volumen)), W / 2, 620, { tam: 200, peso: 900, color: C.amarillo, alin: 'center' });
-  texto(g, 'kg levantados hoy', W / 2, 700, { tam: 48, peso: 600, alin: 'center' });
-  const [peso, cosa] = COSAS.find(([p]) => d.volumen / p >= 1) || COSAS[COSAS.length - 1];
-  const n = d.volumen / peso;
-  caja(g, 64, 820, W - 128, 230);
-  texto(g, 'Es como levantar', W / 2, 900, { tam: 34, peso: 500, color: C.suave, alin: 'center' });
-  texto(g, `${fmt(n, n < 10 ? 1 : 0)} ${cosa}`, W / 2, 980, { tam: 54, peso: 800, alin: 'center', max: W - 180 });
-  texto(g, `${fmt(d.series)} series · ${fmt(d.reps)} reps`, W / 2, 1150, { tam: 34, peso: 500, color: C.suave, alin: 'center' });
+  texto(g, kg(Math.round(d.volumen)), W / 2, 470, { tam: 170, peso: 900, color: C.amarillo, alin: 'center' });
+  texto(g, 'kg levantados hoy', W / 2, 540, { tam: 44, peso: 600, alin: 'center' });
+  const [peso, ico, plural, singular] = COSAS.find(([p]) => d.volumen / p >= 1 && d.volumen / p <= 6) || COSAS.find(([p]) => d.volumen / p >= 1) || COSAS[COSAS.length - 1];
+  const n = d.volumen / peso, enteros = Math.floor(n), resto = n - enteros, cuantos = Math.min(6, Math.ceil(n));
+  caja(g, 64, 610, W - 128, 560, 36, '#17142A', '#3A2F7A');
+  texto(g, 'ES COMO LEVANTAR', W / 2, 680, { tam: 30, peso: 700, color: C.morado, alin: 'center' });
+  const tam = cuantos <= 2 ? 230 : cuantos <= 3 ? 190 : 150, por = cuantos <= 3 ? cuantos : Math.ceil(cuantos / 2), filas = Math.ceil(cuantos / por);
+  for (let k = 0; k < cuantos; k++) {
+    const fila = Math.floor(k / por), col = k % por, enFila = Math.min(por, cuantos - fila * por);
+    const x = W / 2 + (col - (enFila - 1) / 2) * (tam * 1.15), y = 690 + (filas === 1 ? 210 : 140 + fila * tam * 1.05);
+    const parcial = k === enteros && resto > 0.05 && n <= 6;
+    g.save();
+    if (parcial) { g.beginPath(); g.rect(x - tam / 2, y - tam / 2 - 10, tam * resto, tam + 20); g.clip(); }
+    emoji(g, ico, x, y, tam);
+    g.restore();
+    if (parcial) { g.save(); g.globalAlpha = 0.18; emoji(g, ico, x, y, tam); g.restore(); }
+  }
+  const nTxt = fmt(n, n < 10 ? 1 : 0);
+  texto(g, `${nTxt} ${Math.abs(n - 1) < 0.05 ? singular : plural}`, W / 2, 1125, { tam: 52, peso: 900, alin: 'center', max: W - 180 });
+  texto(g, `${fmt(d.series)} series · ${fmt(d.reps)} reps`, W / 2, 1225, { tam: 32, peso: 500, color: C.suave, alin: 'center' });
   marca(g, d); return c;
 }
 
