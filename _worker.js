@@ -63,6 +63,7 @@ async function api(req, env, url) {
   if (ruta === '/api/auth/clave' && m === 'POST') return cambiarClave(req, env, u);
   if (ruta === '/api/sync' && m === 'POST') return sincronizar(req, env, u);
   if (ruta === '/api/cuenta' && m === 'DELETE') return borrarCuenta(env, u);
+  if (ruta === '/api/fallos' && m === 'POST') return reportarFallo(req, env, u);
   throw fallo('No encontrado.', 404);
 }
 
@@ -301,6 +302,7 @@ async function borrarCuenta(env, u) {
   await env.DB.batch([
     ...borrarComunidad(env, u.id),
     env.DB.prepare('DELETE FROM items WHERE usuario = ?1').bind(u.id),
+    env.DB.prepare('DELETE FROM fallos WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM credenciales WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM usuarios WHERE id = ?1').bind(u.id),
@@ -607,6 +609,22 @@ function borrarComunidad(env, uid) {
 async function moderacion(req, env, u, r, m) {
   if (!esAdmin(env, u)) throw fallo('No encontrado.', 404);
   const DB = env.DB;
+  // fallos de deteccion reportados por los usuarios (lista sin los puntos; el detalle trae los puntos para reproducirlo)
+  if (r === 'fallos' && m === 'GET') {
+    const res = await DB.prepare('SELECT id, usuario, creado, ejercicio, nombre, reps_app, reps_real, comentario, version, estado, length(pose) AS pose_bytes FROM fallos ORDER BY creado DESC LIMIT 200').all();
+    return json({ fallos: res.results || [] });
+  }
+  if (r.startsWith('fallos/') && m === 'GET') {
+    const f = await DB.prepare('SELECT * FROM fallos WHERE id = ?1').bind(r.slice(7)).first();
+    if (!f) throw fallo('No encontrado.', 404);
+    return json({ fallo: { ...f, datos: JSON.parse(f.datos || '{}'), excluidas: JSON.parse(f.excluidas || '[]') } });
+  }
+  if (r.startsWith('fallos/') && m === 'POST') {
+    const { estado } = await leerJSON(req);
+    if (!['pendiente', 'revisado', 'corregido'].includes(estado)) throw fallo('Estado no válido.');
+    await DB.prepare('UPDATE fallos SET estado = ?2 WHERE id = ?1').bind(r.slice(7), estado).run();
+    return json({ ok: true });
+  }
   if (r === 'reportes' && m === 'GET') {
     const res = await DB.prepare(`SELECT r.objeto_tipo AS tipo, r.objeto_id AS id, count(*) AS n, group_concat(r.motivo, ' · ') AS motivos, max(r.creado) AS ultimo,
         CASE r.objeto_tipo
@@ -641,4 +659,25 @@ async function moderacion(req, env, u, r, m) {
     return json({ ok: true });
   }
   throw fallo('No encontrado.', 404);
+}
+
+// ------------------------------------------------------------------ fallos de deteccion
+// El usuario corrige el conteo de reps y acepta enviar el caso: llegan los puntos del cuerpo (sin imagen) y su
+// correccion, para reproducir el fallo exacto y sumarlo al banco de pruebas.
+const MAX_POSE = 3_000_000; // base64 del JSON comprimido
+async function reportarFallo(req, env, u) {
+  const b = await leerJSON(req);
+  const txt = (x, n) => String(x ?? '').slice(0, n);
+  const ent = (x) => (Number.isFinite(+x) ? Math.max(0, Math.min(1000, Math.round(+x))) : null);
+  if (b.pose && (typeof b.pose !== 'string' || b.pose.length > MAX_POSE || !/^[A-Za-z0-9+/=]+$/.test(b.pose))) throw fallo('Datos de la serie no válidos.');
+  const hoy = Date.now() - 86_400_000;
+  const n = await env.DB.prepare('SELECT count(*) AS n FROM fallos WHERE usuario = ?1 AND creado > ?2').bind(u.id, hoy).first();
+  if (n && n.n >= 30) throw fallo('Ya enviaste muchos reportes hoy. ¡Gracias! Inténtalo mañana.', 429);
+  const id = crypto.randomUUID();
+  const excl = Array.isArray(b.excluidas) ? b.excluidas.filter((x) => Number.isFinite(+x)).slice(0, 100).map(Number) : [];
+  await env.DB.prepare(`INSERT INTO fallos (id, usuario, creado, ejercicio, nombre, reps_app, reps_real, excluidas, comentario, version, datos, pose, estado)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, 'pendiente')`).bind(
+    id, u.id, Date.now(), txt(b.ejercicio, 80), txt(b.nombre, 120), ent(b.repsApp), ent(b.repsReal), JSON.stringify(excl),
+    txt(b.comentario, 500), txt(b.version, 20), txt(JSON.stringify(b.datos || {}), 20000), b.pose || null).run();
+  return json({ ok: true, id });
 }

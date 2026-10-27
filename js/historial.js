@@ -15,6 +15,14 @@ export function agregar(registro) {
   return nuevo;
 }
 export function borrar(id) { escribir(leer().filter((r) => r.id !== id)); }
+// cambia campos de una serie ya guardada (p. ej. al corregir a mano el conteo de reps)
+export function actualizar(id, cambios) {
+  const lista = leer(), r = lista.find((x) => x.id === id);
+  if (!r) return null;
+  Object.assign(r, cambios, { editado: new Date().toISOString() });
+  escribir(lista);
+  return r;
+}
 export function exportar() {
   const blob = new Blob([JSON.stringify({ app: 'analizador-fuerza', version: 1, series: leer() }, null, 1)], { type: 'application/json' });
   return blob;

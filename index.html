@@ -299,7 +299,8 @@
         </div>
       </section>
       <section class="kpi-grid tres">
-        <div class="kpi-card"><span class="kpi-label">REPS</span><span class="kpi-value" id="r-reps">--</span><span class="kpi-sub" id="r-reps-sub"></span></div>
+        <div class="kpi-card"><span class="kpi-label">REPS</span><span class="kpi-value" id="r-reps">--</span><span class="kpi-sub" id="r-reps-sub"></span>
+          <button type="button" class="kpi-accion" id="btn-corregir">✏️ ¿Conteo mal? Corregir</button></div>
         <div class="kpi-card"><span class="kpi-label">MEJOR VEL.</span><span class="kpi-value" id="r-vel">--</span><span class="kpi-sub">m/s media</span></div>
         <div class="kpi-card"><span class="kpi-label">PÉRDIDA VEL.</span><span class="kpi-value" id="r-perd">--</span><span class="kpi-sub" id="r-fatiga"></span></div>
         <div class="kpi-card"><span class="kpi-label">CARGA EFECTIVA</span><span class="kpi-value" id="r-est">--</span><span class="kpi-sub" id="r-est-sub"></span></div>
@@ -567,6 +568,10 @@
     <button type="button" class="btn-sec" id="co-modal-cerrar" style="width:100%;margin-top:10px">Cerrar</button>
   </div></div>
   <div id="co-hoja" class="modal en-hoja" style="display:none"></div>
+  <div id="corregir" class="modal en-modal" style="display:none"><div class="modal-caja en-sel-caja corr-caja" role="dialog" aria-labelledby="corr-titulo">
+    <h3 id="corr-titulo">Corregir el conteo</h3>
+    <div id="corr-cuerpo"></div>
+  </div></div>
   <div id="en-detalle" class="modal en-modal" style="display:none"><div class="modal-caja en-sel-caja">
     <div id="en-det-cuerpo" class="en-det-cuerpo"></div>
     <button type="button" class="btn-sec" id="en-det-cerrar" style="width:100%;margin-top:10px">Cerrar</button>

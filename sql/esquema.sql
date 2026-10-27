@@ -25,3 +25,7 @@ CREATE INDEX IF NOT EXISTS bloqueos_bloqueado ON bloqueos(bloqueado);
 CREATE TABLE IF NOT EXISTS reportes (id INTEGER PRIMARY KEY AUTOINCREMENT, usuario TEXT NOT NULL, objeto_tipo TEXT NOT NULL, objeto_id TEXT NOT NULL, motivo TEXT, creado INTEGER, estado TEXT NOT NULL DEFAULT 'pendiente');
 CREATE UNIQUE INDEX IF NOT EXISTS reportes_unico ON reportes(usuario, objeto_tipo, objeto_id);
 CREATE INDEX IF NOT EXISTS reportes_estado ON reportes(estado, creado);
+-- Fallos de deteccion reportados por los usuarios (puntos del cuerpo comprimidos, nunca video)
+CREATE TABLE IF NOT EXISTS fallos (id TEXT PRIMARY KEY, usuario TEXT NOT NULL, creado INTEGER NOT NULL, ejercicio TEXT, nombre TEXT, reps_app INTEGER, reps_real INTEGER, excluidas TEXT, comentario TEXT, version TEXT, datos TEXT, pose TEXT, estado TEXT NOT NULL DEFAULT 'pendiente');
+CREATE INDEX IF NOT EXISTS fallos_creado ON fallos(creado);
+CREATE INDEX IF NOT EXISTS fallos_usuario ON fallos(usuario, creado);

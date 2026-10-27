@@ -24,11 +24,13 @@ function regresion(xs, ys) {
 }
 
 // carga: kg que el usuario carga (discos+barra, pila, o lastre) · masaTotal: kg que se mueven en el eje
-export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil, pcv = null, rmReal = null }) {
+// repsTotal: reps que el usuario dice que hizo (corrección manual), cuando la IA se saltó alguna: cuenta para RIR y 1RM
+export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil, pcv = null, rmReal = null, repsTotal = null }) {
   const usaPerfil = pcv && (pcv.confianza === 'alta' || pcv.confianza === 'media');
   const mvt = pcv && pcv.mvtPersonal ? pcv.mvt : ej.mvt;
   const reps = res.reps.filter((r) => !r.parcial && !r.atipica);
-  const out = { reps: res.reps.length, validas: reps.length, notas: [] };
+  const nReps = Math.max(reps.length, repsTotal || 0);
+  const out = { reps: Math.max(res.reps.length, repsTotal || 0), validas: reps.length, notas: [] };
   const atipicas = res.reps.filter((r) => r.atipica).map((r) => r.n);
   if (atipicas.length) out.notas.push(`Rep ${atipicas.join(', ')} excluida${atipicas.length > 1 ? 's' : ''} del cálculo: recorrido y velocidad muy distintos al resto (probable error de medición, movimiento de cámara o un tirón).`);
   if (Number.isFinite(res.visPunto) && res.visPunto < 0.6) {
@@ -76,7 +78,7 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
     const masaV = perfil === 'corporal' ? masaTotal : carga;
     if (masaV > 0) {
       const rmVel = masaV / (pct / 100);
-      const topeReps = epley1RM(masaV, reps.length + 25); // mas de ~25 reps en reserva con esa carga no es creible
+      const topeReps = epley1RM(masaV, nReps + 25); // mas de ~25 reps en reserva con esa carga no es creible
       const topeBW = pesoCorporal > 0 ? pesoCorporal * (TOPE_BW[ej.ecuacion] || 4) : Infinity;
       if (rmVel > topeReps || rmVel > topeBW) {
         pct = null; delete out.ecuacion;
@@ -100,7 +102,7 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
       const pg = lim(100 - PENDIENTE_GEN * (out.vMejor - mvt), 30, 100);
       const rmVel = masaReal / (pg / 100);
       const topeBW = pesoCorporal > 0 ? pesoCorporal * (TOPE_BW[ej.ecuacion] || 4) : Infinity;
-      if (rmVel <= epley1RM(masaReal, reps.length + 25) && rmVel <= topeBW) {
+      if (rmVel <= epley1RM(masaReal, nReps + 25) && rmVel <= topeBW) {
         pct = pg; out.ecuacion = 'relación general velocidad–%1RM, aprox.'; out.pctGenerico = true;
       }
     }
@@ -109,7 +111,7 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
     if (pocasReps) out.notas.push(`Con ${reps.length === 1 ? '1 repetición' : '2 repeticiones'} el RIR, el RPE y el 1RM se estimaron con la velocidad de la barra (${out.vUltima.toFixed(2)} m/s frente a ${mvt.toFixed(2)} m/s, la velocidad típica de una rep al máximo${out.mvtPersonal || (pcv && pcv.mvtPersonal) ? ', la tuya' : ''}). Es una estimación aproximada: si registras tu 1RM real en Entrenar → progreso del ejercicio, se ajusta a ti.`);
   }
   let rirPct = null;
-  if (pct !== null) rirPct = lim(repsAPorcentaje(pct) - reps.length, 0, 20);
+  if (pct !== null) rirPct = lim(repsAPorcentaje(pct) - nReps, 0, 20);
   // la velocidad de la ultima rep es fiable cerca del maximo (RIR <= 3); lejos del maximo manda el %1RM
   if (rirUltima !== null && rirUltima <= 3) rirPct = rirPct === null ? rirUltima : (rirPct + rirUltima) / 2;
   else if (rirUltima !== null && rirPct === null) rirPct = rirUltima;
@@ -120,7 +122,7 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
     rmPerfil = masaHoy + pcv.b * (mvt - out.vMejor);
     if (rmPerfil > masaHoy) {
       pctPerfil = lim(100 * masaHoy / rmPerfil, 20, 100);
-      rirPerfil = lim(repsAPorcentaje(pctPerfil) - reps.length, 0, 20);
+      rirPerfil = lim(repsAPorcentaje(pctPerfil) - nReps, 0, 20);
     } else rmPerfil = null;
   }
   out.mvt = mvt; out.mvtPersonal = !!(pcv && pcv.mvtPersonal);
@@ -140,7 +142,7 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
   if (!pocas && (out.rir === undefined || out.rir === null)) {
     if (!out.rirTexto && out.perdida >= 10) {
       const frac = lim(out.perdida / 40, 0.25, 1); // 40 % de perdida ~ cerca del fallo
-      out.rir = lim(reps.length * (1 / frac - 1), 0, 10);
+      out.rir = lim(nReps * (1 / frac - 1), 0, 10);
     }
   }
   if (out.rir !== null && out.rir !== undefined) {
@@ -157,14 +159,14 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
   const rirParaRM = out.rir ?? 5;
   const masaRM = perfil === 'corporal' ? masaTotal : carga;
   if (masaRM > 0 && !pocas) {
-    est.push({ metodo: 'Repeticiones + RIR (Epley)', valor: rmDesde(masaRM, reps.length + rirParaRM) });
+    est.push({ metodo: 'Repeticiones + RIR (Epley)', valor: rmDesde(masaRM, nReps + rirParaRM) });
     if (pct !== null) est.push(out.rmReal ? { metodo: 'Tu 1RM real', valor: out.rmReal, peso: 2 } : { metodo: 'Velocidad (' + out.ecuacion + ')', valor: masaRM / (pct / 100) });
   }
   if (rmPerfil) est.push({ metodo: `Tu perfil carga-velocidad (confianza ${pcv.confianza})`, valor: rmPerfil, peso: pcv.confianza === 'alta' ? 2 : 1 });
   if (est.length) {
     const vals = est.map((e) => e.valor), pesos = est.map((e) => e.peso || 1);
     out.rm = vals.reduce((a, v, i) => a + v * pesos[i], 0) / pesos.reduce((a, b) => a + b);
-    out.rm = Math.min(out.rm, epley1RM(masaRM, reps.length + 25)); // tope fisico
+    out.rm = Math.min(out.rm, epley1RM(masaRM, nReps + 25)); // tope fisico
     out.rmMin = Math.min(...vals); out.rmMax = Math.max(...vals);
     out.metodos = est;
     out.pct = 100 * masaRM / out.rm;

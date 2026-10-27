@@ -18,7 +18,7 @@ import * as nube from './nube.js';
 import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 
-const VERSION = '2.4.1';
+const VERSION = '2.5.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -249,30 +249,19 @@ async function analizarArchivo() {
     });
     if (frames.filter((f) => f.puntos).length < frames.length * 0.3) throw new Error('No se ve bien a la persona en el video. Graba de lado, con el cuerpo completo y buena luz.');
     progreso(2, 0.2, 'Calculando la física…');
-    const fps = 60, full = interpolar(frames, fps, video.duration);
     const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
-    const res = analizar(full, fps, ej, { masa, alfa, relacion, altura, inicio: ini > 0 ? ini : null, fin: fin > 0 ? fin : null });
+    d.ini = ini > 0 ? ini : null; d.fin = fin > 0 ? fin : null;
+    const calc = calcularSerie(frames, video.duration, ej, d, { discoPts: seguidor ? seguidor.puntos : null });
+    const { full, res, serie, pcv, tray, tec, fps } = calc;
     if (!res.reps.length) throw new Error('No se detectaron repeticiones. Revisa que elegiste el ejercicio correcto y que se vea todo el movimiento.');
-    const pcv = perfilCargaVelocidad(hist.leer(), ej);
-    const serie = analizarSerie(res, ej, { carga: ej.perfil === 'corporal' ? peso : carga, masaTotal: masa, pesoCorporal: pc, perfil: ej.perfil, pcv, rmReal: entrenar.rmRealDe(ej.id) });
-    const mPx = escala(full, fps, altura);
-    const tray = calcularTrayectoria(full, fps, res, ej, seguidor ? seguidor.puntos : null, mPx);
-    const tec = revisarTecnica(full, fps, res, ej, mPx);
     progreso(2, 1);
 
-    const inf = crearInforme({ res, s: serie, tray, tec, pcv, datos: { carga, masa, pc, alfa, peso, relacion, calidad, origen }, fps });
-    const r3 = (x, d = 3) => (Number.isFinite(x) ? +x.toFixed(d) : null);
-    const registro = hist.agregar({
-      ejercicio: ej.id, nombre: ej.nombre, equipo: ej.equipo || '', carga: ej.perfil === 'corporal' ? peso : carga, masa, perfil: ej.perfil, alfa,
-      reps: res.reps.length, repsValidas: serie.validas, vMejor: serie.vMejor, vUltima: serie.vUltima, perdida: serie.perdida, rir: serie.rir ?? null, rpe: serie.rpe,
-      rm: serie.rm ?? null, rmLastre: serie.rmLastre ?? null, fPico: serie.fPico, pPico: serie.pPico,
-      estatico: res.estatico, velocidades: res.reps.map((r) => +r.v_media.toFixed(3)), pesoCorporal: pc,
-      desvio: r3(tray.desvioMedio, 1), alertas: tec.resumen, origen, informe: true,
-      repsDet: inf.reps,
-    });
+    const inf = crearInforme({ res, s: serie, tray, tec, pcv, datos: datosInforme(d, calidad, origen, video.duration), fps, e: ej });
+    const registro = hist.agregar(registroDe(ej, d, res, serie, tray, tec, inf, origen));
     inf.id = registro.id; inf.fecha = registro.fecha;
     if (entrenar.vincular(registro)) aviso('');
     await almacen.guardarInforme(inf);
+    almacen.guardarPose(registro.id, frames, { dur: video.duration, W: video.videoWidth, H: video.videoHeight, version: VERSION });
     origen = 'video';
 
     let salida = null;
@@ -300,9 +289,41 @@ async function analizarArchivo() {
   }
 }
 
+// Fisica + interpretacion de una serie a partir de los puntos del cuerpo. Se usa al analizar un video y al corregir
+// a mano las reps (se vuelve a calcular con los mismos puntos, sin el video).
+// excluir: tiempos (s) del tope de las reps que el usuario dijo que no son reps · repsTotal: reps que dice que hizo
+function calcularSerie(frames, dur, e, d, { excluir = [], repsTotal = null, discoPts = null, idSerie = null } = {}) {
+  const fps = 60, full = interpolar(frames, fps, dur);
+  const res = analizar(full, fps, e, { masa: d.masa, alfa: d.alfa, relacion: d.relacion, altura: d.altura, inicio: d.ini || null, fin: d.fin || null });
+  if (excluir.length) {
+    res.reps = res.reps.filter((r) => !excluir.some((t) => Math.abs(r.tope / fps - t) < 0.06));
+    if (res.reps.length) marcarReps(res.reps);
+  }
+  const pcv = perfilCargaVelocidad(hist.leer(), e, { excluir: idSerie });
+  const serie = analizarSerie(res, e, { carga: e.perfil === 'corporal' ? d.peso : d.carga, masaTotal: d.masa, pesoCorporal: d.pc, perfil: e.perfil, pcv,
+    rmReal: entrenar.rmRealDe(e.id), repsTotal });
+  const mPx = escala(full, fps, d.altura);
+  const tray = calcularTrayectoria(full, fps, res, e, discoPts, mPx);
+  const tec = revisarTecnica(full, fps, res, e, mPx);
+  return { full, res, serie, pcv, tray, tec, fps };
+}
+const datosInforme = (d, calidad, origen, dur) => ({ carga: d.carga, masa: d.masa, pc: d.pc, alfa: d.alfa, peso: d.peso, relacion: d.relacion, calidad, origen,
+  altura: d.altura, ini: d.ini || null, fin: d.fin || null, dur });
+function registroDe(e, d, res, serie, tray, tec, inf, origenSerie) {
+  const r3 = (x, k = 3) => (Number.isFinite(x) ? +x.toFixed(k) : null);
+  return {
+    ejercicio: e.id, nombre: e.nombre, equipo: e.equipo || '', carga: e.perfil === 'corporal' ? d.peso : d.carga, masa: d.masa, perfil: e.perfil, alfa: d.alfa,
+    reps: serie.reps, repsValidas: serie.validas, vMejor: serie.vMejor, vUltima: serie.vUltima, perdida: serie.perdida, rir: serie.rir ?? null, rpe: serie.rpe,
+    rm: serie.rm ?? null, rmLastre: serie.rmLastre ?? null, fPico: serie.fPico, pPico: serie.pPico,
+    estatico: res.estatico, velocidades: res.reps.map((r) => +r.v_media.toFixed(3)), pesoCorporal: d.pc,
+    desvio: r3(tray.desvioMedio, 1), alertas: tec.resumen, origen: origenSerie, informe: true,
+    repsDet: inf.reps,
+  };
+}
+
 // ------------------------------------------------------------------ informe de la serie
 // Todo lo necesario para volver a mostrar la serie y generar el PDF, sin el video original.
-function crearInforme({ res, s, tray, tec, pcv, datos, fps }) {
+function crearInforme({ res, s, tray, tec, pcv, datos, fps, e: ej }) {
   const r3 = (x, d = 3) => (Number.isFinite(x) ? +x.toFixed(d) : null);
   const caminos = res.reps.map((r) => {
     const pts = [], paso = Math.max(1, Math.round((r.fin - r.inicio) / 60));
@@ -401,8 +422,8 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
     }
   } else { $('r-rm').textContent = '--'; $('r-rm-sub').textContent = ''; }
   $('r-rpe').textContent = s.rpeTexto ?? '--'; $('r-rir').textContent = s.rirTexto ?? '--';
-  $('r-reps').textContent = inf.reps.length;
-  $('r-reps-sub').textContent = s.validas < inf.reps.length ? `${inf.reps.length - s.validas} parcial(es)` : 'completas';
+  $('r-reps').textContent = inf.corregida ? inf.corregida.real : inf.reps.length;
+  $('r-reps-sub').textContent = inf.corregida ? 'corregido a mano' : s.validas < inf.reps.length ? `${inf.reps.length - s.validas} parcial(es)` : 'completas';
   $('r-vel').textContent = fmt(s.vMejor, 2);
   $('r-perd').textContent = fmt(s.perdida) + ' %'; $('r-fatiga').textContent = 'fatiga ' + (s.fatiga || '').toLowerCase();
   $('r-est').innerHTML = Number.isFinite(inf.estatico) ? `${fmt(inf.estatico)} <small>kg</small>` : '--';
@@ -492,6 +513,97 @@ $('btn-borrar-serie').onclick = () => {
   vista(destino);
   aviso('Serie borrada del historial.', true);
 };
+// ------------------------------------------------------------------ corregir el conteo y reportar fallos
+// El usuario marca las reps que no fueron (acomodarse, sacar la barra) y dice cuantas hizo en total. Con los puntos del
+// cuerpo guardados se vuelve a calcular todo (velocidades, RIR, 1RM) sin el video. Si acepta, el caso (solo puntos del
+// cuerpo y su correccion, nunca el video) llega al equipo para mejorar la deteccion.
+async function comprimirB64(texto) {
+  const flujo = new Blob([texto]).stream().pipeThrough(new CompressionStream('gzip'));
+  const buf = new Uint8Array(await new Response(flujo).arrayBuffer());
+  let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function enviarFallo(inf, pose, { real, excluidas, comentario }) {
+  const r = (x) => Math.round(x * 10) / 10;
+  const p = pose ? {
+    W: pose.W, H: pose.H, dur: pose.dur, version: pose.version,
+    frames: almacen.desempacarPose(pose).map((f) => [r(f.t * 100) / 100, f.puntos ? f.puntos.map((q) => [Math.round(q[0]), Math.round(q[1]), Math.round(q[2] * 100) / 100]) : null]),
+  } : null;
+  const cuerpo = {
+    ejercicio: inf.ej.id, nombre: inf.ej.nombre, repsApp: inf.corregida ? inf.corregida.app : inf.reps.length, repsReal: real,
+    excluidas, comentario: comentario || '', version: VERSION,
+    datos: { ...inf.datos, reps: inf.reps.map((x) => ({ n: x.n, tope: x.tope, v: x.v, rec: x.rec })) },
+    pose: p && typeof CompressionStream !== 'undefined' ? await comprimirB64(JSON.stringify(p)) : null,
+  };
+  return nube.api('POST', '/api/fallos', cuerpo);
+}
+function abrirCorreccion() {
+  const inf = informeActual; if (!inf) return;
+  const base = inf.corregida ? inf.corregida.repsOriginales : inf.reps;
+  const fuera = new Set(inf.corregida ? inf.corregida.excluidas : []);
+  let total = inf.corregida ? inf.corregida.real : inf.reps.length;
+  const pinta = () => {
+    const quedan = base.filter((x) => !fuera.has(x.tope)).length;
+    if (total < quedan) total = quedan;
+    $('corr-cuerpo').innerHTML = `<p class="corr-nota">La app contó <b>${base.length}</b> rep${base.length === 1 ? '' : 's'}. Desmarca las que <b>no</b> fueron reps (por ejemplo al acomodarte o al sacar la barra).</p>
+      <ul class="corr-lista">${base.map((x) => `<li><label class="${fuera.has(x.tope) ? 'no' : ''}"><input type="checkbox" data-tope="${x.tope}"${fuera.has(x.tope) ? '' : ' checked'}>
+        <span>Rep ${x.n}${Number.isFinite(x.tope) ? ` <small>· llega arriba a los ${fmt(x.tope, 1)} s</small>` : ''}<br><small>${fmt(x.v, 2)} m/s${Number.isFinite(x.rec) ? ` · ${fmt(x.rec)} cm` : ''}</small></span></label></li>`).join('')}</ul>
+      <div class="corr-total"><span>¿Cuántas reps hiciste en total?</span><div class="corr-paso"><button type="button" id="corr-menos" aria-label="Una menos">−</button><output id="corr-n">${total}</output><button type="button" id="corr-mas" aria-label="Una más">+</button></div></div>
+      ${total > quedan ? `<p class="corr-nota">La app no vio ${total - quedan} rep${total - quedan === 1 ? '' : 's'}: cuentan para el RIR y el 1RM, pero sin velocidad.</p>` : ''}
+      <label for="corr-coment" class="corr-nota">¿Algo más que falló? (opcional)</label>
+      <textarea id="corr-coment" maxlength="500" placeholder="Ej.: contó una rep cuando me acomodaba, la velocidad no cuadra…">${esc($('corr-coment')?.value || '')}</textarea>
+      <label class="corr-envio"><input type="checkbox" id="corr-enviar" checked> <span>Enviar este caso al equipo de FuerzaPro para mejorar la detección. Solo se envían los puntos del cuerpo que detectó la IA y tu corrección, nunca el video.</span></label>
+      <div class="corr-botones"><button type="button" class="btn-sec" id="corr-cancelar">Cancelar</button><button type="button" class="btn-primary" id="corr-guardar">Guardar corrección</button></div>`;
+    $('corr-cuerpo').querySelectorAll('[data-tope]').forEach((c) => (c.onchange = () => {
+      const t = parseFloat(c.dataset.tope);
+      if (c.checked) fuera.delete(t); else fuera.add(t);
+      if (!c.checked && total > base.filter((x) => !fuera.has(x.tope)).length) total--;
+      if (c.checked) total++;
+      pinta();
+    }));
+    $('corr-menos').onclick = () => { total = Math.max(quedan, total - 1); pinta(); };
+    $('corr-mas').onclick = () => { total = Math.min(100, total + 1); pinta(); };
+    $('corr-cancelar').onclick = () => { $('corregir').style.display = 'none'; };
+    $('corr-guardar').onclick = () => guardarCorreccion(inf, base, [...fuera], total, $('corr-enviar').checked, $('corr-coment').value.trim());
+  };
+  pinta();
+  $('corregir').style.display = 'flex';
+}
+async function guardarCorreccion(inf, base, excluidas, real, enviar, comentario) {
+  const btn = $('corr-guardar'); btn.disabled = true; btn.textContent = 'Guardando…';
+  const pose = inf.id ? await almacen.leerPose(inf.id) : null;
+  const app = inf.corregida ? inf.corregida.app : base.length;
+  const e = POR_ID[inf.ej.id];
+  let nuevo = null;
+  try {
+    if (pose && e && inf.datos && inf.datos.altura) {
+      const d = { ...inf.datos };
+      const c = calcularSerie(almacen.desempacarPose(pose), pose.dur, e, d, { excluir: excluidas, repsTotal: real, idSerie: inf.id });
+      nuevo = crearInforme({ res: c.res, s: c.serie, tray: c.tray, tec: c.tec, pcv: c.pcv, datos: inf.datos, fps: c.fps, e });
+      nuevo.id = inf.id; nuevo.fecha = inf.fecha;
+      nuevo.s.notas = [`Conteo corregido a mano: la app contó ${app} y hiciste ${real}.`, ...nuevo.s.notas];
+      hist.actualizar(inf.id, registroDe(e, d, c.res, c.serie, c.tray, c.tec, nuevo, inf.datos.origen || 'video'));
+    } else { // serie sin puntos guardados (version anterior o ya borrados): solo se corrige el numero
+      nuevo = { ...inf, s: { ...inf.s, notas: [`Conteo corregido a mano: la app contó ${app} y hiciste ${real}. Las velocidades y el 1RM no se recalcularon (esta serie no guardó los puntos del cuerpo).`, ...inf.s.notas.filter((t) => !t.startsWith('Conteo corregido'))] } };
+      if (inf.id) hist.actualizar(inf.id, { reps: real });
+    }
+    nuevo.corregida = { app, real, excluidas, repsOriginales: base };
+    if (nuevo.id) await almacen.guardarInforme(nuevo);
+    nube.sincronizar && nube.sincronizar();
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Guardar corrección';
+    return alert('No se pudo recalcular la serie: ' + (err.message || err));
+  }
+  $('corregir').style.display = 'none';
+  mostrarInforme(nuevo, { video: videoActual, desde: vistaPrevia });
+  if (!enviar) return aviso('Corrección guardada.', true);
+  if (!nube.conectado()) return aviso('Corrección guardada. Para enviar el caso al equipo, inicia sesión en Perfil.', true);
+  try { await enviarFallo(nuevo, pose, { real, excluidas, comentario }); aviso('Corrección guardada y enviada. ¡Gracias! Con esto mejoramos la detección.', true); }
+  catch (err) { aviso('Corrección guardada, pero no se pudo enviar el caso: ' + (err.message || err), true); }
+}
+$('btn-corregir').onclick = abrirCorreccion;
+$('corregir').addEventListener('click', (ev) => { if (ev.target.id === 'corregir') $('corregir').style.display = 'none'; });
+
 $('btn-pdf').onclick = async () => {
   if (!informeActual) return;
   const b = $('btn-pdf'), txt = b.textContent;

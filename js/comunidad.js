@@ -436,9 +436,14 @@ async function pintarActividad() {
 async function moderar() {
   modal('<p class="hint co-cargando">Cargando…</p>');
   try {
-    const r = await nube.api('GET', '/api/mod/reportes');
+    const [r, f] = await Promise.all([nube.api('GET', '/api/mod/reportes'), nube.api('GET', '/api/mod/fallos').catch(() => ({ fallos: [] }))]);
     const nombre = { publicacion: 'Publicación', comentario: 'Comentario', usuario: 'Perfil' };
-    modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
+    const pend = f.fallos.filter((x) => x.estado === 'pendiente');
+    const fallosHtml = `<h4>🐞 Fallos de conteo reportados${pend.length ? ` · ${pend.length} pendiente${pend.length > 1 ? 's' : ''}` : ''}</h4>${f.fallos.length
+      ? f.fallos.slice(0, 30).map((x) => `<div class="card co-rep"><b>${esc(x.nombre || x.ejercicio)}</b> · la app contó ${x.reps_app ?? '?'}, eran ${x.reps_real ?? '?'}
+        <small class="hint"> · ${hace(x.creado)} · v${esc(x.version || '?')} · ${esc(x.estado)}${x.pose_bytes ? '' : ' · sin puntos'}</small>${x.comentario ? `<p class="co-texto">${esc(x.comentario)}</p>` : ''}</div>`).join('')
+      : '<p class="hint">Sin fallos reportados.</p>'}<p class="hint">Pídele a Claude «revisa los fallos reportados» para corregirlos.</p>`;
+    modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${fallosHtml}<h4>Reportes de la comunidad</h4>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
         <b>${nombre[x.tipo]}${x.alias ? ' de @' + esc(x.alias) : ''}</b> · ${x.n} reporte${x.n > 1 ? 's' : ''}${x.oculto ? ' · <span class="pf-nube-error">oculto</span>' : ''}
         <p class="co-texto">${esc(x.contenido || '(ya no existe)')}</p><p class="hint">${esc(x.motivos)}</p>
         <div class="co-perfil-botones">${x.tipo !== 'usuario' ? `<button type="button" class="btn-sec" data-a="${x.oculto ? 'mostrar' : 'ocultar'}">${x.oculto ? 'Mostrar' : 'Ocultar'}</button>` : ''}

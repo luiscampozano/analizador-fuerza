@@ -267,6 +267,17 @@ export const EJERCICIOS = [
     hint: 'Peso = el balón. Graba de lado.' }, 'medicine ball throw slam'),
 ];
 
+// Detector de reps por grupo. 'cuerpo': ejercicios de pie con los pies fijos en los que sube y baja todo el cuerpo
+// (o la barra con el cuerpo). Se cuentan los fondos (sentadillas: cada rep pasa por abajo) o los topes (peso muerto:
+// cada rep llega arriba, aunque empiece desde el piso).
+const DETECTOR = {
+  fondos: ['sentadilla', 'sentadilla_frontal', 'sentadilla_box', 'sentadilla_pausa', 'sentadilla_goblet', 'sentadilla_mancuernas',
+    'sentadilla_sumo', 'smith_sentadilla', 'hack', 'belt_squat', 'sentadilla_corporal', 'buenos_dias'],
+  topes: ['peso_muerto', 'peso_muerto_sumo', 'peso_muerto_rumano', 'rumano_mancuernas', 'peso_muerto_rigido', 'peso_muerto_hex',
+    'peso_muerto_deficit'],
+};
+for (const [cuenta, ids] of Object.entries(DETECTOR)) for (const e of EJERCICIOS) if (ids.includes(e.id)) { e.detector = 'cuerpo'; e.cuenta = cuenta; }
+
 export const POR_ID = Object.fromEntries(EJERCICIOS.map((e) => [e.id, e]));
 export const GRUPOS = [...new Set(EJERCICIOS.map((e) => e.grupo))];
 

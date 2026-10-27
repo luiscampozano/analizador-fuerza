@@ -198,6 +198,70 @@ export function marcarReps(reps) {
   reps.forEach((x, k) => { x.n = k + 1; x.perdida = 100 * (1 - x.v_media / mejor); });
 }
 
+// ------------------------------------------------------------ detector por grupo: cuerpo completo (sentadilla, peso muerto)
+function filtroMediana(y, ancho) {
+  const h = Math.floor(ancho / 2), n = y.length, out = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const v = []; for (let j = Math.max(0, i - h); j <= Math.min(n - 1, i + h); j++) if (Number.isFinite(y[j])) v.push(y[j]);
+    v.sort((a, b) => a - b); out[i] = v.length ? v[v.length >> 1] : y[i];
+  }
+  return out;
+}
+// Altura del punto seguido sobre los tobillos, en "torsos" (escala fija para todo el video: corregirla cuadro a cuadro
+// confunde agacharse con alejarse de la camara). Solo se cuenta en el tramo en que los pies estan quietos y la persona
+// a la distancia de siempre: sacar la barra, devolverla o ir a apagar el celular no cuentan como reps.
+export function repsCuerpo(full, fps, ej) {
+  const n = full.length;
+  const par = (f, ab, c) => (f[ab[0]][c] + f[ab[1]][c]) / 2;
+  const P = MP[ej.punto], T0 = mediana(full.map((f) => Math.hypot(par(f, MP.hombros, 0) - par(f, MP.cadera, 0), par(f, MP.hombros, 1) - par(f, MP.cadera, 1))));
+  if (!(T0 > 0)) return null;
+  const k1 = 2 * Math.round(fps / 8) + 1, k2 = 2 * Math.round(fps / 12) + 1;
+  const limpio = (arr) => filtroMediana(filtroMediana(arr, k1), k2);
+  let h = limpio(full.map((f) => (par(f, MP.pies, 1) - par(f, P, 1)) / T0));
+  h = savgol(h.map((x) => (Number.isFinite(x) ? x : 0)), fps / 4, 2);
+  // tramo activo: los pies quietos en su lugar (no esta caminando hacia el rack o hacia la camara)
+  const pieX = filtroMediana(full.map((f) => par(f, MP.pies, 0)), fps + 1);
+  const mPie = mediana(pieX);
+  const act = h.map((_, i) => Math.abs(pieX[i] - mPie) < 0.8 * T0);
+  let a = 0, b = -1;
+  for (let i = 0; i < n;) {
+    if (!act[i]) { i++; continue; }
+    let j = i; while (j + 1 < n && act[j + 1]) j++;
+    if (j - i > b - a) { a = i; b = j; }
+    i = j + 1;
+  }
+  if (b - a < fps) return null;
+  const y = h.slice(a, b + 1);
+  const lo = percentil(y, 5), hi = percentil(y, 95), r = hi - lo;
+  if (!(r > 0.05)) return null;
+  // amplitud tipica de una rep: el 80 % de las subidas/bajadas que se ven (las chicas son temblor o pasos)
+  const piv0 = zigzag(y, 0.12 * r);
+  const sw = []; for (let q = 0; q < piv0.length - 1; q++) sw.push(Math.abs(y[piv0[q + 1].i] - y[piv0[q].i]));
+  if (!sw.length) return null;
+  const A = sw.length >= 3 ? percentil(sw, 80) : Math.max(...sw);
+  const piv = zigzag(y, 0.35 * A);
+  const pares = [];
+  const R = percentil(y, 85), cerca = 0.35 * A; // nivel de reposo (de pie / bloqueado) y cuanto se puede alejar de el
+  const tope = R + 0.5 * A; // mas alto que eso no es la serie: soltar la barra, levantar los brazos, acercarse a la camara
+  // subida real: desde el ultimo instante cerca del fondo hasta el pivote (no cuenta el rato quieto abajo)
+  const subida = (i0, i1) => { let k = i0; for (let i = i1; i >= i0; i--) if (y[i] <= y[i0] + 0.15 * (y[i1] - y[i0])) { k = i; break; } return (i1 - k) / fps; };
+  for (let q = 0; q < piv.length; q++) {
+    const p = piv[q], ant = piv[q - 1], sig = piv[q + 1];
+    if (ej.cuenta === 'fondos') { // rep = salir de pie, bajar y volver a quedar de pie
+      if (p.tipo !== 'bajo' || !ant || !sig) continue;
+      const ok = R - y[p.i] >= 0.6 * A && y[ant.i] >= R - cerca && y[sig.i] >= R - cerca && y[sig.i] <= tope
+        && (sig.i - ant.i) / fps >= 1 && subida(p.i, sig.i) <= 5;
+      if (ok) pares.push([a + p.i, a + sig.i]);
+    } else { // rep = llegar arriba (bloqueo) desde abajo
+      if (p.tipo !== 'alto' || !ant) continue;
+      const ok = y[p.i] - y[ant.i] >= 0.6 * A && y[p.i] >= R - cerca && y[p.i] <= tope
+        && (p.i - ant.i) / fps >= 0.4 && subida(ant.i, p.i) <= 5;
+      if (ok) pares.push([a + ant.i, a + p.i]);
+    }
+  }
+  return { pares, a, b, A, h, T0 };
+}
+
 // ------------------------------------------------------------ analisis principal
 // Escala px -> m robusta: por cuadro se usa la mediana de los segmentos bien visibles; luego se fija una escala
 // estable para el video (la mediana) que solo puede variar +-20 % si la camara se acerca o se aleja.
@@ -259,7 +323,12 @@ export function analizar(full, fps, ej, cfg) {
     if (d[0] * dg[0] + d[1] * dg[1] < 0) d = [-d[0], -d[1]];
     dirs[i] = d;
   }
-  let s = savgol(rel.map((p, i) => p[0] * dirs[i][0] + p[1] * dirs[i][1]), fps / 2, 3);
+  // sentadilla / peso muerto: la altura sobre los tobillos con escala fija (ver repsCuerpo) mide mejor que la
+  // proyeccion con escala por cuadro, que confunde agacharse con alejarse de la camara
+  const cuerpo = ej.detector === 'cuerpo' ? repsCuerpo(full, fps, ej) : null;
+  const mMed = mediana(mPx);
+  let s = cuerpo ? savgol(cuerpo.h.map((x) => x * cuerpo.T0 * mMed), fps / 2, 3)
+    : savgol(rel.map((p, i) => p[0] * dirs[i][0] + p[1] * dirs[i][1]), fps / 2, 3);
   const s0 = percentil(s, 2); s = s.map((x) => x - s0);
   const v = savgol(s, fps / 2, 3, 1).map((x) => x * fps);
   const a = savgol(s, fps * 0.75, 3, 2).map((x) => x * fps * fps);
@@ -274,13 +343,23 @@ export function analizar(full, fps, ej, cfg) {
   // subidas y bajadas alternas y solo cuenta un cambio de direccion si el movimiento supera el recorrido minimo.
   // Asi no cuentan desenganchar/re-rackear ni el temblor, una rep luchada con estancamiento no se parte en dos, y la
   // primera y la ultima rep cuentan aunque esten al borde del video (antes se exigia bajada a los dos lados del tope).
-  const prom = umbralReps(s, fps);
-  const piv = zigzag(s, prom);
   const i0 = cfg.inicio ? Math.round(cfg.inicio * fps) : 0, i1 = cfg.fin ? Math.round(cfg.fin * fps) : n;
+  let pares;
+  if (cuerpo) pares = cuerpo.pares;
+  else {
+    const prom = umbralReps(s, fps);
+    const piv = zigzag(s, prom);
+    pares = [];
+    for (let q = 0; q < piv.length - 1; q++) if (piv[q].tipo === 'bajo' && piv[q + 1].tipo === 'alto') pares.push([piv[q].i, piv[q + 1].i, piv[q + 2] ? piv[q + 2].i : n - 1]);
+  }
   let reps = [];
-  for (let q = 0; q < piv.length - 1; q++) {
-    if (piv[q].tipo !== 'bajo' || piv[q + 1].tipo !== 'alto') continue;
-    const a = piv[q].i, pk0 = piv[q + 1].i;
+  for (let q = 0; q < pares.length; q++) {
+    let a = pares[q][0], pk0 = pares[q][1];
+    if (cuerpo) { // los pivotes vienen de la altura del cuerpo: se ajustan al fondo y al tope de la carga
+      const m = Math.round(0.3 * fps);
+      for (let i = Math.max(0, a - m); i <= Math.min(pk0, a + m); i++) if (s[i] < s[a]) a = i;
+      for (let i = Math.max(a, pk0 - m); i <= Math.min(n - 1, pk0 + m); i++) if (s[i] > s[pk0]) pk0 = i;
+    }
     if (pk0 < i0 || pk0 >= i1 || a < i0 - Math.round(2 * fps)) continue;
     if ((pk0 - a) / fps < 0.25) continue; // mas rapido que eso no es una rep, es ruido
     const minV = s[a];
@@ -289,7 +368,7 @@ export function analizar(full, fps, ej, cfg) {
     let ini = a; for (let i = pk0; i >= a; i--) if (s[i] <= minV + tol) { ini = i; break; }
     // tope = primer instante en que llega arriba (no el final del bloqueo)
     let pk = pk0; for (let i = ini; i <= pk0; i++) if (s[i] >= s[pk0] - tol) { pk = i; break; }
-    const sig = piv[q + 2] ? piv[q + 2].i : n - 1;
+    const sig = pares[q][2] ?? (pares[q + 1] ? pares[q + 1][0] : n - 1);
     const fin = Math.min(sig, i1 - 1);
     const con = [ini, pk + 1];
     const seg = (arr) => arr.slice(con[0], con[1]);
@@ -307,7 +386,9 @@ export function analizar(full, fps, ej, cfg) {
     });
   }
   // al soltar o agarrar la carga las manos se mueven en otra direccion: fuera reps de borde atipicas
-  if (reps.length >= 3) {
+  // con carga nadie sube a mas de ~2 m/s de media: eso es la IA perdiendo el cuerpo un instante
+  if (cuerpo) reps = reps.filter((x) => x.v_media <= 2);
+  if (reps.length >= 3 && !cuerpo) {
     const ang = reps.map((x) => {
       const d = [relPx[x.tope][0] - relPx[x.inicio][0], relPx[x.tope][1] - relPx[x.inicio][1]];
       return Math.atan2(d[1], d[0]) * 180 / Math.PI;
@@ -318,14 +399,14 @@ export function analizar(full, fps, ej, cfg) {
     while (reps.length >= 3 && atipica[atipica.length - 1]) { reps.pop(); atipica.pop(); }
     while (reps.length >= 3 && atipica[0]) { reps.shift(); atipica.shift(); }
   }
-  if (reps.length >= 3) reps = quitarPreparacion(reps, full, fps, ej, rel, mPx);
+  if (reps.length >= 3 && !cuerpo) reps = quitarPreparacion(reps, full, fps, ej, rel, mPx);
   if (reps.length) {
     marcarReps(reps);
     // desenganchar o re-rackear la barra, acomodarse en la maquina: movimientos cortos en los bordes de la serie.
     // Se marcaban como "parcial" pero se contaban; no son reps. Las parciales en medio de la serie se mantienen.
     let cambio = false;
-    while (reps.length > 1 && reps[0].parcial) { reps.shift(); cambio = true; }
-    while (reps.length > 1 && reps[reps.length - 1].parcial) { reps.pop(); cambio = true; }
+    while (!cuerpo && reps.length > 1 && reps[0].parcial) { reps.shift(); cambio = true; }
+    while (!cuerpo && reps.length > 1 && reps[reps.length - 1].parcial) { reps.pop(); cambio = true; }
     if (cambio) marcarReps(reps);
   }
   const valido = new Array(n).fill(false);
