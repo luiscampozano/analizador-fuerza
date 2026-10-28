@@ -108,7 +108,7 @@ function tResumen(d) {
 // 2) Musculos trabajados: cuerpo de frente y de espalda con cada musculo coloreado segun las series que recibio
 // (principales cuentan 1, secundarios 0.5). Si el ejercicio no esta en la tabla se usa su grupo muscular.
 const M = (pri, sec = []) => ({ pri, sec });
-const POR_EJ = [
+export const POR_EJ = [
   [/^pantorrilla/, M(['calves', 'left_soleus', 'right_soleus'])],
   [/^(extension_cuadriceps|extension_unilateral|sentadilla_sissy)/, M(['quadriceps'])],
   [/^curl_femoral|^buenos_dias/, M(['hamstring'], ['gluteal', 'lower_back'])],
@@ -129,9 +129,9 @@ const POR_EJ = [
   [/^(triceps|press_frances|patada_triceps|fondos_banco|fondos_maquina|press_agarre_cerrado)/, M(['triceps'], ['chest'])],
   [/^(crunch|abdominales|elevacion_piernas|rueda|lenadores|flexion_lateral)/, M(['abs', 'obliques'])],
 ];
-const POR_GRUPO = { Piernas: M(['quadriceps', 'calves'], ['gluteal']), 'Glúteo y femoral': M(['gluteal', 'hamstring']), Pecho: M(['chest'], ['triceps']),
+export const POR_GRUPO = { Piernas: M(['quadriceps', 'calves'], ['gluteal']), 'Glúteo y femoral': M(['gluteal', 'hamstring']), Pecho: M(['chest'], ['triceps']),
   Espalda: M(['upper_back', 'trapezius'], ['biceps']), Hombros: M(['front_deltoids', 'back_deltoids']), Brazos: M(['biceps', 'triceps', 'forearm']), Core: M(['abs', 'obliques']) };
-const NOMBRES_MUSC = { quadriceps: 'Cuádriceps', calves: 'Pantorrillas', left_soleus: 'Pantorrillas', right_soleus: 'Pantorrillas', hamstring: 'Femorales', gluteal: 'Glúteos',
+export const NOMBRES_MUSC = { quadriceps: 'Cuádriceps', calves: 'Pantorrillas', left_soleus: 'Pantorrillas', right_soleus: 'Pantorrillas', hamstring: 'Femorales', gluteal: 'Glúteos',
   abductor: 'Abductores', abductors: 'Aductores', lower_back: 'Lumbares', upper_back: 'Dorsales', trapezius: 'Trapecios', chest: 'Pecho', front_deltoids: 'Hombros',
   back_deltoids: 'Deltoide posterior', biceps: 'Bíceps', triceps: 'Tríceps', forearm: 'Antebrazos', abs: 'Abdomen', obliques: 'Oblicuos' };
 function cargaMuscular(d) {
