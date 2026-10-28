@@ -1,19 +1,33 @@
-# Publica la app en Cloudflare Pages (proyecto "fuerzapro") cada vez que hay cambios en main.
+# 1) "verificar": en CUALQUIER rama o pull request revisa sintaxis, versión, caché y pruebas del servidor.
+# 2) "publicar": solo en main, y solo si "verificar" pasó, publica en Cloudflare Pages (proyecto "fuerzapro").
 # Necesita dos secretos del repositorio: CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID.
-# Mientras no existan, el trabajo se salta sin fallar.
+# Mientras no existan, la publicación se salta sin fallar.
 name: Publicar en Cloudflare
 
 on:
   push:
-    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 concurrency:
-  group: publicar-cloudflare
+  group: publicar-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Si algo falla aquí, NO se publica (la versión anterior sigue en línea).
+      - name: Verificar antes de publicar
+        run: bash pruebas/verificar.sh
+
   publicar:
+    needs: verificar
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -31,7 +45,8 @@ jobs:
         run: |
           mkdir -p dist
           rsync -a ./ dist/ --exclude .git --exclude .github --exclude dist --exclude sql \
-            --exclude README.md --exclude .gitignore --exclude .nojekyll
+            --exclude README.md --exclude .gitignore --exclude .nojekyll \
+            --exclude pruebas --exclude docs --exclude HANDOFF.md
           ls dist
 
       - name: Publicar en Cloudflare Pages
