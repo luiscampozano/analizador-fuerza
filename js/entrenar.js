@@ -6,6 +6,7 @@ import * as almacen from './almacen.js';
 import { leerArchivo, convertir } from './importar.js';
 import { crearExcel } from './excel.js';
 import * as P from './progreso.js';
+import { FRENTE, ESPALDA } from './anatomia.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -22,7 +23,8 @@ const COLOR_DISCO = { 25: '#e53935', 20: '#1e63d6', 15: '#f2c200', 10: '#2e9b4a'
 let deps = null;        // { ejercicios, porId, vista, analizar, abrirSerie }
 let lista = [];         // entrenamientos guardados (mas reciente primero)
 let rutinas = [];
-let activo = null;      // entrenamiento (o rutina en edicion) en curso
+let activo = null;
+let reemplazarIndex = null;      // entrenamiento (o rutina en edicion) en curso
 let vistaActual = '';
 let reloj = null, audio = null, ultimoKg = null;
 export let enlacePendiente = null; // serie que espera su analisis por video
@@ -102,7 +104,7 @@ export async function iniciar(d) {
   $('en-descanso').onchange = () => guardarLS('af_descanso', $('en-descanso').value);
   $('en-barra').onclick = () => deps.vista('v-entrenar');
   $('en-buscar').oninput = pintarSelector;
-  $('en-sel-cerrar').onclick = () => { $('en-selector').style.display = 'none'; };
+  $('en-sel-cerrar').onclick = () => { reemplazarIndex = null; $('en-selector').style.display = 'none'; };
   $('en-det-cerrar').onclick = () => { $('en-detalle').style.display = 'none'; };
   $('en-hoja').onclick = (ev) => { if (ev.target.id === 'en-hoja') $('en-hoja').style.display = 'none'; };
   $('desc-menos').onclick = () => ajustarDescanso(-15);
@@ -270,8 +272,13 @@ function rutinaDesde(nombre, ejercicios, conObjetivo, id = null) {
 }
 function empezarRutina(r) {
   if (activo) return alert('Ya tienes un entrenamiento en curso. Termínalo o descártalo primero.');
-  empezar({ titulo: r.nombre, rutinaId: r.id, ejercicios: r.ejercicios.map((e) => ({ ej: e.ej, nombre: e.nombre, notas: e.notas || '',
-    series: e.series.map((s) => serieVacia(s.tipo, (s.kg || s.reps || s.rpe) ? { kg: s.kg, reps: s.reps, rpe: s.rpe } : null)) })) });
+  empezar({
+    titulo: r.nombre,
+    rutinaId: r.id,
+    rutinaOriginal: { id: r.id, nombre: r.nombre, ejercicios: r.ejercicios.map((e) => ({ ej: e.ej, nombre: e.nombre })) },
+    ejercicios: r.ejercicios.map((e) => ({ ej: e.ej, nombre: e.nombre, notas: e.notas || '',
+      series: e.series.map((s) => serieVacia(s.tipo, (s.kg || s.reps || s.rpe) ? { kg: s.kg, reps: s.reps, rpe: s.rpe } : null)) }))
+  });
 }
 function editarRutina(r) {
   if (activo) return alert('Ya tienes un entrenamiento en curso. Termínalo o descártalo primero.');
@@ -285,6 +292,7 @@ function editarRutina(r) {
 function empezar(base = null) {
   const h = new Date().getHours();
   activo = { id: 'e-' + Date.now(), inicio: new Date().toISOString(), origen: 'app', rutinaId: base?.rutinaId || null,
+    rutinaOriginal: base?.rutinaOriginal || (base?.rutinaId ? rutinas.find((x) => x.id === base.rutinaId) : null),
     titulo: base?.titulo || (h < 12 ? 'Entrenamiento de la mañana' : h < 19 ? 'Entrenamiento de la tarde' : 'Entrenamiento de la noche'),
     ejercicios: base?.ejercicios || [], descanso: null };
   guardarBorrador(); arrancarReloj();
@@ -311,8 +319,9 @@ function pintarActivo() {
     let nNormal = 0;
     return `<div class="en-ej" data-ie="${ie}">
       <div class="en-ej-cab"><span class="en-ej-icono">${iconoEj(e)}</span><strong>${esc(nombreEj(e))}</strong>
-        ${modoRutina ? '' : '<button type="button" class="en-mini" data-acc="progreso" title="Progreso y récords">📈</button>'}
-        <button type="button" class="en-mini" data-acc="subir" title="Subir">↑</button><button type="button" class="en-mini" data-acc="quitar" title="Quitar">✕</button></div>
+        ${modoRutina ? '' : '<button type="button" class="en-mini" data-acc="progreso" title="Progreso y músculos">📈</button>'}
+        <button type="button" class="en-mini" data-acc="opciones" title="Opciones">⋯</button>
+        <button type="button" class="en-mini" data-acc="quitar" title="Quitar">✕</button></div>
       ${r ? `<div class="en-ref">1RM de referencia: <b>${fmt(r.kg)} kg</b> ${r.fuente === 'hoy' ? '(calculado con tu serie de hoy)' : r.fuente === 'real' ? '(tu 1RM real)' : r.fuente === 'reciente' ? '(estimado, últimos 90 días)' : '(estimado de tu historial; puede estar desactualizado)'}. Pon reps y RPE y te sugiero el peso.</div>` : ''}
       <input class="en-nota" data-acc="nota" placeholder="Nota (opcional)" value="${esc(e.notas || '')}">
       <div class="en-fila en-fila-cab"><span>Serie</span><span>${modoRutina ? '' : 'Anterior'}</span><span>kg</span><span>Reps</span><span>RPE</span><span>✓</span><span>🎥</span></div>
@@ -364,6 +373,7 @@ function accion(acc, ie, is) {
   const prevs = activo.rutina ? [] : anterior(e, activo.id) || [], prev = prevs[is];
   if (acc === 'quitar') { if (!confirm(`¿Quitar ${nombreEj(e)}?`)) return; activo.ejercicios.splice(ie, 1); }
   else if (acc === 'subir') { if (ie === 0) return; activo.ejercicios.splice(ie - 1, 0, activo.ejercicios.splice(ie, 1)[0]); }
+  else if (acc === 'opciones') return abrirOpcionesEjercicio(ie);
   else if (acc === 'progreso') return abrirProgreso(e);
   else if (acc === 'serie') {
     const u = e.series[e.series.length - 1];
@@ -392,6 +402,34 @@ function accion(acc, ie, is) {
   guardarBorrador(); pintarActivo();
 }
 
+function abrirOpcionesEjercicio(ie) {
+  const e = activo.ejercicios[ie];
+  const op = [
+    ['🔄', 'Reemplazar ejercicio', () => abrirSelector(ie)],
+  ];
+  if (!activo.rutina) {
+    op.push(['📈', 'Progreso y músculos', () => abrirProgreso(e)]);
+  }
+  if (ie > 0) {
+    op.push(['↑', 'Mover arriba', () => {
+      activo.ejercicios.splice(ie - 1, 0, activo.ejercicios.splice(ie, 1)[0]);
+      guardarBorrador(); pintarActivo();
+    }]);
+  }
+  if (ie < activo.ejercicios.length - 1) {
+    op.push(['↓', 'Mover abajo', () => {
+      activo.ejercicios.splice(ie + 1, 0, activo.ejercicios.splice(ie, 1)[0]);
+      guardarBorrador(); pintarActivo();
+    }]);
+  }
+  op.push(['🗑️', 'Eliminar ejercicio', () => {
+    if (!confirm(`¿Eliminar ${nombreEj(e)}?`)) return;
+    activo.ejercicios.splice(ie, 1);
+    guardarBorrador(); pintarActivo();
+  }, true]);
+  hoja(op);
+}
+
 function elegirTipo(e, is) {
   const op = Object.keys(NOMBRE_TIPO).map((t) => [`<span class="en-num t-${t}">${TIPOS[t] || '1'}</span>`, NOMBRE_TIPO[t] + (e.series[is].tipo === t ? ' ✓' : ''),
     () => { e.series[is].tipo = t; guardarBorrador(); pintarActivo(); }]);
@@ -400,9 +438,13 @@ function elegirTipo(e, is) {
 }
 
 // ------------------------------------------------------------------ selector de ejercicios
-function abrirSelector() {
-  $('en-buscar').value = ''; $('en-selector').style.display = 'flex'; pintarSelector();
-  setTimeout(() => $('en-buscar').focus({ preventScroll: true }), 50);
+function abrirSelector(reemplazar = null) {
+  reemplazarIndex = Number.isInteger(reemplazar) ? reemplazar : null;
+  const inBuscar = $('en-buscar');
+  inBuscar.value = '';
+  inBuscar.placeholder = reemplazarIndex != null ? 'Reemplazar por… (buscar ejercicio)' : 'Buscar ejercicio… (también en inglés)';
+  $('en-selector').style.display = 'flex'; pintarSelector();
+  setTimeout(() => inBuscar.focus({ preventScroll: true }), 50);
 }
 function recientes() {
   const vistos = [], claves = new Set();
@@ -427,6 +469,19 @@ function pintarSelector() {
   $('en-sel-lista').querySelectorAll('.en-sel-item').forEach((b) => (b.onclick = () => agregarEjercicio(b.dataset.ej || null, b.dataset.nombre)));
 }
 function agregarEjercicio(ej, nombre) {
+  if (reemplazarIndex != null && activo && activo.ejercicios[reemplazarIndex]) {
+    const e = activo.ejercicios[reemplazarIndex];
+    e.ej = ej;
+    e.nombre = ej && deps.porId[ej] ? deps.porId[ej].nombre : nombre;
+    const prev = activo.rutina ? null : anterior(e, activo.id);
+    if (!e.series || !e.series.length) {
+      e.series = prev && prev.length ? prev.map((s) => serieVacia(s.tipo)) : [serieVacia(), serieVacia(), serieVacia()];
+    }
+    reemplazarIndex = null;
+    $('en-selector').style.display = 'none';
+    guardarBorrador(); pintarActivo();
+    return;
+  }
   const e = { ej, nombre: ej && deps.porId[ej] ? deps.porId[ej].nombre : nombre, notas: '', series: [] };
   const prev = activo.rutina ? null : anterior(e, activo.id);
   e.series = prev && prev.length ? prev.map((s) => serieVacia(s.tipo)) : [serieVacia(), serieVacia(), serieVacia()];
@@ -437,13 +492,86 @@ function agregarEjercicio(ej, nombre) {
 }
 
 // ------------------------------------------------------------------ progreso de un ejercicio
+function obtenerMusculos(e) {
+  const def = e.ej && deps.porId[e.ej];
+  const id = e.ej || '';
+  const grupo = def ? def.musculo || def.grupo : 'Otros';
+  const m = (tarjetas.POR_EJ.find(([re]) => re.test(id)) || [])[1] || tarjetas.POR_GRUPO[grupo] || { pri: [], sec: [] };
+  const pri = m.pri || [];
+  const sec = m.sec || [];
+  const priTxt = pri.map((k) => tarjetas.NOMBRES_MUSC[k] || k).filter(Boolean).join(', ') || (def ? def.grupo : 'General');
+  const secTxt = sec.map((k) => tarjetas.NOMBRES_MUSC[k] || k).filter(Boolean).join(', ');
+  return { pri, sec, priTxt, secTxt };
+}
+
+function pintarCuerpoMusculos(canvas, pri, sec) {
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 300, H = 180;
+  canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.height = H + 'px';
+  const g = canvas.getContext('2d');
+  g.scale(dpr, dpr);
+  g.clearRect(0, 0, W, H);
+
+  const altoDeseado = H - 24;
+  const esc = altoDeseado / 200;
+  const anchoCuerpo = 100 * esc;
+  const sep = Math.max(16, (W - 2 * anchoCuerpo) / 3);
+  const xFrente = sep;
+  const xEspalda = sep * 2 + anchoCuerpo;
+  const y0 = 6;
+
+  const dibujarPolys = (poligonos, xBase) => {
+    for (const [musculo, polys] of poligonos) {
+      const esPri = pri.includes(musculo);
+      const esSec = sec.includes(musculo);
+      const neutro = musculo === 'head' || musculo === 'neck' || musculo === 'knees';
+      if (neutro) g.fillStyle = '#232334';
+      else if (esPri) g.fillStyle = '#ff5722';
+      else if (esSec) g.fillStyle = '#7c5cff';
+      else g.fillStyle = '#2b2b3e';
+
+      g.strokeStyle = '#14141f';
+      g.lineWidth = 1;
+      g.lineJoin = 'round';
+      for (const p of polys) {
+        g.beginPath();
+        g.moveTo(xBase + p[0] * esc, y0 + p[1] * esc);
+        for (let k = 2; k < p.length; k += 2) {
+          g.lineTo(xBase + p[k] * esc, y0 + p[k + 1] * esc);
+        }
+        g.closePath();
+        g.fill();
+        g.stroke();
+      }
+    }
+  };
+
+  dibujarPolys(FRENTE, xFrente);
+  dibujarPolys(ESPALDA, xEspalda);
+
+  g.font = '11px system-ui, sans-serif';
+  g.fillStyle = '#8e95a5';
+  g.textAlign = 'center';
+  g.fillText('Frente', xFrente + anchoCuerpo / 2, H - 4);
+  g.fillText('Espalda', xEspalda + anchoCuerpo / 2, H - 4);
+}
+
 function abrirProgreso(e) {
   const k = P.claveEj(e), r = P.registros(lista, k), real = P.rmReal(k), rf = P.referencia(lista, { ...e, series: [] });
   const repMax = Object.entries(r.repMax).map(([n, x]) => `<tr><td><b>${n}RM</b></td><td>${kgTxt(x.kg)} kg</td><td>${fechaTxt(x.fecha, false)}</td></tr>`).join('');
   const base = real ? real.kg : r.mejor ? r.mejor.valor : null;
   const tablaRPE = base ? `<table class="tabla en-tabla"><thead><tr><th>Reps</th><th>@7</th><th>@8</th><th>@9</th><th>@10</th></tr></thead><tbody>${[1, 2, 3, 4, 5, 6, 8, 10].map((n) => `<tr><td><b>${n}</b></td>${[7, 8, 9, 10].map((rpe) => `<td>${kgTxt(P.redondear(P.cargaPara(base, n, rpe)))}</td>`).join('')}</tr>`).join('')}</tbody></table>
     <p class="hint">Cargas (kg) según tu ${real ? '1RM real' : '1RM estimado'} de ${fmt(base)} kg, redondeadas a 2,5 kg. RPE 8 = te quedaban 2 reps.</p>` : '';
+  const musc = obtenerMusculos(e);
   $('en-det-cuerpo').innerHTML = `<h3 class="en-det-titulo">${iconoEj(e)} ${esc(nombreEj(e))}</h3>
+    <div class="en-musc-box">
+      <canvas id="en-musc-graf" class="en-musc-graf"></canvas>
+      <div class="en-musc-info">
+        <div><span class="en-musc-dot pri"></span><b>Primario:</b> ${esc(musc.priTxt)}</div>
+        ${musc.secTxt ? `<div><span class="en-musc-dot sec"></span><b>Secundario:</b> ${esc(musc.secTxt)}</div>` : ''}
+      </div>
+    </div>
     <div class="en-rm-real"><label for="en-rm-in">Mi 1RM real (kg)</label>
       <div><input id="en-rm-in" type="number" inputmode="decimal" step="any" min="0" value="${real ? real.kg : ''}" placeholder="${r.mejor ? fmt(r.mejor.valor) : 'ej.: 200'}">
       <button type="button" class="btn-sec" id="en-rm-ok">Guardar</button></div>
@@ -464,6 +592,7 @@ function abrirProgreso(e) {
     P.guardarRmReal(k, v > 0 ? v : 0);
     abrirProgreso(e); if (activo) pintarActivo(); else pintar();
   };
+  pintarCuerpoMusculos($('en-musc-graf'), musc.pri, musc.sec);
   if (r.puntos.length > 1) grafica($('en-graf'), r.puntos.filter((p) => p.e1rm).slice(-40), real ? real.kg : null);
 }
 
@@ -570,6 +699,36 @@ async function terminar() {
     if (confirm('No hay ninguna serie hecha. ¿Descartar el entrenamiento?')) cerrarActivo();
     return;
   }
+  if (activo.rutinaId) {
+    const rut = rutinas.find((x) => x.id === activo.rutinaId);
+    if (rut) {
+      const origEjs = activo.rutinaOriginal?.ejercicios || rut.ejercicios || [];
+      const kOrig = origEjs.map((e) => P.claveEj(e));
+      const kAct = activo.ejercicios.map((e) => P.claveEj(e));
+      const cambio = kOrig.length !== kAct.length || kOrig.some((k, i) => k !== kAct[i]);
+      if (cambio) {
+        const anadidos = kAct.filter((k) => !kOrig.includes(k)).length;
+        const eliminados = kOrig.filter((k) => !kAct.includes(k)).length;
+        let resumen = '';
+        if (anadidos && eliminados) resumen = `Has añadido ${anadidos} ejercicio${anadidos > 1 ? 's' : ''} y eliminado ${eliminados} ejercicio${eliminados > 1 ? 's' : ''}.`;
+        else if (anadidos) resumen = `Has añadido ${anadidos} ejercicio${anadidos > 1 ? 's' : ''}.`;
+        else if (eliminados) resumen = `Has eliminado ${eliminados} ejercicio${eliminados > 1 ? 's' : ''}.`;
+        else resumen = 'Has modificado los ejercicios de la rutina.';
+
+        const actualizar = await preguntarActualizarRutina(rut.nombre, resumen);
+        if (actualizar) {
+          rut.ejercicios = activo.ejercicios.map((e) => ({
+            ej: e.ej,
+            nombre: e.nombre,
+            notas: e.notas || '',
+            series: e.series.map((s) => ({ tipo: s.tipo, kg: s.kg, reps: s.reps, rpe: s.rpe }))
+          }));
+          guardarRutinas();
+        }
+      }
+    }
+  }
+
   const en = { id: activo.id, titulo: activo.titulo || 'Entrenamiento', inicio: activo.inicio, fin: new Date().toISOString(), origen: 'app', ejercicios };
   const recs = P.recordsNuevos(en, lista.filter((x) => x.id !== en.id), nombreEj);
   const nRec = recs.reduce((a, r) => a + r.records.length, 0);
@@ -579,6 +738,22 @@ async function terminar() {
   cerrarActivo();
   abrirTarjetas(en, recs, true); // como Hevy: al terminar, primero las tarjetas para compartir; «Listo» lleva al detalle
   if (nRec && navigator.vibrate) navigator.vibrate([80, 60, 80, 60, 160]);
+}
+
+function preguntarActualizarRutina(nombre, resumen) {
+  return new Promise((resolve) => {
+    const h = $('en-hoja');
+    h.innerHTML = `<div class="en-hoja-caja" style="text-align:center;padding:20px 16px 24px;">
+      <div style="font-size:36px;margin-bottom:8px;">📋</div>
+      <h3 style="margin:0 0 8px;font-size:17px;line-height:1.3;">Actualizar &ldquo;${esc(nombre)}&rdquo;</h3>
+      <p style="color:var(--text-muted);font-size:13.5px;margin:0 0 16px;">${esc(resumen)}</p>
+      <button type="button" class="btn-primary" id="en-act-rut-si" style="width:100%;padding:14px;font-weight:700;font-size:15px;justify-content:center;">Actualizar Rutina</button>
+      <button type="button" class="btn-sec" id="en-act-rut-no" style="width:100%;padding:12px;font-weight:600;font-size:14px;justify-content:center;margin-top:6px;">Mantener Rutina Original</button>
+    </div>`;
+    h.style.display = 'flex';
+    $('en-act-rut-si').onclick = () => { h.style.display = 'none'; resolve(true); };
+    $('en-act-rut-no').onclick = () => { h.style.display = 'none'; resolve(false); };
+  });
 }
 
 function guardarRutinaEditada() {
