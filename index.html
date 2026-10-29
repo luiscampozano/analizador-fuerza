@@ -391,7 +391,7 @@
       <div id="en-activo" style="display:none">
         <div class="en-cab">
           <input id="en-titulo" class="en-titulo" maxlength="50" aria-label="Nombre del entrenamiento">
-          <div class="en-cab-datos"><span>⏱ <b id="en-tiempo">0:00</b></span><span>🏋️ <b id="en-vol">0 kg</b></span><span>✓ <b id="en-nser">0</b> series</span></div>
+          <div class="en-cab-datos"><button type="button" class="en-reloj" id="en-reloj" aria-label="Editar hora de inicio y duración">⏱ <b id="en-tiempo">0:00</b> <i>✎</i></button><span>🏋️ <b id="en-vol">0 kg</b></span><span>✓ <b id="en-nser">0</b> series</span></div>
           <div class="en-cab-fila">
             <label class="en-desc-sel">Descanso
               <select id="en-descanso"><option value="0">Sin</option><option value="60">1:00</option><option value="90">1:30</option><option value="120">2:00</option>
@@ -624,6 +624,27 @@
     <button type="button" class="btn-sec" id="en-det-cerrar" style="width:100%;margin-top:10px">Cerrar</button>
   </div></div>
   <div id="en-hoja" class="modal en-hoja" style="display:none"></div>
+  <div id="en-duracion" class="modal en-modal" style="display:none" role="dialog" aria-labelledby="en-duracion-titulo"><div class="modal-caja en-sel-caja">
+    <div class="en-sec-cab"><strong id="en-duracion-titulo">Duración</strong><button type="button" class="btn-sec" id="en-duracion-cerrar">Listo</button></div>
+    <div class="en-campos">
+      <label>Duración<span class="en-dur-fila"><input id="en-dur-h" type="number" inputmode="numeric" min="0" max="23"> h <input id="en-dur-m" type="number" inputmode="numeric" min="0" max="59"> min</span></label>
+      <label>Hora de inicio<input id="en-dur-inicio" type="datetime-local"></label>
+      <p class="hint" style="margin:0">Si olvidaste empezar el reloj o lo dejaste corriendo, corrígelo aquí. Cambiar la duración mueve la hora de inicio.</p>
+    </div>
+  </div></div>
+  <div id="en-guardar" class="modal en-modal" style="display:none" role="dialog" aria-labelledby="en-guardar-titulo"><div class="modal-caja en-sel-caja pf-hoja">
+    <div class="en-sec-cab"><strong id="en-guardar-titulo">Guardar entrenamiento</strong><button type="button" class="btn-sec" id="en-guardar-cerrar">Cancelar</button></div>
+    <div class="en-det-cuerpo en-campos">
+      <input id="eg-titulo" class="eg-titulo" maxlength="80" placeholder="Nombre del entrenamiento" aria-label="Nombre del entrenamiento">
+      <textarea id="eg-desc" rows="3" maxlength="1000" placeholder="¿Cómo te fue el entrenamiento? (opcional)"></textarea>
+      <div class="eg-datos" id="eg-datos"></div>
+      <div class="eg-foto" id="eg-foto"></div>
+      <input id="eg-foto-in" type="file" accept="image/*" style="display:none">
+      <label>📅 Fecha y hora de inicio<input id="eg-inicio" type="datetime-local"></label>
+      <label>⏱ Duración<span class="en-dur-fila"><input id="eg-dur-h" type="number" inputmode="numeric" min="0" max="23"> h <input id="eg-dur-m" type="number" inputmode="numeric" min="0" max="59"> min</span></label>
+    </div>
+    <button type="button" class="btn-primary" id="en-guardar-ok" style="width:100%;margin-top:10px;flex:none">Guardar</button>
+  </div></div>
   <div id="pf-modal" class="modal en-modal" style="display:none"><div class="modal-caja en-sel-caja"><div id="pf-modal-cuerpo" class="en-det-cuerpo"></div>
     <button type="button" class="btn-sec" id="pf-det-cerrar" style="display:none">Cerrar</button></div></div>
   <div id="nu-hoja" class="modal en-modal" style="display:none"><div class="modal-caja en-sel-caja">

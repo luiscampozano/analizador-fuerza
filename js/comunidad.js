@@ -491,7 +491,7 @@ export async function compartir(en, recs) {
   }
   const datos = resumen(en, recs), previo = compartido(en.id);
   modal(`<h3 class="en-det-titulo">📣 ${previo ? 'Actualizar publicación' : 'Compartir en la comunidad'}</h3>
-    <textarea id="co-pub-txt" maxlength="1000" rows="3" placeholder="¿Cómo te fue? (opcional)">${esc(previo && previo.texto ? previo.texto : '')}</textarea>
+    <textarea id="co-pub-txt" maxlength="1000" rows="3" placeholder="¿Cómo te fue? (opcional)">${esc(previo && previo.texto ? previo.texto : en.descripcion || '')}</textarea>
     <p class="hint">Así lo verán tus seguidores y la pestaña Descubrir:</p>
     <div class="co-previa">${bloqueEntreno(datos)}</div>
     <button type="button" class="btn-primary" id="co-publicar" style="margin-top:12px">${previo ? 'Actualizar' : 'Publicar'}</button>`);

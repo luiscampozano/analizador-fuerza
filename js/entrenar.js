@@ -56,7 +56,7 @@ function duracion(ms) {
   const m = Math.floor(ms / 60000), h = Math.floor(m / 60);
   return h ? `${h} h ${String(m % 60).padStart(2, '0')} min` : `${m} min`;
 }
-const reloj2 = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const reloj2 = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}` : `${Math.floor(s / 60)}`) + `:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 function fechaTxt(iso, hora = true) {
   const d = new Date(iso);
   return d.toLocaleDateString('es-EC', { weekday: hora ? 'short' : undefined, day: 'numeric', month: 'short', year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined })
@@ -123,6 +123,17 @@ export async function iniciar(d) {
   $('en-det-cerrar').onclick = () => { $('en-detalle').style.display = 'none'; };
   $('en-ejs-cerrar').onclick = () => { $('en-ejs-modal').style.display = 'none'; };
   $('pf-grupo-cerrar').onclick = () => { $('pf-grupo').style.display = 'none'; };
+  $('en-reloj').onclick = abrirDuracion;
+  $('en-duracion-cerrar').onclick = () => { $('en-duracion').style.display = 'none'; };
+  $('en-dur-inicio').onchange = () => {
+    const d = deLocal($('en-dur-inicio').value); if (!d || !activo) return;
+    activo.inicio = new Date(Math.min(+d, Date.now())).toISOString(); guardarBorrador(); tic(); llenarDuracion();
+  };
+  $('en-dur-h').onchange = $('en-dur-m').onchange = () => {
+    if (!activo) return;
+    const min = (+$('en-dur-h').value || 0) * 60 + (+$('en-dur-m').value || 0);
+    activo.inicio = new Date(Date.now() - min * 60000).toISOString(); guardarBorrador(); tic(); llenarDuracion();
+  };
   $('en-ejs-buscar').oninput = pintarListaEjercicios;
   $('en-ejs-orden').onchange = pintarListaEjercicios;
   $('en-hoja').onclick = (ev) => { if (ev.target.id === 'en-hoja') $('en-hoja').style.display = 'none'; };
@@ -158,6 +169,7 @@ function pintarInicio() {
   pintarRutinas(); pintarCalendario(lunes);
   $('en-lista').innerHTML = lista.length ? lista.slice(0, 60).map((en) => `<div class="en-tarjeta" data-id="${en.id}" role="button">
       <div class="en-tarjeta-cab"><strong>${esc(en.titulo || 'Entrenamiento')}</strong><small>${fechaTxt(en.inicio)}${en.fin ? ' · ' + duracion(new Date(en.fin) - new Date(en.inicio)) : ''}</small></div>
+      ${en.foto ? `<img class="en-tarjeta-foto" src="${en.foto}" alt="" loading="lazy">` : ''}
       <div class="en-tarjeta-datos"><span>${fmt(volumen(en))} kg</span><span>${seriesHechas(en)} series</span>${en.records ? `<span class="en-pr">🏆 ${en.records}</span>` : ''}${en.origen && en.origen !== 'app' ? `<span class="en-origen">${esc(en.origen === 'hevy' ? 'Hevy' : en.origen === 'strong' ? 'Strong' : 'Excel')}</span>` : ''}</div>
       <div class="en-tarjeta-ej">${en.ejercicios.slice(0, 5).map((e) => `${e.series.filter(cuenta).length} × ${esc(nombreEj(e))}`).join('<br>')}${en.ejercicios.length > 5 ? `<br><small>+${en.ejercicios.length - 5} más</small>` : ''}</div>
     </div>`).join('') + (lista.length > 60 ? `<p class="vacio">Mostrando los 60 más recientes de ${lista.length}.</p>` : '')
@@ -362,8 +374,9 @@ function abrirDetalle(id, nuevo = null) {
   const en = lista.find((x) => x.id === id); if (!en) return;
   const recs = nuevo && nuevo.length ? `<div class="en-records"><b>🏆 ¡Nuevos récords!</b>${nuevo.map((r) => `<div><strong>${esc(r.nombre)}</strong><br>${r.records.map((x) => `<span>${x.tipo}: <b>${x.texto}</b></span>`).join('<br>')}</div>`).join('')}</div>` : '';
   $('en-det-cuerpo').innerHTML = `${nuevo ? '<div class="en-ok">✅ ¡Entrenamiento guardado!</div>' + recs : ''}
-    <h3 class="en-det-titulo">${esc(en.titulo || 'Entrenamiento')}</h3>
+    <div class="en-det-cab"><h3 class="en-det-titulo">${esc(en.titulo || 'Entrenamiento')}</h3><button type="button" class="btn-sec" id="en-det-editar">✏️ Editar</button></div>
     <p class="hint" style="margin-top:2px">${fechaTxt(en.inicio)}${en.fin ? ' · ' + duracion(new Date(en.fin) - new Date(en.inicio)) : ''} · ${fmt(volumen(en))} kg · ${seriesHechas(en)} series</p>
+    ${en.descripcion ? `<p class="en-det-desc">${esc(en.descripcion)}</p>` : ''}${en.foto ? `<img class="en-det-foto" src="${en.foto}" alt="Foto del entrenamiento">` : ''}
     ${en.ejercicios.map((e) => `<div class="en-det-ej"><strong>${iconoEj(e)} ${esc(nombreEj(e))}</strong>${e.ej && deps.porId[e.ej] && norm(e.nombre) !== norm(deps.porId[e.ej].nombre) ? `<small> (${esc(e.nombre)})</small>` : ''}
       ${e.notas ? `<div class="hint" style="margin:2px 0 4px">📝 ${esc(e.notas)}</div>` : ''}
       ${e.series.map((s, i) => `<div class="en-det-serie${s.tipo === 'calentamiento' ? ' cal' : ''}"><span>${TIPOS[s.tipo] || i + 1 - e.series.slice(0, i).filter((x) => x.tipo === 'calentamiento').length}</span>
@@ -385,6 +398,7 @@ function abrirDetalle(id, nuevo = null) {
     $('en-detalle').style.display = 'none';
     if (deps.compartir) deps.compartir(en, recs);
   };
+  $('en-det-editar').onclick = () => editarEntreno(en);
   $('en-repetir').onclick = () => {
     if (activo && !confirm('Ya tienes un entrenamiento en curso. ¿Reemplazarlo?')) return;
     $('en-detalle').style.display = 'none';
@@ -441,6 +455,83 @@ function empezar(base = null) {
   deps.vista('v-entrenar'); pintar();
   if (!activo.ejercicios.length) abrirSelector();
 }
+// ------------------------------------------------------------------ hora de inicio y duracion (durante el entreno)
+const dos = (n) => String(n).padStart(2, '0');
+const aLocal = (d) => { d = new Date(d); return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}T${dos(d.getHours())}:${dos(d.getMinutes())}`; };
+const deLocal = (t) => { const d = t ? new Date(t) : null; return d && !isNaN(d) ? d : null; };
+function llenarDuracion() {
+  const min = Math.max(0, Math.round((Date.now() - new Date(activo.inicio)) / 60000));
+  $('en-dur-h').value = Math.floor(min / 60); $('en-dur-m').value = min % 60;
+  $('en-dur-inicio').value = aLocal(activo.inicio); $('en-dur-inicio').max = aLocal(new Date());
+}
+function abrirDuracion() {
+  if (!activo || activo.rutina) return;
+  llenarDuracion(); $('en-duracion').style.display = 'flex';
+}
+
+// ------------------------------------------------------------------ ventana "Guardar entrenamiento" (al terminar y para editar despues)
+// Devuelve { titulo, descripcion, foto, inicio, fin } o null si se cancela.
+function reducirFoto(archivo) {
+  return new Promise((ok, mal) => {
+    const url = URL.createObjectURL(archivo), img = new Image();
+    img.onload = () => {
+      const lado = 1080, k = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      ok(c.toDataURL('image/jpeg', 0.72)); // ~100-250 KB: cabe en el telefono y en la nube
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); mal(new Error('No pude abrir esa imagen.')); };
+    img.src = url;
+  });
+}
+function abrirGuardar(d) {
+  return new Promise((resolver) => {
+    let foto = d.foto || null, listo = false;
+    const fin = (v) => { if (listo) return; listo = true; $('en-guardar').style.display = 'none'; resolver(v); };
+    $('en-guardar-titulo').textContent = d.modo === 'editar' ? 'Editar entrenamiento' : 'Guardar entrenamiento';
+    $('en-guardar-ok').textContent = d.modo === 'editar' ? 'Guardar cambios' : 'Guardar';
+    $('eg-titulo').value = d.titulo || ''; $('eg-desc').value = d.descripcion || '';
+    $('eg-inicio').value = aLocal(d.inicio); $('eg-inicio').max = aLocal(new Date());
+    const min = Math.max(0, Math.round(d.min || 0));
+    $('eg-dur-h').value = Math.floor(min / 60); $('eg-dur-m').value = min % 60;
+    $('eg-datos').innerHTML = `<div><small>Volumen</small><b>${fmt(d.volumen)} kg</b></div><div><small>Series</small><b>${d.series}</b></div><div><small>Ejercicios</small><b>${d.nEj}</b></div>`;
+    const pintarFoto = () => {
+      $('eg-foto').innerHTML = foto ? `<div class="eg-img"><img src="${foto}" alt="Foto del entrenamiento"><button type="button" class="eg-quitar" id="eg-quitar" aria-label="Quitar foto">✕</button></div>`
+        : '<button type="button" class="eg-agregar" id="eg-agregar">📷 Agregar una foto</button>';
+      if ($('eg-agregar')) $('eg-agregar').onclick = () => $('eg-foto-in').click();
+      if ($('eg-quitar')) $('eg-quitar').onclick = () => { foto = null; pintarFoto(); };
+    };
+    pintarFoto();
+    $('eg-foto-in').value = '';
+    $('eg-foto-in').onchange = async () => {
+      const f = $('eg-foto-in').files[0]; if (!f) return;
+      try { foto = await reducirFoto(f); pintarFoto(); } catch (e) { alert(e.message); }
+    };
+    $('en-guardar-cerrar').onclick = () => fin(null);
+    $('en-guardar-ok').onclick = () => {
+      const ini = deLocal($('eg-inicio').value);
+      if (!ini) return alert('Elige la fecha y hora de inicio.');
+      if (+ini > Date.now() + 60000) return alert('La fecha de inicio no puede estar en el futuro.');
+      const durMin = (+$('eg-dur-h').value || 0) * 60 + (+$('eg-dur-m').value || 0);
+      fin({ titulo: $('eg-titulo').value.trim() || 'Entrenamiento', descripcion: $('eg-desc').value.trim(), foto,
+        inicio: ini.toISOString(), fin: durMin > 0 ? new Date(+ini + durMin * 60000).toISOString() : null });
+    };
+    $('en-guardar').style.display = 'flex';
+  });
+}
+const resumenGuardar = (en) => ({ volumen: volumen(en), series: seriesHechas(en), nEj: en.ejercicios.length });
+async function editarEntreno(en) {
+  const r = await abrirGuardar({ modo: 'editar', titulo: en.titulo, descripcion: en.descripcion, foto: en.foto, inicio: en.inicio,
+    min: en.fin ? (new Date(en.fin) - new Date(en.inicio)) / 60000 : 0, ...resumenGuardar(en) });
+  if (!r) return;
+  en.titulo = r.titulo; en.inicio = r.inicio; en.fin = r.fin;
+  if (r.descripcion) en.descripcion = r.descripcion; else delete en.descripcion;
+  if (r.foto) en.foto = r.foto; else delete en.foto;
+  try { await almacen.guardarEntreno(en); } catch (e) { return alert('No pude guardar los cambios: ' + (e.message || e)); }
+  lista.sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
+  pintar(); abrirDetalle(en.id);
+}
+
 function cerrarActivo() {
   activo = null; enlacePendiente = null;
   try { localStorage.removeItem(BORRADOR); } catch (e) { /* nada */ }
@@ -916,6 +1007,11 @@ async function terminar() {
     if (confirm('No hay ninguna serie hecha. ¿Descartar el entrenamiento?')) cerrarActivo();
     return;
   }
+  const borradorEn = { ejercicios };
+  const g = await abrirGuardar({ modo: 'nuevo', titulo: activo.titulo, descripcion: activo.descripcion, foto: activo.foto, inicio: activo.inicio,
+    min: (Date.now() - new Date(activo.inicio)) / 60000, ...resumenGuardar(borradorEn) });
+  if (!g) return; // volvio al entrenamiento
+  activo.titulo = g.titulo;
   if (activo.rutinaId) {
     const rut = rutinas.find((x) => x.id === activo.rutinaId);
     if (rut) {
@@ -946,7 +1042,8 @@ async function terminar() {
     }
   }
 
-  const en = { id: activo.id, titulo: activo.titulo || 'Entrenamiento', inicio: activo.inicio, fin: new Date().toISOString(), origen: 'app', ejercicios };
+  const en = { id: activo.id, titulo: g.titulo, inicio: g.inicio, fin: g.fin, origen: 'app', ejercicios,
+    ...(g.descripcion ? { descripcion: g.descripcion } : {}), ...(g.foto ? { foto: g.foto } : {}) };
   const recs = P.recordsNuevos(en, lista.filter((x) => x.id !== en.id), nombreEj);
   const nRec = recs.reduce((a, r) => a + r.records.length, 0);
   if (nRec) en.records = nRec;

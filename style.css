@@ -1159,3 +1159,25 @@ body.sin-scroll { overflow: hidden; }
 .pf-tabs button { font-size: 11px; padding: 8px 0; letter-spacing: -.01em; }
 .en-fila.en-cardio { grid-template-columns: 32px minmax(0,1fr) 58px 52px 72px 34px 0; }
 .en-ritmo { font-size: 11.5px; font-weight: 700; color: var(--accent-blue); text-align: center; line-height: 1.1; }
+.en-reloj { background: none; border: none; color: inherit; font: inherit; padding: 0; cursor: pointer; }
+.en-reloj i { font-style: normal; font-size: 11px; color: var(--accent-blue); }
+.en-campos { display: flex; flex-direction: column; gap: 12px; }
+.en-campos label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
+.en-campos input, .en-campos textarea { background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 10px; padding: 11px 12px; font-size: 16px; font-family: inherit; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.en-campos textarea { resize: vertical; font-weight: 400; }
+.en-dur-fila { display: flex; align-items: center; gap: 8px; color: var(--text-main); font-size: 15px; text-transform: none; }
+.en-dur-fila input { width: 76px; text-align: center; }
+.eg-titulo { font-size: 18px !important; font-weight: 800 !important; }
+.eg-datos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.eg-datos div { background: var(--bg-input); border-radius: 10px; padding: 8px 4px; }
+.eg-datos small { display: block; color: var(--text-muted); font-size: 11px; }
+.eg-datos b { font-size: 17px; }
+.eg-foto button.eg-agregar { width: 100%; background: none; border: 2px dashed var(--border-color); color: var(--text-main); border-radius: 12px; padding: 26px 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.eg-foto .eg-img { position: relative; }
+.eg-foto img, .en-det-foto { width: 100%; max-height: 340px; object-fit: cover; border-radius: 12px; display: block; }
+.eg-foto .eg-quitar { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%; border: none; background: rgba(0,0,0,.65); color: #fff; font-size: 16px; cursor: pointer; }
+.en-det-desc { margin: 6px 0 10px; white-space: pre-wrap; line-height: 1.45; }
+.en-det-foto { margin: 8px 0; }
+.en-tarjeta-foto { width: 100%; height: 150px; object-fit: cover; border-radius: 10px; margin: 6px 0; display: block; }
+.en-det-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.en-det-cab .btn-sec { flex: none; padding: 6px 10px; font-size: 13px; }
