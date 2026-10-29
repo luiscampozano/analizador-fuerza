@@ -17,7 +17,7 @@
 <body>
   <div class="app-container">
     <header class="app-header">
-      <div class="brand">
+      <div class="brand" id="ir-inicio" role="button" tabindex="0" aria-label="Ir a Entrenar">
         <span class="logo-icon"><img src="iconos/logo.png" alt="FuerzaPro"></span>
         <div>
           <h1>FuerzaPro</h1>
@@ -373,15 +373,15 @@
     <!-- ============ ENTRENAR ============ -->
     <div id="v-entrenar" class="view active">
       <div id="en-inicio">
+        <section class="section" style="margin-top:0">
+          <label class="section-title">Constancia</label>
+          <div id="en-calendario"></div>
+        </section>
         <section class="kpi-grid tres" id="en-semana"></section>
         <button type="button" id="en-empezar" class="btn-primary">▶ EMPEZAR ENTRENAMIENTO VACÍO</button>
         <section class="section" style="margin-top:22px">
           <div class="en-sec-cab"><label class="section-title">Rutinas</label><div class="en-cab-botones"><button type="button" class="btn-sec" id="en-discos">🧮 Discos</button><button type="button" class="btn-sec" id="en-nueva-rutina">+ Nueva rutina</button></div></div>
           <div id="en-rutinas"></div>
-        </section>
-        <section class="section">
-          <label class="section-title">Constancia</label>
-          <div id="en-calendario"></div>
         </section>
         <section class="section">
           <label class="section-title">Mis entrenamientos</label>

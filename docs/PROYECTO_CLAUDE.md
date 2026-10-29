@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.8.0
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.8.1
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -254,6 +254,7 @@ bloqueos, reportes, fallos.
 | v2.6.2 | Reintentos cuando la IA no ve a la persona, filtro de preparación en press, remo y curl. |
 | (traspaso) | `pruebas/verificar.sh`, pruebas del servidor, Actions verifica antes de publicar, `docs/HANDOFF.md`. |
 | v2.7.0 (Gemini) | Reemplazar ejercicio, menú ⋯, actualizar rutina al terminar, cuerpo con músculos en la ficha del ejercicio. |
+| v2.8.1 | Calendario de constancia primero en Entrenar; tocar el logo de arriba lleva siempre a Entrenar. |
 | v2.8.0 | Reorganización Entrenar/Perfil: Entrenar = lo de hoy + calendario; Perfil = Powerlifting + Estadísticas (cuerpo de la semana), Ejercicios, Medidas, Análisis de video y ⚙️ Ajustes (cuenta, importar, respaldo). |
 | v2.7.1 | Botón Atrás en todas las ventanas y gesto Atrás de Android, calendario mensual de constancia, lista de ejercicios compacta con ventana flotante. Correcciones a v2.7.0: el reemplazo ya no arrastra pesos; la pregunta de rutina ya no se cuelga; "sesiones". |
 

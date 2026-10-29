@@ -19,7 +19,7 @@ import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 
-const VERSION = '2.8.0';
+const VERSION = '2.8.1';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -49,6 +49,10 @@ document.querySelectorAll('.nav button').forEach((b) => b.addEventListener('clic
   if ($('v-progreso').classList.contains('active')) return;
   vista(b.dataset.vista);
 }));
+// tocar el logo de arriba siempre lleva a la pestaña Entrenar (salvo mientras se analiza un video)
+const irInicio = () => { if (!$('v-progreso').classList.contains('active')) vista('v-entrenar'); };
+$('ir-inicio').addEventListener('click', irInicio);
+$('ir-inicio').addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') irInicio(); });
 function aviso(txt, ok = false) {
   const a = $('aviso'); a.textContent = txt || ''; a.style.display = txt ? 'block' : 'none'; a.classList.toggle('ok', ok);
 }
