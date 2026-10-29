@@ -19,7 +19,7 @@ import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 
-const VERSION = '2.9.0';
+const VERSION = '2.10.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -884,7 +884,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   nutricion.iniciar();
   atras.iniciar();
   comunidad.iniciar({ vista, porId: POR_ID, guardarRutina: (n, ejs) => entrenar.guardarRutina(n, ejs) });
-  perfil.iniciar({ vista, version: VERSION, abrirEstadisticas: () => entrenar.abrirEstadisticas(), abrirEjercicios: () => entrenar.abrirEjercicios() });
+  perfil.iniciar({ vista, version: VERSION, porId: POR_ID, abrirProgreso: (e) => entrenar.abrirProgreso(e), abrirEstadisticas: () => entrenar.abrirEstadisticas(), abrirEjercicios: () => entrenar.abrirEjercicios() });
   document.querySelectorAll('[data-volver]').forEach((b) => (b.onclick = () => vista(b.dataset.volver)));
   entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar'), compartir: (en, recs) => comunidad.compartir(en, recs), compartido: (id) => comunidad.compartido(id), alias: () => comunidad.aliasPropio() }).then(() => {
     entrenar.alCambiarVista('v-entrenar');

@@ -699,7 +699,7 @@ function pintarCuerpo(canvas, colorDe) {
   g.fillText('Espalda', xEspalda + anchoCuerpo / 2, H - 4);
 }
 
-function abrirProgreso(e) {
+export function abrirProgreso(e) {
   const k = P.claveEj(e), r = P.registros(lista, k), real = P.rmReal(k), rf = P.referencia(lista, { ...e, series: [] });
   const repMax = Object.entries(r.repMax).map(([n, x]) => `<tr><td><b>${n}RM</b></td><td>${kgTxt(x.kg)} kg</td><td>${fechaTxt(x.fecha, false)}</td></tr>`).join('');
   const base = real ? real.kg : r.mejor ? r.mejor.valor : null;

@@ -1132,3 +1132,26 @@ body.sin-scroll { overflow: hidden; }
 #en-musculos .en-mus em { font-style: normal; color: var(--text-muted); font-size: 18px; margin-left: 4px; }
 #pf-grupo-lista { padding: 0 2px; }
 #en-musculos .en-mus { grid-template-columns: 110px 1fr 34px 10px; }
+.pf-tabs { margin-bottom: 12px; }
+.pf-tabs button { font-size: 12px; }
+.pf-recs { display: flex; flex-direction: column; }
+.pf-rec { display: flex; align-items: center; gap: 10px; background: none; border: none; border-bottom: 1px solid var(--border-color); color: var(--text-main); padding: 9px 0; text-align: left; cursor: pointer; font-family: inherit; }
+.pf-rec:last-child { border-bottom: none; }
+.pf-rec-n { width: 22px; height: 22px; border-radius: 50%; background: var(--bg-input); color: var(--text-muted); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex: none; }
+.pf-rec:first-child .pf-rec-n { background: var(--accent-orange); color: #111; }
+.pf-rec-ic { font-size: 18px; flex: none; }
+.pf-rec > div { flex: 1; min-width: 0; }
+.pf-rec strong { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-rec small { color: var(--text-muted); font-size: 11px; }
+.pf-rec > b { color: var(--accent-orange); font-size: 18px; flex: none; text-align: right; }
+.pf-rec > b small { font-size: 11px; font-weight: 600; }
+.pf-bb { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.pf-bb > div { background: var(--bg-input); border-radius: 10px; padding: 9px 5px; border: 1px solid transparent; }
+.pf-bb > div.ok { border-color: rgba(90,220,120,.5); }
+.pf-bb > div.ok b { color: #5adc78; }
+.pf-bb small { display: block; color: var(--text-muted); font-size: 11px; }
+.pf-bb b { display: block; font-size: 22px; margin: 2px 0 0; }
+.pf-bb i { display: block; font-style: normal; font-size: 10px; color: var(--text-muted); }
+.pf-bb em { display: block; font-style: normal; font-size: 10.5px; color: var(--accent-blue); margin-top: 5px; line-height: 1.25; cursor: pointer; }
+.pf-cf { grid-template-columns: repeat(3, 1fr); row-gap: 8px; }
+.pf-cf b { font-size: 20px; }

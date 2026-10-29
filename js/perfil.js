@@ -12,7 +12,7 @@ const leerJ = (k, def) => { try { return JSON.parse(localStorage.getItem(k) || '
 const guardarJ = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
 const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
-let deps = null; // { vista, version, abrirEstadisticas, abrirEjercicios }
+let deps = null; // { vista, version, porId, abrirEstadisticas, abrirEjercicios, abrirProgreso }
 
 // DOTS: coeficientes oficiales (hombres / mujeres)
 const DOTS = { h: [-307.75076, 24.0900756, -0.1918759221, 0.0007391293, -0.000001093], m: [-57.96288, 13.6175032, -0.1126655495, 0.0005158568, -0.0000010706] };
@@ -123,12 +123,7 @@ export async function pintar() {
     }
     return mejor;
   };
-  const sbd = [['Sentadilla', marca(['sentadilla'])], ['Press banca', marca(['press_banca'])], ['Peso muerto', marca(['peso_muerto', 'peso_muerto_sumo'])]];
-  const total = sbd.every(([, m]) => m) ? sbd.reduce((a, [, m]) => a + m.kg, 0) : null;
-  const d = total && pc ? dots(total, pc, cuerpo.sexo) : null;
-  $('pf-pl').innerHTML = `<div class="pf-sbd">${sbd.map(([n, m]) => `<div><small>${n}</small><b>${m ? fmt(m.kg, m.kg % 1 ? 1 : 0) : '--'}</b><i>${m ? (m.tipo === 'real' ? '1RM real' : '1RM est.') : 'sin datos'}</i></div>`).join('')}</div>
-    <div class="pf-total"><div><small>Total</small><b>${total ? fmt(total, total % 1 ? 1 : 0) + ' kg' : '--'}</b></div><div><small>Puntos DOTS</small><b>${d ? fmt(d, 1) : '--'}</b></div><div><small>Peso corporal</small><b>${pc ? fmt(pc, 1) + ' kg' : '--'}</b></div></div>
-    <p class="hint">${total ? 'Usa tu 1RM real cuando lo guardaste (en Entrenar → 📈) y si no, el mejor 1RM estimado de tus series.' : 'Registra series de sentadilla, banca y peso muerto (o guarda tus 1RM reales) para ver tu total.'}${d ? '' : total ? ' Registra tu peso corporal para calcular los puntos DOTS.' : ''}</p>`;
+  pintarMarcas(lista, marca, pc, cuerpo);
 
   // estadisticas
   const inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
@@ -141,6 +136,62 @@ export async function pintar() {
 
   pintarPeso();
   $('pf-version').textContent = `Versión ${deps.version}`;
+}
+
+// ------------------------------------------------------------------ mis marcas (récords, powerlifting, culturismo, crossfit)
+const TABS_MARCAS = { rec: 'Récords', pl: 'Powerlifting', bb: 'Culturismo', cf: 'CrossFit' };
+let tabMarcas = localStorage.getItem('af_pf_marcas') || 'rec';
+const kgF = (x) => fmt(x, x % 1 ? 1 : 0);
+const fechaC = (iso) => new Date(iso).toLocaleDateString('es-EC', { day: 'numeric', month: 'short', year: '2-digit' });
+function pintarMarcas(lista, marca, pc, cuerpo) {
+  if (!TABS_MARCAS[tabMarcas]) tabMarcas = 'rec';
+  // datos por ejercicio (una sola pasada): clave -> { e (para nombre e icono), r (registros) }
+  const ejs = new Map();
+  for (const en of lista) for (const e of en.ejercicios) { const k = P.claveEj(e); if (!ejs.has(k)) ejs.set(k, { e }); }
+  const reg = (k) => { const x = ejs.get(k); if (!x) return null; if (!x.r) x.r = P.registros(lista, k); return x.r; };
+  const nombre = (k) => { const x = ejs.get(k), d = x && x.e.ej && deps.porId && deps.porId[x.e.ej]; return d ? d.nombre : x ? x.e.nombre : k; };
+  const icono = (k) => { const x = ejs.get(k), d = x && x.e.ej && deps.porId && deps.porId[x.e.ej]; return d ? d.icono : '🏋️'; };
+  let html = '';
+  if (tabMarcas === 'rec') {
+    const top = [...ejs.keys()].map((k) => [k, reg(k)]).filter(([k, r]) => r && r.maxKg && !/asistid/.test(k)).sort((a, b) => b[1].maxKg.kg - a[1].maxKg.kg).slice(0, 6); // en las asistidas el peso ayuda, no es carga
+    html = top.length ? `<div class="pf-recs">${top.map(([k, r], i) => `<button type="button" class="pf-rec" data-k="${esc(k)}"><span class="pf-rec-n">${i + 1}</span><span class="pf-rec-ic">${icono(k)}</span>
+        <div><strong>${esc(nombre(k))}</strong><small>${fechaC(r.maxKg.fecha)} · 1RM est. ${r.mejor ? kgF(Math.round(r.mejor.valor)) : '--'} kg</small></div>
+        <b>${kgF(r.maxKg.kg)}<small> kg × ${r.maxKg.reps}</small></b></button>`).join('')}</div>
+      <p class="hint">Tus levantamientos más pesados, de cualquier ejercicio. Toca uno para ver su progreso.</p>`
+      : '<p class="hint" style="margin:0">Registra series con peso para ver aquí tus levantamientos más pesados.</p>';
+  } else if (tabMarcas === 'pl') {
+    const sbd = [['Sentadilla', marca(['sentadilla'])], ['Press banca', marca(['press_banca'])], ['Peso muerto', marca(['peso_muerto', 'peso_muerto_sumo'])]];
+    const total = sbd.every(([, m]) => m) ? sbd.reduce((a, [, m]) => a + m.kg, 0) : null;
+    const d = total && pc ? dots(total, pc, cuerpo.sexo) : null;
+    html = `<div class="pf-sbd">${sbd.map(([n, m]) => `<div><small>${n}</small><b>${m ? fmt(m.kg, m.kg % 1 ? 1 : 0) : '--'}</b><i>${m ? (m.tipo === 'real' ? '1RM real' : '1RM est.') : 'sin datos'}</i></div>`).join('')}</div>
+    <div class="pf-total"><div><small>Total</small><b>${total ? fmt(total, total % 1 ? 1 : 0) + ' kg' : '--'}</b></div><div><small>Puntos DOTS</small><b>${d ? fmt(d, 1) : '--'}</b></div><div><small>Peso corporal</small><b>${pc ? fmt(pc, 1) + ' kg' : '--'}</b></div></div>
+    <p class="hint">${total ? 'Usa tu 1RM real cuando lo guardaste (en la ficha del ejercicio) y si no, el mejor 1RM estimado de tus series.' : 'Registra series de sentadilla, banca y peso muerto (o guarda tus 1RM reales) para ver tu total.'}${d ? '' : total ? ' Registra tu peso corporal para calcular los puntos DOTS.' : ''}</p>`;
+  } else if (tabMarcas === 'bb') {
+    // culturismo: series por semana de cada grupo (ultimas 4 semanas) y el ejercicio mas fuerte del grupo
+    const GR = ['Pecho', 'Espalda', 'Hombros', 'Brazos', 'Piernas', 'Glúteo y femoral'];
+    const series = P.seriesPorGrupo(lista, deps.porId || {}, new Date(Date.now() - 28 * 86400000));
+    const grupoDe = (k) => { const x = ejs.get(k), d = x && x.e.ej && deps.porId && deps.porId[x.e.ej]; return d ? d.musculo || d.grupo : null; };
+    html = `<div class="pf-bb">${GR.map((g) => {
+      const n = (series[g] || 0) / 4;
+      let mejor = null;
+      for (const k of ejs.keys()) { if (grupoDe(k) !== g) continue; const r = reg(k); if (r && r.mejor && (!mejor || r.mejor.valor > mejor[1].mejor.valor)) mejor = [k, r]; }
+      return `<div class="${n >= 10 && n <= 20 ? 'ok' : n > 20 ? 'alto' : n > 0 ? 'bajo' : ''}"><small>${g}</small><b>${fmt(n, n % 1 && n < 10 ? 1 : 0)}</b><i>series/sem</i>
+        ${mejor ? `<em data-k="${esc(mejor[0])}">${esc(nombre(mejor[0]))} · ${kgF(Math.round(mejor[1].mejor.valor))}</em>` : '<em>sin datos</em>'}</div>`;
+    }).join('')}</div>
+      <p class="hint">Promedio de series efectivas por semana en las últimas 4 semanas (lo ideal para crecer: 10 a 20, en verde) y tu ejercicio más fuerte de cada grupo (1RM est.).</p>`;
+  } else {
+    // crossfit: levantamientos olimpicos y de referencia + dominadas (repeticiones)
+    const LEV = [['Arranque', ['arranque']], ['Cargada', ['cargada', 'cargada_colgante']], ['Envión', ['envion']], ['Thruster', ['thruster']], ['Sentadilla frontal', ['sentadilla_frontal']]];
+    let maxDom = 0;
+    for (const en of lista) for (const e of en.ejercicios) if (['dominadas', 'chin_up'].includes(e.ej)) for (const sr of e.series) if (sr.hecha && sr.reps > maxDom) maxDom = sr.reps;
+    const celdas = LEV.map(([n, ids]) => [n, marca(ids)]);
+    html = `<div class="pf-sbd pf-cf">${celdas.map(([n, m]) => `<div><small>${n}</small><b>${m ? kgF(Math.round(m.kg * 10) / 10) : '--'}</b><i>${m ? (m.tipo === 'real' ? '1RM real' : '1RM est.') : 'sin datos'}</i></div>`).join('')}
+      <div><small>Dominadas</small><b>${maxDom || '--'}</b><i>${maxDom ? 'reps máx.' : 'sin datos'}</i></div></div>
+      <p class="hint">Tus marcas en los levantamientos de referencia de CrossFit. Registra arranque, cargada, envión, thruster o dominadas para completarlas.</p>`;
+  }
+  $('pf-pl').innerHTML = `<div class="pf-periodo pf-tabs">${Object.entries(TABS_MARCAS).map(([k, t]) => `<button type="button" data-t="${k}" class="${k === tabMarcas ? 'activo' : ''}">${t}</button>`).join('')}</div>${html}`;
+  $('pf-pl').querySelectorAll('.pf-tabs button').forEach((b) => (b.onclick = () => { tabMarcas = b.dataset.t; try { localStorage.setItem('af_pf_marcas', tabMarcas); } catch (e) { /* nada */ } pintarMarcas(lista, marca, pc, cuerpo); }));
+  $('pf-pl').querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => { const x = ejs.get(b.dataset.k); if (x && deps.abrirProgreso) deps.abrirProgreso(x.e); }));
 }
 
 // ------------------------------------------------------------------ peso corporal
