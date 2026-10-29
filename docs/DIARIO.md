@@ -24,6 +24,11 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
     - sin aviso de pérdida de velocidad. Al terminar se analiza el video completo como siempre.
   - Arreglo: si no hay movimientos, el ritmo se muestra «--» en vez de 0.
   - Prueba: `pruebas/actividad/act2_e2e.js` en Chromium con la IA real y cámara simulada (todo OK).
+- **Revisión de reportes de fallos (D1):** hay 1, de press de banca (v2.6.1, la app contó 12 y eran 10; comentario:
+  «me contó mientras me acomodaba en la máquina»). Ese caso es justo el que corrigió el filtro de preparación de la
+  v2.6.2. Traer la pose (165 KB) por Composio se corta en el camino; hace falta una herramienta de descarga directa
+  (por ejemplo, una ruta de administrador `/api/mod/fallos/:id` que la app ya tiene, usada desde el panel de
+  Moderación con un botón «Descargar para el banco»).
 - **Pendiente:**
   - Videos reales de boxeo (Luis los está grabando) para calibrar el detector de golpes.
   - Pendientes anteriores: conteo propio para los ejercicios alternos, llevar los reportes de fallos de D1 al banco
