@@ -10,7 +10,7 @@ export const MP = {
   mano_i: [15, 15], mano_d: [16, 16], hombro_i: [11, 11], hombro_d: [12, 12],
   pie_i: [27, 27], pie_d: [28, 28], rodilla_i: [25, 25], rodilla_d: [26, 26],
 };
-const ANCLAS = { cadera: MP.cadera, hombros: MP.hombros, tobillos: MP.pies, rodillas: MP.rodillas, codos: MP.codos, ninguna: null, manos: MP.manos,
+const ANCLAS = { cadera: MP.cadera, hombros: MP.hombros, tobillos: MP.pies, rodillas: MP.rodillas, codos: MP.codos, ninguna: null, manos: MP.manos, puntas: [31, 32],
   hombro_i: MP.hombro_i, hombro_d: MP.hombro_d };
 // Proporciones segmento/estatura para los puntos de MediaPipe (calibradas con videos reales de pie y sentado)
 const SEGMENTOS = [
@@ -239,17 +239,27 @@ export function repsCuerpo(full, fps, ej) {
     i = j + 1;
   }
   if (b - a < fps) return null;
-  const y = h.slice(a, b + 1);
-  const lo = percentil(y, 5), hi = percentil(y, 95), r = hi - lo;
-  if (!(r > 0.05)) return null;
-  // amplitud tipica de una rep: el 80 % de las subidas/bajadas que se ven (las chicas son temblor o pasos)
-  const piv0 = zigzag(y, 0.12 * r);
-  const sw = []; for (let q = 0; q < piv0.length - 1; q++) sw.push(Math.abs(y[piv0[q + 1].i] - y[piv0[q].i]));
-  if (!sw.length) return null;
-  const A = sw.length >= 3 ? percentil(sw, 80) : Math.max(...sw);
+  const niveles = (y) => {
+    const lo = percentil(y, 5), hi = percentil(y, 95), r = hi - lo;
+    if (!(r > 0.05)) return null;
+    // amplitud tipica de una rep: el 80 % de las subidas/bajadas que se ven (las chicas son temblor o pasos)
+    const piv0 = zigzag(y, 0.12 * r);
+    const sw = []; for (let q = 0; q < piv0.length - 1; q++) sw.push(Math.abs(y[piv0[q + 1].i] - y[piv0[q].i]));
+    if (!sw.length) return null;
+    const A = sw.length >= 3 ? percentil(sw, 80) : Math.max(...sw);
+    return { A, R: percentil(y, 85) }; // R: nivel de reposo (de pie / bloqueado)
+  };
+  let y = h.slice(a, b + 1), nv = niveles(y);
+  if (!nv) return null;
+  // v2.18.1: si al final (o al inicio) la altura queda mas de 0,5 s por encima del tope, la persona se esta acercando
+  // a la camara (se ve mas grande): ese tramo se corta para que la ultima rep no se una con el (muñecos 3D)
+  { const sobre = (v) => v > nv.R + 0.5 * nv.A; let e = y.length; while (e > 0 && sobre(y[e - 1])) e--;
+    let s0 = 0; while (s0 < e && sobre(y[s0])) s0++;
+    if ((y.length - e > 0.5 * fps || s0 > 0.5 * fps) && e - s0 > fps) { b = a + e - 1; a = a + s0; y = h.slice(a, b + 1); nv = niveles(y) || nv; } }
+  const { A, R } = nv;
   const piv = zigzag(y, 0.35 * A);
   const pares = [];
-  const R = percentil(y, 85), cerca = 0.35 * A; // nivel de reposo (de pie / bloqueado) y cuanto se puede alejar de el
+  const cerca = 0.35 * A; // cuanto se puede alejar del reposo
   const tope = R + 0.5 * A; // mas alto que eso no es la serie: soltar la barra, levantar los brazos, acercarse a la camara
   // subida real: desde el ultimo instante cerca del fondo hasta el pivote (no cuenta el rato quieto abajo)
   const subida = (i0, i1) => { let k = i0; for (let i = i1; i >= i0; i--) if (y[i] <= y[i0] + 0.15 * (y[i1] - y[i0])) { k = i; break; } return (i1 - k) / fps; };
@@ -273,7 +283,7 @@ export function repsCuerpo(full, fps, ej) {
 // ------------------------------------------------------------ analisis principal
 // Escala px -> m robusta: por cuadro se usa la mediana de los segmentos bien visibles; luego se fija una escala
 // estable para el video (la mediana) que solo puede variar +-20 % si la camara se acerca o se aleja.
-export function escala(full, fps, altura) {
+export function escala(full, fps, altura, lim = 1.2) {
   const porCuadro = full.map((f) => {
     const est = [];
     for (const g of SEGMENTOS) {
@@ -291,8 +301,32 @@ export function escala(full, fps, altura) {
     base = mediana(full.map((f) => dist([(f[11][0] + f[12][0]) / 2, (f[11][1] + f[12][1]) / 2],
       [(f[23][0] + f[24][0]) / 2, (f[23][1] + f[24][1]) / 2]) / 0.31)) || 1000;
   }
-  const lim = porCuadro.map((x) => (Number.isFinite(x) ? Math.min(base * 1.2, Math.max(base / 1.2, x)) : base));
-  return savgol(lim, fps, 2).map((a) => altura / Math.max(a, 1));
+  const lim2 = porCuadro.map((x) => (Number.isFinite(x) ? Math.min(base * lim, Math.max(base / lim, x)) : base));
+  return savgol(lim2, fps, 2).map((a) => altura / Math.max(a, 1));
+}
+
+// Tamaño de la persona en la imagen por cuadro (px por unidad de estatura), con cada lado por separado (de perfil el
+// lado lejano casi no se ve). Sirve para notar cuando se acerca o se aleja de la camara.
+function tamanoCuerpo(full, fps) {
+  const t = full.map((f) => {
+    const est = [];
+    for (const g of SEGMENTOS) for (const k of [0, 1]) {
+      if (!(f[g.a[k]][2] > 0.5 && f[g.b[k]][2] > 0.5)) continue;
+      const L = dist(f[g.a[k]], f[g.b[k]]) / g.r; if (Number.isFinite(L) && L > 0) est.push(L);
+    }
+    return est.length ? Math.max(...est) : NaN; // el segmento mas largo: el menos acortado por la perspectiva
+  });
+  return filtroMediana(t, fps + 1);
+}
+function congelarAcercamiento(full, fps, rel) {
+  const t = tamanoCuerpo(full, fps), base = mediana(t.filter(Number.isFinite));
+  if (!(base > 0)) return;
+  const fuera = (i) => Number.isFinite(t[i]) && (t[i] > base * 1.35 || t[i] < base / 1.35);
+  const n = rel.length, min = Math.round(0.3 * fps);
+  let e = n; while (e > 0 && fuera(e - 1)) e--;
+  if (n - e >= min && e > fps) for (let i = e; i < n; i++) rel[i] = rel[e - 1].slice();
+  let s0 = 0; while (s0 < n && fuera(s0)) s0++;
+  if (s0 >= min && s0 < n - fps) for (let i = 0; i < s0; i++) rel[i] = rel[s0].slice();
 }
 
 // cfg: {masa (kg en el eje), alfa (grados), relacion, altura (m), inicio, fin}
@@ -307,6 +341,10 @@ export function analizar(full, fps, ej, cfg) {
   const ancla = anclaPar ? medio(full, anclaPar) : null;
   const relPx = punto.map((p, i) => (ancla ? [p[0] - ancla[i][0], p[1] - ancla[i][1]] : [p[0], p[1]]));
   const rel = relPx.map((p, i) => [Number.isFinite(p[0]) ? p[0] * mPx[i] : 0, Number.isFinite(p[1]) ? p[1] * mPx[i] : 0]);
+
+  // v2.18.1: caminar hacia la camara (o alejarse) al inicio o al final del video: la persona se ve cada vez mas grande o
+  // mas chica. Ese tramo se "congela" para que no parezca una rep gigante que tapa a las reales (muñecos 3D)
+  if (!cfg.ventanas) congelarAcercamiento(full, fps, rel); // en alternos los codos ya marcan cada rep
 
   // direccion principal global (autovector de la covarianza 2x2) y su sentido
   const ejePrincipal = (pts) => {
@@ -359,6 +397,19 @@ export function analizar(full, fps, ej, cfg) {
     const piv = zigzag(s, prom);
     pares = [];
     for (let q = 0; q < piv.length - 1; q++) if (piv[q].tipo === 'bajo' && piv[q + 1].tipo === 'alto') pares.push([piv[q].i, piv[q + 1].i, piv[q + 2] ? piv[q + 2].i : n - 1]);
+    // v2.18.1: la ultima (o primera) rep seguida de caminar/acomodarse sin bajar: la subida sigue de largo y la rep se unia
+    // con ese movimiento. Si el tope queda muy por encima de los demas, se toma el primer momento en que llego al nivel
+    // de los otros topes (muñecos 3D)
+    if (pares.length >= 4) {
+      const topes = pares.map((p) => s[p[1]]), recs = pares.map((p) => s[p[1]] - s[p[0]]);
+      const mTope = mediana(topes), mRec = mediana(recs);
+      for (const p of pares) {
+        if (!(s[p[1]] - mTope > 0.6 * mRec)) continue;
+        let k = p[0]; while (k < p[1] && s[k] < mTope - 0.1 * mRec) k++;
+        let pk = k; for (let i = k; i <= Math.min(p[1], k + Math.round(0.6 * fps)); i++) if (s[i] > s[pk]) pk = i;
+        if (pk < p[1] && s[pk] - s[p[0]] > 0.5 * mRec) p[1] = pk;
+      }
+    }
   }
   // metricas de una rep a partir de su despegue (ini), su tope (pk) y su final (fin)
   const media = (arr) => arr.reduce((x, y) => x + y, 0) / (arr.length || 1);
@@ -374,6 +425,8 @@ export function analizar(full, fps, ej, cfg) {
       f_media: media(seg(fuerza)), f_pico: Math.max(...seg(fuerza)),
       p_media: media(seg(potencia).map((x) => Math.max(0, x))), p_pico: Math.max(...seg(potencia)),
       trabajo_j: trabajo,
+      // subida contada desde el 10 % del recorrido (no depende del temblor en reposo): para reconocer sacar la barra
+      ts10: (() => { const u = s[ini] + 0.1 * (s[pk] - s[ini]); let k = pk; while (k > ini && s[k - 1] > u) k--; return (pk - k) / fps; })(),
     };
   };
   let reps = [];
@@ -504,7 +557,9 @@ export function quitarPreparacion(reps, full, fps, ej, rel, mPx, altura = 1.7) {
   const fuera = (k, vecino, primera = false) => {
     const x = rasgos[k];
     if (conCodo && porCodo < 2 && mExt > 60 && extCodo[k] < 0.45 * mExt) { porCodo++; return true; } // el codo casi no se movio: no fue una rep
-    if (primera && reps.length >= 4 && reps[k].t_subida > 2.2 * tsOtras(k) && reps[k].v_media < 0.6 * vOtras(k)) return true;
+    // v2.18.1: con el tiempo de subida desde el 10 % (antes se medía desde el último instante "quieto", y el temblor de
+    // las manos en reposo alargaba la primera rep real después de acomodarse: muñecos 3D)
+    if (primera && reps.length >= 4 && reps[k].ts10 > 2.2 * mediana(reps.filter((_, j) => j !== k).map((r) => r.ts10))) return true;
     const dT = Math.abs(((x.torso - mTorso + 540) % 360) - 180);
     const ratio = x.largo / mLargo;
     const lejos = mPos && Math.hypot(x.pos[0] - mPos[0], x.pos[1] - mPos[1]) > Math.max(0.25, 0.6 * mRec);

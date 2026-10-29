@@ -54,6 +54,7 @@ const brazoDos = (hom, mano, afuera, lado) => { // codo entre hombro y mano, des
 };
 
 // ---------------------------------------------------------------- ejercicios (f: 0 reposo -> 1 extremo de la rep)
+const CENTROS_EXTRA = {};
 const EJ = {
   sentadilla: (f) => {
     const { pelvis, piernas } = deFrente(5 + 90 * f, -(5 + 38 * f), 0.18);
@@ -126,6 +127,90 @@ const EJ = {
       brazos: (lado, hom) => [add(hom, [0.02, -BRAZO, lado * 0.06]), add(hom, [0.1, -BRAZO - 0.12, lado * 0.12])] });
   },
 };
+
+// ---------------------------------------------------------------- mas familias (zancadas, prensa, polea, olimpicos, core)
+// rodilla/codo por cinematica inversa: dos segmentos que unen a con c, doblados hacia `pref`
+function ik(a, c, L1, L2, pref) {
+  const v = sub(c, a), d = Math.min(Math.hypot(...v), L1 + L2 - 1e-4), u = norm(v);
+  const largo = (L1 * L1 - L2 * L2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, L1 * L1 - largo * largo));
+  const p = norm(sub(pref, mul(u, dot(pref, u))));
+  return add(add(a, mul(u, largo)), mul(p, h));
+}
+const colgando = (lado, hom) => [add(hom, [0.01, -BRAZO, 0]), add(hom, [0.02, -(BRAZO + ANTEB), 0])];
+const mover = (j, d, idx = null) => { const o = {}; for (const k in j) o[k] = idx && !idx.includes(+k) ? j[k] : add(j[k], d); return o; };
+const smooth = (x) => { const k = Math.max(0, Math.min(1, x)); return k * k * (3 - 2 * k); };
+const zancadaCon = (f, delante, detras, yArriba, yAbajo, tronco) => {
+  const pelvis = [0, yArriba - (yArriba - yAbajo) * f, 0];
+  return armar({ pelvis, tronco, brazos: colgando, pie: 90, piernas: (lado, cad) => {
+    const tob = add(lado < 0 ? delante : detras, [0, 0, lado * 0.1]);
+    return [ik(cad, tob, MUSLO, PIERNA, [1, 0, 0]), tob]; } });
+};
+const POSTURA_PM = (g) => { const { pelvis, piernas } = deFrente(8 + 55 * g, -(4 + 22 * g), 0.14); return { pelvis, piernas, tronco: 5 + 65 * g }; };
+const POSTURA_DIP = (d) => { const { pelvis, piernas } = deFrente(8 + 40 * d, -(4 + 20 * d), 0.16); return { pelvis, piernas, tronco: 5 + 10 * d }; };
+Object.assign(EJ, {
+  zancada: (f) => zancadaCon(f, [0.32, 0.08, 0], [-0.36, 0.1, 0], 0.82, 0.44, 4),
+  bulgara_mancuernas: (f) => zancadaCon(f, [0.3, 0.08, 0], [-0.62, 0.48, 0], 0.82, 0.46, 10),
+  prensa_45: (f) => { // sentado reclinado; los pies empujan la plataforma en una linea a 45°
+    const pelvis = [0, 0.5, 0], d = 0.8 - 0.4 * f;
+    return armar({ pelvis, troncoDir: norm([-1, 1, 0]), brazos: (lado, hom) => [add(hom, [0.15, -0.2, lado * 0.1]), add(pelvis, [0.05, 0.05, lado * 0.3])],
+      piernas: (lado, cad) => { const tob = add(cad, [d * Math.SQRT1_2, d * Math.SQRT1_2, lado * 0.06]); return [ik(cad, tob, MUSLO, PIERNA, [-0.4, 1, 0]), tob]; } });
+  },
+  curl_femoral_sentado: (f) => {
+    const pelvis = [0, 0.55, 0];
+    return armar({ pelvis, tronco: -8, brazos: (lado, hom) => [add(hom, [0.05, -BRAZO, lado * 0.08]), add(hom, [0.25, -BRAZO - 0.05, lado * 0.12])],
+      piernas: (lado, cad) => { const rod = add(cad, [MUSLO, 0, lado * 0.04]); return [rod, add(rod, mul(sag(85 - 105 * f), PIERNA))]; } });
+  },
+  remo_polea: (f) => {
+    const pelvis = [0, 0.45, 0];
+    return armar({ pelvis, tronco: 18 - 25 * f, piernas: (lado, cad) => { const tob = add(cad, [0.78, -0.02, lado * 0.06]); return [ik(cad, tob, MUSLO, PIERNA, [0, 1, 0]), tob]; },
+      brazos: (lado, hom) => { const mano = mix(add(hom, [0.52, -0.12, lado * 0.12]), add(hom, [0.12, -0.3, lado * 0.16]), f); return [ik(hom, mano, BRAZO, ANTEB, [-1, -0.3, lado * 0.4]), mano]; } });
+  },
+  face_pull: (f) => {
+    const { pelvis, piernas } = deFrente(4, -4);
+    return armar({ pelvis, tronco: -4, piernas, brazos: (lado, hom) => { const mano = mix(add(hom, [0.53, 0.04, lado * 0.1]), add(hom, [0.12, 0.17, lado * 0.26]), f); return [ik(hom, mano, BRAZO, ANTEB, [-0.6, 0.5, lado]), mano]; } });
+  },
+  cruce_poleas: (f) => {
+    const { pelvis, piernas } = deFrente(8, -6);
+    return armar({ pelvis, tronco: 15, piernas, brazos: (lado, hom) => {
+      const mano = mix(add(hom, mul(norm([0.25, 0.1, lado * 1]), BRAZO + ANTEB - 0.05)), add(hom, [0.45, -0.25, -lado * 0.1]), f);
+      return [ik(hom, mano, BRAZO, ANTEB, [-0.3, 0.3, lado]), mano]; } });
+  },
+  cargada: (f) => { // del piso a la posicion de rack (barra sobre los hombros) con una flexion para recibir
+    let P, k = 0;
+    if (f <= 0.7) P = POSTURA_PM(1 - f / 0.7); else { k = (f - 0.7) / 0.3; P = POSTURA_DIP(0.5 * Math.sin(Math.PI * k)); }
+    return armar({ ...P, brazos: (lado, hom) => { const cuelga = add(hom, [0.03, -(BRAZO + ANTEB), lado * 0.04]), rack = add(hom, [0.13, 0.02, lado * 0.02]);
+      const mano = mix(cuelga, rack, smooth(k)); return [ik(hom, mano, BRAZO, ANTEB, [1, -0.4, lado * 0.3]), mano]; } });
+  },
+  push_press: (f) => {
+    const P = POSTURA_DIP(0.45 * Math.sin(Math.PI * Math.min(1, f / 0.3))), k = smooth((f - 0.15) / 0.85);
+    return armar({ ...P, brazos: (lado, hom) => { const mano = add(hom, [0.13 - 0.14 * k, 0.02 + 0.5 * k, lado * (0.06 + 0.06 * k)]); return [ik(hom, mano, BRAZO, ANTEB, [0.6, -0.6, lado * 0.6]), mano]; } });
+  },
+  abdominales: (f) => { // acostado boca arriba, rodillas dobladas, el tronco sube (encogimiento/sit-up)
+    const a = rad(5 + 55 * f), td = [-Math.cos(a), Math.sin(a), 0], nf = cross(td, [0, 0, 1]), pelvis = [0, 0.12, 0];
+    return armar({ pelvis, troncoDir: td, piernas: (lado, cad) => { const tob = add(cad, [0.62, -0.04, lado * 0.08]); return [ik(cad, tob, MUSLO, PIERNA, [0, 1, 0]), tob]; },
+      brazos: (lado, hom, hc) => [add(add(hom, mul(nf, 0.12)), mul(td, -0.1)), add(hc, add(mul(nf, 0.12), [0, 0, -lado * 0.06]))] });
+  },
+  elevacion_piernas_colgado: (f) => {
+    const pelvis = [0, 2.25 - BRAZO - ANTEB + 0.05 - TORSO, 0];
+    return armar({ pelvis, tronco: -3 - 10 * f, brazos: (lado, hom) => { const mano = [0.02, 2.25, lado * 0.28]; return [mix(hom, mano, 0.53), mano]; },
+      piernas: (lado, cad) => { const rod = add(cad, mul(sag(5 + 85 * f), MUSLO)); return [rod, add(rod, mul(sag(5 + 80 * f), PIERNA))]; } });
+  },
+  pantorrilla_pie: (f) => { const { pelvis, piernas } = deFrente(2, -2); return mover(armar({ pelvis, tronco: 2, piernas, brazos: colgando }), [0, 0.08 * f, 0], [...Array(31).keys()]); },
+  encogimientos: (f) => { const { pelvis, piernas } = deFrente(3, -3); return mover(armar({ pelvis, tronco: 3, piernas, brazos: colgando }), [0, 0.07 * f, 0], [...Array(23).keys()]); },
+  fondos: (f) => { // manos en las paralelas (y = 1,25), el cuerpo baja
+    const hy = 1.25 + BRAZO + ANTEB - 0.06 - 0.3 * f, tronco = 8 + 18 * f, td = sag(180 - tronco), pelvis = sub([0.0, hy, 0], mul(td, TORSO));
+    return armar({ pelvis, tronco, brazos: (lado, hom) => { const mano = [0.04, 1.25, lado * 0.25]; return [ik(hom, mano, BRAZO, ANTEB, [-1, 0, lado * 0.2]), mano]; },
+      piernas: (lado, cad) => { const rod = add(cad, mul(sag(10), MUSLO)); return [rod, add(rod, mul(sag(-70), PIERNA))]; } });
+  },
+  remo_mancuerna: (f) => { // una mano y una rodilla en el banco; rema el brazo derecho
+    const { pelvis, piernas } = deFrente(22, -12, 0.2);
+    return armar({ pelvis, tronco: 72, piernas, brazos: (lado, hom) => {
+      if (lado < 0) { const mano = add(hom, [0.15, -0.5, 0]); return [mix(hom, mano, 0.5), mano]; }
+      const mano = mix(add(hom, [0.03, -(BRAZO + ANTEB) + 0.02, 0.02]), add(hom, [-0.2, -0.3, 0.05]), f); return [ik(hom, mano, BRAZO, ANTEB, [-1, 0.6, 0.2]), mano]; } });
+  },
+});
+Object.assign(CENTROS_EXTRA, { prensa_45: [0.2, 0.7, 0], curl_femoral_sentado: [0.2, 0.6, 0], remo_polea: [0.2, 0.6, 0], abdominales: [0.1, 0.3, 0],
+  elevacion_piernas_colgado: [0, 1.4, 0], fondos: [0, 1.2, 0], remo_mancuerna: [0, 0.7, 0], bulgara_mancuernas: [-0.1, 0.8, 0] });
 
 // ---------------------------------------------------------------- camara
 let semilla = 11; const rnd = () => ((semilla = (semilla * 16807) % 2147483647) / 2147483647 - 0.5);
@@ -200,7 +285,7 @@ function filmar(fn, { reps, yaw, pitch, mov, fps = 30, centro, escena = 'limpia'
 }
 
 // ---------------------------------------------------------------- corrida
-const CENTROS = { press_banca: [0, 0.6, 0], dominadas: [0, 1.4, 0], flexiones: [-0.6, 0.35, 0], hip_thrust: [0, 0.4, 0], extension_cuadriceps: [0.2, 0.6, 0], jalon: [0, 0.9, 0] };
+const CENTROS = { ...CENTROS_EXTRA, press_banca: [0, 0.6, 0], dominadas: [0, 1.4, 0], flexiones: [-0.6, 0.35, 0], hip_thrust: [0, 0.4, 0], extension_cuadriceps: [0.2, 0.6, 0], jalon: [0, 0.9, 0] };
 export { EJ, filmar, CAMARAS, CENTROS, ESCENAS };
 const principal = import.meta.url === `file://${process.argv[1]}`;
 const filtro = principal ? process.argv[2] || '' : '\u0000';

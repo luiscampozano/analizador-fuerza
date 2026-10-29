@@ -8,6 +8,39 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-29
 
+### 16:40 · v2.18.1 — Muñecos: 30 ejercicios y menos errores
+- **Pidió:** agregar las familias que faltaban y seguir bajando el error lo más posible. Después: nutrición (alimentos
+  que el código de barras no encuentra, base nacional de códigos) y foto del plato para calorías.
+- **Hecho (muñecos):**
+  - 15 ejercicios nuevos en `pruebas/munecos/munecos.mjs`: zancada, búlgara, prensa 45°, curl femoral sentado, remo en
+    polea, face pull, cruce de poleas, cargada, push press, abdominales, elevación de piernas colgado, pantorrilla de
+    pie, encogimientos, fondos y remo con mancuerna;
+  - total: 30 ejercicios × 84 tomas = 2520;
+  - cada toma tiene su propia semilla fija (se puede repetir una sola para revisarla).
+- **Resultado:** de 2310/2520 a 2395/2520 (91,7 % → 95,0 %); las tomas con error bajaron de 210 a 125. Banco real
+  sin cambios: 40/59. Mínimo en `verificar.sh`: 2390.
+- **Arreglos en `js/fisica.js`:**
+  - **Primera rep después de acomodarse:** «sacar la barra» se mide con el tiempo de subida desde el 10 % del
+    recorrido (`ts10`). Antes el temblor en reposo alargaba esa rep y se borraba.
+  - **Caminar hacia la cámara al inicio o al final:**
+    - si la persona se ve >35 % más grande o más chica, ese tramo se congela (`congelarAcercamiento`, no en alternos);
+    - en sentadilla/peso muerto, la altura que sigue subiendo al final se corta;
+    - una subida que sigue de largo (la última rep unida con caminar) se corta al nivel de los demás topes.
+- **Arreglos en `js/ejercicios.js`:**
+  - pantorrilla (de pie, Smith, unilateral): ahora sigue tobillos respecto a las puntas de los pies (`ancla: 'puntas'`).
+    Antes seguía los hombros sin ancla, y con la cámara en mano no contaba;
+  - en los muñecos de pantorrilla pasó de 41 a 76 de 84 tomas exactas.
+- **Probado y descartado:**
+  - escala más libre (±40 % / ±70 %) y corrección lenta de zoom: mejoran los muñecos, pero bajan el banco real
+    (40 → 36–38);
+  - ventana para el fondo de cada rep: empeoró todo.
+- **Pendientes (límites conocidos):**
+  - zoom fuerte / caminar con el celular a mitad de la serie (~80 de los 125 errores);
+  - face pull y curl femoral filmados de frente (el movimiento va hacia la cámara);
+  - remo con mancuerna con el brazo que trabaja del lado lejano (tapado);
+  - encogimientos (recorrido de 7 cm).
+- **Siguiente:** nutrición.
+
 ### 15:32 · v2.18.0 — Muñecos 3D desde todos los ángulos y con cámara en movimiento
 - **Preguntó:** dónde quedan las series analizadas y si Claude puede revisar los videos en la nube.
   - **Respuesta:** en Cloudflare D1 solo se guardan los resultados (números), no los videos.
