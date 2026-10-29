@@ -562,7 +562,8 @@
   <div id="pf-estad" class="modal en-modal" style="display:none" role="dialog" aria-labelledby="pf-estad-titulo"><div class="modal-caja en-sel-caja pf-hoja">
     <div class="en-sec-cab"><strong id="pf-estad-titulo">Estadísticas</strong><button type="button" class="btn-sec" id="pf-estad-cerrar">Cerrar</button></div>
     <div class="en-det-cuerpo">
-        <div class="card pf-cuerpo-sem"><p class="pf-sub">Músculos trabajados · últimos 7 días</p>
+        <div class="pf-periodo" id="pf-periodo" role="tablist" aria-label="Período"></div>
+        <div class="card pf-cuerpo-sem"><p class="pf-sub" id="pf-cuerpo-titulo">Músculos trabajados</p>
           <canvas id="pf-cuerpo-graf" class="en-musc-graf" data-alto="260" style="height:260px"></canvas>
           <div class="pf-escala"><span>Poco</span><i></i><span>Mucho</span></div>
           <p class="hint" id="pf-cuerpo-txt" style="margin-bottom:0"></p></div>
@@ -613,6 +614,10 @@
         <p class="hint" id="pf-version"></p>
       </section>
     </div>
+  </div></div>
+  <div id="pf-grupo" class="modal en-modal" style="display:none" role="dialog" aria-labelledby="pf-grupo-titulo"><div class="modal-caja en-sel-caja pf-hoja">
+    <div class="en-sec-cab"><strong id="pf-grupo-titulo">Ejercicios</strong><button type="button" class="btn-sec" id="pf-grupo-cerrar">Cerrar</button></div>
+    <div class="en-det-cuerpo"><div id="pf-grupo-lista" class="en-ejs"></div></div>
   </div></div>
   <div id="en-detalle" class="modal en-modal" style="display:none"><div class="modal-caja en-sel-caja">
     <div id="en-det-cuerpo" class="en-det-cuerpo"></div>

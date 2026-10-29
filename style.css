@@ -1124,3 +1124,11 @@ body.sin-scroll { overflow: hidden; }
 .pf-escala { display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 11px; color: var(--text-muted); margin: 6px 0 4px; }
 .pf-escala i { width: 120px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #3a3360, #7c5cff, #ff5722); }
 #ir-inicio { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.pf-periodo { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--bg-input); border-radius: 10px; padding: 3px; margin-bottom: 10px; flex: none; }
+.pf-periodo button { background: none; border: none; color: var(--text-muted); font-weight: 700; font-size: 13px; padding: 8px 2px; border-radius: 8px; cursor: pointer; font-family: inherit; }
+.pf-periodo button.activo { background: var(--accent-green); color: #fff; }
+#pf-cuerpo-graf { cursor: pointer; }
+#en-musculos .en-mus { cursor: pointer; }
+#en-musculos .en-mus em { font-style: normal; color: var(--text-muted); font-size: 18px; margin-left: 4px; }
+#pf-grupo-lista { padding: 0 2px; }
+#en-musculos .en-mus { grid-template-columns: 110px 1fr 34px 10px; }

@@ -108,6 +108,7 @@ export async function iniciar(d) {
   $('en-sel-cerrar').onclick = () => { reemplazarIndex = null; $('en-selector').style.display = 'none'; };
   $('en-det-cerrar').onclick = () => { $('en-detalle').style.display = 'none'; };
   $('en-ejs-cerrar').onclick = () => { $('en-ejs-modal').style.display = 'none'; };
+  $('pf-grupo-cerrar').onclick = () => { $('pf-grupo').style.display = 'none'; };
   $('en-ejs-buscar').oninput = pintarListaEjercicios;
   $('en-ejs-orden').onchange = pintarListaEjercicios;
   $('en-hoja').onclick = (ev) => { if (ev.target.id === 'en-hoja') $('en-hoja').style.display = 'none'; };
@@ -207,16 +208,64 @@ function pintarCalendario(lunes) {
   }));
 }
 
-// Ventana Estadisticas (se abre desde Perfil): cuerpo con los musculos de la semana y series por grupo
+// Ventana Estadisticas (se abre desde Perfil): cuerpo con los musculos trabajados y series por grupo,
+// en el periodo elegido. Tocar un musculo del dibujo o un grupo abre la lista de sus ejercicios.
+const PERIODOS = { 7: '7 días', 30: '1 mes', 90: '3 meses', 365: '1 año' };
+let periodoEst = +leerLS('af_est_periodo') || 7;
+const desdePeriodo = () => new Date(Date.now() - periodoEst * 86400000);
+const textoPeriodo = () => (periodoEst === 7 ? 'últimos 7 días' : `último${periodoEst === 365 ? ' año' : periodoEst === 30 ? ' mes' : 's 3 meses'}`);
 export function abrirEstadisticas() {
   $('pf-estad').style.display = 'flex';
+  pintarEstadisticas();
+}
+function pintarEstadisticas() {
+  $('pf-periodo').innerHTML = Object.entries(PERIODOS).map(([d, t]) => `<button type="button" data-d="${d}" class="${+d === periodoEst ? 'activo' : ''}">${t}</button>`).join('');
+  $('pf-periodo').querySelectorAll('button').forEach((b) => (b.onclick = () => { periodoEst = +b.dataset.d; guardarLS('af_est_periodo', String(periodoEst)); pintarEstadisticas(); }));
+  $('pf-cuerpo-titulo').textContent = `Músculos trabajados · ${textoPeriodo()}`;
   pintarMusculos();
   pintarCuerpoSemana();
 }
-function pintarCuerpoSemana() {
-  const hace7 = Date.now() - 7 * 86400000, carga = {};
+// ejercicios hechos en el periodo: clave -> { e, series, maxKg }
+function ejerciciosDelPeriodo(filtro) {
+  const desde = desdePeriodo(), m = new Map();
   for (const en of lista) {
-    if (new Date(en.inicio) < hace7) continue;
+    if (new Date(en.inicio) < desde) continue;
+    for (const e of en.ejercicios) {
+      const hechas = e.series.filter(cuenta); if (!hechas.length || !filtro(e)) continue;
+      const k = P.claveEj(e);
+      if (!m.has(k)) m.set(k, { e, series: 0, maxKg: null });
+      const x = m.get(k); x.series += hechas.length;
+      for (const sr of hechas) if (sr.kg && (!x.maxKg || sr.kg > x.maxKg.kg)) x.maxKg = { kg: sr.kg, reps: sr.reps };
+    }
+  }
+  return [...m.entries()].sort((a, b) => b[1].series - a[1].series);
+}
+function abrirGrupo(titulo, filtro, notaDe = null) {
+  const filas = ejerciciosDelPeriodo(filtro), total = filas.reduce((a, [, x]) => a + x.series, 0);
+  $('pf-grupo-titulo').textContent = titulo;
+  $('pf-grupo-lista').innerHTML = `<p class="hint" style="margin:0 0 6px">${textoPeriodo().charAt(0).toUpperCase() + textoPeriodo().slice(1)} · ${fmt(total, total % 1 ? 1 : 0)} series efectivas en ${filas.length} ejercicio${filas.length === 1 ? '' : 's'}</p>`
+    + (filas.length ? filas.map(([k, { e, series, maxKg }]) => {
+      const r = P.registros(lista, k), real = P.rmReal(k), nota = notaDe ? notaDe(e) : '';
+      return `<div class="en-ej-fila" data-k="${esc(k)}" role="button"><span class="en-ej-icono">${iconoEj(e)}</span>
+        <div><strong>${esc(nombreEj(e))}</strong><small>${series} serie${series === 1 ? '' : 's'}${maxKg ? ` · máx. ${kgTxt(maxKg.kg)} kg × ${maxKg.reps ?? '—'}` : ''}${nota ? ` · ${nota}` : ''}</small></div>
+        <div class="der">${real ? `<b>${kgTxt(real.kg)}</b><small>1RM real</small>` : r.mejor ? `<b>${fmt(r.mejor.valor)}</b><small>1RM est.</small>` : ''}</div></div>`;
+    }).join('') : '<p class="vacio">No hiciste ejercicios de este grupo en el período. Prueba con un período más largo.</p>');
+  const mapa = new Map(filas);
+  $('pf-grupo-lista').querySelectorAll('.en-ej-fila').forEach((x) => (x.onclick = () => abrirProgreso(mapa.get(x.dataset.k).e)));
+  $('pf-grupo').style.display = 'flex';
+}
+const grupoDe = (e) => (e.ej && deps.porId[e.ej] && (deps.porId[e.ej].musculo || deps.porId[e.ej].grupo)) || 'Otros';
+function abrirMusculo(k) {
+  const nombre = tarjetas.NOMBRES_MUSC[k]; if (!nombre) return;
+  // el mismo nombre puede tener varias zonas (p. ej. pantorrillas): se juntan
+  const claves = Object.keys(tarjetas.NOMBRES_MUSC).filter((x) => tarjetas.NOMBRES_MUSC[x] === nombre);
+  const rol = (e) => { const m = obtenerMusculos(e); return claves.some((c) => m.pri.includes(c)) ? 'pri' : claves.some((c) => m.sec.includes(c)) ? 'sec' : null; };
+  abrirGrupo(nombre, (e) => rol(e), (e) => (rol(e) === 'pri' ? 'principal' : 'secundario'));
+}
+function pintarCuerpoSemana() {
+  const desde = desdePeriodo(), carga = {};
+  for (const en of lista) {
+    if (new Date(en.inicio) < desde) continue;
     for (const e of en.ejercicios) {
       const n = e.series.filter(cuenta).length; if (!n) continue;
       const m = obtenerMusculos(e);
@@ -227,23 +276,28 @@ function pintarCuerpoSemana() {
   const max = Math.max(0, ...Object.values(carga));
   // de gris (nada) a violeta (poco) y naranja (lo que mas trabajaste)
   const mezcla = (a, b, t) => '#' + [0, 2, 4].map((i) => Math.round(parseInt(a.substr(i + 1, 2), 16) * (1 - t) + parseInt(b.substr(i + 1, 2), 16) * t).toString(16).padStart(2, '0')).join('');
-  pintarCuerpo($('pf-cuerpo-graf'), (k) => {
+  const c = $('pf-cuerpo-graf');
+  pintarCuerpo(c, (k) => {
     const v = carga[k] || 0; if (!v || !max) return null;
     const t = v / max;
     return t < 0.5 ? mezcla('#3a3360', '#7c5cff', t / 0.5) : mezcla('#7c5cff', '#ff5722', (t - 0.5) / 0.5);
   });
+  c.onclick = (ev) => { const r = c.getBoundingClientRect(), k = musculoEn(c, ev.clientX - r.left, ev.clientY - r.top); if (k) abrirMusculo(k); };
   const top = Object.entries(carga).sort((a, b) => b[1] - a[1]).map(([k]) => tarjetas.NOMBRES_MUSC[k] || k).filter((x, i, a) => a.indexOf(x) === i).slice(0, 3);
-  $('pf-cuerpo-txt').textContent = top.length ? `Lo que más trabajaste: ${top.join(', ')}.` : 'Aún no hay series esta semana.';
+  $('pf-cuerpo-txt').textContent = top.length ? `Lo que más trabajaste: ${top.join(', ')}. Toca un músculo para ver sus ejercicios.` : 'Aún no hay series en este período.';
 }
 
 function pintarMusculos() {
-  const hace7 = new Date(Date.now() - 7 * 86400000);
-  const g = P.seriesPorGrupo(lista, deps.porId, hace7), filas = Object.entries(g).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  const semanas = periodoEst / 7;
+  const g = P.seriesPorGrupo(lista, deps.porId, desdePeriodo());
+  const filas = Object.entries(g).filter(([, n]) => n > 0).map(([nombre, n]) => [nombre, n / semanas]).sort((a, b) => b[1] - a[1]);
   const max = Math.max(20, ...filas.map(([, n]) => n));
-  $('en-musculos').innerHTML = filas.length ? filas.map(([nombre, n]) => `<div class="en-mus"><span>${esc(nombre)}</span>
-      <div class="en-mus-barra"><div style="width:${100 * n / max}%" class="${n < 10 ? 'poco' : n > 20 ? 'mucho' : ''}"></div><i style="left:${100 * 10 / max}%"></i><i style="left:${100 * 20 / max}%"></i></div><b>${n}</b></div>`).join('')
-    + '<p class="hint">Series efectivas en los últimos 7 días. Las marcas indican 10 y 20 series por semana, el rango habitual para crecer.</p>'
+  const dec = semanas > 1 ? 1 : 0;
+  $('en-musculos').innerHTML = filas.length ? filas.map(([nombre, n]) => `<div class="en-mus" data-g="${esc(nombre)}" role="button"><span>${esc(nombre)}</span>
+      <div class="en-mus-barra"><div style="width:${100 * n / max}%" class="${n < 10 ? 'poco' : n > 20 ? 'mucho' : ''}"></div><i style="left:${100 * 10 / max}%"></i><i style="left:${100 * 20 / max}%"></i></div><b>${fmt(n, n % 1 ? dec : 0)}</b><em>›</em></div>`).join('')
+    + `<p class="hint">${semanas > 1 ? 'Promedio de series efectivas por semana en el período.' : 'Series efectivas en los últimos 7 días.'} Las marcas indican 10 y 20 series por semana, el rango habitual para crecer. Toca un grupo para ver sus ejercicios.</p>`
     : '<p class="hint" style="margin:0">Aquí verás cuántas series haces por grupo muscular cada semana.</p>';
+  $('en-musculos').querySelectorAll('[data-g]').forEach((x) => (x.onclick = () => abrirGrupo(x.dataset.g, (e) => grupoDe(e) === x.dataset.g)));
 }
 
 let ejsVistos = new Map(); // clave -> { e, n } de todos los ejercicios del historial (mas reciente primero)
@@ -582,6 +636,18 @@ function obtenerMusculos(e) {
 function pintarCuerpoMusculos(canvas, pri, sec) {
   pintarCuerpo(canvas, (m) => (pri.includes(m) ? '#ff5722' : sec.includes(m) ? '#7c5cff' : null));
 }
+let ctxPrueba = null;
+function musculoEn(canvas, x, y) {
+  ctxPrueba = ctxPrueba || document.createElement('canvas').getContext('2d');
+  const zonas = canvas._zonas || [];
+  // primero el punto exacto; si cae en un borde o entre musculos, se busca alrededor (el dedo es grueso)
+  for (const r of [0, 5, 10, 15]) for (let a = 0; a < (r ? 8 : 1); a++) {
+    const px = x + r * Math.cos(a * Math.PI / 4), py = y + r * Math.sin(a * Math.PI / 4);
+    const z = zonas.find(([, camino]) => ctxPrueba.isPointInPath(camino, px, py));
+    if (z) return z[0];
+  }
+  return null;
+}
 function pintarCuerpo(canvas, colorDe) {
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
@@ -599,6 +665,7 @@ function pintarCuerpo(canvas, colorDe) {
   const xEspalda = sep * 2 + anchoCuerpo;
   const y0 = 6;
 
+  canvas._zonas = []; // [musculo, Path2D] para saber que musculo se toco
   const dibujarPolys = (poligonos, xBase) => {
     for (const [musculo, polys] of poligonos) {
       const neutro = musculo === 'head' || musculo === 'neck' || musculo === 'knees';
@@ -609,14 +676,15 @@ function pintarCuerpo(canvas, colorDe) {
       g.lineWidth = 1;
       g.lineJoin = 'round';
       for (const p of polys) {
-        g.beginPath();
-        g.moveTo(xBase + p[0] * esc, y0 + p[1] * esc);
+        const camino = new Path2D();
+        camino.moveTo(xBase + p[0] * esc, y0 + p[1] * esc);
         for (let k = 2; k < p.length; k += 2) {
-          g.lineTo(xBase + p[k] * esc, y0 + p[k + 1] * esc);
+          camino.lineTo(xBase + p[k] * esc, y0 + p[k + 1] * esc);
         }
-        g.closePath();
-        g.fill();
-        g.stroke();
+        camino.closePath();
+        g.fill(camino);
+        g.stroke(camino);
+        if (!neutro) canvas._zonas.push([musculo, camino]);
       }
     }
   };
