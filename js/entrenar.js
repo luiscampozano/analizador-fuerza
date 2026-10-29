@@ -381,6 +381,7 @@ function abrirDetalle(id, nuevo = null) {
       ${e.notas ? `<div class="hint" style="margin:2px 0 4px">📝 ${esc(e.notas)}</div>` : ''}
       ${e.series.map((s, i) => `<div class="en-det-serie${s.tipo === 'calentamiento' ? ' cal' : ''}"><span>${TIPOS[s.tipo] || i + 1 - e.series.slice(0, i).filter((x) => x.tipo === 'calentamiento').length}</span>
         <span>${esCardio(e) ? (cardioTxt(e, s) || '—') + (velTxt(e, s.km, s.min) ? ` · ${velTxt(e, s.km, s.min)}` : '') : `${kgTxt(s.kg) || '—'} kg × ${s.reps ?? '—'}${s.rpe ? ` @${fmt(s.rpe, s.rpe % 1 ? 1 : 0)}` : ''}`}</span>
+        ${s.actividad ? `<button type="button" class="en-vel" data-act="${s.actividad.id}">⚡ ${s.actividad.ritmo ?? '--'} ${esc(s.actividad.unidad || '')}</button>` : ''}
         ${s.analisis ? `<button type="button" class="en-vel" data-serie="${s.analisis.id}">⚡ ${fmt(s.analisis.v, 2)} m/s</button>` : ''}</div>`).join('')}</div>`).join('')}
     <button type="button" class="btn-sec en-tarjetas" id="en-tarjetas">🖼️ Tarjetas para compartir</button>
     <button type="button" class="btn-primary en-compartir" id="en-compartir">${deps.compartido && deps.compartido(en.id) ? '📣 Actualizar publicación' : '📣 Compartir en la comunidad'}</button>
@@ -388,6 +389,7 @@ function abrirDetalle(id, nuevo = null) {
   $('en-detalle').style.display = 'flex';
   $('en-det-cuerpo').scrollTop = 0;
   $('en-det-cuerpo').querySelectorAll('[data-serie]').forEach((b) => (b.onclick = () => { $('en-detalle').style.display = 'none'; deps.abrirSerie(b.dataset.serie); }));
+  $('en-det-cuerpo').querySelectorAll('[data-act]').forEach((b) => (b.onclick = () => { $('en-detalle').style.display = 'none'; deps.abrirActividad(b.dataset.act); }));
   $('en-tarjetas').onclick = () => {
     $('en-detalle').style.display = 'none';
     abrirTarjetas(en, nuevo || P.recordsNuevos(en, lista.filter((x) => x.id !== en.id && x.inicio < en.inicio), nombreEj), false);
@@ -567,8 +569,9 @@ function pintarActivo() {
           ${dist ? `<input type="number" inputmode="decimal" step="any" min="0" data-campo="km" value="${s.km ?? ''}" placeholder="${p && p.km ? fmt(p.km, p.km % 1 ? 2 : 0) : ''}">` : '<span></span>'}
           <input type="number" inputmode="decimal" step="any" min="0" data-campo="min" value="${s.min ?? ''}" placeholder="${p && p.min ? fmt(p.min, p.min % 1 ? 1 : 0) : ''}">
           <span class="en-ritmo">${dist ? velTxt(e, s.km, s.min) : ''}</span>
-          <button type="button" class="en-check" data-acc="hecha">✓</button><span></span>
-        </div>`;
+          <button type="button" class="en-check" data-acc="hecha">✓</button>
+          ${deps.analizable && deps.analizable(e.ej) ? `<button type="button" class="en-video${s.actividad ? ' con' : ''}" data-acc="video" title="Analizar con video">${s.actividad ? '⚡' : '🎥'}</button>` : '<span></span>'}
+        </div>${s.actividad ? `<button type="button" class="en-analisis" data-acc="ver" data-is="${is}">⚡ ${s.actividad.ritmo ?? '--'} ${esc(s.actividad.unidad || '')} · ${s.actividad.total} ${esc((s.actividad.contador || '').toLowerCase())} · ver análisis</button>` : ''}`;
       }).join('')}` : `<div class="en-fila en-fila-cab"><span>Serie</span><span>${modoRutina ? '' : 'Anterior'}</span><span>kg</span><span>Reps</span><span>RPE</span><span>✓</span><span>🎥</span></div>
       ${e.series.map((s, is) => {
         const etiqueta = TIPOS[s.tipo] || String(++nNormal);
@@ -651,13 +654,14 @@ function accion(acc, ie, is) {
       if (navigator.vibrate) navigator.vibrate(40);
     }
   } else if (acc === 'video') {
+    if (s.actividad) return deps.abrirActividad(s.actividad.id);
     if (s.analisis) return deps.abrirSerie(s.analisis.id);
     if (!e.ej || !deps.porId[e.ej]) return alert('Este ejercicio no está en la biblioteca de análisis por video. Elige uno de la lista para poder analizarlo.');
     const kg = s.kg ?? marcadores(e, is, prevs, ref(e)).kg;
     enlacePendiente = { entreno: activo.id, ie, is, ej: e.ej };
     deps.analizar({ ej: e.ej, kg, serie: is + 1, nombre: nombreEj(e) });
     return;
-  } else if (acc === 'ver') { if (s.analisis) deps.abrirSerie(s.analisis.id); return; }
+  } else if (acc === 'ver') { if (s.actividad) deps.abrirActividad(s.actividad.id); else if (s.analisis) deps.abrirSerie(s.analisis.id); return; }
   guardarBorrador(); pintarActivo();
 }
 
@@ -1084,6 +1088,18 @@ function guardarRutinaEditada() {
 }
 
 // el analisis por video de una serie termino: se guarda en esa serie del entrenamiento
+// Cardio / boxeo analizado desde una fila de Entrenar: el resultado queda pegado a esa fila
+export function vincularActividad(a) {
+  const p = enlacePendiente; enlacePendiente = null;
+  if (!p || !activo || activo.id !== p.entreno || a.ejercicio !== p.ej) return false;
+  const e = activo.ejercicios[p.ie], s = e && e.series[p.is];
+  if (!s) return false;
+  s.actividad = { id: a.id, ritmo: a.ritmo, unidad: a.unidad, total: a.total, contador: a.contador };
+  if (s.min == null && a.dur) s.min = Math.round(a.dur / 6) / 10; // minutos del clip (puedes cambiarlos)
+  guardarBorrador();
+  return true;
+}
+
 export function vincular(registro) {
   const p = enlacePendiente; enlacePendiente = null;
   if (!p || !activo || activo.id !== p.entreno || registro.ejercicio !== p.ej) return false;

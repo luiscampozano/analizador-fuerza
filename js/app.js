@@ -20,7 +20,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO } from './actividad.js';
 
-const VERSION = '2.15.0';
+const VERSION = '2.16.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -128,7 +128,7 @@ function ajustarCampos() {
   const p = ej.perfil;
   // cardio, boxeo y HIIT: sin carga; solo estatura (para las distancias) y peso corporal
   $('g-peso').style.display = p === 'cardio' ? 'none' : '';
-  $('btn-vivo').style.display = p === 'cardio' ? 'none' : '';
+  $('btn-vivo').style.display = p === 'cardio' && !tipoActividad(ej) ? 'none' : '';
   $('g-incl').style.display = p === 'riel' ? '' : 'none';
   $('g-rel').style.display = p === 'polea' ? '' : 'none';
   $('g-carro').style.display = usaCarro() ? '' : 'none';
@@ -315,8 +315,15 @@ async function analizarArchivo() {
 }
 
 // ------------------------------------------------------------------ cardio, boxeo y HIIT (js/actividad.js)
-const ACTS = 'af_actividades';
-const leerActs = () => { try { return JSON.parse(leer(ACTS) || '[]'); } catch (e) { return []; } };
+// Se guardan en el almacen de informes (marcados actividad: true): asi se sincronizan con la nube y entran al respaldo.
+const ACTS_VIEJO = 'af_actividades'; // version 2.15.0 (solo en el telefono): se mudan una vez
+async function leerActs() {
+  try {
+    const viejo = JSON.parse(leer(ACTS_VIEJO) || 'null');
+    if (Array.isArray(viejo)) { for (const a of viejo) await almacen.guardarInforme({ ...a, actividad: true }); localStorage.removeItem(ACTS_VIEJO); }
+  } catch (e) { /* nada */ }
+  return (await almacen.todos('informes')).filter((x) => x.actividad).sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+}
 async function analizarActividadVideo(frames, video, d) {
   progreso(2, 0.5, 'Midiendo el ritmo y la técnica…');
   const act = analizarActividad(frames, video.duration, ej, { altura: d.altura });
@@ -329,8 +336,12 @@ async function analizarActividadVideo(frames, video, d) {
     await almacen.guardarVideo(act.id, salida);
   }
   almacen.guardarPose(act.id, frames, { dur: video.duration, W: video.videoWidth, H: video.videoHeight, version: VERSION });
-  const lista = leerActs(); lista.unshift(act); guardar(ACTS, JSON.stringify(lista.slice(0, 60)));
-  mostrarActividad(act, { video: salida, desde: 'v-form' });
+  act.actividad = true;
+  await almacen.guardarInforme(act);
+  const enEntreno = entrenar.vincularActividad(act);
+  if (enEntreno) aviso('');
+  nube.sincronizar && nube.sincronizar();
+  mostrarActividad(act, { video: salida, desde: enEntreno ? 'v-entrenar' : 'v-form' });
 }
 let actActual = null, actDesde = 'v-form';
 function mostrarActividad(a, { video = null, desde = 'v-form' } = {}) {
@@ -367,13 +378,13 @@ $('act-volver').onclick = () => vista(actDesde);
 $('act-nueva').onclick = () => { $('btn-quitar').click(); vista('v-form'); };
 $('act-borrar').onclick = async () => {
   if (!actActual || !confirm('¿Borrar este análisis?')) return;
-  guardar(ACTS, JSON.stringify(leerActs().filter((x) => x.id !== actActual.id)));
   try { await almacen.borrarSerie(actActual.id); } catch (e) { /* nada */ }
+  nube.sincronizar && nube.sincronizar();
   actActual = null; vista(actDesde === 'v-historial' ? 'v-historial' : 'v-form');
 };
-async function abrirActividad(id) {
-  const a = leerActs().find((x) => x.id === id); if (!a) return;
-  mostrarActividad(a, { video: await almacen.leerVideo(id), desde: 'v-historial' });
+async function abrirActividad(id, desde = 'v-historial') {
+  const a = await almacen.leerInforme(id); if (!a || !a.actividad) return alert('Ese análisis ya no está guardado.');
+  mostrarActividad(a, { video: await almacen.leerVideo(id), desde });
 }
 
 // Video con telemetria (esqueleto, flecha de fuerza, graficas y contador de reps). Se usa al analizar y al corregir el conteo.
@@ -885,11 +896,12 @@ function borrarSerieHist(id) {
 function pintarHistorial() {
   const lista = hist.leer();
   if (pestana === 'h-actividades') {
-    const acts = leerActs();
+    leerActs().then((acts) => {
     $('h-lista-act').innerHTML = acts.length ? acts.map((a) => `<div class="serie" data-act="${a.id}" role="button"><span>${a.icono || '🏃'} <b>${esc(a.nombre)}</b> · ${new Date(a.fecha).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}</span>
       <span>${a.total} ${esc((a.contador || '').toLowerCase())}${a.ritmo ? ` · ${fmt(a.ritmo)} ${esc(a.unidad)}` : ''}${a.alertas.some((x) => x.nivel === 'aviso') ? ' · ⚠' : ''}</span></div>`).join('')
       : '<p class="vacio">Aún no analizas cardio, boxeo ni HIIT. En Analizar elige, por ejemplo, Correr en cinta, Bicicleta estática o Boxeo.</p>';
     $('h-lista-act').querySelectorAll('[data-act]').forEach((x) => (x.onclick = () => abrirActividad(x.dataset.act)));
+    });
     return;
   }
   if (pestana === 'h-sesiones') {
@@ -1009,7 +1021,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   comunidad.iniciar({ vista, porId: POR_ID, guardarRutina: (n, ejs) => entrenar.guardarRutina(n, ejs) });
   perfil.iniciar({ vista, version: VERSION, porId: POR_ID, abrirProgreso: (e) => entrenar.abrirProgreso(e), abrirEstadisticas: () => entrenar.abrirEstadisticas(), abrirEjercicios: () => entrenar.abrirEjercicios() });
   document.querySelectorAll('[data-volver]').forEach((b) => (b.onclick = () => vista(b.dataset.volver)));
-  entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar'), compartir: (en, recs) => comunidad.compartir(en, recs), compartido: (id) => comunidad.compartido(id), alias: () => comunidad.aliasPropio() }).then(() => {
+  entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar'), abrirActividad: (id) => abrirActividad(id, 'v-entrenar'), analizable: (id) => !!tipoActividad(POR_ID[id]), compartir: (en, recs) => comunidad.compartir(en, recs), compartido: (id) => comunidad.compartido(id), alias: () => comunidad.aliasPropio() }).then(() => {
     entrenar.alCambiarVista('v-entrenar');
     // nube: al recibir cambios de otro dispositivo se repinta lo que este a la vista
     nube.iniciar({

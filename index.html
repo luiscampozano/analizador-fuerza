@@ -220,10 +220,10 @@
         <video id="vivo-video" playsinline muted autoplay></video>
         <canvas id="vivo-canvas"></canvas>
         <div class="vivo-hud">
-          <div class="vivo-reps"><span id="vivo-n">0</span><small>reps</small></div>
+          <div class="vivo-reps"><span id="vivo-n">0</span><small id="vivo-n-u">reps</small></div>
           <div class="vivo-datos">
-            <div><small>Última rep</small><b id="vivo-v">--</b><small>m/s</small></div>
-            <div><small>Pérdida</small><b id="vivo-p">--</b><small>%</small></div>
+            <div><small id="vivo-v-t">Última rep</small><b id="vivo-v">--</b><small id="vivo-v-u">m/s</small></div>
+            <div><small id="vivo-p-t">Pérdida</small><b id="vivo-p">--</b><small id="vivo-p-u">%</small></div>
           </div>
         </div>
         <div class="vivo-aviso" id="vivo-aviso" style="display:none"></div>
@@ -232,7 +232,7 @@
       </div>
       <div class="vivo-controles">
         <div class="form-grid">
-          <div class="form-group">
+          <div class="form-group" id="g-vivo-limite">
             <label for="vivo-limite">Avisar al perder</label>
             <select id="vivo-limite">
               <option value="0">Sin aviso</option><option value="10">10 % (potencia)</option><option value="20" selected>20 % (fuerza)</option>

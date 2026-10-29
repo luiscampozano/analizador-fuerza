@@ -2,6 +2,7 @@
 // cuando la perdida de velocidad pasa el limite elegido. La serie se graba y al terminar se analiza completa.
 import { cargarModelo, detectarEnVivo } from './pose.js';
 import { interpolar, analizar } from './fisica.js';
+import { analizarActividad } from './actividad.js';
 
 const $ = (id) => document.getElementById(id);
 const LINEAS = [[11, 13], [13, 15], [12, 14], [14, 16], [11, 12], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28]];
@@ -58,8 +59,14 @@ export async function abrir({ ej, datos, calidad, alTerminar }) {
     anunciadas: 0, avisado: false, ultimoN: 0 };
   const yo = est;
   $('vivo-n').textContent = '0'; $('vivo-v').textContent = '--'; $('vivo-p').textContent = '--';
+  // cardio, boxeo y HIIT: se muestran el total (pasos, golpes...), el ritmo y el tiempo; no hay perdida de velocidad
+  const cardio = !!ej.cardio;
+  $('vivo-n-u').textContent = cardio ? 'total' : 'reps';
+  $('vivo-v-t').textContent = cardio ? 'Ritmo' : 'Última rep'; $('vivo-v-u').textContent = cardio ? 'por min' : 'm/s';
+  $('vivo-p-t').textContent = cardio ? 'Tiempo' : 'Pérdida'; $('vivo-p-u').textContent = cardio ? 'min:s' : '%';
+  $('g-vivo-limite').style.display = cardio ? 'none' : '';
   $('vivo-aviso').style.display = 'none'; $('vivo-cuenta').style.display = 'none';
-  $('vivo-accion').textContent = '▶ Empezar serie'; $('vivo-accion').disabled = true;
+  $('vivo-accion').textContent = cardio ? '▶ Empezar' : '▶ Empezar serie'; $('vivo-accion').disabled = true;
   $('vivo-estado').textContent = 'Abriendo la cámara…';
   const video = $('vivo-video'), lienzo = $('vivo-canvas'), ctx = lienzo.getContext('2d');
 
@@ -146,6 +153,7 @@ function iniciarGrabacion(yo) {
   $('vivo-accion').onclick = () => terminar(yo);
   $('vivo-estado').textContent = '● Grabando…';
   const limite = () => parseFloat($('vivo-limite').value) || 0;
+  if (yo.ej.cardio) { yo.reloj = setInterval(() => cardioEnVivo(yo), 1000); return; }
   yo.reloj = setInterval(() => {
     if (!yo.grabando || yo.frames.length < 20) return;
     const dur = yo.frames[yo.frames.length - 1].t;
@@ -173,6 +181,20 @@ function iniciarGrabacion(yo) {
       hablar(`Para. Perdiste ${Math.round(ult.perdida)} por ciento`, true);
     }
   }, 400);
+}
+
+// cardio en vivo: cada segundo se mide todo lo grabado; cada 30 s se dice el ritmo en voz alta
+function cardioEnVivo(yo) {
+  if (!yo.grabando || yo.frames.length < 30) return;
+  const dur = yo.frames[yo.frames.length - 1].t;
+  $('vivo-p').textContent = `${Math.floor(dur / 60)}:${String(Math.floor(dur % 60)).padStart(2, '0')}`;
+  let a; try { a = analizarActividad(yo.frames, dur, yo.ej, { altura: yo.datos.altura }); } catch (e) { return; }
+  const r = a.curva && a.curva.length ? a.curva[a.curva.length - 1].v : null;
+  yo.anunciadas = Math.max(yo.anunciadas, a.total);
+  $('vivo-n').textContent = yo.anunciadas; // nunca retrocede
+  $('vivo-v').textContent = r ? Math.round(r) : '--';
+  const bloque = Math.floor(dur / 30);
+  if (r && bloque > (yo.ultimoAviso || 0)) { yo.ultimoAviso = bloque; hablar(`${Math.round(r)} ${a.unidad.replace('/min', ' por minuto')}`); }
 }
 
 function terminar(yo) {

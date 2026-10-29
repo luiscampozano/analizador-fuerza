@@ -113,7 +113,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
   const bien = (texto) => res.alertas.push({ nivel: 'ok', texto });
   const fin = (contador, unidad, evT, factor = 1) => {
     res.contador = contador; res.total = evT.length; res.unidad = unidad;
-    res.ritmo = r1(ritmo(evT) * factor);
+    const rt = ritmo(evT); res.ritmo = rt == null ? null : r1(rt * factor);
     res.curva = curvaRitmo(evT, dur, factor);
     res.activo = evT.length ? [evT[0], evT[evT.length - 1]] : [0, dur];
     if (!res.eventos.length) res.eventos = evT.map((x) => ({ t: x }));

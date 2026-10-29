@@ -8,6 +8,28 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-29
 
+### 16:05 · v2.16.0 — Pendientes de cardio: nube, Entrenar y modo en vivo
+- **Pidió:** hacer todos los pendientes mientras graba videos de boxeo.
+- **Hecho:**
+  - **Nube:** los análisis de cardio, boxeo y HIIT se guardan en el almacén de informes (`actividad: true`). Así se
+    sincronizan con la nube y entran al respaldo sin cambiar el servidor. Los de la v2.15.0 (`af_actividades`) se
+    mudan solos una vez. El historial «Cardio y boxeo» los lee de ahí. Los videos siguen solo en el teléfono.
+  - **Entrenar:**
+    - las filas de cardio analizables tienen botón 🎥, que abre Analizar con el aviso de la serie;
+    - el resultado queda pegado a la fila («⚡ 172 pasos/min · 344 pasos · ver análisis») y llena los minutos con la
+      duración del clip si estaban vacíos;
+    - «Volver» regresa al entrenamiento y el detalle del entrenamiento muestra el enlace ⚡.
+  - **Modo en vivo para cardio:**
+    - muestra el total (pasos, golpes, saltos…), el ritmo por minuto y el tiempo; cada 30 s dice el ritmo en voz alta;
+    - sin aviso de pérdida de velocidad. Al terminar se analiza el video completo como siempre.
+  - Arreglo: si no hay movimientos, el ritmo se muestra «--» en vez de 0.
+  - Prueba: `pruebas/actividad/act2_e2e.js` en Chromium con la IA real y cámara simulada (todo OK).
+- **Pendiente:**
+  - Videos reales de boxeo (Luis los está grabando) para calibrar el detector de golpes.
+  - Pendientes anteriores: conteo propio para los ejercicios alternos, llevar los reportes de fallos de D1 al banco
+    e imagen de la tarjeta en la Comunidad.
+
+
 ### 15:40 · v2.15.0 — Análisis por video de cardio, boxeo y HIIT
 - **Pidió:** usar el analizador en cardio (correr, bici, etc.), boxeo y expandirlo («hazlo todo»).
 - **Hecho:**
