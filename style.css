@@ -1108,3 +1108,18 @@ body.sin-scroll { overflow: hidden; }
 .tj-acciones button { flex: 1; }
 .tj-acciones button { padding: 10px 4px; font-size: .85rem; }
 .en-tarjetas { width: 100%; margin-top: 8px; }
+
+/* v2.8.0: Perfil como centro de tu historia */
+.en-cab-botones { display: flex; gap: 6px; }
+.pf-engrane { font-size: 16px !important; padding: 6px 9px !important; }
+.pf-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pf-info button { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); border-radius: var(--radius-md);
+  padding: 16px 12px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer; font-family: inherit; }
+.pf-info button span { font-size: 22px; }
+.pf-info button:active { border-color: var(--accent-green); }
+.pf-hoja { height: 88vh; }
+.pf-hoja .section:first-child { margin-top: 0; }
+.pf-sub { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.pf-cuerpo-sem { text-align: center; padding: 12px; }
+.pf-escala { display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 11px; color: var(--text-muted); margin: 6px 0 4px; }
+.pf-escala i { width: 120px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #3a3360, #7c5cff, #ff5722); }

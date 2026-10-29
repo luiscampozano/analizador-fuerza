@@ -12,7 +12,7 @@ const leerJ = (k, def) => { try { return JSON.parse(localStorage.getItem(k) || '
 const guardarJ = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
 const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
-let deps = null; // { vista, version }
+let deps = null; // { vista, version, abrirEstadisticas, abrirEjercicios }
 
 // DOTS: coeficientes oficiales (hombres / mujeres)
 const DOTS = { h: [-307.75076, 24.0900756, -0.1918759221, 0.0007391293, -0.000001093], m: [-57.96288, 13.6175032, -0.1126655495, 0.0005158568, -0.0000010706] };
@@ -40,6 +40,14 @@ export function iniciar(d) {
   $('pf-restaurar').onclick = () => $('pf-archivo').click();
   $('pf-archivo').onchange = restaurar;
   $('pf-det-cerrar').onclick = () => { $('pf-modal').style.display = 'none'; };
+  // ventanas de Perfil: Estadisticas y Ejercicios las pinta Entrenar (tiene el registro); Medidas y Ajustes, aqui
+  const abrir = (id) => { $(id).style.display = 'flex'; };
+  const cerrar = (id) => () => { $(id).style.display = 'none'; };
+  $('pf-ajustes').onclick = () => abrir('pf-ajustes-modal');
+  $('pf-ir-estad').onclick = () => deps.abrirEstadisticas();
+  $('pf-ir-ejs').onclick = () => deps.abrirEjercicios();
+  $('pf-ir-medidas').onclick = () => { abrir('pf-medidas'); pintarPeso(); };
+  for (const id of ['pf-estad', 'pf-medidas', 'pf-ajustes-modal']) $(id + '-cerrar').onclick = cerrar(id);
 }
 
 // ------------------------------------------------------------------ cuenta y nube

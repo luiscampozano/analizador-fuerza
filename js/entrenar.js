@@ -140,7 +140,7 @@ function pintarInicio() {
   $('en-semana').innerHTML = `<div class="kpi-card"><div class="kpi-label">Esta semana</div><div class="kpi-value">${semana.length}</div><div class="kpi-sub">entrenamientos</div></div>
     <div class="kpi-card"><div class="kpi-label">Series</div><div class="kpi-value">${semana.reduce((a, e) => a + seriesHechas(e), 0)}</div><div class="kpi-sub">efectivas</div></div>
     <div class="kpi-card"><div class="kpi-label">Volumen</div><div class="kpi-value">${fmt(semana.reduce((a, e) => a + volumen(e), 0) / 1000, 1)}</div><div class="kpi-sub">toneladas</div></div>`;
-  pintarRutinas(); pintarCalendario(lunes); pintarMusculos(); pintarEjercicios();
+  pintarRutinas(); pintarCalendario(lunes);
   $('en-lista').innerHTML = lista.length ? lista.slice(0, 60).map((en) => `<div class="en-tarjeta" data-id="${en.id}" role="button">
       <div class="en-tarjeta-cab"><strong>${esc(en.titulo || 'Entrenamiento')}</strong><small>${fechaTxt(en.inicio)}${en.fin ? ' · ' + duracion(new Date(en.fin) - new Date(en.inicio)) : ''}</small></div>
       <div class="en-tarjeta-datos"><span>${fmt(volumen(en))} kg</span><span>${seriesHechas(en)} series</span>${en.records ? `<span class="en-pr">🏆 ${en.records}</span>` : ''}${en.origen && en.origen !== 'app' ? `<span class="en-origen">${esc(en.origen === 'hevy' ? 'Hevy' : en.origen === 'strong' ? 'Strong' : 'Excel')}</span>` : ''}</div>
@@ -207,6 +207,35 @@ function pintarCalendario(lunes) {
   }));
 }
 
+// Ventana Estadisticas (se abre desde Perfil): cuerpo con los musculos de la semana y series por grupo
+export function abrirEstadisticas() {
+  $('pf-estad').style.display = 'flex';
+  pintarMusculos();
+  pintarCuerpoSemana();
+}
+function pintarCuerpoSemana() {
+  const hace7 = Date.now() - 7 * 86400000, carga = {};
+  for (const en of lista) {
+    if (new Date(en.inicio) < hace7) continue;
+    for (const e of en.ejercicios) {
+      const n = e.series.filter(cuenta).length; if (!n) continue;
+      const m = obtenerMusculos(e);
+      m.pri.forEach((k) => { carga[k] = (carga[k] || 0) + n; });
+      m.sec.forEach((k) => { carga[k] = (carga[k] || 0) + 0.5 * n; });
+    }
+  }
+  const max = Math.max(0, ...Object.values(carga));
+  // de gris (nada) a violeta (poco) y naranja (lo que mas trabajaste)
+  const mezcla = (a, b, t) => '#' + [0, 2, 4].map((i) => Math.round(parseInt(a.substr(i + 1, 2), 16) * (1 - t) + parseInt(b.substr(i + 1, 2), 16) * t).toString(16).padStart(2, '0')).join('');
+  pintarCuerpo($('pf-cuerpo-graf'), (k) => {
+    const v = carga[k] || 0; if (!v || !max) return null;
+    const t = v / max;
+    return t < 0.5 ? mezcla('#3a3360', '#7c5cff', t / 0.5) : mezcla('#7c5cff', '#ff5722', (t - 0.5) / 0.5);
+  });
+  const top = Object.entries(carga).sort((a, b) => b[1] - a[1]).map(([k]) => tarjetas.NOMBRES_MUSC[k] || k).filter((x, i, a) => a.indexOf(x) === i).slice(0, 3);
+  $('pf-cuerpo-txt').textContent = top.length ? `Lo que más trabajaste: ${top.join(', ')}.` : 'Aún no hay series esta semana.';
+}
+
 function pintarMusculos() {
   const hace7 = new Date(Date.now() - 7 * 86400000);
   const g = P.seriesPorGrupo(lista, deps.porId, hace7), filas = Object.entries(g).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
@@ -227,21 +256,16 @@ function filaEjercicio(k, e, n) {
 function activarFilas(cont) {
   cont.querySelectorAll('.en-ej-fila').forEach((x) => (x.onclick = () => abrirProgreso(ejsVistos.get(x.dataset.k).e)));
 }
-function pintarEjercicios() {
+function contarEjercicios() {
   ejsVistos = new Map();
   for (const en of lista) for (const e of en.ejercicios) {
     const k = P.claveEj(e);
     if (!ejsVistos.has(k)) ejsVistos.set(k, { e, n: 0 });
     ejsVistos.get(k).n++;
   }
-  const todos = [...ejsVistos.entries()], N = todos.length;
-  $('en-ejs').innerHTML = N ? todos.slice(0, 3).map(([k, { e, n }]) => filaEjercicio(k, e, n)).join('')
-      + (N > 3 ? `<button type="button" class="en-ejs-todos" id="en-ejs-todos">Ver los ${N} ejercicios <span>›</span></button>` : '')
-    : '<p class="hint" style="margin:0">Cuando registres entrenamientos, aquí verás tus récords y progreso por ejercicio.</p>';
-  activarFilas($('en-ejs'));
-  if ($('en-ejs-todos')) $('en-ejs-todos').onclick = abrirEjercicios;
 }
-function abrirEjercicios() {
+export function abrirEjercicios() {
+  contarEjercicios();
   $('en-ejs-buscar').value = '';
   $('en-ejs-orden').value = leerLS('af_ejs_orden') || 'reciente';
   pintarListaEjercicios();
@@ -556,9 +580,12 @@ function obtenerMusculos(e) {
 }
 
 function pintarCuerpoMusculos(canvas, pri, sec) {
+  pintarCuerpo(canvas, (m) => (pri.includes(m) ? '#ff5722' : sec.includes(m) ? '#7c5cff' : null));
+}
+function pintarCuerpo(canvas, colorDe) {
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
-  const W = canvas.clientWidth || 300, H = 180;
+  const W = canvas.clientWidth || 300, H = +canvas.dataset.alto || 180;
   canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.height = H + 'px';
   const g = canvas.getContext('2d');
   g.scale(dpr, dpr);
@@ -574,13 +601,9 @@ function pintarCuerpoMusculos(canvas, pri, sec) {
 
   const dibujarPolys = (poligonos, xBase) => {
     for (const [musculo, polys] of poligonos) {
-      const esPri = pri.includes(musculo);
-      const esSec = sec.includes(musculo);
       const neutro = musculo === 'head' || musculo === 'neck' || musculo === 'knees';
-      if (neutro) g.fillStyle = '#232334';
-      else if (esPri) g.fillStyle = '#ff5722';
-      else if (esSec) g.fillStyle = '#7c5cff';
-      else g.fillStyle = '#2b2b3e';
+      const color = neutro ? null : colorDe(musculo);
+      g.fillStyle = neutro ? '#232334' : color || '#2b2b3e';
 
       g.strokeStyle = '#14141f';
       g.lineWidth = 1;

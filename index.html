@@ -376,7 +376,7 @@
         <section class="kpi-grid tres" id="en-semana"></section>
         <button type="button" id="en-empezar" class="btn-primary">▶ EMPEZAR ENTRENAMIENTO VACÍO</button>
         <section class="section" style="margin-top:22px">
-          <div class="en-sec-cab"><label class="section-title">Rutinas</label><button type="button" class="btn-sec" id="en-nueva-rutina">+ Nueva rutina</button></div>
+          <div class="en-sec-cab"><label class="section-title">Rutinas</label><div class="en-cab-botones"><button type="button" class="btn-sec" id="en-discos">🧮 Discos</button><button type="button" class="btn-sec" id="en-nueva-rutina">+ Nueva rutina</button></div></div>
           <div id="en-rutinas"></div>
         </section>
         <section class="section">
@@ -384,34 +384,8 @@
           <div id="en-calendario"></div>
         </section>
         <section class="section">
-          <label class="section-title">Series por grupo muscular</label>
-          <div id="en-musculos" class="card"></div>
-        </section>
-        <section class="section">
-          <div class="en-sec-cab"><label class="section-title">Ejercicios · récords y progreso</label><button type="button" class="btn-sec" id="en-discos">🧮 Discos</button></div>
-          <div id="en-ejs" class="card en-ejs"></div>
-        </section>
-        <section class="section">
           <label class="section-title">Mis entrenamientos</label>
           <div id="en-lista"></div>
-        </section>
-        <section class="section">
-          <label class="section-title">Importar o exportar</label>
-          <div class="card">
-            <p style="margin-top:0">Trae tu historial de <b>Hevy</b>, <b>Strong</b> o cualquier Excel/CSV con columnas de fecha, ejercicio, peso y repeticiones.</p>
-            <div class="en-imp-fila">
-              <button type="button" class="btn-sec" id="en-importar">📥 Importar archivo</button>
-              <select id="en-unidad" class="en-unidad" aria-label="Unidad del archivo"><option value="kg">Pesos en kg</option><option value="lb">Pesos en libras</option></select>
-            </div>
-            <input type="file" id="en-archivo" accept=".csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
-            <p class="hint"><b>Hevy:</b> Perfil → ⚙️ Ajustes → Exportar e importar datos → Exportar entrenamientos (archivo CSV).<br>
-              <b>Strong:</b> Perfil → ⚙️ → Exportar datos.<br>
-              <b>Excel propio:</b> usa la plantilla para ver el formato. Los ejercicios que no estén en la biblioteca se guardan con su nombre.</p>
-            <div class="en-imp-fila">
-              <button type="button" class="btn-sec" id="en-plantilla">📄 Plantilla Excel</button>
-              <button type="button" class="btn-sec" id="en-exportar">📤 Exportar a Excel</button>
-            </div>
-          </div>
         </section>
       </div>
       <div id="en-activo" style="display:none">
@@ -451,24 +425,17 @@
 
     <!-- ============ PERFIL ============ -->
     <div id="v-perfil" class="view">
-      <section class="card pf-cab"><div id="pf-cabecera" class="pf-cabecera"></div><button type="button" class="btn-sec" id="pf-editar">Editar</button></section>
+      <section class="card pf-cab"><div id="pf-cabecera" class="pf-cabecera"></div><button type="button" class="btn-sec" id="pf-editar">Editar</button>
+        <button type="button" class="btn-sec pf-engrane" id="pf-ajustes" aria-label="Ajustes, cuenta y respaldo">⚙️</button></section>
       <section class="section"><label class="section-title">Powerlifting</label><div id="pf-pl" class="card"></div></section>
       <section class="kpi-grid tres" id="pf-stats"></section>
-      <section class="section" style="margin-top:22px"><label class="section-title">Peso corporal</label>
-        <div class="card"><div class="nu-cant-fila" style="margin-top:0"><input id="pf-peso-in" type="number" inputmode="decimal" step="any"><span>kg</span><button type="button" class="btn-sec en-terminar" id="pf-peso-ok">Registrar hoy</button></div>
-          <canvas id="pf-peso-graf" class="en-graf" style="display:none"></canvas><p class="hint" id="pf-peso-txt"></p></div></section>
-      <section class="section"><label class="section-title">Cuenta y nube</label><div class="card pf-nube" id="pf-nube"></div></section>
-      <section class="section"><label class="section-title">Más</label>
-        <div class="card pf-menu">
-          <button type="button" id="pf-ir-historial">📈 Historial de análisis por video</button>
-          <button type="button" id="pf-respaldo">💾 Guardar respaldo completo</button>
-          <button type="button" id="pf-restaurar">♻️ Restaurar un respaldo</button>
-          <button type="button" id="pf-ir-guia">📖 Guía, ayuda y créditos</button>
-        </div>
-        <input type="file" id="pf-archivo" accept="application/json,.json" style="display:none">
-        <p class="hint">El respaldo incluye entrenamientos, rutinas, 1RM reales, comidas, análisis y ajustes (sin los videos). Guárdalo en Drive o mándatelo por WhatsApp; con él recuperas todo en otro celular.</p>
-        <p class="hint" id="pf-version"></p>
-      </section>
+      <section class="section" style="margin-top:22px"><label class="section-title">Información</label>
+        <div class="pf-info">
+          <button type="button" id="pf-ir-estad"><span>📊</span>Estadísticas</button>
+          <button type="button" id="pf-ir-ejs"><span>🏋️</span>Ejercicios</button>
+          <button type="button" id="pf-ir-medidas"><span>⚖️</span>Medidas</button>
+          <button type="button" id="pf-ir-historial"><span>⚡</span>Análisis de video</button>
+        </div></section>
     </div>
 
     <!-- ============ HISTORIAL ============ -->
@@ -591,6 +558,61 @@
     <div class="en-ejs-filtros"><input id="en-ejs-buscar" class="buscar" type="search" placeholder="Buscar ejercicio…" autocomplete="off">
       <select id="en-ejs-orden" aria-label="Ordenar"><option value="reciente">Recientes</option><option value="sesiones">Más hechos</option><option value="nombre">A-Z</option></select></div>
     <div id="en-ejs-lista" class="en-sel-lista en-ejs"></div>
+  </div></div>
+  <div id="pf-estad" class="modal en-modal" style="display:none" role="dialog" aria-labelledby="pf-estad-titulo"><div class="modal-caja en-sel-caja pf-hoja">
+    <div class="en-sec-cab"><strong id="pf-estad-titulo">Estadísticas</strong><button type="button" class="btn-sec" id="pf-estad-cerrar">Cerrar</button></div>
+    <div class="en-det-cuerpo">
+        <div class="card pf-cuerpo-sem"><p class="pf-sub">Músculos trabajados · últimos 7 días</p>
+          <canvas id="pf-cuerpo-graf" class="en-musc-graf" data-alto="260" style="height:260px"></canvas>
+          <div class="pf-escala"><span>Poco</span><i></i><span>Mucho</span></div>
+          <p class="hint" id="pf-cuerpo-txt" style="margin-bottom:0"></p></div>
+        <section class="section" style="margin-top:6px">
+          <label class="section-title">Series por grupo muscular</label>
+          <div id="en-musculos" class="card"></div>
+        </section>
+    </div>
+  </div></div>
+  <div id="pf-medidas" class="modal en-modal" style="display:none" role="dialog" aria-labelledby="pf-medidas-titulo"><div class="modal-caja en-sel-caja pf-hoja">
+    <div class="en-sec-cab"><strong id="pf-medidas-titulo">Medidas</strong><button type="button" class="btn-sec" id="pf-medidas-cerrar">Cerrar</button></div>
+    <div class="en-det-cuerpo">
+      <section class="section"><label class="section-title">Peso corporal</label>
+        <div class="card"><div class="nu-cant-fila" style="margin-top:0"><input id="pf-peso-in" type="number" inputmode="decimal" step="any"><span>kg</span><button type="button" class="btn-sec en-terminar" id="pf-peso-ok">Registrar hoy</button></div>
+          <canvas id="pf-peso-graf" class="en-graf" style="display:none"></canvas><p class="hint" id="pf-peso-txt"></p></div></section>
+          </div>
+  </div></div>
+  <div id="pf-ajustes-modal" class="modal en-modal" style="display:none" role="dialog" aria-labelledby="pf-ajustes-modal-titulo"><div class="modal-caja en-sel-caja pf-hoja">
+    <div class="en-sec-cab"><strong id="pf-ajustes-modal-titulo">Ajustes y cuenta</strong><button type="button" class="btn-sec" id="pf-ajustes-modal-cerrar">Cerrar</button></div>
+    <div class="en-det-cuerpo">
+      <section class="section"><label class="section-title">Cuenta y nube</label><div class="card pf-nube" id="pf-nube"></div></section>
+        <section class="section">
+          <label class="section-title">Importar o exportar</label>
+          <div class="card">
+            <p style="margin-top:0">Trae tu historial de <b>Hevy</b>, <b>Strong</b> o cualquier Excel/CSV con columnas de fecha, ejercicio, peso y repeticiones.</p>
+            <div class="en-imp-fila">
+              <button type="button" class="btn-sec" id="en-importar">📥 Importar archivo</button>
+              <select id="en-unidad" class="en-unidad" aria-label="Unidad del archivo"><option value="kg">Pesos en kg</option><option value="lb">Pesos en libras</option></select>
+            </div>
+            <input type="file" id="en-archivo" accept=".csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
+            <p class="hint"><b>Hevy:</b> Perfil → ⚙️ Ajustes → Exportar e importar datos → Exportar entrenamientos (archivo CSV).<br>
+              <b>Strong:</b> Perfil → ⚙️ → Exportar datos.<br>
+              <b>Excel propio:</b> usa la plantilla para ver el formato. Los ejercicios que no estén en la biblioteca se guardan con su nombre.</p>
+            <div class="en-imp-fila">
+              <button type="button" class="btn-sec" id="en-plantilla">📄 Plantilla Excel</button>
+              <button type="button" class="btn-sec" id="en-exportar">📤 Exportar a Excel</button>
+            </div>
+          </div>
+        </section>
+      <section class="section"><label class="section-title">Más</label>
+        <div class="card pf-menu">
+          <button type="button" id="pf-respaldo">💾 Guardar respaldo completo</button>
+          <button type="button" id="pf-restaurar">♻️ Restaurar un respaldo</button>
+          <button type="button" id="pf-ir-guia">📖 Guía, ayuda y créditos</button>
+        </div>
+        <input type="file" id="pf-archivo" accept="application/json,.json" style="display:none">
+        <p class="hint">El respaldo incluye entrenamientos, rutinas, 1RM reales, comidas, análisis y ajustes (sin los videos). Guárdalo en Drive o mándatelo por WhatsApp; con él recuperas todo en otro celular.</p>
+        <p class="hint" id="pf-version"></p>
+      </section>
+    </div>
   </div></div>
   <div id="en-detalle" class="modal en-modal" style="display:none"><div class="modal-caja en-sel-caja">
     <div id="en-det-cuerpo" class="en-det-cuerpo"></div>

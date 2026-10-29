@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.7.1
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.8.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -154,10 +154,9 @@ AL TERMINAR CADA CAMBIO
 - Menú ⋯ por ejercicio: reemplazar, ver progreso y músculos, mover arriba o abajo, eliminar.
 - 1RM de referencia y peso sugerido por reps y RPE. Calculadora de discos.
 - **Constancia:** calendario mensual. Tocar un día abre ese entrenamiento. Debajo, la racha.
-- Series por grupo muscular en los últimos 7 días.
-- **Ejercicios · récords y progreso:** se ven 3 ejercicios y el botón "Ver los N ejercicios" abre una ventana con
-  buscador y orden. Cada ejercicio muestra cuerpo anatómico (primario y secundario), 1RM real o estimado,
-  récords, gráfica y tabla de RPE.
+- Botón 🧮 Discos (calculadora de discos) junto a "+ Nueva rutina".
+- Desde v2.8.0, Entrenar es **solo lo de hoy**: la semana, empezar, rutinas, el calendario de constancia (que se
+  queda aquí porque nos distingue de Hevy) y la lista de entrenamientos. La historia pasó a Perfil.
 - Tarjetas para compartir al terminar (10 diseños 1080×1350) y publicar en la Comunidad.
 - Importar desde Hevy, Strong o CSV/Excel (el historial de Luis: 702 entrenamientos y 14 842 series, todo
   emparejado) y exportar.
@@ -178,8 +177,18 @@ código de barras.
 **Comunidad:** perfil público (alias), feed Siguiendo/Descubrir, likes, comentarios, seguir, bloquear y reportar.
 Panel de **Moderación** (solo ADMIN_EMAILS), que incluye los reportes de fallos del conteo.
 
-**Perfil:** datos del atleta, total de powerlifting y DOTS, peso corporal, estadísticas, ajustes, respaldo
-completo y cuenta (cerrar sesión o borrar cuenta).
+**Perfil (tu historia, desde v2.8.0):**
+- Arriba: foto y nombre (Editar) y el botón ⚙️, que abre "Ajustes y cuenta".
+- Tarjeta de Powerlifting (total y DOTS) y KPIs.
+- "Información", con cuatro botones:
+  - 📊 **Estadísticas**: cuerpo coloreado con los músculos de los últimos 7 días (de poco a mucho) y series por
+    grupo muscular.
+  - 🏋️ **Ejercicios**: récords y progreso de cada ejercicio, con buscador y orden. Cada uno muestra el cuerpo
+    anatómico, el 1RM, los récords, la gráfica y la tabla de RPE.
+  - ⚖️ **Medidas**: peso corporal con gráfica.
+  - ⚡ **Análisis de video**: historial de análisis.
+- **Ajustes y cuenta (⚙️):** cuenta y nube, importar o exportar (Hevy, Strong, Excel), respaldo completo,
+  restaurar, guía y versión.
 
 **Cuentas y nube:** Google o correo con contraseña. Se sincroniza con D1. La app funciona igual sin cuenta y sin
 internet.
@@ -245,6 +254,7 @@ bloqueos, reportes, fallos.
 | v2.6.2 | Reintentos cuando la IA no ve a la persona, filtro de preparación en press, remo y curl. |
 | (traspaso) | `pruebas/verificar.sh`, pruebas del servidor, Actions verifica antes de publicar, `docs/HANDOFF.md`. |
 | v2.7.0 (Gemini) | Reemplazar ejercicio, menú ⋯, actualizar rutina al terminar, cuerpo con músculos en la ficha del ejercicio. |
+| v2.8.0 | Reorganización Entrenar/Perfil: Entrenar = lo de hoy + calendario; Perfil = Powerlifting + Estadísticas (cuerpo de la semana), Ejercicios, Medidas, Análisis de video y ⚙️ Ajustes (cuenta, importar, respaldo). |
 | v2.7.1 | Botón Atrás en todas las ventanas y gesto Atrás de Android, calendario mensual de constancia, lista de ejercicios compacta con ventana flotante. Correcciones a v2.7.0: el reemplazo ya no arrastra pesos; la pregunta de rutina ya no se cuelga; "sesiones". |
 
 ## 6. Decisiones tomadas por Luis
@@ -297,6 +307,9 @@ bloqueos, reportes, fallos.
 ## 9. Pendientes
 
 **Ahora (prioridad):**
+0. **Parte 2 de Perfil** (aprobada por Luis): gráfica semanal con botones Duración / Volumen / Series /
+   **Velocidad media de los videos** (lo que nos diferencia de Hevy), una sección "Análisis de video" más rica
+   (series medidas y evolución de la velocidad) y seguidores/siguiendo de la Comunidad en la cabecera.
 1. Ajustes de interfaz que Luis vaya pidiendo mientras prueba la app.
 2. Nuevo lote de videos: etiquetar, ampliar el banco y crear **detectores por grupo** para press y máquinas,
    brazos y espalda (como se hizo con sentadilla y peso muerto).
