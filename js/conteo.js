@@ -36,6 +36,7 @@ export function senalesDe(ej) {
   if (/^(abductores_maquina|aductores_maquina)$/.test(id)) return ['rodillas', 'cadera'];
   if (/^(sentadilla_salto|salto_cajon)$/.test(id)) return ['rodilla', 'cadera'];
   if (/^(push_press|landmine_press)$/.test(id)) return ['codo', 'rodilla'];
+  if (/hip_thrust|puente_gluteo/.test(id)) return ['cadera', 'rodilla']; // la cadera se abre ~90°; la rodilla casi no cambia
   if (/patada_gluteo|abduccion|hiperext|crunch|abdominal|elevacion_piernas|superman|pull_through/.test(id)) return ['cadera', 'hombroCad'];
   if (/remo_barra|remo_pendlay|remo_t$|flexiones|remo_invertido|fondos|dominad|chin_up|muscle/.test(id)) return ['codo', 'hombro'];
   if (ej.punto === 'manos' && ej.ancla === 'tobillos') return ['cadera', 'rodilla']; // bisagras y olimpicos
@@ -136,7 +137,10 @@ export function contarPorAngulos(full, fps, ej, frames = null) {
 
 // Regla: ¿usar el conteo por angulos en vez del principal?
 export function preferirAngulos(nPrincipal, c) {
-  if (!c || c.n === nPrincipal || c.n < 1) return false;
+  if (!c || c.n === nPrincipal || c.n < 2) return false;
+  // v2.18.0 (muñecos 3D + banco): un angulo que casi no cambia en la imagen (camara de frente, la articulacion se mueve
+  // hacia la camara) no es confiable: con menos de 40° de recorrido no reemplaza al contador principal
+  if (c.esAngulo && !(c.rango >= 40)) return false;
   const cv = c.cv ?? 0.5;
   if (c.n === c.zig && cv < 0.55) return true; // dos contadores distintos sobre la señal de angulo coinciden
   return c.ac > 0.3 && c.nT != null && Math.abs(c.nT + 1 - c.n) <= 1 && (c.cv ?? 1) < 0.35; // muy periodica y regular

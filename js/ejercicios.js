@@ -150,11 +150,11 @@ export const EJERCICIOS = [
   E('flexiones_declinadas', 'Pecho', 'corporal', '🙇', 'Flexiones declinadas (pies elevados)', 'Flexión declinada', { ...SENT, mvt: 0.25, fraccion: 0.72 }, 'decline push up'),
 
   // ---------------------------------------------------------------- ESPALDA
-  E('dominadas', 'Espalda', 'corporal', '🧗', 'Dominadas', 'Dominadas', { punto: 'hombros', ancla: 'ninguna', sentido: 'arriba', mvt: 0.23, fraccion: 0.95,
+  E('dominadas', 'Espalda', 'corporal', '🧗', 'Dominadas', 'Dominadas', { punto: 'hombros', ancla: 'manos', sentido: 'arriba', mvt: 0.23, fraccion: 0.95,
     hint: 'Usa trípode o apoya el teléfono (cámara fija). Peso = lastre (0 si no usas).' }, 'pull up pullup'),
-  E('chin_up', 'Espalda', 'corporal', '🧗', 'Dominadas supinas (chin-up)', 'Chin-up', { punto: 'hombros', ancla: 'ninguna', sentido: 'arriba', mvt: 0.23, fraccion: 0.95,
+  E('chin_up', 'Espalda', 'corporal', '🧗', 'Dominadas supinas (chin-up)', 'Chin-up', { punto: 'hombros', ancla: 'manos', sentido: 'arriba', mvt: 0.23, fraccion: 0.95,
     hint: 'Usa trípode o apoya el teléfono (cámara fija). Peso = lastre (0 si no usas).' }, 'chin up chinup'),
-  E('dominadas_asistidas', 'Espalda', 'corporal', '🧗', 'Dominadas asistidas (máquina)', 'Dom. asistidas', { punto: 'hombros', ancla: 'ninguna', sentido: 'arriba', mvt: 0.23, fraccion: 0.95, asistido: true,
+  E('dominadas_asistidas', 'Espalda', 'corporal', '🧗', 'Dominadas asistidas (máquina)', 'Dom. asistidas', { punto: 'hombros', ancla: 'manos', sentido: 'arriba', mvt: 0.23, fraccion: 0.95, asistido: true,
     hint: 'Cámara fija. Peso = la ASISTENCIA que marca la máquina (se resta de tu peso corporal).' }, 'assisted pull up machine'),
   E('jalon', 'Espalda', 'polea', '⬇️', 'Jalón al pecho', 'Jalón', { ...MANOS('abajo', 'cadera'), mvt: 0.40, hint: 'Peso = lo que marca la pila.' }, 'lat pulldown'),
   E('jalon_cerrado', 'Espalda', 'polea', '⬇️', 'Jalón agarre cerrado / neutro', 'Jalón cerrado', { ...MANOS('abajo', 'cadera'), mvt: 0.40 }, 'close grip lat pulldown v bar'),

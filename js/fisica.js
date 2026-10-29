@@ -10,7 +10,7 @@ export const MP = {
   mano_i: [15, 15], mano_d: [16, 16], hombro_i: [11, 11], hombro_d: [12, 12],
   pie_i: [27, 27], pie_d: [28, 28], rodilla_i: [25, 25], rodilla_d: [26, 26],
 };
-const ANCLAS = { cadera: MP.cadera, hombros: MP.hombros, tobillos: MP.pies, rodillas: MP.rodillas, codos: MP.codos, ninguna: null,
+const ANCLAS = { cadera: MP.cadera, hombros: MP.hombros, tobillos: MP.pies, rodillas: MP.rodillas, codos: MP.codos, ninguna: null, manos: MP.manos,
   hombro_i: MP.hombro_i, hombro_d: MP.hombro_d };
 // Proporciones segmento/estatura para los puntos de MediaPipe (calibradas con videos reales de pie y sentado)
 const SEGMENTOS = [
@@ -224,7 +224,13 @@ export function repsCuerpo(full, fps, ej) {
   // tramo activo: los pies quietos en su lugar (no esta caminando hacia el rack o hacia la camara)
   const pieX = filtroMediana(full.map((f) => par(f, MP.pies, 0)), fps + 1);
   const mPie = mediana(pieX);
-  const act = h.map((_, i) => Math.abs(pieX[i] - mPie) < 0.8 * T0);
+  // v2.18.0: la tolerancia usa el torso "real" (estatura en px), no el torso visto: de frente, con el cuerpo inclinado o
+  // acostado hacia la camara el torso se ve cortito y el temblor de la camara parecia caminar. Ademas, caminar es moverse
+  // rapido (mas de ~0,8 torsos en 1 s); un paneo lento de la camara o el temblor de la mano no cortan la serie.
+  const Tref = Math.max(T0, 0.30 / (mediana(escala(full, fps, 1)) || Infinity));
+  const w = Math.round(fps);
+  const act = h.map((_, i) => Math.abs(pieX[i] - mPie) < 2.5 * Tref
+    && Math.abs(pieX[i] - pieX[Math.max(0, i - w)]) < 0.8 * Tref && Math.abs(pieX[Math.min(n - 1, i + w)] - pieX[i]) < 0.8 * Tref);
   let a = 0, b = -1;
   for (let i = 0; i < n;) {
     if (!act[i]) { i++; continue; }
@@ -404,7 +410,7 @@ export function analizar(full, fps, ej, cfg) {
     while (reps.length >= 3 && atipica[atipica.length - 1]) { reps.pop(); atipica.pop(); }
     while (reps.length >= 3 && atipica[0]) { reps.shift(); atipica.shift(); }
   }
-  if (reps.length >= 3 && !cuerpo) reps = quitarPreparacion(reps, full, fps, ej, rel, mPx);
+  if (reps.length >= 3 && !cuerpo) reps = quitarPreparacion(reps, full, fps, ej, rel, mPx, cfg.altura);
   if (reps.length) {
     marcarReps(reps);
     // desenganchar o re-rackear la barra, acomodarse en la maquina: movimientos cortos en los bordes de la serie.
@@ -421,7 +427,11 @@ export function analizar(full, fps, ej, cfg) {
   if (!ventanas && !cfg.sinAngulos && cfg.inicio == null && cfg.fin == null) {
     const c = contarPorAngulos(full, fps, ej, cfg.frames);
     if (c) conteo = { ...conteo, angulos: c.n, senal: c.senal };
-    if (c && preferirAngulos(reps.length, c)) ventanas = c.reps;
+    // v2.18.0: si el contador principal ve reps parejas (mismo recorrido, ninguna parcial), los angulos no pueden
+    // quitarle reps: de frente o con paneo el angulo visto en 2D se deforma y se salta reps (muñecos 3D)
+    const recs = reps.map((r) => r.recorrido_cm), mRec = mediana(recs);
+    const parejas = reps.length >= 3 && recs.every((x) => Math.abs(x - mRec) <= 0.25 * mRec);
+    if (c && preferirAngulos(reps.length, c) && !(parejas && c.n < reps.length)) ventanas = c.reps;
   }
   {
     if (ventanas) {
@@ -461,7 +471,7 @@ export function analizar(full, fps, ej, cfg) {
 // ocurren al inicio o al final del video y con otra postura que la serie. Se comparan las reps de los bordes con la
 // mediana de la serie y se quitan mientras no se parezcan: postura del torso distinta (sentado vs acostado), la
 // carga en otra posicion respecto al cuerpo, la persona mal visible o una pausa muy larga antes/despues de la serie.
-export function quitarPreparacion(reps, full, fps, ej, rel, mPx) {
+export function quitarPreparacion(reps, full, fps, ej, rel, mPx, altura = 1.7) {
   const par = (f, ab) => [(f[ab[0]][0] + f[ab[1]][0]) / 2, (f[ab[0]][1] + f[ab[1]][1]) / 2];
   const puntos = [...MP[ej.punto] || [], ...(ANCLAS[ej.ancla] || [])];
   const rasgos = reps.map((r) => {
@@ -478,6 +488,7 @@ export function quitarPreparacion(reps, full, fps, ej, rel, mPx) {
   });
   const med = (f) => mediana(rasgos.map(f).filter(Number.isFinite));
   const mVis = med((x) => x.vis), mTorso = med((x) => x.torso), mLargo = med((x) => x.largo);
+  const torsoUtil = !(mLargo < 0.6 * 0.30 * altura);
   const mPos = rasgos[0].pos ? [med((x) => x.pos[0]), med((x) => x.pos[1])] : null;
   const mRec = mediana(reps.map((r) => r.recorrido_cm)) / 100;
   const pasos = rasgos.slice(1).map((x, k) => x.t - rasgos[k].t), mPaso = mediana(pasos);
@@ -499,6 +510,9 @@ export function quitarPreparacion(reps, full, fps, ej, rel, mPx) {
     const lejos = mPos && Math.hypot(x.pos[0] - mPos[0], x.pos[1] - mPos[1]) > Math.max(0.25, 0.6 * mRec);
     const pausa = Math.abs(x.t - rasgos[vecino].t) > Math.max(6, 3 * mPaso);
     const largaRep = reps[k].recorrido_cm / 100 > 1.35 * mRec; // acostarse, pararse o subir la barra al rack
+    // v2.18.0: si el torso se ve muy corto (filmado de frente o acostado hacia la camara), su angulo y su largo en la
+    // imagen cambian mucho con cualquier movimiento de camara: no sirven para comparar posturas (muñecos 3D)
+    if (!torsoUtil) return largaRep || (mVis >= 0.6 && x.vis < 0.45) || lejos || pausa;
     return largaRep || (mVis >= 0.6 && x.vis < 0.45) || (Number.isFinite(dT) && dT > 35) || (Number.isFinite(ratio) && (ratio < 0.65 || ratio > 1.5)) || lejos || pausa;
   };
   let i0 = 0, i1 = reps.length - 1;

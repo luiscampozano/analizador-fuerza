@@ -8,6 +8,42 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-29
 
+### 15:32 · v2.18.0 — Muñecos 3D desde todos los ángulos y con cámara en movimiento
+- **Preguntó:** dónde quedan las series analizadas y si Claude puede revisar los videos en la nube.
+  - **Respuesta:** en Cloudflare D1 solo se guardan los resultados (números), no los videos.
+  - Los reportes de «Corregir conteo» sí traen el esqueleto: con eso Claude puede reproducir y arreglar errores.
+- **Pidió:** seguir afinando el analizador de cada ejercicio con muñecos, desde todos los ángulos posibles y con
+  movimiento de cámara.
+- **Hecho:** `pruebas/munecos/munecos.mjs` (en `verificar.sh`; mínimo 1220 tomas):
+  - 15 ejercicios en 3D: sentadilla, peso muerto, rumano, curl, martillo, tríceps polea, press militar, laterales,
+    remo, banca, jalón, hip thrust, dominadas, flexiones y extensión de cuádriceps;
+  - 7 ángulos de cámara: lateral, 60°, 45°, 20°, frente, diagonal de atrás y lado contrario;
+  - 3 alturas de cámara;
+  - 4 movimientos de cámara: fija, en mano, zoom/caminar y paneo;
+  - 3 escenas: limpia, ritmo irregular (fatiga, pausas, profundidad variable) y acomodarse (caminar, movimientos
+    chicos y alejarse al final);
+  - la mano o pierna del lado lejano sale tapada (poca visibilidad y más ruido), como en los videos reales.
+- **Resultado:** de 1197/1260 a 1225/1260 tomas exactas; las tomas con error bajaron de 63 a 35. El banco real pasa
+  de 38 a 40/59.
+- **Arreglos:**
+  - **Contador por ángulos** (`js/conteo.js`, `js/fisica.js`) — ya no reemplaza al principal cuando:
+    - el ángulo casi no cambia en la imagen (menos de 40°);
+    - cuenta menos de 2 reps;
+    - le quitaría reps a un conteo con reps parejas.
+  - **Hip thrust / puente:** cuenta con el ángulo de cadera, no con el de rodilla.
+  - **Filtro de «preparación»:** si el torso se ve muy corto (de frente o acostado hacia la cámara), no se compara
+    su ángulo ni su largo, que cambian con cualquier movimiento de cámara.
+  - **Sentadilla y peso muerto** (detector de cuerpo completo): caminar = pies que se mueven rápido. Un paneo lento
+    o el temblor ya no cortan la serie.
+  - **Dominadas, chin-up y asistidas:** se miden respecto a las manos (la barra no se mueve), no a la imagen. Así el
+    temblor de la cámara no cambia el conteo.
+- **Probado y descartado:** calcular la escala con la pierna cercana cuando la lejana no se ve. Mejoraba los
+  muñecos con zoom (+7), pero empeoraba un video real (press francés 9→10).
+- **Pendientes:**
+  - zoom fuerte / caminar con el celular (la escala no sigue el zoom si el lado lejano no se ve);
+  - acomodarse antes de la 1.ª rep (a veces se pierde la 1.ª);
+  - siguientes familias: zancadas, prensa, polea, olímpicos, core.
+
 ### 15:09 · v2.17.0 — Boxeo calibrado con video real, PDF de cardio/boxeo y curl alterno por codos
 - **Pidió:** el boxeo no contó todos los golpes y contó a destiempo; reporte PDF de la serie analizada; usar
   «muñecos» (esqueletos sintéticos) para arreglar el curl alterno; explicar la idea de imágenes en Comunidad.
