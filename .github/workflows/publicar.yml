@@ -46,7 +46,7 @@ jobs:
           mkdir -p dist
           rsync -a ./ dist/ --exclude .git --exclude .github --exclude dist --exclude sql \
             --exclude README.md --exclude .gitignore --exclude .nojekyll \
-            --exclude pruebas --exclude docs --exclude HANDOFF.md
+            --exclude pruebas --exclude docs --exclude HANDOFF.md --exclude CLAUDE.md
           ls dist
 
       - name: Publicar en Cloudflare Pages

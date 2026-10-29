@@ -3,7 +3,7 @@
 **Para:** Gemini 3.8 Flash (conectado a GitHub y Cloudflare mediante Composio)
 **De:** Claude (sesión de desarrollo anterior)
 **Dueño del proyecto:** Ing. Luis Campozano, MBA
-**Fecha del traspaso:** 27 de octubre de 2026 · **Versión en producción:** v2.6.2
+**Fecha del traspaso:** 27 de octubre de 2026 (al 29/10 la versión en producción es v2.7.1; el estado al día está en `docs/PROYECTO_CLAUDE.md`)
 
 > Lee este documento COMPLETO antes de tocar cualquier archivo. La regla de oro es:
 > **ningún cambio llega a `main` sin haber pasado `bash pruebas/verificar.sh` y sin haberlo revisado línea por línea.**
