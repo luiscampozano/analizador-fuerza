@@ -8,6 +8,35 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-29
 
+### 15:09 · v2.17.0 — Boxeo calibrado con video real, PDF de cardio/boxeo y curl alterno por codos
+- **Pidió:** el boxeo no contó todos los golpes y contó a destiempo; reporte PDF de la serie analizada; usar
+  «muñecos» (esqueletos sintéticos) para arreglar el curl alterno; explicar la idea de imágenes en Comunidad.
+- **Hecho:**
+  - **Boxeo** (`js/actividad.js`), calibrado con su video (golpes marcados a mano cuadro por cuadro):
+    - antes: 15 golpes, 8 de 20 bien y 6 falsos (3 al caminar hacia la cámara con los brazos colgando);
+    - ahora: 20 golpes, 20 de 21 bien, 0 al caminar;
+    - solo usa los puntos de la mano que la IA ve bien (la mano lejana suele quedar tapada);
+    - un golpe cuenta solo con la muñeca a la altura del torso (brazo colgando no cuenta);
+    - el largo del brazo se mide con la mano arriba; umbrales más finos (zigzag 0,10, pico 0,62);
+    - el primer golpe del video ya cuenta;
+    - guardia baja: solo con manos visibles y el brazo recogido (antes 82 % por la mano tapada; ahora 20 %).
+  - **PDF de cardio/boxeo/HIIT:**
+    - botón «📄 Informe PDF» en el resultado (`crearPDFActividad` en `js/pdf.js`);
+    - contenido: datos clave, cuadro del video, técnica, gráfica de ritmo y tabla de cada golpe/paso (tiempo, mano, tipo).
+  - **Curl alterno** (`contarAlterno` en `js/conteo.js` y `analizarAlterno` en `js/fisica.js`):
+    - cada brazo se cuenta por su ángulo de codo, solo con cuadros donde la IA ve ese brazo;
+    - si la IA pierde el brazo >0,4 s, no se unen los tramos;
+    - una rep del codo debe coincidir con una subida real de la mano;
+    - si la IA casi no ve un brazo, se cuenta como antes.
+  - **Pruebas nuevas** (en `verificar.sh`):
+    - `pruebas/alterno/sinteticos.mjs`: 4 muñecos (limpio, cámara en mano, pausas largas, mano tapada); todos OK;
+    - `pruebas/actividad/boxeo_real.mjs`: con los puntos del esqueleto de su video, sin imagen.
+    - Antes el curl alterno real del banco daba 12 (real 6) y ahora da 6; el banco pasa de 37 a 38/59.
+- **Explicado:** imágenes en Comunidad (guardarlas en el servidor tiene costo; decide Luis).
+- **Pendientes:**
+  - más videos reales de boxeo (de frente, con las dos manos visibles) y de otros cardios;
+  - botón para bajar los reportes de fallos de D1 al banco.
+
 ### 16:05 · v2.16.0 — Pendientes de cardio: nube, Entrenar y modo en vivo
 - **Pidió:** hacer todos los pendientes mientras graba videos de boxeo.
 - **Hecho:**

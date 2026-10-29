@@ -223,3 +223,107 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   const nombre = `informe_${e.id}_${fecha.toISOString().slice(0, 16).replace(/[-:T]/g, '')}.pdf`;
   return { blob: doc.output('blob'), nombre };
 }
+
+// Informe PDF de un analisis de cardio, boxeo o HIIT (mismo estilo que el de series de fuerza)
+export async function crearPDFActividad(a, { video, version } = {}) {
+  const jsPDF = await cargarLibreria();
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+  const W = 210, M = 14, ancho = W - 2 * M;
+  const fecha = new Date(a.fecha || Date.now());
+  // ---- encabezado
+  doc.setFillColor(...C.oscuro); doc.rect(0, 0, W, 28, 'F');
+  doc.setFillColor(...C.verdeClaro); doc.rect(0, 28, W, 1.2, 'F');
+  doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.text('FuerzaPro', M, 13);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(190, 196, 206);
+  doc.text('Informe de cardio / boxeo  ·  Ing. Luis Campozano, MBA', M, 20);
+  doc.setTextColor(255, 255, 255);
+  doc.text(limpio(fecha.toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })), W - M, 13, { align: 'right' });
+  doc.text(fecha.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' }), W - M, 20, { align: 'right' });
+  let y = 39;
+  doc.setTextColor(...C.texto); doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text(limpio(a.nombre), M, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.gris);
+  doc.text(limpio(`${fmt(a.dur, 0)} s de video  ·  ${(a.eventos || []).length} ${limpio(a.contador || 'eventos').toLowerCase()} detectados`), M, y + 6);
+  y += 12;
+
+  // ---- imagen (a la derecha) y KPIs (a la izquierda)
+  let img = null;
+  if (video) { const ev = a.eventos || []; img = await cuadroDelVideo(video, ev.length ? ev[Math.floor(ev.length / 2)].t : (a.dur || 2) / 2); }
+  const anchoImg = img ? 62 : 0, anchoKpi = ancho - (img ? anchoImg + 6 : 0);
+  if (img) {
+    const altoImg = anchoImg * img.proporcion;
+    doc.addImage(img.datos, 'JPEG', W - M - anchoImg, y, anchoImg, altoImg);
+    doc.setFontSize(7.5); doc.setTextColor(...C.gris); doc.text('Cuadro del video con telemetría', W - M - anchoImg / 2, y + altoImg + 4, { align: 'center' });
+  }
+  const cols = 2, gap = 3, bw = (anchoKpi - gap * (cols - 1)) / cols, bh = 19;
+  (a.kpis || []).forEach((k, i) => {
+    const cx = M + (i % cols) * (bw + gap), cy = y + Math.floor(i / cols) * (bh + gap);
+    doc.setFillColor(...(i === 0 ? [238, 234, 255] : C.caja)); doc.setDrawColor(...(i === 0 ? C.verde : C.linea));
+    doc.roundedRect(cx, cy, bw, bh, 2, 2, 'FD');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.8); doc.setTextColor(...C.gris); doc.text(limpio(k.label).toUpperCase(), cx + 3, cy + 5);
+    doc.setFontSize(13); doc.setTextColor(...(i === 0 ? C.verde : C.texto)); doc.text(limpio(k.valor ?? '--'), cx + 3, cy + 12, { maxWidth: bw - 5 });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...C.gris); doc.text(limpio(k.sub), cx + 3, cy + 16.5, { maxWidth: bw - 5 });
+  });
+  const yKpi = y + Math.ceil((a.kpis || []).length / cols) * (bh + gap);
+  y = Math.max(yKpi, img ? y + anchoImg * img.proporcion + 8 : yKpi) + 4;
+
+  const seccion = (titulo) => {
+    if (y > 255) { doc.addPage(); y = 18; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text(titulo.toUpperCase(), M, y);
+    doc.setDrawColor(...C.linea); doc.line(M, y + 1.6, M + ancho, y + 1.6); y += 6.5;
+  };
+  // ---- tecnica
+  seccion('Técnica');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  const al = (a.alertas || []).length ? a.alertas : [{ nivel: 'ok', texto: 'Sin observaciones.' }];
+  for (const x of al) {
+    const partes = doc.splitTextToSize(limpio(x.texto), ancho - 8);
+    if (y + partes.length * 4.2 > 282) { doc.addPage(); y = 18; }
+    doc.setTextColor(...(x.nivel === 'ok' ? [22, 140, 70] : [200, 110, 0])); doc.text(x.nivel === 'ok' ? 'OK' : '!', M + 1, y);
+    doc.setTextColor(...C.texto); doc.text(partes, M + 8, y); y += partes.length * 4.2 + 1.2;
+  }
+  // ---- grafica de ritmo (dibujada directo en el PDF)
+  y += 3; const pts = (a.curva || []).filter((p) => p.v != null);
+  if (pts.length) {
+    seccion(`Ritmo durante el video (${a.unidad || ''})`);
+    const gh = 48; if (y + gh > 280) { doc.addPage(); y = 18; }
+    const x0 = M + 10, gw = ancho - 10, mx = Math.max(...pts.map((p) => p.v)) * 1.15 || 1;
+    const X = (t) => x0 + gw * t / (a.dur || 1), Y = (v) => y + gh - 8 - (gh - 10) * v / mx;
+    doc.setDrawColor(...C.linea); doc.setFontSize(7); doc.setTextColor(...C.gris);
+    for (let k = 0; k <= 3; k++) { const v = mx * k / 3; doc.line(x0, Y(v), x0 + gw, Y(v)); doc.text(String(Math.round(v)), M, Y(v) + 1); }
+    doc.text('0 s', x0, y + gh - 2); doc.text(`${Math.round(a.dur || 0)} s`, x0 + gw, y + gh - 2, { align: 'right' });
+    doc.setDrawColor(...C.verde); doc.setLineWidth(0.7);
+    for (let i = 1; i < pts.length; i++) doc.line(X(pts[i - 1].t), Y(pts[i - 1].v), X(pts[i].t), Y(pts[i].v));
+    doc.setLineWidth(0.2); doc.setFillColor(22, 160, 80);
+    for (const e of a.eventos || []) doc.circle(X(e.t), y + gh - 6, 0.6, 'F');
+    y += gh + 2; doc.setFontSize(7.5); doc.setTextColor(...C.gris);
+    doc.text('Línea: ritmo en una ventana móvil. Puntos verdes: cada evento detectado.', M, y); y += 7;
+  }
+  // ---- tabla de eventos
+  const ev = a.eventos || [];
+  if (ev.length) {
+    seccion(`Detalle (${ev.length})`);
+    const conLado = ev.some((e) => e.lado), conClase = ev.some((e) => e.clase);
+    const cab = ['#', 'Tiempo', 'Desde el anterior'].concat(conLado ? ['Mano / lado'] : [], conClase ? ['Tipo (aprox.)'] : []);
+    const cuerpo = ev.slice(0, 300).map((e, i) => [String(i + 1), `${fmt(e.t, 2)} s`, i ? `${fmt(e.t - ev[i - 1].t, 2)} s` : '--']
+      .concat(conLado ? [e.lado === 'izq' ? 'izquierda' : e.lado === 'der' ? 'derecha' : (e.lado || '--')] : [], conClase ? [e.clase || '--'] : []));
+    doc.autoTable({ startY: y, head: [cab], body: cuerpo, margin: { left: M, right: M },
+      styles: { font: 'helvetica', fontSize: 8.3, cellPadding: 1.4, textColor: C.texto, lineColor: C.linea, lineWidth: 0.1 },
+      headStyles: { fillColor: C.oscuro, textColor: 255, fontStyle: 'bold' }, alternateRowStyles: { fillColor: [248, 249, 251] } });
+    y = doc.lastAutoTable.finalY + 6;
+  }
+  // ---- metodo
+  seccion('Cómo se calculó');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gris);
+  doc.text(doc.splitTextToSize(limpio('La IA de pose (MediaPipe) ubica 33 puntos del cuerpo en cada cuadro del video. Los pasos, pedaladas, remadas, saltos o golpes se cuentan con el movimiento de las articulaciones ' +
+    '(ángulos y distancias medidas en "torsos", que no cambian con el zoom). Las distancias en cm se estiman con tu estatura. En boxeo solo se usan las manos que la IA ve con claridad y no se cuentan los brazos colgando. ' +
+    'Son medidas aproximadas: dependen del ángulo de cámara, la luz y los cuadros por segundo del video.'), ancho), M, y);
+  const paginas = doc.getNumberOfPages();
+  for (let i = 1; i <= paginas; i++) {
+    doc.setPage(i); doc.setDrawColor(...C.linea); doc.setLineWidth(0.2); doc.line(M, 287, W - M, 287);
+    doc.setFontSize(7.5); doc.setTextColor(...C.gris);
+    doc.text(limpio(`FuerzaPro ${version ? 'v' + version : ''} · Ing. Luis Campozano, MBA · fuerzapro.pages.dev`), M, 291.5);
+    doc.text(`Página ${i} de ${paginas}`, W - M, 291.5, { align: 'right' });
+  }
+  const nombre = `informe_${a.ejercicio || 'actividad'}_${fecha.toISOString().slice(0, 16).replace(/[-:T]/g, '')}.pdf`;
+  return { blob: doc.output('blob'), nombre };
+}

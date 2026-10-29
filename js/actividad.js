@@ -214,26 +214,45 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
   }
 
   if (tipo === 'boxeo') {
-    // golpe = el brazo se estira rapido (distancia muñeca-hombro cerca del largo del brazo)
+    // golpe = el brazo se estira rapido (distancia muñeca-hombro cerca del largo del brazo) A LA ALTURA DEL TORSO.
+    // Solo se usan puntos de la mano que la IA ve bien (la mano lejana suele quedar tapada por el cuerpo): asi no se
+    // inventan golpes ni se cuenta como "guardia baja" una mano que no se ve. Brazos colgando (caminar, acomodarse)
+    // no cuentan: la muñeca queda muy por debajo del hombro. Calibrado con video real (29/10/2026).
     const golpes = [];
     let guardiaBaja = 0, nGuardia = 0;
+    const visible = (p, s) => p && (p[s.mun][2] ?? 1) >= 0.5 && (p[s.cod][2] ?? 1) >= 0.3;
+    const corto = Math.round(0.15 * fr);
+    const serieV = (s, f) => { // como serie(), pero sin puntos poco visibles y rellenando solo huecos cortos
+      const x = suave(P.map((p) => { if (!visible(p, s)) return NaN; const v = f(p); return Number.isFinite(v) ? v : NaN; }), n);
+      const y = rellenar(x); let i = 0;
+      while (i < x.length) { if (Number.isFinite(x[i])) { i++; continue; } let j = i; while (j < x.length && !Number.isFinite(x[j])) j++; if (j - i > corto || i === 0 || j === x.length) for (let k = i; k < j; k++) y[k] = NaN; i = j; }
+      return y;
+    };
     for (const [s, nomLado] of [[L, 'izq'], [R, 'der']]) {
-      const largo = pct(P.map((p) => (p ? dist(p[s.hom], p[s.cod]) + dist(p[s.cod], p[s.mun]) : NaN)), 0.9);
-      const ext = serie((p) => dist(p[s.hom], p[s.mun]) / largo);
-      const mx = serie((p) => p[s.mun][0]), my = serie((p) => p[s.mun][1]);
-      const piv = zigzag(ext, 0.22);
-      for (let k = 1; k < piv.length; k++) {
-        const q = piv[k]; if (q.tipo !== 'alto' || q.v < 0.72) continue;
-        const a = piv[k - 1].i, b = q.i; if (golpes.some((g) => g.lado === nomLado && Math.abs(g.i - b) < 0.18 * fr)) continue;
-        let vmax = 0; for (let i = Math.max(a + 1, 1); i <= b; i++) vmax = Math.max(vmax, Math.hypot(mx[i] - mx[i - 1], my[i] - my[i - 1]) / (t[i] - t[i - 1] || 1 / fr));
+      const altura = (p) => (p[s.mun][1] - Math.min(p[11][1], p[12][1])) / torsoPx; // + = muñeca bajo los hombros
+      const arriba = (p) => visible(p, s) && altura(p) <= 0.6;
+      // largo del brazo medido solo con la mano a la altura del torso (al caminar el brazo cuelga y se ve mas largo)
+      const largo = pct(P.map((p) => (arriba(p) ? dist(p[s.hom], p[s.cod]) + dist(p[s.cod], p[s.mun]) : NaN)), 0.9);
+      if (!(largo > 0)) continue;
+      const alt = serieV(s, altura);
+      const extTodo = serieV(s, (p) => dist(p[s.hom], p[s.mun]) / largo);
+      const ext = extTodo.map((v, i) => (alt[i] <= 0.6 ? v : NaN)); // brazo colgando (caminar, acomodarse): no es golpe
+      const mx = serieV(s, (p) => p[s.mun][0]), my = serieV(s, (p) => p[s.mun][1]);
+      const piv = zigzag(ext, 0.10);
+      for (let k = 0; k < piv.length; k++) {
+        const q = piv[k]; if (q.tipo !== 'alto' || q.v < 0.62) continue;
+        const b = q.i; let a = k ? piv[k - 1].i : Math.max(0, b - Math.round(0.3 * fr));
+        if (!(alt[b] <= 0.6)) continue;
+        if (golpes.some((g) => g.lado === nomLado && Math.abs(g.i - b) < 0.2 * fr)) continue;
+        let vmax = 0; for (let i = Math.max(a + 1, 1); i <= b; i++) { const v = Math.hypot(mx[i] - mx[i - 1], my[i] - my[i - 1]) / (t[i] - t[i - 1] || 1 / fr); if (Number.isFinite(v)) vmax = Math.max(vmax, v); }
         const p = P[b], codo = p ? ang(p[s.hom], p[s.cod], p[s.mun]) : NaN;
         const subida = my[a] - my[b], lateral = Math.abs(mx[b] - mx[a]);
         const clase = codo >= 150 ? 'recto' : subida > lateral * 0.8 ? 'uppercut' : 'gancho';
         golpes.push({ i: b, t: t[b], lado: nomLado, v: vmax * mPorPx, clase });
       }
+      // guardia: con el brazo recogido (sin golpear), la mano deberia estar cerca de la cara, no a la altura del pecho
+      for (let i = 0; i < P.length; i++) { if (!Number.isFinite(alt[i]) || !(extTodo[i] < 0.6)) continue; nGuardia++; if (alt[i] > 0.35) guardiaBaja++; }
     }
-    // guardia: entre golpes las manos deberian estar a la altura de la cara (sobre los hombros)
-    for (const p of P) { if (!p) continue; const h = Math.min(p[11][1], p[12][1]), m = Math.max(p[15][1], p[16][1]); nGuardia++; if (m > h + 0.25 * torsoPx) guardiaBaja++; }
     golpes.sort((a, b) => a.t - b.t);
     res.eventos = golpes.map((g) => ({ t: g.t, lado: g.lado, clase: g.clase }));
     const ev = golpes.map((g) => g.t), iz = golpes.filter((g) => g.lado === 'izq').length, de = golpes.length - iz;

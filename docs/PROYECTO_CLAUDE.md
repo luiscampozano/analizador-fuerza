@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.16.0
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.17.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -255,6 +255,7 @@ bloqueos, reportes, fallos.
 | (traspaso) | `pruebas/verificar.sh`, pruebas del servidor, Actions verifica antes de publicar, `docs/HANDOFF.md`. |
 | v2.7.0 (Gemini) | Reemplazar ejercicio, menú ⋯, actualizar rutina al terminar, cuerpo con músculos en la ficha del ejercicio. |
 | v2.16.0 | Cardio/boxeo: análisis sincronizados con la nube (en informes), botón 🎥 en las filas de cardio de Entrenar con resultado enlazado, y modo en vivo para cardio. |
+| v2.17.0 | Boxeo calibrado con video real (manos visibles, sin contar brazos colgando), PDF de cardio/boxeo, curl alterno contado por el codo de cada brazo (muñecos sintéticos + banco 38/59). |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

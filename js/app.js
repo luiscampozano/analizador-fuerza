@@ -20,7 +20,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO } from './actividad.js';
 
-const VERSION = '2.16.0';
+const VERSION = '2.17.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -343,9 +343,9 @@ async function analizarActividadVideo(frames, video, d) {
   nube.sincronizar && nube.sincronizar();
   mostrarActividad(act, { video: salida, desde: enEntreno ? 'v-entrenar' : 'v-form' });
 }
-let actActual = null, actDesde = 'v-form';
+let actActual = null, actDesde = 'v-form', actVideo = null;
 function mostrarActividad(a, { video = null, desde = 'v-form' } = {}) {
-  actActual = a; actDesde = desde;
+  actActual = a; actDesde = desde; actVideo = video;
   $('act-titulo').textContent = `${a.icono || '🏃'} ${a.nombre}`;
   $('act-sub').textContent = `${new Date(a.fecha).toLocaleString('es-EC', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${fmt(a.dur, 0)} s de video`;
   $('act-kpis').innerHTML = a.kpis.map((k) => `<div class="kpi-card"><span class="kpi-label">${esc(k.label)}</span><span class="kpi-value">${k.valor ?? '--'}</span><span class="kpi-sub">${esc(k.sub)}</span></div>`).join('');
@@ -375,6 +375,21 @@ function graficaRitmo(c, a) {
   g.fillStyle = '#5adc78'; for (const e of a.eventos || []) { g.beginPath(); g.arc(x(e.t), H - B + 4, 2.2, 0, 7); g.fill(); }
 }
 $('act-volver').onclick = () => vista(actDesde);
+$('act-pdf').onclick = async () => {
+  if (!actActual) return;
+  const b = $('act-pdf'), txt = b.textContent;
+  b.disabled = true; b.textContent = 'Generando PDF…';
+  try {
+    const { crearPDFActividad } = await import('./pdf.js');
+    const { blob, nombre } = await crearPDFActividad(actActual, { video: actVideo, version: VERSION });
+    const f = new File([blob], nombre, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [f] })) {
+      try { await navigator.share({ files: [f], title: nombre }); return; } catch (e) { if (e.name === 'AbortError') return; }
+    }
+    descargarBlob(blob, nombre);
+  } catch (e) { console.error(e); alert('No pude crear el PDF: ' + (e.message || e)); }
+  finally { b.disabled = false; b.textContent = txt; }
+};
 $('act-nueva').onclick = () => { $('btn-quitar').click(); vista('v-form'); };
 $('act-borrar').onclick = async () => {
   if (!actActual || !confirm('¿Borrar este análisis?')) return;

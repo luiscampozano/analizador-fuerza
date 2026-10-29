@@ -1,6 +1,6 @@
 // Motor fisico (port del motor Python validado con el remo de prueba).
 // Entrada: puntos MediaPipe por cuadro. Salida: posicion, velocidad, aceleracion, fuerza, potencia y repeticiones.
-import { contarPorAngulos, preferirAngulos } from './conteo.js';
+import { contarPorAngulos, preferirAngulos, contarAlterno } from './conteo.js';
 
 export const G = 9.81;
 
@@ -417,14 +417,25 @@ export function analizar(full, fps, ej, cfg) {
   // segundo contador por angulos de las articulaciones (no depende de la camara): si su señal es claramente mas
   // confiable que la del punto seguido, sus reps reemplazan a las del contador principal (ver js/conteo.js)
   let conteo = { usado: 'principal', principal: reps.length };
-  if (!cfg.sinAngulos && cfg.inicio == null && cfg.fin == null) {
+  let ventanas = Array.isArray(cfg.ventanas) ? cfg.ventanas : null; // ventanas ya contadas por angulos (ejercicios alternos; [] = brazo visible sin reps)
+  if (!ventanas && !cfg.sinAngulos && cfg.inicio == null && cfg.fin == null) {
     const c = contarPorAngulos(full, fps, ej, cfg.frames);
     if (c) conteo = { ...conteo, angulos: c.n, senal: c.senal };
-    if (c && preferirAngulos(reps.length, c)) {
+    if (c && preferirAngulos(reps.length, c)) ventanas = c.reps;
+  }
+  {
+    if (ventanas) {
+      const c = { reps: ventanas };
       reps = c.reps.map(([a0, b0], k) => {
         // dentro de la rep (reposo -> extremo -> reposo) la fase concentrica va del punto mas bajo de la carga al mas alto
-        let ini = a0; for (let i = a0; i <= b0; i++) if (s[i] < s[ini]) ini = i;
-        let pk = ini; for (let i = ini; i <= b0; i++) if (s[i] > s[pk]) pk = i;
+        let ini = a0, pk = a0;
+        if (cfg.ventanas) { // alternos: primero el punto mas alto de la ventana y luego el mas bajo ANTES de el
+          for (let i = a0; i <= b0; i++) if (s[i] > s[pk]) pk = i;
+          for (let i = a0; i <= pk; i++) if (s[i] < s[ini]) ini = i;
+        } else {
+          for (let i = a0; i <= b0; i++) if (s[i] < s[ini]) ini = i;
+          pk = ini; for (let i = ini; i <= b0; i++) if (s[i] > s[pk]) pk = i;
+        }
         if (pk - ini < 2) pk = Math.min(b0, ini + 2);
         const fin = c.reps[k + 1] ? c.reps[k + 1][0] : Math.min(n - 1, b0 + Math.round(0.5 * fps));
         return medir(ini, pk, Math.max(pk, fin));
@@ -499,13 +510,21 @@ export function quitarPreparacion(reps, full, fps, ej, rel, mPx) {
 // Ejercicios alternos (curl alterno): cada brazo se analiza por separado y luego se unen las repeticiones en orden.
 function analizarAlterno(full, fps, ej, cfg) {
   const mPx = escala(full, fps, cfg.altura);
+  // Contador por angulo de codo de cada brazo (v2.17.0): una rep = ese codo se estira, se dobla y se vuelve a estirar.
+  // Probado con muñecos sinteticos (pruebas/alterno) y con el video real del banco. Si la IA casi no ve un brazo,
+  // ese brazo se cuenta como antes (por la posicion de la mano).
+  const libre = cfg.inicio == null && cfg.fin == null;
+  const c = libre ? contarAlterno(full, fps, cfg.frames) : { izq: null, der: null };
   const lados = [
-    analizar(full, fps, { ...ej, alterno: false, punto: 'mano_i', ancla: 'hombro_i' }, { ...cfg, mPx, sinAngulos: true }),
-    analizar(full, fps, { ...ej, alterno: false, punto: 'mano_d', ancla: 'hombro_d' }, { ...cfg, mPx, sinAngulos: true }),
+    analizar(full, fps, { ...ej, alterno: false, punto: 'mano_i', ancla: 'hombro_i' }, { ...cfg, mPx, sinAngulos: true, ventanas: c.izq }),
+    analizar(full, fps, { ...ej, alterno: false, punto: 'mano_d', ancla: 'hombro_d' }, { ...cfg, mPx, sinAngulos: true, ventanas: c.der }),
   ];
   const n = full.length, base = lados[0];
-  const reps = [...lados[0].reps.map((r) => ({ ...r, lado: 'izq' })), ...lados[1].reps.map((r) => ({ ...r, lado: 'der' }))]
+  // una rep del codo debe coincidir con una subida real de la mano (si la mano no sube, fue la IA confundida)
+  const real = (r, k) => (k === 0 ? !c.izq : !c.der) || r.v_media > 0.1;
+  const reps = [...lados[0].reps.filter((r) => real(r, 0)).map((r) => ({ ...r, lado: 'izq' })), ...lados[1].reps.filter((r) => real(r, 1)).map((r) => ({ ...r, lado: 'der' }))]
     .sort((a, b) => a.tope - b.tope);
+  const conteo = { usado: c.izq || c.der ? 'angulos' : 'principal', principal: lados[0].conteo.principal + lados[1].conteo.principal, angulos: reps.length, senal: 'codo (cada brazo)' };
   // serie mostrada en el video: en cada instante, el brazo que se esta moviendo mas
   const elegir = (i) => (Math.abs(lados[1].v[i] || 0) > Math.abs(lados[0].v[i] || 0) ? 1 : 0);
   const out = { n, fps, estatico: base.estatico, reps, valido: new Array(n).fill(false),
@@ -517,6 +536,7 @@ function analizarAlterno(full, fps, ej, cfg) {
     out.valido[i] = lados[0].valido[i] || lados[1].valido[i];
   }
   if (reps.length) marcarReps(reps);
+  if (conteo) out.conteo = conteo;
   return out;
 }
 

@@ -141,3 +141,35 @@ export function preferirAngulos(nPrincipal, c) {
   if (c.n === c.zig && cv < 0.55) return true; // dos contadores distintos sobre la señal de angulo coinciden
   return c.ac > 0.3 && c.nT != null && Math.abs(c.nT + 1 - c.n) <= 1 && (c.cv ?? 1) < 0.35; // muy periodica y regular
 }
+
+// Ejercicios alternos (curl alterno, martillo alterno): cada brazo se cuenta por su angulo de codo, usando solo los
+// cuadros donde la IA ve bien ese codo y esa muñeca. Una rep = brazo estirado -> doblado -> estirado otra vez.
+// Devuelve, por brazo, las ventanas [inicio, fin] en indices de full (null si la IA casi no ve ese brazo).
+export function contarAlterno(full, fps, frames = null) {
+  let P, tiempos;
+  if (frames && frames.length > 10) { P = frames.map((f) => f.puntos); tiempos = frames.map((f) => f.t); }
+  else { const paso = Math.max(1, Math.round(fps / 30)); P = []; tiempos = []; for (let i = 0; i < full.length; i += paso) { P.push(full[i]); tiempos.push(i / fps); } }
+  const ok = (p) => p && p.length >= 33;
+  const aFull = (k) => Math.max(0, Math.min(full.length - 1, Math.round(tiempos[Math.min(k, tiempos.length - 1)] * fps)));
+  const out = {};
+  for (const [nom, s] of [['izq', LADOS.L], ['der', LADOS.R]]) {
+    const crudo = P.map((p) => (ok(p) && (p[s.mun][2] ?? 1) >= 0.5 && (p[s.cod][2] ?? 1) >= 0.5 ? ang(p[s.hom], p[s.cod], p[s.mun]) : NaN));
+    const x = suave(crudo, 2);
+    const vistos = x.filter(Number.isFinite).length;
+    const lo = pct(x, 0.05), hi = pct(x, 0.95);
+    if (vistos < Math.max(15, 0.25 * x.length)) { out[nom] = null; continue; } // la IA casi no ve este brazo: no se juzga
+    if (!(hi - lo >= 45)) { out[nom] = []; continue; } // brazo visible que no se dobla: no hizo reps
+    const bajo = lo + 0.35 * (hi - lo), alto = lo + 0.7 * (hi - lo); // angulo chico = codo doblado
+    let estado = 'nada', i0 = 0, ult = -1; const reps = [];
+    for (let i = 0; i < x.length; i++) {
+      const v = x[i]; if (!Number.isFinite(v)) continue;
+      if (ult >= 0 && tiempos[i] - tiempos[ult] > 0.4) estado = 'nada'; // la IA perdio el brazo: no se une lo de antes con lo de despues
+      ult = i;
+      if (estado !== 'doblado' && v >= alto) { estado = 'estirado'; i0 = i; }
+      else if (estado === 'estirado' && v <= bajo) estado = 'doblado';
+      else if (estado === 'doblado' && v >= alto) { reps.push([aFull(i0), aFull(i)]); estado = 'estirado'; i0 = i; }
+    }
+    out[nom] = reps;
+  }
+  return out;
+}

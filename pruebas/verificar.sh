@@ -33,5 +33,10 @@ for t in pruebas/servidor/*.mjs; do
   if [ "$F" -eq 0 ] && [ "$OK" -gt 0 ]; then bien "$t: $OK pruebas OK"; else mal "$t: $F fallos"; echo "$SAL" | grep -B2 -A5 'FAIL\|Error' | head -30; fi
 done
 
+# 5) Analisis de cardio/boxeo: esqueletos sinteticos y un video real
+SAL=$(node pruebas/actividad/sinteticos.mjs 2>&1); if echo "$SAL" | grep -q 'Todos los casos dentro'; then bien "Cardio/boxeo sintéticos OK"; else mal "Cardio/boxeo sintéticos"; echo "$SAL" | tail -15; fi
+SAL=$(node pruebas/alterno/sinteticos.mjs 2>&1); if echo "$SAL" | grep -q 'Todos los casos dentro'; then bien "Curl alterno (muñecos) OK"; else mal "Curl alterno (muñecos)"; echo "$SAL"; fi
+SAL=$(node pruebas/actividad/boxeo_real.mjs 2>&1); if echo "$SAL" | grep -q '^OK'; then bien "Boxeo real: $(echo "$SAL" | head -1)"; else mal "Boxeo real"; echo "$SAL"; fi
+
 echo
 if [ $FALLOS -eq 0 ]; then echo "🟢 TODO BIEN — se puede publicar"; else echo "🔴 $FALLOS problema(s) — NO publicar"; exit 1; fi
