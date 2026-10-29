@@ -35,6 +35,20 @@ const nombreEj = (e) => (e.ej && deps.porId[e.ej] ? deps.porId[e.ej].nombre : e.
 const iconoEj = (e) => (e.ej && deps.porId[e.ej] ? deps.porId[e.ej].icono : '🏋️');
 const mismoEj = (a, b) => (a.ej && b.ej ? a.ej === b.ej : norm(a.nombre) === norm(b.nombre));
 const cuenta = (s) => s.hecha && s.tipo !== 'calentamiento';
+// ---- cardio: se registra tiempo (min) y distancia (km) en vez de kg y reps
+const defEj = (e) => (e && e.ej && deps && deps.porId[e.ej]) || null;
+const esCardio = (e) => !!(defEj(e) && defEj(e).cardio);
+const tiempoTxt = (min) => { if (!(min > 0)) return ''; const t = Math.round(min * 60), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sg = t % 60;
+  return h ? `${h} h ${String(m).padStart(2, '0')} min` : sg ? `${m}:${String(sg).padStart(2, '0')} min` : `${m} min`; };
+const mmss = (min) => { const t = Math.round(min * 60); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+function velTxt(e, km, min) {
+  const d = defEj(e); if (!d || !(km > 0) || !(min > 0)) return '';
+  if (d.vel === 'kmh') return `${fmt(km / (min / 60), 1)} km/h`;
+  if (d.vel === '500') return `${mmss(min / (km * 2))} /500 m`;
+  if (d.vel === '100') return `${mmss(min / (km * 10))} /100 m`;
+  return `${mmss(min / km)} /km`;
+}
+const cardioTxt = (e, s) => [s.km > 0 ? `${fmt(s.km, s.km % 1 ? 2 : 0)} km` : '', s.min > 0 ? tiempoTxt(s.min) : ''].filter(Boolean).join(' · ');
 const volumen = (en) => en.ejercicios.reduce((a, e) => a + e.series.filter(cuenta).reduce((b, s) => b + (s.kg || 0) * (s.reps || 0), 0), 0);
 const seriesHechas = (en) => en.ejercicios.reduce((a, e) => a + e.series.filter(cuenta).length, 0);
 function duracion(ms) {
@@ -290,7 +304,7 @@ function pintarCuerpoSemana() {
 function pintarMusculos() {
   const semanas = periodoEst / 7;
   const g = P.seriesPorGrupo(lista, deps.porId, desdePeriodo());
-  const filas = Object.entries(g).filter(([, n]) => n > 0).map(([nombre, n]) => [nombre, n / semanas]).sort((a, b) => b[1] - a[1]);
+  const filas = Object.entries(g).filter(([nombre, n]) => n > 0 && nombre !== 'Cardio').map(([nombre, n]) => [nombre, n / semanas]).sort((a, b) => b[1] - a[1]);
   const max = Math.max(20, ...filas.map(([, n]) => n));
   const dec = semanas > 1 ? 1 : 0;
   $('en-musculos').innerHTML = filas.length ? filas.map(([nombre, n]) => `<div class="en-mus" data-g="${esc(nombre)}" role="button"><span>${esc(nombre)}</span>
@@ -353,7 +367,7 @@ function abrirDetalle(id, nuevo = null) {
     ${en.ejercicios.map((e) => `<div class="en-det-ej"><strong>${iconoEj(e)} ${esc(nombreEj(e))}</strong>${e.ej && deps.porId[e.ej] && norm(e.nombre) !== norm(deps.porId[e.ej].nombre) ? `<small> (${esc(e.nombre)})</small>` : ''}
       ${e.notas ? `<div class="hint" style="margin:2px 0 4px">📝 ${esc(e.notas)}</div>` : ''}
       ${e.series.map((s, i) => `<div class="en-det-serie${s.tipo === 'calentamiento' ? ' cal' : ''}"><span>${TIPOS[s.tipo] || i + 1 - e.series.slice(0, i).filter((x) => x.tipo === 'calentamiento').length}</span>
-        <span>${kgTxt(s.kg) || '—'} kg × ${s.reps ?? '—'}${s.rpe ? ` @${fmt(s.rpe, s.rpe % 1 ? 1 : 0)}` : ''}</span>
+        <span>${esCardio(e) ? (cardioTxt(e, s) || '—') + (velTxt(e, s.km, s.min) ? ` · ${velTxt(e, s.km, s.min)}` : '') : `${kgTxt(s.kg) || '—'} kg × ${s.reps ?? '—'}${s.rpe ? ` @${fmt(s.rpe, s.rpe % 1 ? 1 : 0)}` : ''}`}</span>
         ${s.analisis ? `<button type="button" class="en-vel" data-serie="${s.analisis.id}">⚡ ${fmt(s.analisis.v, 2)} m/s</button>` : ''}</div>`).join('')}</div>`).join('')}
     <button type="button" class="btn-sec en-tarjetas" id="en-tarjetas">🖼️ Tarjetas para compartir</button>
     <button type="button" class="btn-primary en-compartir" id="en-compartir">${deps.compartido && deps.compartido(en.id) ? '📣 Actualizar publicación' : '📣 Compartir en la comunidad'}</button>
@@ -450,9 +464,21 @@ function pintarActivo() {
         ${modoRutina ? '' : '<button type="button" class="en-mini" data-acc="progreso" title="Progreso y músculos">📈</button>'}
         <button type="button" class="en-mini" data-acc="opciones" title="Opciones">⋯</button>
         <button type="button" class="en-mini" data-acc="quitar" title="Quitar">✕</button></div>
-      ${r ? `<div class="en-ref">1RM de referencia: <b>${fmt(r.kg)} kg</b> ${r.fuente === 'hoy' ? '(calculado con tu serie de hoy)' : r.fuente === 'real' ? '(tu 1RM real)' : r.fuente === 'reciente' ? '(estimado, últimos 90 días)' : '(estimado de tu historial; puede estar desactualizado)'}. Pon reps y RPE y te sugiero el peso.</div>` : ''}
+      ${r && !esCardio(e) ? `<div class="en-ref">1RM de referencia: <b>${fmt(r.kg)} kg</b> ${r.fuente === 'hoy' ? '(calculado con tu serie de hoy)' : r.fuente === 'real' ? '(tu 1RM real)' : r.fuente === 'reciente' ? '(estimado, últimos 90 días)' : '(estimado de tu historial; puede estar desactualizado)'}. Pon reps y RPE y te sugiero el peso.</div>` : ''}
       <input class="en-nota" data-acc="nota" placeholder="Nota (opcional)" value="${esc(e.notas || '')}">
-      <div class="en-fila en-fila-cab"><span>Serie</span><span>${modoRutina ? '' : 'Anterior'}</span><span>kg</span><span>Reps</span><span>RPE</span><span>✓</span><span>🎥</span></div>
+      ${esCardio(e) ? `<div class="en-fila en-fila-cab en-cardio"><span>Serie</span><span>${modoRutina ? '' : 'Anterior'}</span><span>${defEj(e).medida === 'dist' ? 'km' : ''}</span><span>Min</span><span>${defEj(e).medida === 'dist' ? 'Ritmo' : ''}</span><span>✓</span><span></span></div>
+      ${e.series.map((s, is) => {
+        const p = prev[is], etiqueta = TIPOS[s.tipo] || String(++nNormal), dist = defEj(e).medida === 'dist';
+        const ptxt = p && (p.km || p.min) ? cardioTxt(e, p) : modoRutina ? '' : '—';
+        return `<div class="en-fila en-cardio${s.hecha ? ' hecha' : ''}" data-is="${is}">
+          <button type="button" class="en-num t-${s.tipo}" data-acc="tipo">${etiqueta}</button>
+          <button type="button" class="en-prev" data-acc="copiar">${ptxt}</button>
+          ${dist ? `<input type="number" inputmode="decimal" step="any" min="0" data-campo="km" value="${s.km ?? ''}" placeholder="${p && p.km ? fmt(p.km, p.km % 1 ? 2 : 0) : ''}">` : '<span></span>'}
+          <input type="number" inputmode="decimal" step="any" min="0" data-campo="min" value="${s.min ?? ''}" placeholder="${p && p.min ? fmt(p.min, p.min % 1 ? 1 : 0) : ''}">
+          <span class="en-ritmo">${dist ? velTxt(e, s.km, s.min) : ''}</span>
+          <button type="button" class="en-check" data-acc="hecha">✓</button><span></span>
+        </div>`;
+      }).join('')}` : `<div class="en-fila en-fila-cab"><span>Serie</span><span>${modoRutina ? '' : 'Anterior'}</span><span>kg</span><span>Reps</span><span>RPE</span><span>✓</span><span>🎥</span></div>
       ${e.series.map((s, is) => {
         const etiqueta = TIPOS[s.tipo] || String(++nNormal);
         const p = prev[is], m = marcadores(e, is, prev, r);
@@ -466,7 +492,7 @@ function pintarActivo() {
           <button type="button" class="en-check" data-acc="hecha">✓</button>
           <button type="button" class="en-video${s.analisis ? ' con' : ''}" data-acc="video" title="Analizar con video">${s.analisis ? '⚡' : '🎥'}</button>
         </div>${s.analisis ? `<button type="button" class="en-analisis" data-acc="ver" data-is="${is}">⚡ ${fmt(s.analisis.v, 2)} m/s${s.analisis.rpe ? ` · RPE ${fmt(s.analisis.rpe, 1)}` : ''}${s.analisis.rm ? ` · 1RM ≈ ${fmt(s.analisis.rm)} kg` : ''} · ver análisis</button>` : ''}`;
-      }).join('')}
+      }).join('')}`}
       <button type="button" class="btn-sec en-mas-serie" data-acc="serie">+ Agregar serie</button>
     </div>`;
   }).join('') || '<p class="vacio">Agrega tu primer ejercicio.</p>';
@@ -483,7 +509,8 @@ function enlazarEventos() {
         const v = inp.value === '' ? null : parseFloat(inp.value.replace(',', '.'));
         s[inp.dataset.campo] = Number.isFinite(v) ? v : null;
         if (inp.dataset.campo === 'kg') ultimoKg = s.kg;
-        if (inp.dataset.campo !== 'kg') { // al cambiar reps o RPE se recalcula el peso sugerido
+        if (esCardio(e)) { const rt = fila.querySelector('.en-ritmo'); if (rt && defEj(e).medida === 'dist') rt.textContent = velTxt(e, s.km, s.min); }
+        else if (inp.dataset.campo !== 'kg') { // al cambiar reps o RPE se recalcula el peso sugerido
           const m = marcadores(e, is, activo.rutina ? [] : anterior(e, activo.id) || [], ref(e)), k = fila.querySelector('[data-campo="kg"]');
           k.placeholder = m.kg != null ? kgTxt(m.kg) : ''; k.classList.toggle('sug', m.sug);
         }
@@ -503,6 +530,19 @@ function accion(acc, ie, is) {
   else if (acc === 'subir') { if (ie === 0) return; activo.ejercicios.splice(ie - 1, 0, activo.ejercicios.splice(ie, 1)[0]); }
   else if (acc === 'opciones') return abrirOpcionesEjercicio(ie);
   else if (acc === 'progreso') return abrirProgreso(e);
+  else if (acc === 'serie' && esCardio(e)) {
+    const u = e.series[e.series.length - 1];
+    e.series.push({ ...serieVacia(), km: u ? u.km ?? null : null, min: u ? u.min ?? null : null });
+  } else if (acc === 'copiar' && esCardio(e)) { if (!prev) return; s.km = prev.km ?? null; s.min = prev.min ?? null; }
+  else if (acc === 'hecha' && esCardio(e)) {
+    s.hecha = !s.hecha;
+    if (s.hecha) {
+      if (s.km == null && prev && prev.km && defEj(e).medida === 'dist') s.km = prev.km;
+      if (s.min == null && prev && prev.min) s.min = prev.min;
+      if (!(s.min > 0) && !(s.km > 0)) { s.hecha = false; alert(defEj(e).medida === 'dist' ? 'Escribe los minutos y/o los kilómetros.' : 'Escribe los minutos.'); return; }
+      if (navigator.vibrate) navigator.vibrate(40);
+    }
+  }
   else if (acc === 'serie') {
     const u = e.series[e.series.length - 1];
     e.series.push({ ...serieVacia(u && u.tipo !== 'calentamiento' ? u.tipo : 'normal', u && u.obj ? { ...u.obj } : null), kg: u ? u.kg : null, reps: u ? u.reps : null, rpe: activo.rutina && u ? u.rpe : null });
@@ -596,6 +636,7 @@ function pintarSelector() {
     + (q ? `<button type="button" class="en-sel-item nuevo" data-ej="" data-nombre="${esc($('en-buscar').value.trim())}"><span>➕</span><span><b>Usar «${esc($('en-buscar').value.trim())}»</b><small>Ejercicio nuevo (solo registro, sin análisis por video)</small></span></button>` : '');
   $('en-sel-lista').querySelectorAll('.en-sel-item').forEach((b) => (b.onclick = () => agregarEjercicio(b.dataset.ej || null, b.dataset.nombre)));
 }
+const seriesIniciales = (e) => (esCardio(e) ? [serieVacia()] : [serieVacia(), serieVacia(), serieVacia()]); // cardio: un bloque
 function agregarEjercicio(ej, nombre) {
   if (reemplazarIndex != null && activo && activo.ejercicios[reemplazarIndex]) {
     const e = activo.ejercicios[reemplazarIndex];
@@ -605,7 +646,7 @@ function agregarEjercicio(ej, nombre) {
     e.nombre = ej && deps.porId[ej] ? deps.porId[ej].nombre : nombre;
     const prev = activo.rutina ? null : anterior(e, activo.id);
     e.series = e.series && e.series.length ? e.series.map((x) => serieVacia(x.tipo))
-      : prev && prev.length ? prev.map((x) => serieVacia(x.tipo)) : [serieVacia(), serieVacia(), serieVacia()];
+      : prev && prev.length ? prev.map((x) => serieVacia(x.tipo)) : seriesIniciales(e);
     reemplazarIndex = null;
     $('en-selector').style.display = 'none';
     guardarBorrador(); pintarActivo();
@@ -613,7 +654,7 @@ function agregarEjercicio(ej, nombre) {
   }
   const e = { ej, nombre: ej && deps.porId[ej] ? deps.porId[ej].nombre : nombre, notas: '', series: [] };
   const prev = activo.rutina ? null : anterior(e, activo.id);
-  e.series = prev && prev.length ? prev.map((s) => serieVacia(s.tipo)) : [serieVacia(), serieVacia(), serieVacia()];
+  e.series = prev && prev.length ? prev.map((s) => serieVacia(s.tipo)) : seriesIniciales(e);
   activo.ejercicios.push(e);
   $('en-selector').style.display = 'none';
   guardarBorrador(); pintarActivo();
@@ -700,6 +741,7 @@ function pintarCuerpo(canvas, colorDe) {
 }
 
 export function abrirProgreso(e) {
+  if (esCardio(e)) return abrirProgresoCardio(e);
   const k = P.claveEj(e), r = P.registros(lista, k), real = P.rmReal(k), rf = P.referencia(lista, { ...e, series: [] });
   const repMax = Object.entries(r.repMax).map(([n, x]) => `<tr><td><b>${n}RM</b></td><td>${kgTxt(x.kg)} kg</td><td>${fechaTxt(x.fecha, false)}</td></tr>`).join('');
   const base = real ? real.kg : r.mejor ? r.mejor.valor : null;
@@ -736,6 +778,39 @@ export function abrirProgreso(e) {
   };
   pintarCuerpoMusculos($('en-musc-graf'), musc.pri, musc.sec);
   if (r.puntos.length > 1) grafica($('en-graf'), r.puntos.filter((p) => p.e1rm).slice(-40), real ? real.kg : null);
+}
+
+// Ficha de un ejercicio de cardio: totales, mejores marcas y ultimas sesiones
+function abrirProgresoCardio(e) {
+  const k = P.claveEj(e), d = defEj(e), dist = d.medida === 'dist', ses = [];
+  for (let i = lista.length - 1; i >= 0; i--) {
+    const en = lista[i], ss = en.ejercicios.filter((x) => P.claveEj(x) === k).flatMap((x) => x.series).filter((s) => s.hecha && (s.km > 0 || s.min > 0));
+    if (!ss.length) continue;
+    ses.push({ fecha: en.inicio, km: ss.reduce((a, s) => a + (s.km || 0), 0), min: ss.reduce((a, s) => a + (s.min || 0), 0), series: ss });
+  }
+  const totKm = ses.reduce((a, x) => a + x.km, 0), totMin = ses.reduce((a, x) => a + x.min, 0);
+  const masLejos = dist ? ses.reduce((m, x) => (x.km > (m ? m.km : 0) ? x : m), null) : null;
+  const masLargo = ses.reduce((m, x) => (x.min > (m ? m.min : 0) ? x : m), null);
+  // mejor velocidad: sesiones con al menos 1 km (o 200 m nadando) para que un tramo corto no la distorsione
+  const minKm = d.vel === '100' ? 0.2 : 1;
+  const conVel = dist ? ses.filter((x) => x.km >= minKm && x.min > 0) : [];
+  const mejorVel = conVel.reduce((m, x) => (!m || x.km / x.min > m.km / m.min ? x : m), null);
+  const kpi = (t, v, sub) => `<div class="kpi-card"><div class="kpi-label">${t}</div><div class="kpi-value" style="font-size:22px">${v}</div><div class="kpi-sub">${sub}</div></div>`;
+  $('en-det-cuerpo').innerHTML = `<h3 class="en-det-titulo">${iconoEj(e)} ${esc(nombreEj(e))}</h3>
+    <section class="kpi-grid tres" style="margin-top:10px">
+      ${kpi('Sesiones', ses.length, 'en total')}
+      ${dist ? kpi('Distancia', fmt(totKm, totKm < 100 ? 1 : 0), 'km en total') : ''}
+      ${kpi('Tiempo', fmt(totMin / 60, 1), 'horas en total')}
+      ${masLejos ? kpi('Más lejos', fmt(masLejos.km, 2), `km · ${fechaTxt(masLejos.fecha, false)}`) : ''}
+      ${mejorVel ? kpi(d.vel === 'kmh' ? 'Más rápido' : 'Mejor ritmo', velTxt(e, mejorVel.km, mejorVel.min).replace(' /', '<small>/') + (d.vel === 'kmh' ? '' : '</small>'), fechaTxt(mejorVel.fecha, false)) : ''}
+      ${masLargo ? kpi('Más largo', tiempoTxt(masLargo.min), fechaTxt(masLargo.fecha, false)) : ''}
+    </section>
+    ${ses.length > 1 ? `<label class="section-title" style="margin-top:14px">${dist ? 'Distancia por sesión (km)' : 'Minutos por sesión'}</label><canvas id="en-graf" class="en-graf"></canvas>` : ''}
+    <label class="section-title" style="margin-top:14px">Últimas sesiones</label>
+    ${ses.length ? `<table class="tabla en-tabla"><thead><tr><th>Fecha</th>${dist ? '<th>km</th>' : ''}<th>Tiempo</th>${dist ? '<th>Ritmo</th>' : ''}</tr></thead><tbody>${ses.slice(-12).reverse().map((x) => `<tr><td>${fechaTxt(x.fecha, false)}</td>${dist ? `<td>${x.km ? fmt(x.km, 2) : '—'}</td>` : ''}<td>${tiempoTxt(x.min) || '—'}</td>${dist ? `<td>${velTxt(e, x.km, x.min) || '—'}</td>` : ''}</tr>`).join('')}</tbody></table>`
+      : '<p class="hint">Aún no registras sesiones de este ejercicio. Agrégalo a un entrenamiento y pon los minutos' + (dist ? ' y los kilómetros' : '') + '.</p>'}`;
+  $('en-detalle').style.display = 'flex';
+  if (ses.length > 1) grafica($('en-graf'), ses.slice(-40).map((x) => ({ fecha: x.fecha, e1rm: dist ? x.km : x.min })).filter((p) => p.e1rm > 0), null);
 }
 
 function grafica(c, puntos, linea) {

@@ -19,7 +19,7 @@ import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 
-const VERSION = '2.10.0';
+const VERSION = '2.11.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -75,11 +75,12 @@ function pintarElegido() {
 }
 function pintarLista() {
   const q = $('buscar-ej').value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  $('chips-grupo').innerHTML = ['Todos', ...GRUPOS].map((g) => `<button type="button" class="chip${g === grupo ? ' active' : ''}" data-g="${g}">${g}</button>`).join('');
+  $('chips-grupo').innerHTML = ['Todos', ...GRUPOS.filter((g) => g !== 'Cardio')].map((g) => `<button type="button" class="chip${g === grupo ? ' active' : ''}" data-g="${g}">${g}</button>`).join('');
   $('chips-grupo').querySelectorAll('.chip').forEach((c) => (c.onclick = () => { grupo = c.dataset.g; pintarLista(); }));
   if (grupo !== 'Todos' && !GRUPOS.includes(grupo)) grupo = 'Todos';
   const palabras = q.split(/\s+/).filter(Boolean);
   const lista = EJERCICIOS.filter((e) => {
+    if (e.cardio) return false; // el cardio se registra en Entrenar; no tiene analisis por video
     if (grupo !== 'Todos' && e.grupo !== grupo) return false;
     const texto = [e.nombre, e.grupo, e.equipo, e.musculo, e.en].join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     return palabras.every((w) => texto.includes(w));

@@ -1155,3 +1155,7 @@ body.sin-scroll { overflow: hidden; }
 .pf-bb em { display: block; font-style: normal; font-size: 10.5px; color: var(--accent-blue); margin-top: 5px; line-height: 1.25; cursor: pointer; }
 .pf-cf { grid-template-columns: repeat(3, 1fr); row-gap: 8px; }
 .pf-cf b { font-size: 20px; }
+.pf-tabs { grid-template-columns: repeat(5, 1fr); }
+.pf-tabs button { font-size: 11px; padding: 8px 0; letter-spacing: -.01em; }
+.en-fila.en-cardio { grid-template-columns: 32px minmax(0,1fr) 58px 52px 72px 34px 0; }
+.en-ritmo { font-size: 11.5px; font-weight: 700; color: var(--accent-blue); text-align: center; line-height: 1.1; }

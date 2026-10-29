@@ -26,6 +26,7 @@ const EQ = {
     hint: 'Mide la inclinación del riel con el inclinómetro del celular. Si sabes cuánto pesa el carro, ponlo en «Carro de la máquina».' },
   smith: { equipo: 'Smith', perfil: 'riel', alfa: 90, carro: 15, hint: 'La barra Smith suele pesar 10–20 kg (contrapesada): ajústalo en «Carro de la máquina».' },
   corporal: { equipo: 'Peso corporal', perfil: 'corporal', hint: 'Peso = lastre o chaleco (0 si no usas).' },
+  cardio: { equipo: 'Cardio', perfil: 'cardio', cardio: true, hint: 'Se registra tiempo y distancia; no tiene análisis por video.' },
 };
 const SENT = { punto: 'hombros', ancla: 'tobillos', sentido: 'arriba' }; // el cuerpo sube y baja
 const UNI_P = 'Graba de lado, desde el lado de la pierna que trabaja. Analiza cada pierna en un video aparte.';
@@ -284,10 +285,53 @@ export const EJERCICIOS = [
   E('crunch_declinado', 'Core', 'corporal', '🧎', 'Abdominal en banco declinado', 'Abs declinado', { punto: 'hombros', ancla: 'cadera', sentido: 'hacia_ancla', mvt: 0.30, fraccion: 0.35 }, 'decline crunch weighted'),
   E('flexion_lateral', 'Core', 'mancuerna', '↕️', 'Flexión lateral de tronco', 'Flexión lateral', { punto: 'manos', ancla: 'cadera', sentido: 'arriba', mvt: 0.25, aprox: true }, 'side bend dumbbell oblique'),
   E('muscle_up', 'Espalda', 'corporal', '💪', 'Muscle up', 'Muscle up', { punto: 'hombros', ancla: 'ninguna', sentido: 'arriba', mvt: 0.30, fraccion: 0.95 }, 'muscle up'),
+
+  // ---------------------------------------------------------------- CARDIO (solo registro: tiempo y distancia, sin video)
+  // medida: 'dist' (km + minutos) o 'tiempo' (solo minutos) · vel: como se muestra la velocidad
+  // ('ritmo' = min/km, 'kmh' = km/h, '500' = min/500 m, '100' = min/100 m) · correr: cuenta para las marcas de Running
+  ...[
+    ['correr', '🏃', 'Correr (exterior)', 'dist', 'ritmo', 'running run outdoor jogging', true],
+    ['cinta', '🏃', 'Correr en cinta', 'dist', 'ritmo', 'treadmill running treadmill run', true],
+    ['intervalos_carrera', '⚡', 'Intervalos de carrera (sprints)', 'dist', 'ritmo', 'sprints interval running track', true],
+    ['caminar', '🚶', 'Caminar', 'dist', 'ritmo', 'walking walk'],
+    ['caminata_inclinada', '⛰️', 'Caminar en cinta inclinada', 'dist', 'ritmo', 'incline walk treadmill walking incline treadmill'],
+    ['senderismo', '🥾', 'Senderismo', 'dist', 'ritmo', 'hiking hike trekking'],
+    ['bicicleta', '🚴', 'Bicicleta (exterior)', 'dist', 'kmh', 'cycling bike ride outdoor cycling'],
+    ['bicicleta_estatica', '🚲', 'Bicicleta estática', 'dist', 'kmh', 'stationary bike exercise bike recumbent bike'],
+    ['spinning', '🚴', 'Spinning', 'dist', 'kmh', 'spinning indoor cycling spin class'],
+    ['bicicleta_aire', '🌀', 'Bicicleta de aire (assault bike)', 'dist', 'kmh', 'assault bike air bike echo bike airdyne'],
+    ['eliptica', '⭕', 'Elíptica', 'dist', 'kmh', 'elliptical trainer elliptical cross trainer'],
+    ['remo_ergometro', '🚣', 'Remo ergómetro', 'dist', '500', 'rowing machine rower erg concept2 row'],
+    ['ski_erg', '⛷️', 'Ski erg', 'dist', '500', 'ski erg skierg'],
+    ['natacion', '🏊', 'Natación', 'dist', '100', 'swimming swim pool'],
+    ['patinaje', '⛸️', 'Patinaje', 'dist', 'kmh', 'skating rollerblading inline skating ice skating'],
+    ['kayak', '🛶', 'Kayak / remo en agua', 'dist', 'kmh', 'kayaking canoe paddling paddle board'],
+    ['escaladora', '🪜', 'Escaladora (stair climber)', 'tiempo', '', 'stair climber stairmaster stair machine steps floors'],
+    ['saltar_cuerda', '🪢', 'Saltar la cuerda', 'tiempo', '', 'jump rope skipping rope'],
+    ['hiit', '🔥', 'HIIT', 'tiempo', '', 'hiit high intensity interval training circuit tabata'],
+    ['cuerdas_batalla', '〰️', 'Cuerdas de batalla', 'tiempo', '', 'battle ropes'],
+    ['boxeo', '🥊', 'Boxeo / saco', 'tiempo', '', 'boxing heavy bag kickboxing muay thai shadow boxing'],
+    ['baile', '💃', 'Baile / zumba', 'tiempo', '', 'dancing dance zumba aerobics'],
+    ['futbol', '⚽', 'Fútbol', 'tiempo', '', 'soccer football'],
+    ['basquet', '🏀', 'Básquet', 'tiempo', '', 'basketball'],
+    ['tenis', '🎾', 'Tenis / pádel', 'tiempo', '', 'tennis padel squash racquetball'],
+    ['cardio_otro', '❤️', 'Otro cardio', 'tiempo', '', 'cardio other aerobic'],
+  ].map(([id, icono, nombre, medida, vel, en, correr]) => E(id, 'Cardio', 'cardio', icono, nombre, nombre.length > 18 ? nombre.slice(0, 17) + '…' : nombre,
+    { medida, vel, correr: !!correr }, en)),
 ];
 
 // Nombres que usa Hevy en español (cuando no coinciden con los nuestros) -> ejercicio de la biblioteca
 export const ALIAS_IMPORTAR = {
+  // cardio (nombres de Hevy y Strong en espanol e ingles)
+  'correr': 'correr', 'running': 'correr', 'carrera': 'correr', 'trotar': 'correr', 'cinta de correr': 'cinta', 'treadmill': 'cinta', 'caminadora': 'cinta',
+  'entrenador eliptico': 'eliptica', 'eliptica': 'eliptica', 'elliptical trainer': 'eliptica', 'ciclismo': 'bicicleta', 'cycling': 'bicicleta',
+  'bicicleta estatica': 'bicicleta_estatica', 'stationary bike': 'bicicleta_estatica', 'bicicleta de aire': 'bicicleta_aire', 'air bike': 'bicicleta_aire',
+  'maquina de remo': 'remo_ergometro', 'rowing machine': 'remo_ergometro', 'remo (maquina)': 'remo_ergometro', 'escaladora': 'escaladora',
+  'maquina de escaleras': 'escaladora', 'stair machine': 'escaladora', 'stair machine (floors)': 'escaladora', 'stair machine (steps)': 'escaladora',
+  'caminar': 'caminar', 'walking': 'caminar', 'caminata': 'caminar', 'saltar la cuerda': 'saltar_cuerda', 'saltar cuerda': 'saltar_cuerda', 'jump rope': 'saltar_cuerda',
+  'natacion': 'natacion', 'swimming': 'natacion', 'senderismo': 'senderismo', 'hiking': 'senderismo', 'spinning': 'spinning', 'ski erg': 'ski_erg',
+  'boxeo': 'boxeo', 'boxing': 'boxeo', 'hiit': 'hiit', 'cuerdas de batalla': 'cuerdas_batalla', 'battle ropes': 'cuerdas_batalla',
+
   'extension de pantorrilla (maquina)': 'pantorrilla_maquina', 'elevacion de gemelos de pie (maquina)': 'pantorrilla_pie', 'elevacion de gemelos de pie': 'pantorrilla_pie',
   'elevacion de gemelos sentado': 'pantorrilla_sentado', 'curl de muneca palmas arriba': 'curl_muneca', 'sentadilla pendulo (maquina)': 'hack',
   'sentadilla hack (maquina)': 'hack', 'sentadilla hack': 'hack', 'flexion lateral': 'flexion_lateral', 'tiron a la cara': 'face_pull',

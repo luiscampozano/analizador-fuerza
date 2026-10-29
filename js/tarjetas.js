@@ -218,7 +218,10 @@ function tEjercicios(d) {
     caja(g, 64, y, W - 128, alto - 16, 22);
     texto(g, e.nombre, 100, y + alto / 2 + 4, { tam: 34, peso: 700, max: W - 520 });
     const m = e.mejor;
-    texto(g, `${e.series.length} series${m && m.kg ? ` · ${kg(m.kg)} kg × ${m.reps ?? '—'}` : m && m.reps ? ` · ${m.reps} reps` : ''}`, W - 100, y + alto / 2 + 4, { tam: 30, peso: 600, color: C.suave, alin: 'right' });
+    const km = e.series.reduce((x, s) => x + (s.km || 0), 0), min = e.series.reduce((x, s) => x + (s.min || 0), 0); // cardio
+    const det = m && m.kg ? `${e.series.length} series · ${kg(m.kg)} kg × ${m.reps ?? '—'}` : m && m.reps ? `${e.series.length} series · ${m.reps} reps`
+      : km || min ? [km ? `${kg(Math.round(km * 100) / 100)} km` : '', min ? `${Math.round(min)} min` : ''].filter(Boolean).join(' · ') : `${e.series.length} series`;
+    texto(g, det, W - 100, y + alto / 2 + 4, { tam: 30, peso: 600, color: C.suave, alin: 'right' });
   });
   if (d.ejs.length > 8) texto(g, `+${d.ejs.length - 8} ejercicios más`, 64, 290 + 8 * alto + 30, { tam: 30, color: C.suave });
   marca(g, d); return c;

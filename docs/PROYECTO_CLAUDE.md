@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.10.0
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.11.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -179,7 +179,7 @@ Panel de **Moderación** (solo ADMIN_EMAILS), que incluye los reportes de fallos
 
 **Perfil (tu historia, desde v2.8.0):**
 - Arriba: foto y nombre (Editar) y el botón ⚙️, que abre "Ajustes y cuenta".
-- Tarjeta **Mis marcas** con pestañas Récords / Powerlifting / Culturismo / CrossFit (recuerda la última) y KPIs.
+- Tarjeta **Mis marcas** con pestañas Récords / Powerlifting / Culturismo / CrossFit / Running (recuerda la última) y KPIs.
 - "Información", con cuatro botones:
   - 📊 **Estadísticas**: período 7 días / 1 mes / 3 meses / 1 año; cuerpo coloreado (de poco a mucho) y series por
     grupo muscular. Tocar un músculo o un grupo abre sus ejercicios (ventana `pf-grupo`).
@@ -203,7 +203,7 @@ index.html  style.css  sw.js(VERSION + lista BASE)  manifest.json  _worker.js(AP
 privacidad.html  normas.html  sql/esquema.sql  iconos/  vendor/(NO editar)  pruebas/  docs/  CLAUDE.md
 js/app.js         interfaz principal, análisis de video, corrección, VERSION
 js/atras.js       botón Atrás y gesto Atrás de Android en las ventanas
-js/ejercicios.js  biblioteca (169), grupos, DETECTOR por grupo, ALIAS_IMPORTAR
+js/ejercicios.js  biblioteca (195, con cardio: cardio:true, medida dist|tiempo, vel), grupos, DETECTOR por grupo, ALIAS_IMPORTAR
 js/fisica.js      motor físico y conteo de reps (DELICADO)
 js/analisis.js    RIR, RPE, 1RM, cargas (VBT)
 js/pose.js        MediaPipe (GPU/CPU)          js/lector.js   lectura de video (WebCodecs/Mediabunny)
@@ -254,6 +254,7 @@ bloqueos, reportes, fallos.
 | v2.6.2 | Reintentos cuando la IA no ve a la persona, filtro de preparación en press, remo y curl. |
 | (traspaso) | `pruebas/verificar.sh`, pruebas del servidor, Actions verifica antes de publicar, `docs/HANDOFF.md`. |
 | v2.7.0 (Gemini) | Reemplazar ejercicio, menú ⋯, actualizar rutina al terminar, cuerpo con músculos en la ficha del ejercicio. |
+| v2.11.0 | **Cardio**: 26 ejercicios nuevos (grupo «Cardio»: correr, cinta, caminar, bici, spinning, elíptica, remo ergómetro, ski erg, natación, escaladora, cuerda, HIIT, boxeo, baile, deportes…; 195 en total). En Entrenar se registran km + minutos (o solo minutos) con ritmo/velocidad automático; ficha de progreso propia; importación de distancia y tiempo desde Hevy/Strong; pestaña **Running** en Mis marcas. El cardio no aparece en Analizar (sin video) ni en las estadísticas de músculos. |
 | v2.10.0 | Tarjeta "Mis marcas" en Perfil con pestañas: Récords (6 levantamientos más pesados de cualquier ejercicio, por defecto), Powerlifting (total y DOTS), Culturismo (series/semana por grupo en 4 semanas + ejercicio más fuerte), CrossFit (arranque, cargada, envión, thruster, sentadilla frontal, dominadas). Running pendiente: la app aún no registra distancia ni tiempo. |
 | v2.9.0 | Estadísticas con período (7 días, 1 mes, 3 meses, 1 año; en períodos largos, promedio de series por semana). Tocar un músculo del dibujo o un grupo abre la ventana con sus ejercicios del período (series, máximo, 1RM) y de ahí su progreso. |
 | v2.8.1 | Calendario de constancia primero en Entrenar; tocar el logo de arriba lleva siempre a Entrenar. |
@@ -320,7 +321,7 @@ bloqueos, reportes, fallos.
 4. Caso abierto: "No se ve bien" en videos de tríceps en el teléfono de un familiar (en escritorio sí detecta).
    La v2.6.2 agregó reintentos y diagnóstico; falta ver si llegan reportes.
 5. Posible: imagen de la tarjeta dentro de las publicaciones de la Comunidad.
-6. Pestaña **Running** en Mis marcas: requiere registrar cardio (distancia y tiempo; hoy la importación de Hevy descarta esas filas).
+6. Cardio (hecho en v2.11.0). Posibles mejoras: récords de cardio al terminar, calorías estimadas, distancia en metros para natación.
 
 **Después (solo cuando Luis lo pida):**
 

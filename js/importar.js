@@ -110,6 +110,9 @@ const SINONIMOS = {
   tipo: ['set type', 'tipo', 'tipo de serie'],
   orden: ['set order', 'set index', 'serie', 'set', 'n serie'],
   duracion: ['duration', 'duracion'],
+  km: ['distance km', 'distance (km)', 'distancia (km)', 'distancia km', 'distancia', 'distance', 'km'],
+  seg: ['duration seconds', 'duration (seconds)', 'seconds', 'segundos', 'tiempo (s)', 'duracion (s)'],
+  minutos: ['minutos', 'minutes', 'tiempo (min)', 'duracion (min)'],
   notas: ['exercise notes', 'notas', 'notes'],
 };
 function columnas(cab) {
@@ -234,7 +237,11 @@ export function convertir(tablas, ejercicios, { unidad = 'kg' } = {}) {
     if (!fecha || !nombre) continue;
     filas++;
     let kg = leerNumero(f[col.kg ?? col.lb]); const reps = leerNumero(f[col.reps]);
-    if (!(kg > 0) && !(reps > 0)) continue; // filas de descanso o cardio sin datos
+    // cardio: distancia (km) y tiempo (segundos o minutos)
+    const km = 'km' in col ? leerNumero(f[col.km]) : null;
+    const seg = 'seg' in col ? leerNumero(f[col.seg]) : null, mins = 'minutos' in col ? leerNumero(f[col.minutos]) : null;
+    const min = seg > 0 ? seg / 60 : mins > 0 ? mins : null;
+    if (!(kg > 0) && !(reps > 0) && !(km > 0) && !(min > 0)) continue; // filas de descanso o sin datos
     if (kg !== null && lb) kg *= 0.45359237;
     const titulo = 'titulo' in col ? String(f[col.titulo] ?? '').trim() : '';
     const clave = 'titulo' in col ? `${+fecha}|${titulo}` : fecha.toDateString();
@@ -254,7 +261,8 @@ export function convertir(tablas, ejercicios, { unidad = 'kg' } = {}) {
     }
     const rpe = leerNumero(f[col.rpe]);
     e.series.push({ kg: kg !== null ? Math.round(kg * 100) / 100 : null, reps: reps !== null ? Math.round(reps) : null, rpe: rpe > 0 ? rpe : null,
-      tipo: leerTipo(f[col.tipo], f[col.orden]), hecha: true });
+      tipo: leerTipo(f[col.tipo], f[col.orden]), hecha: true,
+      ...(km > 0 ? { km: Math.round(km * 1000) / 1000 } : {}), ...(min > 0 ? { min: Math.round(min * 10) / 10 } : {}) });
     series++;
   }
   const entrenos = [...grupos.values()].sort((a, b) => (a.inicio < b.inicio ? 1 : -1));

@@ -139,7 +139,7 @@ export async function pintar() {
 }
 
 // ------------------------------------------------------------------ mis marcas (récords, powerlifting, culturismo, crossfit)
-const TABS_MARCAS = { rec: 'Récords', pl: 'Powerlifting', bb: 'Culturismo', cf: 'CrossFit' };
+const TABS_MARCAS = { rec: 'Récords', pl: 'Powerlifting', bb: 'Culturismo', cf: 'CrossFit', run: 'Running' };
 let tabMarcas = localStorage.getItem('af_pf_marcas') || 'rec';
 const kgF = (x) => fmt(x, x % 1 ? 1 : 0);
 const fechaC = (iso) => new Date(iso).toLocaleDateString('es-EC', { day: 'numeric', month: 'short', year: '2-digit' });
@@ -179,6 +179,34 @@ function pintarMarcas(lista, marca, pc, cuerpo) {
         ${mejor ? `<em data-k="${esc(mejor[0])}">${esc(nombre(mejor[0]))} · ${kgF(Math.round(mejor[1].mejor.valor))}</em>` : '<em>sin datos</em>'}</div>`;
     }).join('')}</div>
       <p class="hint">Promedio de series efectivas por semana en las últimas 4 semanas (lo ideal para crecer: 10 a 20, en verde) y tu ejercicio más fuerte de cada grupo (1RM est.).</p>`;
+  } else if (tabMarcas === 'run') {
+    // running: carreras (correr, cinta, intervalos) y minutos de todo el cardio
+    const def = (e) => e.ej && deps.porId && deps.porId[e.ej];
+    const ahora = new Date(), iniMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1), iniAno = new Date(ahora.getFullYear(), 0, 1);
+    const carreras = []; let cardioMes = 0;
+    for (const en of lista) {
+      const t = new Date(en.inicio); let km = 0, min = 0;
+      for (const e of en.ejercicios) {
+        const d = def(e); if (!d || !d.cardio) continue;
+        for (const sr of e.series) {
+          if (!sr.hecha) continue;
+          if (t >= iniMes) cardioMes += sr.min || 0;
+          if (d.correr) { km += sr.km || 0; min += sr.min || 0; }
+        }
+      }
+      if (km > 0 || min > 0) carreras.push({ t, km, min });
+    }
+    const suma = (desde) => carreras.filter((c) => c.t >= desde).reduce((a, c) => a + c.km, 0);
+    const larga = carreras.reduce((m, c) => (c.km > (m ? m.km : 0) ? c : m), null);
+    const rapida = carreras.filter((c) => c.km >= 1 && c.min > 0).reduce((m, c) => (!m || c.min / c.km < m.min / m.km ? c : m), null);
+    const ritmo = (c) => { const sg = Math.round((c.min / c.km) * 60); return `${Math.floor(sg / 60)}:${String(sg % 60).padStart(2, '0')}`; };
+    const cel = (n, v, sub) => `<div><small>${n}</small><b>${v}</b><i>${sub}</i></div>`;
+    html = carreras.length || cardioMes ? `<div class="pf-sbd pf-cf">
+        ${cel('Este mes', fmt(suma(iniMes), 1), 'km corridos')}${cel('Este año', fmt(suma(iniAno), suma(iniAno) < 100 ? 1 : 0), 'km corridos')}${cel('Carreras', carreras.length, 'en total')}
+        ${cel('Más larga', larga ? fmt(larga.km, 2) : '--', larga ? 'km · ' + fechaC(larga.t) : 'sin datos')}${cel('Mejor ritmo', rapida ? ritmo(rapida) : '--', rapida ? 'min/km · ' + fechaC(rapida.t) : 'sin datos')}
+        ${cel('Cardio del mes', fmt(cardioMes / 60, 1), 'horas (todo)')}</div>
+      <p class="hint">Carreras = correr, cinta e intervalos. El mejor ritmo cuenta solo carreras de 1 km o más. «Cardio del mes» suma todo el cardio (bici, elíptica, natación…).</p>`
+      : '<p class="hint" style="margin:0">Registra cardio en Entrenar (Correr, Cinta, Bicicleta, Elíptica, Natación…) con minutos y kilómetros para ver aquí tus marcas. Si lo tenías en Hevy, vuelve a importar el archivo y se agregará.</p>';
   } else {
     // crossfit: levantamientos olimpicos y de referencia + dominadas (repeticiones)
     const LEV = [['Arranque', ['arranque']], ['Cargada', ['cargada', 'cargada_colgante']], ['Envión', ['envion']], ['Thruster', ['thruster']], ['Sentadilla frontal', ['sentadilla_frontal']]];
