@@ -150,7 +150,7 @@ export function prepararDibujo(fuente, full, res, opciones) {
 
     // panel inferior
     ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-    ctx.fillStyle = C.blanco; ctx.font = `800 56px ${FUENTE}`; ctx.fillText(`Reps: ${repN[i]}`, 40, VH + 75);
+    ctx.fillStyle = C.blanco; ctx.font = `800 56px ${FUENTE}`; ctx.fillText(`Reps: ${opciones.repsTotal > reps.length && reps.length && i >= reps[reps.length - 1].fin ? opciones.repsTotal : repN[i]}`, 40, VH + 75); // si corregiste a mas reps, al final se ve tu total
     ctx.fillStyle = C.gris; ctx.font = `400 25px ${FUENTE}`; ctx.fillText(opciones.titulo, 40, VH + 118);
     ctx.textAlign = 'right';
     if (vivo) {

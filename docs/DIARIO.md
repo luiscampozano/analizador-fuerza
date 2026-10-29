@@ -8,6 +8,26 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-29
 
+### 15:10 · v2.14.0 — El video se corrige al corregir el conteo
+- **Pidió:**
+  - Que al corregir el conteo también se corrija el video del analizador.
+  - Preguntó cómo llegan las actualizaciones si la app está en Play Store.
+- **Hecho:**
+  - Al guardar la corrección se vuelve a calcular la serie con los puntos guardados y se **rehace el video**
+    (esqueleto, gráficas y contador «Reps») con las reps corregidas.
+  - Si el video original sigue en memoria (se analizó en esta sesión; se recuerdan los últimos 5), lo hace solo.
+  - Si no, aparece el botón **«🎬 Actualizar el video con el conteo corregido»**, que pide elegir el video original y
+    avisa si la duración no coincide.
+  - Si corriges a **más** reps de las detectadas, el contador del video muestra tu total al final de la serie.
+  - Nuevas funciones en `js/app.js`: `crearVideoSerie`, `rehacerVideo` y `archivosSesion`; opción `repsTotal` en
+    `js/render.js`.
+  - Prueba completa en Chromium con la IA real (sentadilla de 5 reps → corregida a 4 → el video se rehízo y muestra
+    «Reps: 4»).
+- **Respuesta a Luis:** con la app en Play Store empaquetada como TWA, los cambios de la web le llegan a todos solos.
+  Solo hay que subir una versión nueva a Play cuando cambia el "envoltorio" Android (nombre, ícono, permisos, nivel
+  de API que exige Google cada año).
+
+
 ### 14:40 · v2.13.0 — Segundo contador de reps por ángulos (todos los ejercicios)
 - **Pidió:** aplicar todas las mejoras al analizador, que funcionen con todo tipo de ejercicio y sin depender de muchos videos.
 - **Hecho:**

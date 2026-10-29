@@ -19,7 +19,7 @@ import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 
-const VERSION = '2.13.0';
+const VERSION = '2.14.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -287,17 +287,9 @@ async function analizarArchivo() {
     origen = 'video';
 
     let salida = null;
+    recordarArchivo(registro.id, archivo);
     if ($('in-video').checked) {
-      const ang = $('in-angulo').value ? anguloArticular(full, $('in-angulo').value, fps) : null;
-      const puntoIdx = MP[ej.punto];
-      const titulo = ej.perfil === 'riel' ? `${ej.corto} · ${fmt(carga, 1)} kg · peso efectivo (${alfa}°): ${fmt(res.estatico)} kg`
-        : ej.perfil === 'corporal' ? `${ej.corto} · peso corporal ${fmt(pc, 1)} kg${peso ? (ej.asistido ? ` − asistencia ${fmt(peso, 1)} kg` : ` + lastre ${fmt(peso, 1)} kg`) : ''}`
-        : `${ej.corto} · ${fmt(carga, 1)} kg${relacion !== 1 ? ` (polea ${relacion}:1)` : ''}`;
-      const leyendaVel = ej.sentido === 'abajo' ? 'Velocidad de la carga (m/s)  ↑ subida  ↓ bajada' : 'Velocidad (m/s)  ↑ fase concéntrica  ↓ excéntrica';
-      const dibujar = prepararDibujo(video, full, res, { puntoIdx, angulo: ang, titulo, leyendaVel, trayectoria: tray, alertas: tec.porRep });
-      salida = await generarVideo(video, archivo, dibujar, {
-        cancelado: () => cancelar, alAvanzar: (f) => progreso(3, f, 'Creando el video con telemetría…'),
-      });
+      salida = await crearVideoSerie(video, archivo, ej, d, calc, { alAvanzar: (f) => progreso(3, f, 'Creando el video con telemetría…') });
       await almacen.guardarVideo(registro.id, salida);
     }
     mostrarInforme(inf, { video: salida, nuevo: true });
@@ -316,6 +308,56 @@ async function analizarArchivo() {
     }
   }
 }
+
+// Video con telemetria (esqueleto, flecha de fuerza, graficas y contador de reps). Se usa al analizar y al corregir el conteo.
+async function crearVideoSerie(video, archivoV, e, d, calc, { repsTotal = null, alAvanzar = () => {} } = {}) {
+  const { full, res, tray, tec, fps } = calc;
+  const ang = $('in-angulo').value ? anguloArticular(full, $('in-angulo').value, fps) : null;
+  const titulo = e.perfil === 'riel' ? `${e.corto} · ${fmt(d.carga, 1)} kg · peso efectivo (${d.alfa}°): ${fmt(res.estatico)} kg`
+    : e.perfil === 'corporal' ? `${e.corto} · peso corporal ${fmt(d.pc, 1)} kg${d.peso ? (e.asistido ? ` − asistencia ${fmt(d.peso, 1)} kg` : ` + lastre ${fmt(d.peso, 1)} kg`) : ''}`
+    : `${e.corto} · ${fmt(d.carga, 1)} kg${d.relacion !== 1 ? ` (polea ${d.relacion}:1)` : ''}`;
+  const leyendaVel = e.sentido === 'abajo' ? 'Velocidad de la carga (m/s)  ↑ subida  ↓ bajada' : 'Velocidad (m/s)  ↑ fase concéntrica  ↓ excéntrica';
+  const dibujar = prepararDibujo(video, full, res, { puntoIdx: MP[e.punto], angulo: ang, titulo, leyendaVel, trayectoria: tray, alertas: tec.porRep, repsTotal });
+  return generarVideo(video, archivoV, dibujar, { cancelado: () => cancelar, alAvanzar });
+}
+// Videos originales analizados en esta sesion (para rehacer el video al corregir el conteo sin pedirlo de nuevo)
+const archivosSesion = new Map();
+function recordarArchivo(id, arch) {
+  if (!id || !arch) return;
+  archivosSesion.set(id, arch);
+  while (archivosSesion.size > 5) archivosSesion.delete(archivosSesion.keys().next().value);
+}
+// Rehace el video de una serie corregida: vuelve a calcular con los puntos guardados y dibuja el conteo nuevo
+async function rehacerVideo(inf, arch) {
+  const pose = await almacen.leerPose(inf.id), e = POR_ID[inf.ej.id];
+  if (!pose || !e || !inf.datos) return alert('Esta serie no guardó los puntos del cuerpo: no se puede rehacer el video.');
+  const desde = vistaPrevia;
+  cancelar = false; pasoActual = -1; vista('v-progreso');
+  try {
+    progreso(0, 1); progreso(1, 1); progreso(2, 0.5, 'Recalculando con el conteo corregido…');
+    const d = { ...inf.datos }, cor = inf.corregida || {};
+    const calc = calcularSerie(almacen.desempacarPose(pose), pose.dur, e, d, { excluir: cor.excluidas || [], repsTotal: cor.real ?? null, idSerie: inf.id });
+    const video = await abrirVideo(arch);
+    if (Math.abs(video.duration - pose.dur) > 1.5 && !confirm(`Este video dura ${fmt(video.duration, 1)} s y el analizado duraba ${fmt(pose.dur, 1)} s. ¿Seguro que es el mismo?`)) { vista('v-resultados'); return; }
+    recordarArchivo(inf.id, arch);
+    const salida = await crearVideoSerie(video, arch, e, d, calc, { repsTotal: cor.real ?? null, alAvanzar: (f) => progreso(3, f, 'Rehaciendo el video con el conteo corregido…') });
+    await almacen.guardarVideo(inf.id, salida);
+    inf.videoCorregido = true; await almacen.guardarInforme(inf);
+    mostrarInforme(inf, { video: salida, desde });
+    aviso('Video actualizado con el conteo corregido.', true);
+  } catch (err) {
+    mostrarInforme(inf, { video: videoActual, desde });
+    if (err.message !== 'cancelado') alert('No se pudo rehacer el video: ' + (err.message || err));
+  }
+}
+$('btn-rehacer').onclick = () => {
+  const inf = informeActual; if (!inf || !inf.id) return;
+  const arch = archivosSesion.get(inf.id);
+  if (arch) return rehacerVideo(inf, arch);
+  alert('Elige el video original de esta serie (el que grabaste) para rehacer el video con el conteo corregido.');
+  $('in-rehacer').value = ''; $('in-rehacer').click();
+};
+$('in-rehacer').onchange = () => { const f = $('in-rehacer').files[0]; if (f && informeActual) rehacerVideo(informeActual, f); };
 
 // Fisica + interpretacion de una serie a partir de los puntos del cuerpo. Se usa al analizar un video y al corregir
 // a mano las reps (se vuelve a calcular con los mismos puntos, sin el video).
@@ -459,6 +501,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   $('r-fpico').textContent = fmt(s.fPico); $('r-ppico').textContent = fmt(s.pPico);
 
   // video
+  $('btn-rehacer').style.display = video && inf.corregida && !inf.videoCorregido ? '' : 'none';
   if (video) {
     $('sec-video').style.display = ''; $('r-sin-video').style.display = 'none';
     const url = URL.createObjectURL(video.blob);
@@ -623,7 +666,11 @@ async function guardarCorreccion(inf, base, excluidas, real, enviar, comentario)
     return alert('No se pudo recalcular la serie: ' + (err.message || err));
   }
   $('corregir').style.display = 'none';
-  mostrarInforme(nuevo, { video: videoActual, desde: vistaPrevia });
+  const tieneVideo = !!(videoActual || (nuevo.id && await almacen.leerVideo(nuevo.id)));
+  nuevo.videoCorregido = false;
+  if (nuevo.id) await almacen.guardarInforme(nuevo);
+  if (tieneVideo && pose && archivosSesion.has(nuevo.id)) { await rehacerVideo(nuevo, archivosSesion.get(nuevo.id)); }
+  else mostrarInforme(nuevo, { video: videoActual, desde: vistaPrevia });
   if (!enviar) return aviso('Corrección guardada.', true);
   if (!nube.conectado()) return aviso('Corrección guardada. Para enviar el caso al equipo, inicia sesión en Perfil.', true);
   try { await enviarFallo(nuevo, pose, { real, excluidas, comentario }); aviso('Corrección guardada y enviada. ¡Gracias! Con esto mejoramos la detección.', true); }

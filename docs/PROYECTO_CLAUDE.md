@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.13.0
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.14.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -254,6 +254,7 @@ bloqueos, reportes, fallos.
 | v2.6.2 | Reintentos cuando la IA no ve a la persona, filtro de preparación en press, remo y curl. |
 | (traspaso) | `pruebas/verificar.sh`, pruebas del servidor, Actions verifica antes de publicar, `docs/HANDOFF.md`. |
 | v2.7.0 (Gemini) | Reemplazar ejercicio, menú ⋯, actualizar rutina al terminar, cuerpo con músculos en la ficha del ejercicio. |
+| v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |
 | v2.12.0 | Editar hora de inicio y duración durante el entreno (tocar ⏱). Al terminar, ventana «Guardar entrenamiento» (título, cómo te fue, foto reducida a 1080 px JPEG, fecha/hora de inicio y duración); Cancelar vuelve al entreno. «✏️ Editar» en el detalle para cambiarlo después. Foto y descripción se ven en el detalle y la lista, y se sincronizan con la nube. Reloj con horas (1:15:00). |
 | v2.11.0 | **Cardio**: 26 ejercicios nuevos (grupo «Cardio»: correr, cinta, caminar, bici, spinning, elíptica, remo ergómetro, ski erg, natación, escaladora, cuerda, HIIT, boxeo, baile, deportes…; 195 en total). En Entrenar se registran km + minutos (o solo minutos) con ritmo/velocidad automático; ficha de progreso propia; importación de distancia y tiempo desde Hevy/Strong; pestaña **Running** en Mis marcas. El cardio no aparece en Analizar (sin video) ni en las estadísticas de músculos. |
