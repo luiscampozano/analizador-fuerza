@@ -310,6 +310,9 @@ export const EJERCICIOS = [
     ['saltar_cuerda', '🪢', 'Saltar la cuerda', 'tiempo', '', 'jump rope skipping rope'],
     ['hiit', '🔥', 'HIIT', 'tiempo', '', 'hiit high intensity interval training circuit tabata'],
     ['cuerdas_batalla', '〰️', 'Cuerdas de batalla', 'tiempo', '', 'battle ropes'],
+    ['burpees', '🤸', 'Burpees', 'tiempo', '', 'burpee burpees'],
+    ['jumping_jacks', '⭐', 'Jumping jacks (saltos de tijera)', 'tiempo', '', 'jumping jacks star jumps'],
+    ['escaladores', '🧗', 'Escaladores (mountain climbers)', 'tiempo', '', 'mountain climbers climbers'],
     ['boxeo', '🥊', 'Boxeo / saco', 'tiempo', '', 'boxing heavy bag kickboxing muay thai shadow boxing'],
     ['baile', '💃', 'Baile / zumba', 'tiempo', '', 'dancing dance zumba aerobics'],
     ['futbol', '⚽', 'Fútbol', 'tiempo', '', 'soccer football'],
@@ -330,7 +333,7 @@ export const ALIAS_IMPORTAR = {
   'maquina de escaleras': 'escaladora', 'stair machine': 'escaladora', 'stair machine (floors)': 'escaladora', 'stair machine (steps)': 'escaladora',
   'caminar': 'caminar', 'walking': 'caminar', 'caminata': 'caminar', 'saltar la cuerda': 'saltar_cuerda', 'saltar cuerda': 'saltar_cuerda', 'jump rope': 'saltar_cuerda',
   'natacion': 'natacion', 'swimming': 'natacion', 'senderismo': 'senderismo', 'hiking': 'senderismo', 'spinning': 'spinning', 'ski erg': 'ski_erg',
-  'boxeo': 'boxeo', 'boxing': 'boxeo', 'hiit': 'hiit', 'cuerdas de batalla': 'cuerdas_batalla', 'battle ropes': 'cuerdas_batalla',
+  'boxeo': 'boxeo', 'boxing': 'boxeo', 'hiit': 'hiit', 'burpee': 'burpees', 'burpees': 'burpees', 'jumping jack': 'jumping_jacks', 'jumping jacks': 'jumping_jacks', 'saltos de tijera': 'jumping_jacks', 'mountain climber': 'escaladores', 'mountain climbers': 'escaladores', 'escaladores': 'escaladores', 'cuerdas de batalla': 'cuerdas_batalla', 'battle ropes': 'cuerdas_batalla',
 
   'extension de pantorrilla (maquina)': 'pantorrilla_maquina', 'elevacion de gemelos de pie (maquina)': 'pantorrilla_pie', 'elevacion de gemelos de pie': 'pantorrilla_pie',
   'elevacion de gemelos sentado': 'pantorrilla_sentado', 'curl de muneca palmas arriba': 'curl_muneca', 'sentadilla pendulo (maquina)': 'hack',

@@ -8,6 +8,46 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-29
 
+### 15:40 · v2.15.0 — Análisis por video de cardio, boxeo y HIIT
+- **Pidió:** usar el analizador en cardio (correr, bici, etc.), boxeo y expandirlo («hazlo todo»).
+- **Hecho:**
+  - Nuevo `js/actividad.js`; se elige en Analizar como cualquier ejercicio.
+  - **Carrera y caminata** (cinta, correr, intervalos, caminar, cinta inclinada, senderismo):
+    - cadencia (pasos/min), pasos, rebote vertical (cm), pie al pisar (cm delante de la cadera), inclinación del
+      tronco y asimetría entre piernas;
+    - alertas: cadencia < 155, rebote > 10 cm, sobrezancada > 35 cm, tronco > 20° o hacia atrás.
+  - **Bici** (estática, spinning, exterior, de aire): RPM y ángulo de rodilla abajo (sillín: ideal 140-150°; < 135
+    bajo, > 155 alto). También cierre de cadera arriba y alerta de cadencia < 60.
+  - **Remo ergómetro:**
+    - remadas/min y relación recuperación : empuje (ideal 2 : 1);
+    - codo al 80 % del empuje de piernas (secuencia piernas → espalda → brazos) e inclinación al final (10-30°).
+  - **Ski erg, elíptica y escaladora:** ritmo y postura del tronco.
+  - **Saltar la cuerda:** saltos, saltos/min y altura del salto (alerta > 8 cm).
+  - **Boxeo (saco):**
+    - golpes por mano, golpes/min, velocidad de la mano (m/s, aprox.) y tipos (recto / gancho / uppercut, aprox.);
+    - % de tiempo con la guardia baja; alertas de guardia, de usar una sola mano y de grabar a menos de 60 fps.
+  - **HIIT:**
+    - nuevos ejercicios burpees, jumping jacks y escaladores (mountain climbers); biblioteca: 198;
+    - cuentan reps y ritmo, junto con cuerdas de batalla y HIIT genérico.
+  - Video con telemetría propio (esqueleto, contador, ritmo en vivo, gráfica, destello en cada golpe y alertas).
+  - Vista de resultados `v-actividad` y pestaña **«Cardio y boxeo»** en Perfil → Análisis de video.
+  - Se guarda en `localStorage af_actividades`: no se sincroniza con la nube todavía.
+  - En Analizar se ocultan los campos de peso y el modo en vivo para estas actividades, y se muestra un consejo de
+    cómo grabar cada una.
+- **Pruebas:**
+  - `pruebas/actividad/sinteticos.mjs`: esqueletos sintéticos con valores conocidos. Los 6 casos dan lo esperado:
+    170 pasos/min, rebote de 8 cm, tronco de 8°, 90 RPM, rodilla, 24 remadas/min con relación 1,9 : 1,
+    120 saltos/min de 3,8 cm, 28/30 golpes rectos y 15 burpees/min.
+  - `pruebas/actividad/act_e2e.js`: cadena completa en Chromium con la IA real (analizar → video → resultado →
+    historial).
+  - **Falta validar con videos reales** de cada actividad: 2-3 clips de 20-60 s de lado.
+- **Pendiente:**
+  - Videos reales para calibrar umbrales.
+  - Sincronizar `af_actividades` con la nube.
+  - Botón 🎥 en las filas de cardio de Entrenar para analizar desde ahí.
+  - Modo en vivo para cardio.
+
+
 ### 15:10 · v2.14.0 — El video se corrige al corregir el conteo
 - **Pidió:**
   - Que al corregir el conteo también se corrija el video del analizador.

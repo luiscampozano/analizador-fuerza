@@ -139,7 +139,7 @@
       <section class="section">
         <label class="section-title">3. Datos</label>
         <div class="form-grid">
-          <div class="form-group">
+          <div class="form-group" id="g-peso">
             <label for="in-peso" id="lbl-peso">Peso de discos</label>
             <div class="input-unit"><input type="number" id="in-peso" inputmode="decimal" step="0.5" min="0"><span>kg</span></div>
           </div>
@@ -441,12 +441,35 @@
     </div>
 
     <!-- ============ HISTORIAL ============ -->
+    <!-- ============ RESULTADO DE CARDIO / BOXEO / HIIT ============ -->
+    <div id="v-actividad" class="view">
+      <button type="button" class="btn-sec pf-volver" id="act-volver">‹ Volver</button>
+      <section class="card act-cab"><h2 id="act-titulo">Actividad</h2><p class="hint" id="act-sub" style="margin:4px 0 0"></p></section>
+      <section class="kpi-grid tres" id="act-kpis"></section>
+      <section class="section"><label class="section-title">Técnica</label><div class="card act-alertas" id="act-alertas"></div></section>
+      <section class="section"><label class="section-title" id="act-graf-tit">Ritmo durante el video</label><div class="card"><canvas id="act-graf" class="grafica"></canvas></div></section>
+      <section class="section" id="act-sec-video">
+        <label class="section-title">Video con telemetría</label>
+        <div class="video-container"><video id="act-video" playsinline controls preload="metadata"></video></div>
+        <div class="download-grid">
+          <a id="act-descargar" class="btn-download" download>📥 Guardar video</a>
+          <button type="button" id="act-compartir" class="btn-download secondary" style="border:1px solid var(--border-color)">📤 Compartir</button>
+        </div>
+      </section>
+      <section class="section">
+        <p class="hint">Medidas por video, aproximadas: dependen de grabar de lado, con el celular fijo y el cuerpo completo. Las distancias en cm se estiman con tu estatura.</p>
+        <button type="button" class="btn-primary" id="act-nueva">⚡ Analizar otro video</button>
+        <button type="button" class="btn-sec peligro" id="act-borrar" style="width:100%;margin-top:8px">Borrar este análisis</button>
+      </section>
+    </div>
+
     <div id="v-historial" class="view">
       <button type="button" class="btn-sec pf-volver" data-volver="v-perfil">‹ Perfil</button>
       <div class="chips pestanas" id="h-pestanas">
         <button type="button" class="chip active" data-p="h-sesiones">Sesiones</button>
         <button type="button" class="chip" data-p="h-progreso">Progreso</button>
         <button type="button" class="chip" data-p="h-series">Series</button>
+        <button type="button" class="chip" data-p="h-actividades">Cardio y boxeo</button>
       </div>
       <div id="h-sesiones" class="h-panel">
         <section class="section">
@@ -467,6 +490,12 @@
         <section class="section">
           <label class="section-title">1RM estimado en el tiempo</label>
           <div class="card"><canvas id="g-hist" class="grafica"></canvas></div>
+        </section>
+      </div>
+      <div id="h-actividades" class="h-panel" style="display:none">
+        <section class="section">
+          <label class="section-title">Cardio, boxeo y HIIT analizados</label>
+          <div class="card" id="h-lista-act"></div>
         </section>
       </div>
       <div id="h-series" class="h-panel" style="display:none">

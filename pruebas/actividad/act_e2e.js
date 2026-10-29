@@ -1,0 +1,33 @@
+const { chromium } = require('playwright');
+const B='http://localhost:8790', T=process.argv[2];
+const ok=(c,m)=>console.log(c?'OK  ':'FAIL',m);
+(async()=>{
+  const br=await chromium.launch();
+  const c=await br.newContext({viewport:{width:412,height:900},deviceScaleFactor:2}); const p=await c.newPage(); const errs=[];
+  p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{if(m.type()==='error'&&!/gsi|accounts.google|Failed to load resource|wasm|MIME/.test(m.text()))errs.push(m.text())});
+  p.on('dialog', d => { console.log('dialogo:', d.message()); d.accept(); });
+  await p.addInitScript(()=>{localStorage.setItem('af_bienvenida','omitida');localStorage.setItem('af_ej','burpees');localStorage.setItem('af_calidad','rapida');});
+  await p.goto(B+'/index.html'); await p.waitForTimeout(1200);
+  await p.click('[data-vista="v-form"]'); await p.waitForTimeout(300);
+  ok(await p.locator('#g-peso').evaluate(e=>getComputedStyle(e).display)==='none','campo de peso oculto para cardio');
+  console.log('consejo:', await p.textContent('#hint-ej'));
+  await p.screenshot({path:T+'/act_form.png'});
+  await p.setInputFiles('#input-video', T+'/sq.mp4');
+  await p.evaluate(()=>{document.getElementById('in-altura').value='1.68';document.getElementById('in-calidad').value='rapida';document.getElementById('in-video').checked=true;document.getElementById('btn-analizar').click();});
+  await p.waitForFunction(()=>document.getElementById('v-actividad').classList.contains('active'),null,{timeout:1500000});
+  await p.waitForTimeout(1500);
+  const kpis=await p.$$eval('#act-kpis .kpi-card',x=>x.map(k=>k.innerText.replace(/\n/g,' ')));
+  ok(kpis.length>=2,'resultado: '+kpis.join(' | '));
+  ok(await p.locator('#act-sec-video').evaluate(e=>e.style.display!=='none'),'video con telemetría generado');
+  await p.screenshot({path:T+'/act_res.png',fullPage:true});
+  await p.evaluate(()=>{const v=document.getElementById('act-video'); v.currentTime=Math.max(0,v.duration*0.7);}); await p.waitForTimeout(2000);
+  await p.locator('#act-video').screenshot({path:T+'/act_video.png'});
+  // historial
+  await p.evaluate(()=>{document.querySelector('[data-vista="v-perfil"]').click();}); await p.waitForTimeout(500);
+  await p.click('#pf-ir-historial'); await p.waitForTimeout(500);
+  await p.click('[data-p="h-actividades"]'); await p.waitForTimeout(300);
+  const n=await p.locator('#h-lista-act [data-act]').count(); ok(n===1,'en el historial: '+n);
+  await p.locator('#h-lista-act [data-act]').first().click(); await p.waitForTimeout(800);
+  ok(await p.locator('#v-actividad').evaluate(e=>e.classList.contains('active')),'se reabre desde el historial');
+  console.log('errores',errs); await br.close();
+})();

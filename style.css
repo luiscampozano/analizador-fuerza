@@ -1181,3 +1181,8 @@ body.sin-scroll { overflow: hidden; }
 .en-tarjeta-foto { width: 100%; height: 150px; object-fit: cover; border-radius: 10px; margin: 6px 0; display: block; }
 .en-det-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .en-det-cab .btn-sec { flex: none; padding: 6px 10px; font-size: 13px; }
+.act-cab h2 { margin: 0; font-size: 20px; }
+.act-alertas .act-alerta { margin: 0 0 8px; line-height: 1.45; font-size: 14px; }
+.act-alertas .act-alerta:last-child { margin-bottom: 0; }
+.act-alerta.ok { color: #5adc78; }
+.act-alerta.aviso { color: var(--accent-orange); }

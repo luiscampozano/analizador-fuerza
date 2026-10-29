@@ -18,8 +18,9 @@ import * as nube from './nube.js';
 import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
+import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO } from './actividad.js';
 
-const VERSION = '2.14.0';
+const VERSION = '2.15.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -36,7 +37,7 @@ let cancelar = false;
 function vista(id) {
   if (id !== 'v-vivo') vivo.detener();
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === id));
-  const pestana = { 'v-resultados': 'v-form', 'v-progreso': 'v-form', 'v-vivo': 'v-form', 'v-historial': 'v-perfil', 'v-guia': 'v-perfil' }[id] || id;
+  const pestana = { 'v-resultados': 'v-form', 'v-progreso': 'v-form', 'v-vivo': 'v-form', 'v-actividad': 'v-form', 'v-historial': 'v-perfil', 'v-guia': 'v-perfil' }[id] || id;
   document.querySelectorAll('.nav button').forEach((b) => b.classList.toggle('active', b.dataset.vista === pestana));
   window.scrollTo({ top: 0 });
   if (id === 'v-historial') pintarHistorial();
@@ -71,16 +72,16 @@ function pintarElegido() {
     $('selector-ej').style.display = abierto ? 'none' : 'block';
     if (!abierto) $('buscar-ej').focus({ preventScroll: true });
   };
-  $('hint-ej').textContent = ej.hint;
+  $('hint-ej').textContent = ej.cardio ? '🎥 ' + (CONSEJO[tipoActividad(ej)] || '') : ej.hint;
 }
 function pintarLista() {
   const q = $('buscar-ej').value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  $('chips-grupo').innerHTML = ['Todos', ...GRUPOS.filter((g) => g !== 'Cardio')].map((g) => `<button type="button" class="chip${g === grupo ? ' active' : ''}" data-g="${g}">${g}</button>`).join('');
+  $('chips-grupo').innerHTML = ['Todos', ...GRUPOS].map((g) => `<button type="button" class="chip${g === grupo ? ' active' : ''}" data-g="${g}">${g}</button>`).join('');
   $('chips-grupo').querySelectorAll('.chip').forEach((c) => (c.onclick = () => { grupo = c.dataset.g; pintarLista(); }));
   if (grupo !== 'Todos' && !GRUPOS.includes(grupo)) grupo = 'Todos';
   const palabras = q.split(/\s+/).filter(Boolean);
   const lista = EJERCICIOS.filter((e) => {
-    if (e.cardio) return false; // el cardio se registra en Entrenar; no tiene analisis por video
+    if (e.cardio && !tipoActividad(e)) return false; // cardio sin analisis por video (natacion, deportes...)
     if (grupo !== 'Todos' && e.grupo !== grupo) return false;
     const texto = [e.nombre, e.grupo, e.equipo, e.musculo, e.en].join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     return palabras.every((w) => texto.includes(w));
@@ -125,6 +126,9 @@ function usaCarro() {
 }
 function ajustarCampos() {
   const p = ej.perfil;
+  // cardio, boxeo y HIIT: sin carga; solo estatura (para las distancias) y peso corporal
+  $('g-peso').style.display = p === 'cardio' ? 'none' : '';
+  $('btn-vivo').style.display = p === 'cardio' ? 'none' : '';
   $('g-incl').style.display = p === 'riel' ? '' : 'none';
   $('g-rel').style.display = p === 'polea' ? '' : 'none';
   $('g-carro').style.display = usaCarro() ? '' : 'none';
@@ -221,7 +225,7 @@ function leerDatos() {
   const peso = parseFloat($('in-peso').value || '0');
   const pc = parseFloat($('in-pc').value || '0');
   const altura = parseFloat($('in-altura').value || '0');
-  if (ej.perfil !== 'corporal' && !(peso > 0)) { alert('Indica el peso en kg.'); return null; }
+  if (ej.perfil !== 'corporal' && ej.perfil !== 'cardio' && !(peso > 0)) { alert('Indica el peso en kg.'); return null; }
   if (!(altura > 1 && altura < 2.4)) { alert('Revisa tu estatura (en metros, por ejemplo 1.68).'); return null; }
   if (ej.perfil === 'corporal' && !(pc > 20)) { alert('Indica tu peso corporal.'); return null; }
   const carro = usaCarro() ? parseFloat($('in-carro').value || '0') : 0;
@@ -270,6 +274,7 @@ async function analizarArchivo() {
         throw e;
       }
     }
+    if (ej.cardio) { await analizarActividadVideo(frames, video, d); return; }
     progreso(2, 0.2, 'Calculando la física…');
     const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
     d.ini = ini > 0 ? ini : null; d.fin = fin > 0 ? fin : null;
@@ -307,6 +312,68 @@ async function analizarArchivo() {
         .then(() => aviso('Diagnóstico enviado. ¡Gracias!', true)).catch(() => {});
     }
   }
+}
+
+// ------------------------------------------------------------------ cardio, boxeo y HIIT (js/actividad.js)
+const ACTS = 'af_actividades';
+const leerActs = () => { try { return JSON.parse(leer(ACTS) || '[]'); } catch (e) { return []; } };
+async function analizarActividadVideo(frames, video, d) {
+  progreso(2, 0.5, 'Midiendo el ritmo y la técnica…');
+  const act = analizarActividad(frames, video.duration, ej, { altura: d.altura });
+  act.id = 'act-' + Date.now(); act.fecha = new Date().toISOString(); act.icono = ej.icono;
+  progreso(2, 1);
+  let salida = null;
+  if ($('in-video').checked) {
+    const full = interpolar(frames, 30, video.duration);
+    salida = await generarVideo(video, archivo, dibujoActividad(video, full, 30, act), { cancelado: () => cancelar, alAvanzar: (f) => progreso(3, f, 'Creando el video con telemetría…') });
+    await almacen.guardarVideo(act.id, salida);
+  }
+  almacen.guardarPose(act.id, frames, { dur: video.duration, W: video.videoWidth, H: video.videoHeight, version: VERSION });
+  const lista = leerActs(); lista.unshift(act); guardar(ACTS, JSON.stringify(lista.slice(0, 60)));
+  mostrarActividad(act, { video: salida, desde: 'v-form' });
+}
+let actActual = null, actDesde = 'v-form';
+function mostrarActividad(a, { video = null, desde = 'v-form' } = {}) {
+  actActual = a; actDesde = desde;
+  $('act-titulo').textContent = `${a.icono || '🏃'} ${a.nombre}`;
+  $('act-sub').textContent = `${new Date(a.fecha).toLocaleString('es-EC', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${fmt(a.dur, 0)} s de video`;
+  $('act-kpis').innerHTML = a.kpis.map((k) => `<div class="kpi-card"><span class="kpi-label">${esc(k.label)}</span><span class="kpi-value">${k.valor ?? '--'}</span><span class="kpi-sub">${esc(k.sub)}</span></div>`).join('');
+  $('act-alertas').innerHTML = a.alertas.length ? a.alertas.map((x) => `<p class="act-alerta ${x.nivel}">${x.nivel === 'ok' ? '✓' : '⚠️'} ${esc(x.texto)}</p>`).join('') : '<p class="hint" style="margin:0">Sin observaciones.</p>';
+  $('act-graf-tit').textContent = `Ritmo durante el video (${a.unidad})`;
+  vista('v-actividad');
+  graficaRitmo($('act-graf'), a);
+  if (video) {
+    $('act-sec-video').style.display = '';
+    const url = URL.createObjectURL(video.blob); $('act-video').src = url; $('act-descargar').href = url;
+    $('act-descargar').download = `fuerzapro_${a.ejercicio}_${a.fecha.slice(0, 16).replace(/[-:T]/g, '')}.${video.extension}`;
+    const f = new File([video.blob], $('act-descargar').download, { type: video.tipo });
+    $('act-compartir').style.display = navigator.canShare && navigator.canShare({ files: [f] }) ? '' : 'none';
+    $('act-compartir').onclick = () => navigator.share({ files: [f], title: 'FuerzaPro' }).catch(() => {});
+  } else $('act-sec-video').style.display = 'none';
+}
+function graficaRitmo(c, a) {
+  const dpr = window.devicePixelRatio || 1, W = c.clientWidth || 340, H = 170;
+  c.width = W * dpr; c.height = H * dpr; c.style.height = H + 'px';
+  const g = c.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+  const pts = (a.curva || []).filter((p) => p.v != null); if (!pts.length) return;
+  const mx = Math.max(...pts.map((p) => p.v)) * 1.15, L = 34, B = 20, x = (t) => L + (W - L - 8) * t / (a.dur || 1), y = (v) => 8 + (H - 8 - B) * (1 - v / mx);
+  g.font = '10px system-ui, sans-serif'; g.fillStyle = '#8e95a5'; g.strokeStyle = 'rgba(255,255,255,.07)';
+  for (let k = 0; k <= 3; k++) { const v = mx * k / 3; g.beginPath(); g.moveTo(L, y(v)); g.lineTo(W - 8, y(v)); g.stroke(); g.fillText(Math.round(v), 2, y(v) + 3); }
+  g.fillText('0 s', L, H - 5); g.textAlign = 'right'; g.fillText(`${Math.round(a.dur)} s`, W - 8, H - 5);
+  g.strokeStyle = '#7c5cff'; g.lineWidth = 2.5; g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(x(p.t), y(p.v)) : g.moveTo(x(p.t), y(p.v)))); g.stroke();
+  g.fillStyle = '#5adc78'; for (const e of a.eventos || []) { g.beginPath(); g.arc(x(e.t), H - B + 4, 2.2, 0, 7); g.fill(); }
+}
+$('act-volver').onclick = () => vista(actDesde);
+$('act-nueva').onclick = () => { $('btn-quitar').click(); vista('v-form'); };
+$('act-borrar').onclick = async () => {
+  if (!actActual || !confirm('¿Borrar este análisis?')) return;
+  guardar(ACTS, JSON.stringify(leerActs().filter((x) => x.id !== actActual.id)));
+  try { await almacen.borrarSerie(actActual.id); } catch (e) { /* nada */ }
+  actActual = null; vista(actDesde === 'v-historial' ? 'v-historial' : 'v-form');
+};
+async function abrirActividad(id) {
+  const a = leerActs().find((x) => x.id === id); if (!a) return;
+  mostrarActividad(a, { video: await almacen.leerVideo(id), desde: 'v-historial' });
 }
 
 // Video con telemetria (esqueleto, flecha de fuerza, graficas y contador de reps). Se usa al analizar y al corregir el conteo.
@@ -817,6 +884,14 @@ function borrarSerieHist(id) {
 }
 function pintarHistorial() {
   const lista = hist.leer();
+  if (pestana === 'h-actividades') {
+    const acts = leerActs();
+    $('h-lista-act').innerHTML = acts.length ? acts.map((a) => `<div class="serie" data-act="${a.id}" role="button"><span>${a.icono || '🏃'} <b>${esc(a.nombre)}</b> · ${new Date(a.fecha).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}</span>
+      <span>${a.total} ${esc((a.contador || '').toLowerCase())}${a.ritmo ? ` · ${fmt(a.ritmo)} ${esc(a.unidad)}` : ''}${a.alertas.some((x) => x.nivel === 'aviso') ? ' · ⚠' : ''}</span></div>`).join('')
+      : '<p class="vacio">Aún no analizas cardio, boxeo ni HIIT. En Analizar elige, por ejemplo, Correr en cinta, Bicicleta estática o Boxeo.</p>';
+    $('h-lista-act').querySelectorAll('[data-act]').forEach((x) => (x.onclick = () => abrirActividad(x.dataset.act)));
+    return;
+  }
   if (pestana === 'h-sesiones') {
     graficaSemanas($('g-semana'), tonelajeSemanal(lista));
     const ses = agruparSesiones(lista, POR_ID);
