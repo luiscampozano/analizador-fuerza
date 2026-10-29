@@ -8,6 +8,36 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-29
 
+### 14:40 · v2.13.0 — Segundo contador de reps por ángulos (todos los ejercicios)
+- **Pidió:** aplicar todas las mejoras al analizador, que funcionen con todo tipo de ejercicio y sin depender de muchos videos.
+- **Hecho:**
+  - Nuevo `js/conteo.js`. Cuenta las reps con el ángulo de la articulación que mueve cada ejercicio (codo, hombro,
+    cadera, rodilla, tobillo), con la distancia entre manos (aperturas, pec deck, pájaro), con la distancia entre
+    rodillas (abductores) o con la altura de los hombros (encogimientos). Asigna la señal automáticamente a los 169
+    ejercicios de fuerza y a los creados por el usuario.
+  - Cuenta con % del recorrido e histéresis (30 %/70 %) y con un segundo zigzag sobre la misma señal.
+  - Usa los puntos crudos de la IA (sin interpolar). Así se validó, e interpolando la mejora desaparecía.
+  - **Regla:** si el contador principal y el de ángulos no coinciden, gana el de ángulos solo cuando sus dos
+    conteos coinciden entre sí y sus reps son regulares (variación de duración < 55 %).
+  - **Validación** (banco de 59 videos, sin videos nuevos):
+    - **29 → 37 exactos**; error total 103 → 84 reps. Mejoran 11 videos y empeoran 2 (un jalón de 8 → 7 y un
+      rack pull de 6 → 2).
+    - Validación cruzada (40 repeticiones de 5 partes): ~33 de 59 con videos que la regla no vio.
+  - **Robustez:** variaciones sintéticas de los mismos videos (cámara girada 8°, 60 % más lejos, temblor de 4 px,
+    paneo, video 25 % más rápido o 20 % más lento). El contador nuevo gana en todas (34-37/59 contra 22-29/59) y casi
+    no le afecta la velocidad del video.
+  - El modo en vivo y los ejercicios alternos (curl alterno) siguen con el contador principal.
+  - `res.conteo` indica qué contador se usó.
+  - Herramientas en `pruebas/banco/`: `tabla_app.mjs`, `cv_app.py`, `robustez.mjs` y `analizar.mjs`, que ahora
+    pasa los puntos crudos.
+- **Pendiente:**
+  - Señal propia para los alternos.
+  - Llevar los reportes de fallos de D1 al banco (ya traen los puntos y la versión).
+  - Probar con el lote nuevo de videos de Luis cuando lo tenga.
+  - Mejorar los 22 videos que siguen fallando: extensión de cuádriceps, búlgaras, zancada, remo en máquina,
+    press con mancuernas y aperturas.
+
+
 ### 13:20 · Análisis: cómo mejorar el analizador sin depender de muchos videos de Luis
 - **Pidió:** que el analizador falle menos sin tener que grabar tantos videos. Mandó capturas de un reel de
   @juvebobadillo3 que cuenta perfecto el cierre de manerales en una pec deck.

@@ -1,5 +1,7 @@
 // Motor fisico (port del motor Python validado con el remo de prueba).
 // Entrada: puntos MediaPipe por cuadro. Salida: posicion, velocidad, aceleracion, fuerza, potencia y repeticiones.
+import { contarPorAngulos, preferirAngulos } from './conteo.js';
+
 export const G = 9.81;
 
 // indices MediaPipe Pose (33 puntos)
@@ -352,6 +354,22 @@ export function analizar(full, fps, ej, cfg) {
     pares = [];
     for (let q = 0; q < piv.length - 1; q++) if (piv[q].tipo === 'bajo' && piv[q + 1].tipo === 'alto') pares.push([piv[q].i, piv[q + 1].i, piv[q + 2] ? piv[q + 2].i : n - 1]);
   }
+  // metricas de una rep a partir de su despegue (ini), su tope (pk) y su final (fin)
+  const media = (arr) => arr.reduce((x, y) => x + y, 0) / (arr.length || 1);
+  const medir = (ini, pk, fin) => {
+    const seg = (arr) => arr.slice(ini, pk + 1);
+    let trabajo = 0;
+    for (let i = ini + 1; i <= pk; i++) trabajo += fuerza[i] * G * (s[i] - s[i - 1]);
+    return {
+      inicio: ini, tope: pk, fin,
+      recorrido_cm: (s[pk] - s[ini]) * 100,
+      t_subida: (pk - ini) / fps, t_bajada: (fin - pk) / fps,
+      v_media: media(seg(v)), v_pico: Math.max(...seg(v)),
+      f_media: media(seg(fuerza)), f_pico: Math.max(...seg(fuerza)),
+      p_media: media(seg(potencia).map((x) => Math.max(0, x))), p_pico: Math.max(...seg(potencia)),
+      trabajo_j: trabajo,
+    };
+  };
   let reps = [];
   for (let q = 0; q < pares.length; q++) {
     let a = pares[q][0], pk0 = pares[q][1];
@@ -370,20 +388,7 @@ export function analizar(full, fps, ej, cfg) {
     let pk = pk0; for (let i = ini; i <= pk0; i++) if (s[i] >= s[pk0] - tol) { pk = i; break; }
     const sig = pares[q][2] ?? (pares[q + 1] ? pares[q + 1][0] : n - 1);
     const fin = Math.min(sig, i1 - 1);
-    const con = [ini, pk + 1];
-    const seg = (arr) => arr.slice(con[0], con[1]);
-    const media = (arr) => arr.reduce((x, y) => x + y, 0) / (arr.length || 1);
-    let trabajo = 0;
-    for (let i = ini + 1; i <= pk; i++) trabajo += fuerza[i] * G * (s[i] - s[i - 1]);
-    reps.push({
-      inicio: ini, tope: pk, fin,
-      recorrido_cm: (s[pk] - s[ini]) * 100,
-      t_subida: (pk - ini) / fps, t_bajada: (fin - pk) / fps,
-      v_media: media(seg(v)), v_pico: Math.max(...seg(v)),
-      f_media: media(seg(fuerza)), f_pico: Math.max(...seg(fuerza)),
-      p_media: media(seg(potencia).map((x) => Math.max(0, x))), p_pico: Math.max(...seg(potencia)),
-      trabajo_j: trabajo,
-    });
+    reps.push(medir(ini, pk, fin));
   }
   // al soltar o agarrar la carga las manos se mueven en otra direccion: fuera reps de borde atipicas
   // con carga nadie sube a mas de ~2 m/s de media: eso es la IA perdiendo el cuerpo un instante
@@ -409,6 +414,25 @@ export function analizar(full, fps, ej, cfg) {
     while (!cuerpo && reps.length > 1 && reps[reps.length - 1].parcial) { reps.pop(); cambio = true; }
     if (cambio) marcarReps(reps);
   }
+  // segundo contador por angulos de las articulaciones (no depende de la camara): si su señal es claramente mas
+  // confiable que la del punto seguido, sus reps reemplazan a las del contador principal (ver js/conteo.js)
+  let conteo = { usado: 'principal', principal: reps.length };
+  if (!cfg.sinAngulos && cfg.inicio == null && cfg.fin == null) {
+    const c = contarPorAngulos(full, fps, ej, cfg.frames);
+    if (c) conteo = { ...conteo, angulos: c.n, senal: c.senal };
+    if (c && preferirAngulos(reps.length, c)) {
+      reps = c.reps.map(([a0, b0], k) => {
+        // dentro de la rep (reposo -> extremo -> reposo) la fase concentrica va del punto mas bajo de la carga al mas alto
+        let ini = a0; for (let i = a0; i <= b0; i++) if (s[i] < s[ini]) ini = i;
+        let pk = ini; for (let i = ini; i <= b0; i++) if (s[i] > s[pk]) pk = i;
+        if (pk - ini < 2) pk = Math.min(b0, ini + 2);
+        const fin = c.reps[k + 1] ? c.reps[k + 1][0] : Math.min(n - 1, b0 + Math.round(0.5 * fps));
+        return medir(ini, pk, Math.max(pk, fin));
+      });
+      marcarReps(reps);
+      conteo.usado = 'angulos';
+    }
+  }
   const valido = new Array(n).fill(false);
   if (reps.length) {
     const ini = Math.max(0, reps[0].inicio - Math.round(0.5 * fps));
@@ -419,7 +443,7 @@ export function analizar(full, fps, ej, cfg) {
   const desde = reps.length ? Math.max(0, reps[0].inicio - fps) : 0, hasta = reps.length ? Math.min(n - 1, reps[reps.length - 1].fin) : n - 1;
   for (let i = desde; i <= hasta; i++) for (const k of MP[ej.punto] || []) { sv += full[i][k][2] || 0; nv++; }
   const visPunto = nv ? sv / nv : 1;
-  return { n, fps, s, v, a, fuerza, potencia, dirs, estatico, reps, valido, visPunto };
+  return { n, fps, s, v, a, fuerza, potencia, dirs, estatico, reps, valido, visPunto, conteo };
 }
 
 // Movimientos de preparacion contados como rep (acomodarse en la banca, acostarse, desenganchar, pararse al final):
@@ -476,8 +500,8 @@ export function quitarPreparacion(reps, full, fps, ej, rel, mPx) {
 function analizarAlterno(full, fps, ej, cfg) {
   const mPx = escala(full, fps, cfg.altura);
   const lados = [
-    analizar(full, fps, { ...ej, alterno: false, punto: 'mano_i', ancla: 'hombro_i' }, { ...cfg, mPx }),
-    analizar(full, fps, { ...ej, alterno: false, punto: 'mano_d', ancla: 'hombro_d' }, { ...cfg, mPx }),
+    analizar(full, fps, { ...ej, alterno: false, punto: 'mano_i', ancla: 'hombro_i' }, { ...cfg, mPx, sinAngulos: true }),
+    analizar(full, fps, { ...ej, alterno: false, punto: 'mano_d', ancla: 'hombro_d' }, { ...cfg, mPx, sinAngulos: true }),
   ];
   const n = full.length, base = lados[0];
   const reps = [...lados[0].reps.map((r) => ({ ...r, lado: 'izq' })), ...lados[1].reps.map((r) => ({ ...r, lado: 'der' }))]

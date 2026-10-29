@@ -152,7 +152,7 @@ function iniciarGrabacion(yo) {
     let res;
     try {
       const fps = 30, full = interpolar(yo.frames, fps, dur);
-      res = analizar(full, fps, yo.ej, { masa: yo.datos.masa, alfa: yo.datos.alfa, relacion: yo.datos.relacion, altura: yo.datos.altura });
+      res = analizar(full, fps, yo.ej, { masa: yo.datos.masa, alfa: yo.datos.alfa, relacion: yo.datos.relacion, altura: yo.datos.altura, sinAngulos: true }); // en vivo: solo el contador principal (estable mientras crece el video)
     } catch (e) { return; }
     const reps = res.reps, n = reps.length;
     $('vivo-n').textContent = Math.max(n, yo.anunciadas); // el conteo en pantalla nunca retrocede

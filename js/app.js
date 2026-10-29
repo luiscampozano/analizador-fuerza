@@ -19,7 +19,7 @@ import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 
-const VERSION = '2.12.0';
+const VERSION = '2.13.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -322,7 +322,7 @@ async function analizarArchivo() {
 // excluir: tiempos (s) del tope de las reps que el usuario dijo que no son reps · repsTotal: reps que dice que hizo
 function calcularSerie(frames, dur, e, d, { excluir = [], repsTotal = null, discoPts = null, idSerie = null } = {}) {
   const fps = 60, full = interpolar(frames, fps, dur);
-  const res = analizar(full, fps, e, { masa: d.masa, alfa: d.alfa, relacion: d.relacion, altura: d.altura, inicio: d.ini || null, fin: d.fin || null });
+  const res = analizar(full, fps, e, { masa: d.masa, alfa: d.alfa, relacion: d.relacion, altura: d.altura, inicio: d.ini || null, fin: d.fin || null, frames });
   if (excluir.length) {
     res.reps = res.reps.filter((r) => !excluir.some((t) => Math.abs(r.tope / fps - t) < 0.06));
     if (res.reps.length) marcarReps(res.reps);
