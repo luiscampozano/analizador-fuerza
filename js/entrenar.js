@@ -23,8 +23,9 @@ const COLOR_DISCO = { 25: '#e53935', 20: '#1e63d6', 15: '#f2c200', 10: '#2e9b4a'
 let deps = null;        // { ejercicios, porId, vista, analizar, abrirSerie }
 let lista = [];         // entrenamientos guardados (mas reciente primero)
 let rutinas = [];
-let activo = null;
-let reemplazarIndex = null;      // entrenamiento (o rutina en edicion) en curso
+let activo = null;      // entrenamiento (o rutina en edicion) en curso
+let reemplazarIndex = null; // ejercicio que se esta reemplazando desde el selector
+let mesCal = null;      // primer dia del mes que muestra el calendario de constancia
 let vistaActual = '';
 let reloj = null, audio = null, ultimoKg = null;
 export let enlacePendiente = null; // serie que espera su analisis por video
@@ -106,6 +107,9 @@ export async function iniciar(d) {
   $('en-buscar').oninput = pintarSelector;
   $('en-sel-cerrar').onclick = () => { reemplazarIndex = null; $('en-selector').style.display = 'none'; };
   $('en-det-cerrar').onclick = () => { $('en-detalle').style.display = 'none'; };
+  $('en-ejs-cerrar').onclick = () => { $('en-ejs-modal').style.display = 'none'; };
+  $('en-ejs-buscar').oninput = pintarListaEjercicios;
+  $('en-ejs-orden').onchange = pintarListaEjercicios;
   $('en-hoja').onclick = (ev) => { if (ev.target.id === 'en-hoja') $('en-hoja').style.display = 'none'; };
   $('desc-menos').onclick = () => ajustarDescanso(-15);
   $('desc-mas').onclick = () => ajustarDescanso(15);
@@ -162,12 +166,19 @@ function pintarRutinas() {
 }
 
 function pintarCalendario(lunes) {
-  const dias = new Set(lista.map((e) => diaLocal(new Date(e.inicio))));
-  const SEM = 12, ini = new Date(lunes); ini.setDate(ini.getDate() - 7 * (SEM - 1));
-  const hoy = new Date(); let celdas = '';
-  for (let w = 0; w < SEM; w++) for (let d = 0; d < 7; d++) {
-    const f = new Date(ini); f.setDate(ini.getDate() + w * 7 + d);
-    celdas += `<span class="${f > hoy ? 'fut' : dias.has(diaLocal(f)) ? 'si' : ''}" title="${f.toLocaleDateString('es-EC')}"></span>`;
+  const porDia = new Map();
+  for (const e of lista) { const k = diaLocal(new Date(e.inicio)); if (!porDia.has(k)) porDia.set(k, []); porDia.get(k).push(e); }
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  if (!mesCal) mesCal = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const y = mesCal.getFullYear(), m = mesCal.getMonth(), nDias = new Date(y, m + 1, 0).getDate();
+  const hueco = (new Date(y, m, 1).getDay() + 6) % 7; // la semana empieza en lunes
+  let celdas = '<span class="vacia"></span>'.repeat(hueco), nMes = 0;
+  for (let d = 1; d <= nDias; d++) {
+    const f = new Date(y, m, d), ens = porDia.get(diaLocal(f)) || [];
+    if (ens.length) nMes++;
+    const cls = [ens.length ? 'si' : '', +f === +hoy ? 'hoy' : '', f > hoy ? 'fut' : ''].filter(Boolean).join(' ');
+    celdas += ens.length ? `<button type="button" class="${cls}" data-dia="${diaLocal(f)}" aria-label="${f.toLocaleDateString('es-EC')}: ${ens.length} entrenamiento${ens.length > 1 ? 's' : ''}">${d}${ens.length > 1 ? '<i></i>' : ''}</button>`
+      : `<span class="${cls}">${d}</span>`;
   }
   let racha = 0; // semanas seguidas con al menos un entrenamiento (la actual cuenta si ya entrenaste)
   for (let w = 0; w < 104; w++) {
@@ -176,8 +187,24 @@ function pintarCalendario(lunes) {
     if (hay) racha++; else if (w > 0) break;
   }
   const n30 = lista.filter((e) => Date.now() - new Date(e.inicio) < 30 * 86400000).length;
-  $('en-calendario').innerHTML = `<div class="en-cal">${celdas}</div>
+  const esActual = y === hoy.getFullYear() && m === hoy.getMonth();
+  const titulo = mesCal.toLocaleDateString('es-EC', { month: 'long', year: 'numeric' });
+  $('en-calendario').innerHTML = `<div class="card en-mes">
+      <div class="en-mes-cab"><button type="button" class="en-mes-flecha" id="en-mes-ant" aria-label="Mes anterior">‹</button>
+        <div><strong>${titulo.charAt(0).toUpperCase() + titulo.slice(1)}</strong><small>${nMes} día${nMes === 1 ? '' : 's'} entrenado${nMes === 1 ? '' : 's'}</small></div>
+        <button type="button" class="en-mes-flecha" id="en-mes-sig" aria-label="Mes siguiente"${esActual ? ' disabled' : ''}>›</button></div>
+      <div class="en-mes-sem"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+      <div class="en-mes-dias">${celdas}</div>
+    </div>
     <p class="hint" style="margin-top:6px">🔥 Racha: <b>${racha} semana${racha === 1 ? '' : 's'}</b> · ${n30} entrenamientos en los últimos 30 días</p>`;
+  const mover = (k) => { mesCal = new Date(y, m + k, 1); pintarCalendario(lunes); };
+  $('en-mes-ant').onclick = () => mover(-1);
+  $('en-mes-sig').onclick = () => { if (!esActual) mover(1); };
+  $('en-calendario').querySelectorAll('[data-dia]').forEach((b) => (b.onclick = () => {
+    const ens = porDia.get(b.dataset.dia);
+    if (ens.length === 1) return abrirDetalle(ens[0].id);
+    hoja(ens.map((en) => ['🏋️', `${esc(en.titulo || 'Entrenamiento')} <small style="color:var(--text-muted)">· ${seriesHechas(en)} series</small>`, () => abrirDetalle(en.id)]));
+  }));
 }
 
 function pintarMusculos() {
@@ -190,21 +217,44 @@ function pintarMusculos() {
     : '<p class="hint" style="margin:0">Aquí verás cuántas series haces por grupo muscular cada semana.</p>';
 }
 
+let ejsVistos = new Map(); // clave -> { e, n } de todos los ejercicios del historial (mas reciente primero)
+function filaEjercicio(k, e, n) {
+  const r = P.registros(lista, k), real = P.rmReal(k);
+  return `<div class="en-ej-fila" data-k="${esc(k)}" role="button"><span class="en-ej-icono">${iconoEj(e)}</span>
+      <div><strong>${esc(nombreEj(e))}</strong><small>${n} ${n === 1 ? 'sesión' : 'sesiones'}${r.maxKg ? ` · máx. ${kgTxt(r.maxKg.kg)} kg × ${r.maxKg.reps}` : ''}</small></div>
+      <div class="der">${real ? `<b>${kgTxt(real.kg)}</b><small>1RM real</small>` : r.mejor ? `<b>${fmt(r.mejor.valor)}</b><small>1RM est.</small>` : ''}</div></div>`;
+}
+function activarFilas(cont) {
+  cont.querySelectorAll('.en-ej-fila').forEach((x) => (x.onclick = () => abrirProgreso(ejsVistos.get(x.dataset.k).e)));
+}
 function pintarEjercicios() {
-  const vistos = new Map();
+  ejsVistos = new Map();
   for (const en of lista) for (const e of en.ejercicios) {
     const k = P.claveEj(e);
-    if (!vistos.has(k)) vistos.set(k, { e, n: 0 });
-    vistos.get(k).n++;
+    if (!ejsVistos.has(k)) ejsVistos.set(k, { e, n: 0 });
+    ejsVistos.get(k).n++;
   }
-  const filas = [...vistos.entries()].slice(0, 25);
-  $('en-ejs').innerHTML = filas.length ? filas.map(([k, { e, n }]) => {
-    const r = P.registros(lista, k), real = P.rmReal(k);
-    return `<div class="en-ej-fila" data-k="${esc(k)}" role="button"><span class="en-ej-icono">${iconoEj(e)}</span>
-      <div><strong>${esc(nombreEj(e))}</strong><small>${n} sesión${n > 1 ? 'es' : ''}${r.maxKg ? ` · máx. ${kgTxt(r.maxKg.kg)} kg × ${r.maxKg.reps}` : ''}</small></div>
-      <div class="der">${real ? `<b>${kgTxt(real.kg)}</b><small>1RM real</small>` : r.mejor ? `<b>${fmt(r.mejor.valor)}</b><small>1RM est.</small>` : ''}</div></div>`;
-  }).join('') : '<p class="hint" style="margin:0">Cuando registres entrenamientos, aquí verás tus récords y progreso por ejercicio.</p>';
-  $('en-ejs').querySelectorAll('.en-ej-fila').forEach((x) => (x.onclick = () => abrirProgreso(vistos.get(x.dataset.k).e)));
+  const todos = [...ejsVistos.entries()], N = todos.length;
+  $('en-ejs').innerHTML = N ? todos.slice(0, 3).map(([k, { e, n }]) => filaEjercicio(k, e, n)).join('')
+      + (N > 3 ? `<button type="button" class="en-ejs-todos" id="en-ejs-todos">Ver los ${N} ejercicios <span>›</span></button>` : '')
+    : '<p class="hint" style="margin:0">Cuando registres entrenamientos, aquí verás tus récords y progreso por ejercicio.</p>';
+  activarFilas($('en-ejs'));
+  if ($('en-ejs-todos')) $('en-ejs-todos').onclick = abrirEjercicios;
+}
+function abrirEjercicios() {
+  $('en-ejs-buscar').value = '';
+  $('en-ejs-orden').value = leerLS('af_ejs_orden') || 'reciente';
+  pintarListaEjercicios();
+  $('en-ejs-modal').style.display = 'flex';
+}
+function pintarListaEjercicios() {
+  const q = norm($('en-ejs-buscar').value || ''), orden = $('en-ejs-orden').value;
+  guardarLS('af_ejs_orden', orden);
+  let filas = [...ejsVistos.entries()].filter(([, { e }]) => !q || norm(nombreEj(e)).includes(q));
+  if (orden === 'sesiones') filas.sort((a, b) => b[1].n - a[1].n);
+  else if (orden === 'nombre') filas.sort((a, b) => nombreEj(a[1].e).localeCompare(nombreEj(b[1].e), 'es'));
+  $('en-ejs-lista').innerHTML = filas.length ? filas.map(([k, { e, n }]) => filaEjercicio(k, e, n)).join('') : '<p class="vacio">Ningún ejercicio coincide.</p>';
+  activarFilas($('en-ejs-lista'));
 }
 
 // ------------------------------------------------------------------ hoja de opciones (menu inferior)
@@ -442,7 +492,7 @@ function abrirSelector(reemplazar = null) {
   reemplazarIndex = Number.isInteger(reemplazar) ? reemplazar : null;
   const inBuscar = $('en-buscar');
   inBuscar.value = '';
-  inBuscar.placeholder = reemplazarIndex != null ? 'Reemplazar por… (buscar ejercicio)' : 'Buscar ejercicio… (también en inglés)';
+  inBuscar.placeholder = reemplazarIndex != null ? 'Reemplazar por…' : 'Buscar ejercicio… (también en inglés)';
   $('en-selector').style.display = 'flex'; pintarSelector();
   setTimeout(() => inBuscar.focus({ preventScroll: true }), 50);
 }
@@ -471,12 +521,13 @@ function pintarSelector() {
 function agregarEjercicio(ej, nombre) {
   if (reemplazarIndex != null && activo && activo.ejercicios[reemplazarIndex]) {
     const e = activo.ejercicios[reemplazarIndex];
+    // Los pesos y reps del ejercicio anterior no sirven para el nuevo: se conserva cuántas series y de qué tipo.
+    if (e.series.some((x) => x.hecha) && !confirm('Las series ya marcadas como hechas se vaciarán. ¿Reemplazar el ejercicio?')) return;
     e.ej = ej;
     e.nombre = ej && deps.porId[ej] ? deps.porId[ej].nombre : nombre;
     const prev = activo.rutina ? null : anterior(e, activo.id);
-    if (!e.series || !e.series.length) {
-      e.series = prev && prev.length ? prev.map((s) => serieVacia(s.tipo)) : [serieVacia(), serieVacia(), serieVacia()];
-    }
+    e.series = e.series && e.series.length ? e.series.map((x) => serieVacia(x.tipo))
+      : prev && prev.length ? prev.map((x) => serieVacia(x.tipo)) : [serieVacia(), serieVacia(), serieVacia()];
     reemplazarIndex = null;
     $('en-selector').style.display = 'none';
     guardarBorrador(); pintarActivo();
@@ -751,8 +802,11 @@ function preguntarActualizarRutina(nombre, resumen) {
       <button type="button" class="btn-sec" id="en-act-rut-no" style="width:100%;padding:12px;font-weight:600;font-size:14px;justify-content:center;margin-top:6px;">Mantener Rutina Original</button>
     </div>`;
     h.style.display = 'flex';
-    $('en-act-rut-si').onclick = () => { h.style.display = 'none'; resolve(true); };
-    $('en-act-rut-no').onclick = () => { h.style.display = 'none'; resolve(false); };
+    const fondo = h.onclick;
+    const fin = (v) => { h.onclick = fondo; h.style.display = 'none'; resolve(v); };
+    h.onclick = (ev) => { if (ev.target === h) fin(false); };
+    $('en-act-rut-si').onclick = () => fin(true);
+    $('en-act-rut-no').onclick = () => fin(false);
   });
 }
 
