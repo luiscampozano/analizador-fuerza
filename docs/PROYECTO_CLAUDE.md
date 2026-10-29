@@ -287,6 +287,11 @@ bloqueos, reportes, fallos.
 - **Precisión actual** con el banco de 59 videos de Luis: **29/59 exactas** (empezó en 23/59). Medido otra vez con
   v2.7.1: 29/59.
 
+## 7b. Experimento con ángulos (29/10)
+`pruebas/banco/angulos.mjs`: cuenta las reps con ángulos de las articulaciones y con histéresis sobre el % del recorrido.
+Saca 27/59 solo. Se complementa con el detector actual: cuando los dos coinciden aciertan el 76 %, y el techo
+combinado es 41/59. Detalle en `docs/DIARIO.md`.
+
 ## 8. Banco de prueba del conteo (`banco_fuerzapro.zip`)
 
 - Contiene:

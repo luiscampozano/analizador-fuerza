@@ -57,7 +57,13 @@ AL TERMINAR CADA CAMBIO
 - Resume en español sencillo: versión, qué cambió, qué corregiste, y una lista corta de qué debe probar Luis.
 - Si la etapa fue grande, ofrece actualizar docs/PROYECTO_CLAUDE.md.
 
+DIARIO (obligatorio)
+- Antes de empezar cualquier actividad, lee las últimas entradas de docs/DIARIO.md.
+- Al terminarla, agrega una entrada arriba con: fecha y hora (Ecuador, UTC-5), qué pidió Luis, qué se hizo,
+  versión publicada y pendientes. Súbela en el mismo commit del cambio.
+
 DOCUMENTOS CLAVE (léelos antes de cambios grandes)
+- docs/DIARIO.md: bitácora de cada actividad (la más reciente arriba).
 - docs/PROYECTO_CLAUDE.md: historia, arquitectura, versiones, pendientes y forma de trabajo.
 - docs/HANDOFF.md: procedimiento detallado de cambios seguros (también lo usa Gemini).
 - pruebas/verificar.sh: correr antes de cada publicación.
