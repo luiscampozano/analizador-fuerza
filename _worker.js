@@ -56,7 +56,10 @@ async function api(req, env, url) {
   if (ruta === '/api/auth/correo' && m === 'POST') return entrarCorreo(req, env);
   if (ruta === '/api/salir' && m === 'POST') return salir(req, env);
   if (ruta.startsWith('/api/foto/') && m === 'GET') return foto(env, decodeURIComponent(ruta.slice(10)));
+  if (ruta.startsWith('/api/alimentos') && m === 'GET') return leerAlimentos(env, ruta.slice(14), url); // publico: sin sesion
   const u = await sesion(req, env);
+  if (ruta === '/api/alimentos' && m === 'POST') return crearAlimento(req, env, u);
+  if (/^\/api\/alimentos\/\d{6,14}\/reportar$/.test(ruta) && m === 'POST') return reportarAlimento(env, u, ruta.split('/')[3]);
   if (ruta.startsWith('/api/comunidad/')) return comunidad(req, env, u, ruta.slice(15), m, url);
   if (ruta.startsWith('/api/mod/')) return moderacion(req, env, u, ruta.slice(9), m);
   if (ruta === '/api/yo' && m === 'GET') return json({ usuario: publico(u) });
@@ -303,6 +306,7 @@ async function borrarCuenta(env, u) {
     ...borrarComunidad(env, u.id),
     env.DB.prepare('DELETE FROM items WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM fallos WHERE usuario = ?1').bind(u.id),
+    env.DB.prepare('UPDATE alimentos SET usuario = NULL WHERE usuario = ?1').bind(u.id), // el producto queda para todos, sin autor
     env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM credenciales WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM usuarios WHERE id = ?1').bind(u.id),
@@ -630,10 +634,12 @@ async function moderacion(req, env, u, r, m) {
         CASE r.objeto_tipo
           WHEN 'publicacion' THEN (SELECT coalesce(p.texto, '') || ' [' || coalesce(json_extract(p.datos, '$.titulo'), '') || ']' FROM publicaciones p WHERE p.id = r.objeto_id)
           WHEN 'comentario' THEN (SELECT c.texto FROM comentarios c WHERE c.id = r.objeto_id)
+          WHEN 'alimento' THEN (SELECT '🏷️ ' || a.nombre || ' · ' || coalesce(a.marca, '') || ' · ' || a.kcal || ' kcal, P ' || a.p || ', C ' || a.c || ', G ' || a.g || ' por 100 g · código ' || a.codigo FROM alimentos a WHERE a.codigo = r.objeto_id)
           ELSE (SELECT '@' || pf.alias || ' · ' || pf.nombre || ' · ' || coalesce(pf.bio, '') FROM perfiles pf WHERE pf.usuario = r.objeto_id) END AS contenido,
         CASE r.objeto_tipo
           WHEN 'publicacion' THEN (SELECT oculto FROM publicaciones WHERE id = r.objeto_id)
-          WHEN 'comentario' THEN (SELECT oculto FROM comentarios WHERE id = r.objeto_id) ELSE 0 END AS oculto,
+          WHEN 'comentario' THEN (SELECT oculto FROM comentarios WHERE id = r.objeto_id)
+          WHEN 'alimento' THEN (SELECT oculto FROM alimentos WHERE codigo = r.objeto_id) ELSE 0 END AS oculto,
         CASE r.objeto_tipo
           WHEN 'publicacion' THEN (SELECT pf.alias FROM publicaciones p JOIN perfiles pf ON pf.usuario = p.usuario WHERE p.id = r.objeto_id)
           WHEN 'comentario' THEN (SELECT pf.alias FROM comentarios c JOIN perfiles pf ON pf.usuario = c.usuario WHERE c.id = r.objeto_id)
@@ -643,13 +649,14 @@ async function moderacion(req, env, u, r, m) {
   }
   if (r === 'accion' && m === 'POST') {
     const { tipo, id, accion } = await leerJSON(req);
-    const tabla = { publicacion: 'publicaciones', comentario: 'comentarios' }[tipo];
+    const tabla = { publicacion: 'publicaciones', comentario: 'comentarios', alimento: 'alimentos' }[tipo], clave = tipo === 'alimento' ? 'codigo' : 'id';
     const lote = [];
     if (accion === 'ocultar' || accion === 'mostrar') {
-      if (!tabla) throw fallo('Solo se pueden ocultar publicaciones o comentarios.');
-      lote.push(DB.prepare(`UPDATE ${tabla} SET oculto = ?2 WHERE id = ?1`).bind(id, accion === 'ocultar' ? 1 : 0));
+      if (!tabla) throw fallo('Solo se pueden ocultar publicaciones, comentarios o alimentos.');
+      lote.push(DB.prepare(`UPDATE ${tabla} SET oculto = ?2 WHERE ${clave} = ?1`).bind(id, accion === 'ocultar' ? 1 : 0));
     } else if (accion === 'borrar') {
-      if (tipo === 'publicacion') lote.push(...borrarPublicacion(env, id));
+      if (tipo === 'alimento') lote.push(DB.prepare('DELETE FROM alimentos WHERE codigo = ?1').bind(id));
+      else if (tipo === 'publicacion') lote.push(...borrarPublicacion(env, id));
       else if (tipo === 'comentario') lote.push(DB.prepare('DELETE FROM comentarios WHERE id = ?1').bind(id));
       else if (tipo === 'usuario') lote.push(...borrarComunidad(env, id)); // saca a la persona de la comunidad
       else throw fallo('Tipo inválido.');
@@ -680,4 +687,58 @@ async function reportarFallo(req, env, u) {
     id, u.id, Date.now(), txt(b.ejercicio, 80), txt(b.nombre, 120), ent(b.repsApp), ent(b.repsReal), JSON.stringify(excl),
     txt(b.comentario, 500), txt(b.version, 20), txt(JSON.stringify(b.datos || {}), 20000), b.pose || null).run();
   return json({ ok: true, id });
+}
+
+// ================================================================== ALIMENTOS (codigos de barras de la comunidad)
+// Base propia para los productos que Open Food Facts no tiene (muchos de Ecuador). Cualquiera puede consultar; para
+// agregar hace falta sesion. Datos por 100 g, con controles de coherencia (las calorias deben cuadrar con los macros).
+const COD = /^\d{6,14}$/;
+const filaAlimento = (f) => ({ codigo: f.codigo, nombre: f.nombre, marca: f.marca || '', kcal: f.kcal, p: f.p, c: f.c, g: f.g, porcion: f.porcion, usos: f.usos });
+async function leerAlimentos(env, resto, url) {
+  if (resto === '' || resto === '/') { // busqueda por nombre o marca
+    const q = texto(url.searchParams.get('q') || '', 40).toLowerCase();
+    if (q.length < 2) throw fallo('Escribe al menos 2 letras.');
+    const pal = q.split(/\s+/).filter(Boolean).slice(0, 4);
+    const cond = pal.map((_, i) => `lower(nombre || ' ' || coalesce(marca, '')) LIKE ?${i + 1}`).join(' AND ');
+    const r = await env.DB.prepare(`SELECT * FROM alimentos WHERE oculto = 0 AND ${cond} ORDER BY usos DESC LIMIT 30`).bind(...pal.map((w) => `%${w.replace(/[%_]/g, '')}%`)).all();
+    return json({ alimentos: (r.results || []).map(filaAlimento) });
+  }
+  const codigo = resto.replace(/^\//, '');
+  if (!COD.test(codigo)) throw fallo('Código no válido.');
+  const f = await env.DB.prepare('SELECT * FROM alimentos WHERE codigo = ?1 AND oculto = 0').bind(codigo).first();
+  if (!f) return json({ alimento: null });
+  await env.DB.prepare('UPDATE alimentos SET usos = usos + 1 WHERE codigo = ?1').bind(codigo).run();
+  return json({ alimento: filaAlimento(f) });
+}
+async function crearAlimento(req, env, u) {
+  const b = await leerJSON(req);
+  const codigo = String(b.codigo || ''), nombre = texto(b.nombre, 60), marca = texto(b.marca, 40);
+  const num = (x, max) => { const v = +x; return Number.isFinite(v) && v >= 0 && v <= max ? Math.round(v * 10) / 10 : NaN; };
+  const kcal = num(b.kcal, 900), p = num(b.p ?? 0, 100), c = num(b.c ?? 0, 100), g = num(b.g ?? 0, 100), porcion = b.porcion ? num(b.porcion, 5000) : null;
+  if (!COD.test(codigo)) throw fallo('Código de barras no válido.');
+  if (nombre.length < 2) throw fallo('Falta el nombre del producto.');
+  if ([kcal, p, c, g].some((x) => !Number.isFinite(x)) || (b.porcion && !Number.isFinite(porcion))) throw fallo('Revisa los números de la etiqueta.');
+  if (p + c + g > 105) throw fallo('Proteína + carbohidratos + grasa no pueden pasar de 100 g por cada 100 g.');
+  const calc = 4 * p + 4 * c + 9 * g; // las calorias deben parecerse a las de los macros (fibra, alcohol y redondeos dan margen)
+  if (calc > 0 && Math.abs(calc - kcal) > Math.max(60, 0.35 * kcal)) throw fallo(`Las calorías (${kcal}) no cuadran con los macros (~${Math.round(calc)} kcal). Revisa si copiaste los datos por porción o por 100 g.`);
+  const hoy = Date.now() - 86_400_000;
+  const n = await env.DB.prepare('SELECT count(*) AS n FROM alimentos WHERE usuario = ?1 AND creado > ?2').bind(u.id, hoy).first();
+  if (n && n.n >= 50) throw fallo('Ya agregaste muchos productos hoy. ¡Gracias! Sigue mañana.', 429);
+  const ya = await env.DB.prepare('SELECT usuario, oculto FROM alimentos WHERE codigo = ?1').bind(codigo).first();
+  if (ya && ya.usuario !== u.id && !ya.oculto) return json({ ok: true, existente: true }); // ya lo agrego otra persona
+  const ahora = Date.now();
+  await env.DB.prepare(`INSERT INTO alimentos (codigo, nombre, marca, kcal, p, c, g, porcion, usuario, creado, actualizado) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)
+    ON CONFLICT(codigo) DO UPDATE SET nombre = ?2, marca = ?3, kcal = ?4, p = ?5, c = ?6, g = ?7, porcion = ?8, usuario = ?9, actualizado = ?10, oculto = 0`)
+    .bind(codigo, nombre, marca, kcal, p, c, g, porcion, u.id, ahora).run();
+  if (ya && ya.oculto) await env.DB.prepare("DELETE FROM reportes WHERE objeto_tipo = 'alimento' AND objeto_id = ?1").bind(codigo).run(); // datos nuevos: reportes desde cero
+  return json({ ok: true });
+}
+async function reportarAlimento(env, u, codigo) {
+  const f = await env.DB.prepare('SELECT usuario FROM alimentos WHERE codigo = ?1').bind(codigo).first();
+  if (!f) throw fallo('Ese producto no está en la base.', 404);
+  await env.DB.prepare(`INSERT INTO reportes (usuario, objeto_tipo, objeto_id, motivo, creado) VALUES (?1, 'alimento', ?2, 'falso', ?3)
+    ON CONFLICT(usuario, objeto_tipo, objeto_id) DO UPDATE SET creado = excluded.creado, estado = 'pendiente'`).bind(u.id, codigo, Date.now()).run();
+  const r = await env.DB.prepare("SELECT count(DISTINCT usuario) AS n FROM reportes WHERE objeto_tipo = 'alimento' AND objeto_id = ?1 AND estado = 'pendiente'").bind(codigo).first();
+  if (r.n >= OCULTAR_CON) await env.DB.prepare('UPDATE alimentos SET oculto = 1 WHERE codigo = ?1').bind(codigo).run();
+  return json({ ok: true, oculto: r.n >= OCULTAR_CON });
 }

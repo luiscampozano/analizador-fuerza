@@ -1186,3 +1186,7 @@ body.sin-scroll { overflow: hidden; }
 .act-alertas .act-alerta:last-child { margin-bottom: 0; }
 .act-alerta.ok { color: #5adc78; }
 .act-alerta.aviso { color: var(--accent-orange); }
+/* v2.19.0: nutricion - compartir productos con la comunidad */
+.nu-compartir { display: flex; gap: 8px; align-items: flex-start; font-size: .85rem; color: var(--text-muted); margin: 10px 0 2px; line-height: 1.35; }
+.nu-compartir input { margin-top: 3px; flex: none; }
+.btn-link { background: none; border: 0; padding: 0; color: var(--accent-blue); font: inherit; text-decoration: underline; cursor: pointer; }

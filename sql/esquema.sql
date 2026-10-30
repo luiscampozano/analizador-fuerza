@@ -29,3 +29,7 @@ CREATE INDEX IF NOT EXISTS reportes_estado ON reportes(estado, creado);
 CREATE TABLE IF NOT EXISTS fallos (id TEXT PRIMARY KEY, usuario TEXT NOT NULL, creado INTEGER NOT NULL, ejercicio TEXT, nombre TEXT, reps_app INTEGER, reps_real INTEGER, excluidas TEXT, comentario TEXT, version TEXT, datos TEXT, pose TEXT, estado TEXT NOT NULL DEFAULT 'pendiente');
 CREATE INDEX IF NOT EXISTS fallos_creado ON fallos(creado);
 CREATE INDEX IF NOT EXISTS fallos_usuario ON fallos(usuario, creado);
+-- Alimentos con codigo de barras que crean los usuarios (base comunitaria: lo que Open Food Facts no tiene).
+-- Datos por 100 g. Se ocultan solos con 3 reportes de personas distintas (tabla reportes, objeto_tipo 'alimento').
+CREATE TABLE IF NOT EXISTS alimentos (codigo TEXT PRIMARY KEY, nombre TEXT NOT NULL, marca TEXT, kcal REAL NOT NULL, p REAL, c REAL, g REAL, porcion REAL, usuario TEXT, creado INTEGER NOT NULL, actualizado INTEGER, usos INTEGER NOT NULL DEFAULT 0, oculto INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS alimentos_usuario ON alimentos(usuario, creado);

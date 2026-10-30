@@ -8,6 +8,35 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-29
 
+### 19:28 · v2.19.0 (lista, sin publicar) — Base de alimentos de la comunidad por código de barras
+- **Pidió:** qué hacer cuando el código de barras no encuentra el alimento; que haya una base nacional de códigos.
+  Luego: foto del plato para calcular calorías.
+- **Investigado:** no hay una base pública y gratuita de códigos de Ecuador con datos nutricionales.
+  - GS1 Ecuador registra los códigos, pero sin tabla nutricional y solo para sus socios.
+  - Open Food Facts tiene pocos productos ecuatorianos.
+  - USDA FoodData Central (dominio público) es de productos de EE. UU. y pide clave.
+  - Solución: base propia que crece con los usuarios.
+- **Hecho:**
+  - Tabla `alimentos` en D1 (`sql/esquema.sql`).
+  - Endpoints:
+    - `GET /api/alimentos/:codigo` y `GET /api/alimentos?q=` (públicos);
+    - `POST /api/alimentos` (con sesión; valida que las kcal cuadren con los macros; 50 por día; no se pisa el de
+      otra persona);
+    - `POST /api/alimentos/:codigo/reportar` (3 reportes = oculto);
+    - moderación: ver, ocultar o borrar alimentos reportados.
+  - Al borrar una cuenta, sus productos quedan sin autor.
+  - **App** (`js/nutricion.js`):
+    - el escaneo busca en este orden: mis alimentos (ahora también por código, antes no) → comunidad FuerzaPro →
+      Open Food Facts → crear con la etiqueta;
+    - el formulario tiene campo de marca y «Compartir con la comunidad» (marcado si hay sesión);
+    - «Buscar en internet» muestra primero la comunidad;
+    - botón «⚠️ ¿Datos incorrectos?».
+  - Pruebas: `pruebas/servidor/alimentos_test.mjs` (21 OK). UI probada en Chromium a 412 px.
+- **Bloqueo:** el filtro de seguridad no dejó crear la tabla en D1 de producción desde aquí. Luis debe correr el SQL
+  en el panel de Cloudflare (D1 → fuerzapro → Console). Después se publica.
+- **Pendientes:** publicar al crear la tabla; foto de la etiqueta (OCR) para llenar el formulario solo; foto del
+  plato (necesita una IA de visión con costo por uso: decidir).
+
 ### 16:40 · v2.18.1 — Muñecos: 30 ejercicios y menos errores
 - **Pidió:** agregar las familias que faltaban y seguir bajando el error lo más posible. Después: nutrición (alimentos
   que el código de barras no encuentra, base nacional de códigos) y foto del plato para calorías.

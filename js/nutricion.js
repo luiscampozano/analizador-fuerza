@@ -1,6 +1,8 @@
 // Pestaña Nutricion: registro de comidas por dia, metas de calorias y macros, buscador de alimentos
-// (base local + Open Food Facts) y escaner de codigo de barras. Todo se guarda en el telefono.
+// (base local + base de la comunidad FuerzaPro + Open Food Facts) y escaner de codigo de barras. Todo se guarda en el
+// telefono; los productos con codigo que crea el usuario pueden compartirse con la comunidad (v2.19.0).
 import * as almacen from './almacen.js';
+import * as nube from './nube.js';
 import { ALIMENTOS } from './alimentos.js';
 
 const $ = (id) => document.getElementById(id);
@@ -121,7 +123,7 @@ function pintarResultados() {
   const q = norm($('nu-buscar').value), pal = q.split(/\s+/).filter(Boolean);
   const pasa = (a) => pal.every((w) => norm(`${a.nombre} ${a.marca || ''} ${a.extra || ''}`).includes(w));
   const propios = leerLS('af_alimentos_propios', []);
-  const item = (a, i, grupo) => `<button type="button" class="en-sel-item" data-g="${grupo}" data-i="${i}"><span>${a.fuente === 'off' ? '🏷️' : a.fuente === 'propio' ? '⭐' : '🥗'}</span>
+  const item = (a, i, grupo) => `<button type="button" class="en-sel-item" data-g="${grupo}" data-i="${i}"><span>${a.fuente === 'off' ? '🏷️' : a.fuente === 'comunidad' ? '👥' : a.fuente === 'propio' ? '⭐' : '🥗'}</span>
     <span><b>${esc(a.nombre)}</b><small>${a.marca ? esc(a.marca) + ' · ' : ''}${fmt(a.kcal)} kcal · P ${fmt(a.p, 1)} · C ${fmt(a.c, 1)} · G ${fmt(a.g, 1)} por 100 g</small></span></button>`;
   const grupos = { r: recientes.filter(pasa), p: propios.filter(pasa), l: ALIMENTOS.filter(pasa) };
   $('nu-res').innerHTML = (grupos.r.length ? `<div class="en-sel-grupo">Recientes</div>${grupos.r.map((a, i) => item(a, i, 'r')).join('')}` : '')
@@ -142,6 +144,14 @@ function offAAlimento(p) {
     porciones: sq > 0 ? [[`1 porción${p.serving_size ? ` (${p.serving_size})` : ''}`, sq]] : [], fuente: 'off', codigo: p.code,
     ecuador: (p.countries_tags || []).includes('en:ecuador') };
 }
+// producto de la base de la comunidad FuerzaPro (servidor propio) -> alimento de la app
+const deComunidad = (x) => ({ nombre: x.nombre, marca: x.marca || '', kcal: x.kcal, p: x.p || 0, c: x.c || 0, g: x.g || 0,
+  porciones: x.porcion > 0 ? [['1 porción', x.porcion]] : [], fuente: 'comunidad', codigo: x.codigo });
+async function comunidadGet(ruta) {
+  const r = await fetch(ruta, { cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
 let ultimaBusqueda = 0;
 async function buscarInternet() {
   const q = $('nu-buscar').value.trim();
@@ -149,33 +159,44 @@ async function buscarInternet() {
   if (!navigator.onLine) return alert('Sin conexión: solo puedes usar la lista local y tus alimentos.');
   if (Date.now() - ultimaBusqueda < 4000) return; // Open Food Facts limita las busquedas seguidas
   ultimaBusqueda = Date.now();
-  $('nu-off').innerHTML = '<p class="hint">Buscando en Open Food Facts…</p>';
-  try {
-    const r = await fetch(`${OFF}/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=30&fields=${CAMPOS}`);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    const lista = (j.products || []).map(offAAlimento).filter(Boolean).sort((a, b) => b.ecuador - a.ecuador);
-    $('nu-off').innerHTML = lista.length ? `<div class="en-sel-grupo">Open Food Facts</div>${lista.map((a, i) => `<button type="button" class="en-sel-item" data-i="${i}"><span>🏷️</span>
-      <span><b>${esc(a.nombre)}</b><small>${a.marca ? esc(a.marca) + ' · ' : ''}${a.ecuador ? '🇪🇨 · ' : ''}${fmt(a.kcal)} kcal · P ${fmt(a.p, 1)} · C ${fmt(a.c, 1)} · G ${fmt(a.g, 1)} por 100 g</small></span></button>`).join('')}`
-      : '<p class="hint">No encontré productos con ese nombre. Prueba otra palabra, escanea el código o créalo tú.</p>';
-    $('nu-off').querySelectorAll('.en-sel-item').forEach((b) => (b.onclick = () => elegir(lista[+b.dataset.i])));
-  } catch (e) {
-    $('nu-off').innerHTML = '<p class="hint">No pude conectar con Open Food Facts. Revisa tu internet o inténtalo en un rato.</p>';
-  }
+  $('nu-off').innerHTML = '<p class="hint">Buscando en la comunidad FuerzaPro y en Open Food Facts…</p>';
+  // las dos fuentes a la vez: si una falla, se muestra la otra
+  const [com, off] = await Promise.allSettled([
+    comunidadGet(`/api/alimentos?q=${encodeURIComponent(q)}`).then((j) => (j.alimentos || []).map(deComunidad)),
+    fetch(`${OFF}/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=30&fields=${CAMPOS}`)
+      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then((j) => (j.products || []).map(offAAlimento).filter(Boolean).sort((a, b) => b.ecuador - a.ecuador)),
+  ]);
+  const lc = com.status === 'fulfilled' ? com.value : [], lo = off.status === 'fulfilled' ? off.value : [];
+  const lista = [...lc, ...lo];
+  const fila = (a, i) => `<button type="button" class="en-sel-item" data-i="${i}"><span>${a.fuente === 'comunidad' ? '👥' : '🏷️'}</span>
+      <span><b>${esc(a.nombre)}</b><small>${a.marca ? esc(a.marca) + ' · ' : ''}${a.ecuador ? '🇪🇨 · ' : ''}${fmt(a.kcal)} kcal · P ${fmt(a.p, 1)} · C ${fmt(a.c, 1)} · G ${fmt(a.g, 1)} por 100 g</small></span></button>`;
+  $('nu-off').innerHTML = (lc.length ? `<div class="en-sel-grupo">Comunidad FuerzaPro</div>${lc.map((a, i) => fila(a, i)).join('')}` : '')
+    + (lo.length ? `<div class="en-sel-grupo">Open Food Facts</div>${lo.map((a, i) => fila(a, lc.length + i)).join('')}` : '')
+    + (!lista.length ? (off.status === 'rejected' && com.status === 'rejected' ? '<p class="hint">No pude conectar. Revisa tu internet o inténtalo en un rato.</p>'
+      : '<p class="hint">No encontré productos con ese nombre. Prueba otra palabra, escanea el código o créalo tú.</p>') : '');
+  $('nu-off').querySelectorAll('.en-sel-item').forEach((b) => (b.onclick = () => elegir(lista[+b.dataset.i])));
 }
 
+// Orden de busqueda de un codigo: 1) mis alimentos (sin internet) 2) comunidad FuerzaPro 3) Open Food Facts 4) crearlo
 async function buscarCodigo(codigo) {
+  const mio = leerLS('af_alimentos_propios', []).find((x) => x.codigo === codigo);
+  if (mio) { elegir(mio); return; }
   $('nu-off').innerHTML = `<p class="hint">Buscando el código ${esc(codigo)}…</p>`;
+  let sinRed = 0;
+  try {
+    const j = await comunidadGet(`/api/alimentos/${encodeURIComponent(codigo)}`);
+    if (j.alimento) { $('nu-off').innerHTML = ''; elegir(deComunidad(j.alimento)); return; }
+  } catch (e) { sinRed++; }
   try {
     const r = await fetch(`${OFF}/api/v2/product/${encodeURIComponent(codigo)}.json?fields=${CAMPOS}`);
     const j = r.ok ? await r.json() : null;
     const a = j && j.status === 1 && j.product ? offAAlimento({ code: codigo, ...j.product }) : null;
     if (a) { $('nu-off').innerHTML = ''; elegir(a); return; }
-    $('nu-off').innerHTML = '';
-    if (confirm(`El código ${codigo} no está en Open Food Facts (o no tiene calorías). ¿Lo creas con los datos de la etiqueta?`)) formularioPropio(codigo);
-  } catch (e) {
-    $('nu-off').innerHTML = '<p class="hint">No pude conectar con Open Food Facts. Revisa tu internet.</p>';
-  }
+  } catch (e) { sinRed++; }
+  $('nu-off').innerHTML = '';
+  if (sinRed === 2) { $('nu-off').innerHTML = '<p class="hint">No pude buscar el código: revisa tu internet. Igual puedes crearlo con la etiqueta.</p>'; }
+  if (confirm(`El código ${codigo} todavía no está en ninguna base de datos. ¿Lo creas con los datos de la etiqueta?${nube.conectado() ? ' Quedará para toda la comunidad FuerzaPro.' : ''}`)) formularioPropio(codigo);
 }
 
 // ------------------------------------------------------------------ escaner de codigo de barras
@@ -219,7 +240,7 @@ function elegir(a, gramos = null) {
   elegido = a;
   $('nu-paso-buscar').style.display = 'none'; $('nu-paso-cant').style.display = '';
   const g0 = gramos ?? a.ultimo ?? (a.porciones && a.porciones[0] ? a.porciones[0][1] : 100);
-  $('nu-cant').innerHTML = `<h3 class="en-det-titulo">${esc(a.nombre)}</h3><p class="hint" style="margin-top:2px">${a.marca ? esc(a.marca) + ' · ' : ''}${fmt(a.kcal)} kcal por 100 g${a.fuente === 'off' ? ' · datos de Open Food Facts' : ''}</p>
+  $('nu-cant').innerHTML = `<h3 class="en-det-titulo">${esc(a.nombre)}</h3><p class="hint" style="margin-top:2px">${a.marca ? esc(a.marca) + ' · ' : ''}${fmt(a.kcal)} kcal por 100 g${a.fuente === 'off' ? ' · datos de Open Food Facts' : a.fuente === 'comunidad' ? ' · datos de la comunidad FuerzaPro' : ''}${a.fuente === 'comunidad' && a.codigo ? ' · <button type="button" class="btn-link" id="nu-reportar">⚠️ ¿Datos incorrectos?</button>' : ''}</p>
     <div class="nu-cant-fila"><input id="nu-g" type="number" inputmode="decimal" min="0" step="any" value="${g0}"><span>gramos</span></div>
     <div class="chips">${(a.porciones || []).map(([n, g]) => `<button type="button" class="chip" data-g="${g}">${esc(n)} · ${fmt(g)} g</button>`).join('')}<button type="button" class="chip" data-g="100">100 g</button></div>
     <div id="nu-prev" class="nu-prev"></div>
@@ -230,6 +251,12 @@ function elegir(a, gramos = null) {
     $('nu-prev').innerHTML = `<div><b>${fmt(a.kcal * f)}</b><small>kcal</small></div><div><b>${fmt(a.p * f, 1)}</b><small>proteína</small></div><div><b>${fmt(a.c * f, 1)}</b><small>carbos</small></div><div><b>${fmt(a.g * f, 1)}</b><small>grasa</small></div>`;
   };
   $('nu-g').oninput = prev; prev();
+  if ($('nu-reportar')) $('nu-reportar').onclick = async () => {
+    if (!nube.conectado()) return alert('Inicia sesión (Perfil → Cuenta) para reportar un producto.');
+    if (!confirm('¿Los datos no coinciden con la etiqueta? Con 3 reportes de personas distintas el producto se oculta para todos y se puede volver a crear.')) return;
+    try { const r = await nube.api('POST', `/api/alimentos/${encodeURIComponent(a.codigo)}/reportar`); alert(r.oculto ? 'Gracias. El producto quedó oculto: escanéalo otra vez para crearlo con los datos correctos.' : 'Gracias por avisar.'); }
+    catch (e) { alert('No pude enviar el reporte: ' + (e.message || e)); }
+  };
   $('nu-cant').querySelectorAll('.chip').forEach((b) => (b.onclick = () => { $('nu-g').value = b.dataset.g; prev(); }));
   if ($('nu-volver')) $('nu-volver').onclick = () => { $('nu-paso-buscar').style.display = ''; $('nu-paso-cant').style.display = 'none'; };
   if ($('nu-borrar')) $('nu-borrar').onclick = async () => { await almacen.borrarComida(editando.id); cerrarHoja(); pintar(); };
@@ -255,6 +282,7 @@ function formularioPropio(codigo = null) {
   $('nu-cant').innerHTML = `<h3 class="en-det-titulo">⭐ Nuevo alimento</h3><p class="hint" style="margin-top:2px">Copia los datos de la tabla nutricional de la etiqueta${codigo ? ` (código ${esc(codigo)})` : ''}.</p>
     <div class="form-grid" style="margin-top:8px">
       <div class="form-group full"><label for="pa-nombre">Nombre</label><input id="pa-nombre" maxlength="60" value="${esc($('nu-buscar').value.trim())}"></div>
+      <div class="form-group full"><label for="pa-marca">Marca (opcional)</label><input id="pa-marca" maxlength="40" placeholder="ej.: Toni, Pronaca, La Favorita"></div>
       <div class="form-group"><label for="pa-base">Los datos son por</label><select id="pa-base"><option value="100">100 g</option><option value="porcion">porción</option></select></div>
       <div class="form-group"><label for="pa-porcion">Porción (g)</label><input id="pa-porcion" type="number" inputmode="decimal" placeholder="ej.: 30"></div>
       <div class="form-group"><label for="pa-kcal">Calorías (kcal)</label><input id="pa-kcal" type="number" inputmode="decimal"></div>
@@ -262,18 +290,32 @@ function formularioPropio(codigo = null) {
       <div class="form-group"><label for="pa-c">Carbohidratos (g)</label><input id="pa-c" type="number" inputmode="decimal"></div>
       <div class="form-group"><label for="pa-g">Grasa (g)</label><input id="pa-g" type="number" inputmode="decimal"></div>
     </div>
+    ${codigo ? (nube.conectado() ? `<label class="nu-compartir"><input type="checkbox" id="pa-compartir" checked> Compartir con la comunidad FuerzaPro: quien escanee este código lo encontrará (solo se comparten el producto y sus datos, no tu nombre).</label>`
+      : '<p class="hint">Si inicias sesión (Perfil → Cuenta), los productos que crees con código se comparten con la comunidad y todos los encuentran al escanear.</p>') : ''}
     <div class="en-det-botones"><button type="button" class="btn-sec" id="nu-volver">‹ Volver</button><button type="button" class="btn-sec en-terminar" id="pa-ok">Guardar y usar</button></div>`;
   $('nu-volver').onclick = () => { $('nu-paso-buscar').style.display = ''; $('nu-paso-cant').style.display = 'none'; };
-  $('pa-ok').onclick = () => {
+  $('pa-ok').onclick = async () => {
     const v = (id) => parseFloat(($(id).value || '0').replace(',', '.')) || 0;
     const nombre = $('pa-nombre').value.trim(), porcion = v('pa-porcion'), porPorcion = $('pa-base').value === 'porcion';
     if (!nombre) return alert('Ponle un nombre.');
     if (!(v('pa-kcal') > 0)) return alert('Escribe las calorías.');
     if (porPorcion && !(porcion > 0)) return alert('Escribe cuántos gramos tiene la porción.');
     const f = porPorcion ? 100 / porcion : 1;
-    const a = { nombre, marca: '', kcal: v('pa-kcal') * f, p: v('pa-p') * f, c: v('pa-c') * f, g: v('pa-g') * f,
+    const marca = $('pa-marca').value.trim();
+    const a = { nombre, marca, kcal: v('pa-kcal') * f, p: v('pa-p') * f, c: v('pa-c') * f, g: v('pa-g') * f,
       porciones: porcion > 0 ? [['1 porción', porcion]] : [], fuente: 'propio', codigo };
-    guardarLS('af_alimentos_propios', [a, ...leerLS('af_alimentos_propios', []).filter((x) => norm(x.nombre) !== norm(nombre))].slice(0, 200));
+    const r1 = (x) => Math.round(x * 10) / 10;
+    if ($('pa-compartir') && $('pa-compartir').checked) {
+      $('pa-ok').disabled = true;
+      try {
+        await nube.api('POST', '/api/alimentos', { codigo, nombre, marca, kcal: r1(a.kcal), p: r1(a.p), c: r1(a.c), g: r1(a.g), porcion: porcion > 0 ? porcion : null });
+      } catch (e) {
+        $('pa-ok').disabled = false;
+        // datos que no cuadran (p. ej. por porcion marcada como 100 g): se avisa para corregir antes de guardar
+        if (!confirm(`${e.message || e}\n\n¿Guardarlo igual, solo en tu teléfono?`)) return;
+      }
+    }
+    guardarLS('af_alimentos_propios', [a, ...leerLS('af_alimentos_propios', []).filter((x) => norm(x.nombre) !== norm(nombre) && (!codigo || x.codigo !== codigo))].slice(0, 200));
     elegir(a);
   };
 }
