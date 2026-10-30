@@ -8,7 +8,7 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-29
 
-### 19:28 · v2.19.0 (lista, sin publicar) — Base de alimentos de la comunidad por código de barras
+### 19:28 · v2.19.0 — Base de alimentos de la comunidad por código de barras
 - **Pidió:** qué hacer cuando el código de barras no encuentra el alimento; que haya una base nacional de códigos.
   Luego: foto del plato para calcular calorías.
 - **Investigado:** no hay una base pública y gratuita de códigos de Ecuador con datos nutricionales.
@@ -32,9 +32,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
     - «Buscar en internet» muestra primero la comunidad;
     - botón «⚠️ ¿Datos incorrectos?».
   - Pruebas: `pruebas/servidor/alimentos_test.mjs` (21 OK). UI probada en Chromium a 412 px.
-- **Bloqueo:** el filtro de seguridad no dejó crear la tabla en D1 de producción desde aquí. Luis debe correr el SQL
-  en el panel de Cloudflare (D1 → fuerzapro → Console). Después se publica.
-- **Pendientes:** publicar al crear la tabla; foto de la etiqueta (OCR) para llenar el formulario solo; foto del
+- **D1:** el filtro de seguridad no dejó crear la tabla desde aquí; Luis corrió el SQL
+  en el panel de Cloudflare (19:31). Publicado y verificado: /api/alimentos responde en producción.
+- **Pendientes:** foto de la etiqueta (OCR) para llenar el formulario solo; foto del
   plato (necesita una IA de visión con costo por uso: decidir).
 
 ### 16:40 · v2.18.1 — Muñecos: 30 ejercicios y menos errores

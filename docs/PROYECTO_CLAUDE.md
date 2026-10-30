@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.18.1
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.19.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -258,6 +258,7 @@ bloqueos, reportes, fallos.
 | v2.17.0 | Boxeo calibrado con video real (manos visibles, sin contar brazos colgando), PDF de cardio/boxeo, curl alterno contado por el codo de cada brazo (muñecos sintéticos + banco 38/59). |
 | v2.18.0 | Muñecos 3D: 15 ejercicios × 7 ángulos × cámara fija/en mano/zoom/paneo × 3 escenas (1225/1260). Conteo más robusto de frente y con cámara en mano; dominadas ancladas a las manos; banco 40/59. |
 | v2.18.1 | Muñecos: 30 ejercicios (2395/2520, de 91,7 % a 95 %). Primera rep tras acomodarse, caminar hacia la cámara al inicio/final y pantorrilla anclada a las puntas de los pies. Banco 40/59. |
+| v2.19.0 | Nutrición: base comunitaria de alimentos por código de barras (tabla D1 `alimentos`, /api/alimentos), búsqueda mis alimentos → comunidad → Open Food Facts, compartir y reportar productos. |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |
