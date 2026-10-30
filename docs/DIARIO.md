@@ -6,6 +6,26 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-10-30
+
+### 16:29 · Muñecos: zancadas reales, cambio de pierna y series cortas (sin cambio de versión)
+- **Pidió:** volver a hacer los muñecos para seguir refinando el analizador; y qué sigue en la hoja de ruta.
+- **Hecho** (`pruebas/munecos/munecos.mjs`): 3 variantes basadas en los fallos del banco real.
+  - Zancada alternada con paso adelante y regreso (`zancada@alterna`).
+  - Zancadas caminando (avanzan 0,6 m por rep y la cámara las sigue).
+  - Búlgara con cambio de pierna a mitad del video (`bulgara_mancuernas@2piernas`; el banco tiene uno de 9+9).
+  - Escena nueva «pocas reps» (2 reps con acomodarse antes y después).
+  - El guion pasa a cada muñeco la rep en curso (`k`), su avance (`u`) y las reps hechas.
+- **Resultado:** 3275/3465 tomas exactas (94,5 %). De los 190 errores, 127 son de zoom/caminar con el celular.
+- **Probado y descartado** (no mejoraron o empeoraron muñecos/banco):
+  - no dejar que los ángulos quiten la mitad de las reps;
+  - recortar la 1.ª rep larga después de caminar;
+  - aviso de «cámara se acercó/alejó»: en el banco real el tamaño cambia hasta 2× por la postura (sentadillas),
+    así que daría falsos avisos.
+- **Conclusión:** el código actual ya está en su límite con muñecos. Lo que falta se gana con videos reales nuevos
+  (zancadas, búlgaras con 2 piernas, series de 1-2 reps) y con los reportes de «Corregir conteo».
+- Mínimo de muñecos en `verificar.sh`: 3270. Banco real: 40/59.
+
 ## 2026-10-29
 
 ### 19:28 · v2.19.0 — Base de alimentos de la comunidad por código de barras

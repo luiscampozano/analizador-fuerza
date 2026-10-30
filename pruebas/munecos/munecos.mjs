@@ -212,6 +212,37 @@ Object.assign(EJ, {
 Object.assign(CENTROS_EXTRA, { prensa_45: [0.2, 0.7, 0], curl_femoral_sentado: [0.2, 0.6, 0], remo_polea: [0.2, 0.6, 0], abdominales: [0.1, 0.3, 0],
   elevacion_piernas_colgado: [0, 1.4, 0], fondos: [0, 1.2, 0], remo_mancuerna: [0, 0.7, 0], bulgara_mancuernas: [-0.1, 0.8, 0] });
 
+// ---------------------------------------------------------------- variantes con pasos (zancadas reales) y cambio de pierna
+// zancada con paso: un pie da el paso adelante, la cadera baja y se vuelve. s1 = paso (0..1), s2 = profundidad (0..1)
+function zancadaPaso(s1, s2, ladoDelante, x0 = 0, atrasX = null, adelanteX = null) {
+  const pelvis = [x0 + 0.3 * s1, 0.89 - 0.05 * s1 - 0.39 * s2, 0];
+  return armar({ pelvis, tronco: 6, brazos: colgando, pie: 90, piernas: (lado, cad) => {
+    const tob = lado === ladoDelante ? [adelanteX ?? (x0 + 0.6 * s1), 0.08 + 0.1 * Math.sin(Math.PI * s1) * (1 - s2), lado * 0.1] : [atrasX ?? x0, 0.08 + 0.06 * s2, lado * 0.1];
+    return [ik(cad, tob, MUSLO, PIERNA, [1, 0, 0]), tob]; } });
+}
+Object.assign(EJ, {
+  // pierna derecha e izquierda alternadas: paso adelante, bajar, subir y volver al inicio
+  'zancada@alterna': (f, e = {}) => { const lado = (e.k ?? 0) % 2 ? 1 : -1; return zancadaPaso(smooth(f / 0.4), smooth((f - 0.4) / 0.6), lado); },
+  // zancadas caminando: cada rep avanza 0,6 m; al subir el pie de atras se junta adelante
+  zancada_caminando: (f, e = {}) => {
+    const lado = (e.k ?? 0) % 2 ? 1 : -1;
+    if (!(e.u > 0)) return zancadaPaso(0, 0, lado, 0.6 * (e.hechas ?? 0));
+    const base = 0.6 * e.k;
+    if (e.u < 0.5) return zancadaPaso(smooth(f / 0.4), smooth((f - 0.4) / 0.6), lado, base);
+    const junta = smooth((0.4 - f) / 0.4); // de pie: el pie de atras avanza hasta el de adelante
+    return zancadaPaso(1, smooth((f - 0.4) / 0.6), lado, base + 0.3 * junta, base + 0.6 * junta, base + 0.6);
+  },
+  // bulgara: 3 reps con la pierna izquierda adelante y 3 con la derecha (cambia de pierna a mitad del video)
+  'bulgara_mancuernas@2piernas': (f, e = {}) => {
+    const der = (e.hechas ?? 0) >= 3 && !((e.k ?? 0) < 3 && e.u > 0);
+    const pelvis = [0, 0.82 - 0.36 * f, 0];
+    return armar({ pelvis, tronco: 10, brazos: colgando, pie: 90, piernas: (lado, cad) => {
+      const delante = der ? lado > 0 : lado < 0, tob = delante ? [0.3, 0.08, lado * 0.1] : [-0.62, 0.48, lado * 0.1];
+      return [ik(cad, tob, MUSLO, PIERNA, [1, 0, 0]), tob]; } });
+  },
+});
+
+EJ.zancada_caminando.sigue = true;
 // ---------------------------------------------------------------- camara
 let semilla = 11; const rnd = () => ((semilla = (semilla * 16807) % 2147483647) / 2147483647 - 0.5);
 function ruidoSuave(n, paso) { // caminata aleatoria suave (temblor de la mano)
@@ -233,22 +264,26 @@ const ESCENAS = {
     for (let k = 0; k < reps; k++) g.push({ rep: (1.8 + 0.25 * k) * (1 + 0.4 * rnd()), amp: 0.85 + 0.3 * Math.abs(rnd()), arriba: Math.max(0, 0.8 * rnd() + 0.2), abajo: k === reps - 1 ? 1.2 : Math.max(0, 0.6 * rnd()) });
     return [...g, { q: 1.5 }];
   },
+  'pocas reps': () => [{ q: 1.2 }, { mini: 1, amp: 0.3 }, { q: 1 }, { rep: 2.6 }, { q: 0.4 }, { rep: 3.4, arriba: 0.6 }, { q: 1 }, { mini: 0.8, amp: 0.25 }, { q: 1.5 }],
   acomodarse: (reps) => [{ q: 1 }, { camina: 1.6, d: 0.7 }, { q: 0.6 }, { mini: 1.2, amp: 0.3 }, { q: 0.5 }, { mini: 1, amp: 0.25 }, { q: 0.8 },
     ...Array.from({ length: reps }, () => ({ rep: 2.4 })), { q: 0.8 }, { mini: 1, amp: 0.3 }, { camina: 2.5, d: 1.3, haciaCamara: true }, { q: 1 }],
 };
-function guion(segs, fps) { // -> por cuadro: f (0..1) y desplazamiento del cuerpo
-  const out = []; let ox = 0, oz = 0;
+function guion(segs, fps) { // -> por cuadro: f (0..1), desplazamiento del cuerpo, rep en curso (k) y avance dentro de ella (u)
+  const out = []; let ox = 0, oz = 0, k = -1, hechas = 0;
+  const em = (f, extra = {}) => out.push({ f, ox, oz, k, u: 0, hechas, ...extra });
   for (const g of segs) {
-    if (g.q) for (let i = 0; i < g.q * fps; i++) out.push({ f: 0, ox, oz });
-    else if (g.mini) for (let i = 0; i < g.mini * fps; i++) out.push({ f: g.amp * Math.sin(Math.PI * i / (g.mini * fps)) ** 2, ox, oz });
-    else if (g.camina) { const n = g.camina * fps; for (let i = 0; i < n; i++) { const k = (i + 1) / n; out.push({ f: 0.05 * Math.abs(Math.sin(6 * k)), ox: ox + (g.haciaCamara ? 0 : g.d * k), oz: oz + (g.haciaCamara ? g.d * k : 0), hacia: !!g.haciaCamara }); }
+    if (g.q) for (let i = 0; i < g.q * fps; i++) em(0);
+    else if (g.mini) for (let i = 0; i < g.mini * fps; i++) em(g.amp * Math.sin(Math.PI * i / (g.mini * fps)) ** 2);
+    else if (g.camina) { const n = g.camina * fps; for (let i = 0; i < n; i++) { const q = (i + 1) / n; out.push({ f: 0.05 * Math.abs(Math.sin(6 * q)), ox: ox + (g.haciaCamara ? 0 : g.d * q), oz: oz + (g.haciaCamara ? g.d * q : 0), hacia: !!g.haciaCamara, k, u: 0, hechas }); }
       if (g.haciaCamara) oz += g.d; else ox += g.d; }
     else if (g.rep) {
-      const amp = g.amp || 1, sub = 0.4 * g.rep, baj = 0.6 * g.rep; // subir/bajar (sin pausas)
-      for (let i = 0; i < sub * fps; i++) out.push({ f: amp * Math.sin(Math.PI / 2 * i / (sub * fps)) ** 2, ox, oz });
-      for (let i = 0; i < (g.arriba || 0) * fps; i++) out.push({ f: amp, ox, oz });
-      for (let i = 0; i < baj * fps; i++) out.push({ f: amp * Math.cos(Math.PI / 2 * i / (baj * fps)) ** 2, ox, oz });
-      for (let i = 0; i < (g.abajo || 0) * fps; i++) out.push({ f: 0, ox, oz });
+      k++;
+      const amp = g.amp || 1, sub = 0.4 * g.rep, baj = 0.6 * g.rep, tot = (sub + (g.arriba || 0) + baj) * fps; let i0 = 0; // subir/bajar (sin pausas)
+      for (let i = 0; i < sub * fps; i++, i0++) em(amp * Math.sin(Math.PI / 2 * i / (sub * fps)) ** 2, { u: i0 / tot });
+      for (let i = 0; i < (g.arriba || 0) * fps; i++, i0++) em(amp, { u: i0 / tot });
+      for (let i = 0; i < baj * fps; i++, i0++) em(amp * Math.cos(Math.PI / 2 * i / (baj * fps)) ** 2, { u: i0 / tot });
+      hechas++;
+      for (let i = 0; i < (g.abajo || 0) * fps; i++) em(0);
     }
   }
   return out;
@@ -258,16 +293,18 @@ function filmar(fn, { reps, yaw, pitch, mov, fps = 30, centro, escena = 'limpia'
   semilla = 1 + [...`${id}|${escena}|${yaw}|${pitch}|${JSON.stringify(mov)}`].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 2147483646, 7);
   const G = guion(ESCENAS[escena](reps), fps), n = G.length, dur = n / fps;
   const tY = ruidoSuave(n, mov.temblor ? 0.06 : 0), tP = ruidoSuave(n, mov.temblor ? 0.05 : 0), tX = ruidoSuave(n, mov.temblor ? 0.004 : 0), tYy = ruidoSuave(n, mov.temblor ? 0.004 : 0);
-  const D0 = 3.4, F = 1100 * D0 / H, frames = [];
+  const D0 = 3.4, F = 1100 * D0 / H, frames = []; let sigue = 0;
   for (let k = 0; k < n; k++) {
     const t = k / fps, f = G[k].f;
-    const j0 = fn(f), j = {};
+    const j0 = fn(f, G[k]), j = {};
     const ycam = rad(yaw), haciaCam = [Math.cos(ycam), 0, Math.sin(ycam)], lado = [-Math.sin(ycam), 0, Math.cos(ycam)];
     for (const key in j0) j[key] = add(j0[key], add(mul(lado, G[k].ox), mul(haciaCam, G[k].oz)));
     // camara
     const yw = rad(yaw + (mov.paneo ? mov.paneo * (t / dur - 0.5) : 0) + tY[k] * 3), pt = rad(pitch + tP[k] * 3);
     const D = D0 * (mov.zoom ? 1 + mov.zoom * Math.sin(2 * Math.PI * t / dur) : 1);
-    const tgt = add(centro, [tX[k], tYy[k], 0]);
+    // si la persona avanza (zancadas caminando), quien graba la sigue con un poco de retraso
+    if (fn.sigue) sigue = sigue + 0.05 * ((j[23][0] + j[24][0]) / 2 - sigue);
+    const tgt = add(centro, [tX[k] + (fn.sigue ? sigue : 0), tYy[k], 0]);
     const cam = add(tgt, mul([Math.cos(yw) * Math.cos(pt), Math.sin(pt), Math.sin(yw) * Math.cos(pt)], D));
     const fw = norm(sub(tgt, cam)), der = norm(cross(fw, [0, 1, 0])), arr = cross(der, fw);
     const prof = (p) => dot(sub(p, cam), fw), pc = prof(mix(j[23], j[24], 0.5));
@@ -292,27 +329,28 @@ const filtro = principal ? process.argv[2] || '' : '\u0000';
 const REPS = 6, tabla = {}; let total = 0, bien = 0;
 for (const id of Object.keys(EJ)) {
   if (!principal || (filtro && !id.includes(filtro))) continue;
-  const ej = POR_ID[id]; if (!ej) { console.log('no existe', id); continue; }
+  const ej = POR_ID[id.split('@')[0]]; if (!ej) { console.log('no existe', id); continue; }
   tabla[id] = [];
   for (const esc of Object.keys(ESCENAS)) for (const [nc, c] of Object.entries(CAMARAS)) for (const [na, pitch] of Object.entries(ALTURAS)) for (const [nm, mov] of Object.entries(MOVIMIENTOS)) {
     if (na !== 'a la altura del pecho' && nm !== 'fija') continue; // alturas solo con camara fija (menos combinaciones)
     if (esc !== 'limpia' && (na !== 'a la altura del pecho' || nm === 'paneo')) continue;
-    const { frames, dur } = filmar(EJ[id], { reps: REPS, yaw: c.yaw, pitch, mov, escena: esc, id, centro: CENTROS[id] || [0, 0.95, 0] });
+    const { frames, dur } = filmar(EJ[id], { reps: REPS, yaw: c.yaw, pitch, mov, escena: esc, id, centro: CENTROS[id.split('@')[0]] || [0, 0.95, 0] });
+    const meta = esc === 'pocas reps' ? 2 : REPS; // reps reales de la toma
     let n = -1, err = '';
     try {
       const fps = 60, full = interpolar(frames, fps, dur);
       const masa = ej.perfil === 'corporal' ? 70 : 40;
       const res = analizar(full, fps, ej, { masa, alfa: ej.perfil === 'riel' ? 45 : 90, relacion: 1, altura: H, frames, pesoCorporal: 70 });
       n = res.reps.length;
-      if (process.env.DET) console.log(`${id} | ${esc} | ${nc} | ${nm} -> ${n}  conteo=${JSON.stringify(res.conteo)} t=[${res.reps.map((r) => (r.tope / fps).toFixed(1)).join(' ')}]`);
+      if (process.env.DET) console.log(`${id} | ${esc} | ${nc} | ${nm} -> ${n}/${meta}  conteo=${JSON.stringify(res.conteo)} t=[${res.reps.map((r) => (r.tope / fps).toFixed(1)).join(' ')}]`);
     } catch (e) { err = e.message; }
-    total++; if (n === REPS) bien++;
-    tabla[id].push({ cam: `${esc} · ${nc} · ${na} · ${nm}`, esc, n, err });
+    total++; if (n === meta) bien++;
+    tabla[id].push({ cam: `${esc} · ${nc} · ${na} · ${nm}`, esc, n, meta, err });
   }
 }
 for (const [id, filas] of Object.entries(tabla)) {
-  const ok = filas.filter((x) => x.n === REPS).length;
-  console.log(`\n${ok === filas.length ? '✓' : '✗'} ${id}: ${ok}/${filas.length} tomas con ${REPS} reps exactas`);
-  for (const x of filas) if (x.n !== REPS) console.log(`    ${x.cam}: app ${x.n}${x.err ? ' (' + x.err.slice(0, 60) + ')' : ''}`);
+  const ok = filas.filter((x) => x.n === x.meta).length;
+  console.log(`\n${ok === filas.length ? '✓' : '✗'} ${id}: ${ok}/${filas.length} tomas exactas`);
+  for (const x of filas) if (x.n !== x.meta) console.log(`    ${x.cam}: app ${x.n} (real ${x.meta})${x.err ? ' (' + x.err.slice(0, 60) + ')' : ''}`);
 }
 if (principal) console.log(`\nTOTAL ${bien}/${total} tomas exactas`);
