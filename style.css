@@ -1214,3 +1214,6 @@ body.sin-scroll { overflow: hidden; }
 .pf-vid-cambio small { display: block; font-weight: 400; font-size: .65rem; color: var(--text-muted); }
 /* v2.21.0: datos leidos de la etiqueta */
 input.nu-leido { border-color: var(--accent-green) !important; box-shadow: 0 0 0 1px var(--accent-green) inset; }
+input.nu-calculado { border-color: var(--accent-orange) !important; box-shadow: 0 0 0 1px var(--accent-orange) inset; }
+.nu-ocr { margin: 4px 0 0; font-size: .75rem; color: var(--text-muted); }
+.nu-ocr pre { white-space: pre-wrap; max-height: 160px; overflow: auto; background: var(--bg-input); border-radius: var(--radius-sm); padding: 6px; margin: 4px 0 0; font-size: .7rem; }

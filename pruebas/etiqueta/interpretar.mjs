@@ -7,6 +7,9 @@ const CASOS = [
   ['Valor energético 1680 kJ\nLípidos 12 g\nHidratos de carbono 60 g\nde los cuales azúcares 20 g\nProteínas 8 g', { kcal: 402, g: 12, c: 60, p: 8 }],
   ['Tamaño por porción 30 9 (6 galletas)\nEnergía (Calorías) 150 kcal 628 kj\nGrasa total 69 9%\nGrasa saturada 39 15%\nGrasa trans og\nCarbohidratos totales 21g 7%\nAzúcares 89\nProteína 2g 4%', { porcion: 30, kcal: 150, g: 6, c: 21, p: 2 }],
   ['Porción: 200 mi (1 vaso)\nPor porción Por 100 mi\nEnergía : \' ; 124 kcal 62 kcal\nGrasas totales 649 — 329 ——\nGrasa saturada — ; 4,09 o 209 o\nCarbohidratos o 949 —_ _ 4,79\nAzúcares ————— %4g — 4,79 -\nProteínas " ; 7,0g 359 —\nSodio Hu. — 100 mg _ 50 mg —', { porcion: 200, kcal: 62, g: 3.2, c: 4.7, p: 3.5, por100: true }],
+  // etiqueta real (fideos, 30/10/2026): plastico arrugado; "Calorías" leida como "Calonon", "kcal" como "kca)" y la
+  // grasa ilegible: se calcula con las calorias y los otros dos macros
+  ['Tamaño de porción 1 Tz (70 g)\nPorciones por paquete Aprox.6\nCalonon 77 1089k) 260kca) |\nCalorias de grasa 40 kJ (10 kcah\n| Ga atotalig — — — 0 *\nGrasa saturada 0g\nCarbohidratos totales 53 g 4%\nFibra dietaria 1g\nProteína 9 g 8%', { porcion: 70, kcal: 260, p: 9, c: 53, g: 1.3, por100: false }],
 ];
 let fallos = 0;
 for (const [t, esp] of CASOS) {

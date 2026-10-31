@@ -283,6 +283,7 @@ function formularioPropio(codigo = null) {
     <button type="button" class="btn-sec" id="pa-foto" style="width:100%;margin-top:8px">📷 Leer la tabla de la etiqueta con la cámara</button>
     <input type="file" id="pa-foto-in" accept="image/*" capture="environment" hidden>
     <p class="hint" id="pa-foto-txt" style="margin:4px 0 0"></p>
+    <details id="pa-foto-det" class="nu-ocr" hidden><summary>Ver lo que leyó la cámara</summary><pre id="pa-foto-ocr"></pre></details>
     <div class="form-grid" style="margin-top:8px">
       <div class="form-group full"><label for="pa-nombre">Nombre</label><input id="pa-nombre" maxlength="60" value="${esc($('nu-buscar').value.trim())}"></div>
       <div class="form-group full"><label for="pa-marca">Marca (opcional)</label><input id="pa-marca" maxlength="40" placeholder="ej.: Toni, Pronaca, La Favorita"></div>
@@ -302,16 +303,19 @@ function formularioPropio(codigo = null) {
   $('pa-foto-in').onchange = async () => {
     const f = $('pa-foto-in').files[0]; $('pa-foto-in').value = ''; if (!f) return;
     const b = $('pa-foto'), txt = $('pa-foto-txt'); b.disabled = true;
-    const ETAPAS = { 'loading tesseract core': 'Preparando el lector', 'initializing tesseract': 'Preparando el lector', 'loading language traineddata': 'Cargando español', 'initializing api': 'Preparando el lector', 'recognizing text': 'Leyendo la etiqueta' };
+    const ETAPAS = { 'segunda lectura': 'Segunda lectura para completar', 'loading tesseract core': 'Preparando el lector', 'initializing tesseract': 'Preparando el lector', 'loading language traineddata': 'Cargando español', 'initializing api': 'Preparando el lector', 'recognizing text': 'Leyendo la etiqueta' };
     txt.textContent = 'Preparando el lector (la primera vez descarga ~10 MB)…';
     try {
       const { leerEtiqueta } = await import('./etiqueta.js');
       const r = await leerEtiqueta(f, (et, p) => { txt.textContent = `${ETAPAS[et] || 'Leyendo'}… ${Math.round(p * 100)} %`; });
-      const poner = (id, v) => { if (v != null) { $(id).value = String(v); $(id).classList.add('nu-leido'); } };
-      poner('pa-kcal', r.kcal); poner('pa-p', r.p); poner('pa-c', r.c); poner('pa-g', r.g); poner('pa-porcion', r.porcion);
+      const calc = r.calculados || [];
+      $('pa-foto-ocr').textContent = (r.texto || '').trim(); $('pa-foto-det').hidden = !r.texto; // para revisar (y mandar captura si algo sale mal)
+      const poner = (id, v, k) => { if (v != null) { $(id).value = String(v); $(id).classList.add(calc.includes(k) ? 'nu-calculado' : 'nu-leido'); } };
+      poner('pa-kcal', r.kcal, 'kcal'); poner('pa-p', r.p, 'p'); poner('pa-c', r.c, 'c'); poner('pa-g', r.g, 'g'); poner('pa-porcion', r.porcion, 'porcion');
       $('pa-base').value = r.por100 || !r.porcion ? '100' : 'porcion';
-      const n = ['kcal', 'p', 'c', 'g'].filter((k) => r[k] != null).length;
-      txt.textContent = n ? `Leí ${n} de 4 datos (en violeta). Revísalos con la etiqueta antes de guardar: la lectura automática puede equivocarse.${n < 4 ? ' Escribe los que falten.' : ''}`
+      const n = ['kcal', 'p', 'c', 'g'].filter((k) => r[k] != null && !calc.includes(k)).length, nc = calc.filter((k) => k !== 'porcion').length;
+      const NOM = { kcal: 'las calorías', p: 'la proteína', c: 'los carbohidratos', g: 'la grasa' };
+      txt.textContent = n ? `Leí ${n} de 4 datos (en violeta)${nc ? ` y calculé ${calc.map((k) => NOM[k]).join(' y ')} con los demás (en amarillo)` : ''}. Revísalos con la etiqueta antes de guardar: la lectura automática puede equivocarse.${n + nc < 4 ? ' Escribe los que falten.' : ''}`
         : 'No pude leer los números. Toma la foto de cerca, solo la tabla, derecha y con buena luz; o escríbelos a mano.';
     } catch (e) {
       txt.textContent = 'No pude leer la etiqueta: ' + (e.message || e) + ' Escribe los datos a mano.';

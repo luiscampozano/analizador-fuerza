@@ -8,6 +8,25 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-30
 
+### 21:42 · v2.21.1 — Lectura de etiquetas: mejoras con la primera etiqueta real
+- **Luis probó** con una funda de fideos: plástico arrugado y con reflejos.
+  - 1.er intento: solo leyó la porción.
+  - 2.º intento: porción 70, proteína 9 y carbohidratos 53; faltaron calorías y grasa, y quedó «por 100 g» por error.
+- **Hecho** (`js/etiqueta.js`, `js/nutricion.js`):
+  - Errores del OCR que ahora se reconocen:
+    - «Calorías» leída como «Calonon»/«Calo-»: vale cualquier fila con kcal/kJ (no la de «calorías de grasa»);
+    - «kca)», «k)» y «kcah» se toman como kcal/kJ;
+    - «totalig» = «total 1 g» y «saturadaog» = «0 g».
+  - Si hay calorías y 2 macros, el 3.º se **calcula** (4·P + 4·C + 9·G) y se marca en amarillo; si faltan las
+    calorías y están los 3 macros, se calculan las calorías.
+  - «Por 100 g» solo se elige si la etiqueta trae esa columna (con porción y una sola columna, los datos son por
+    porción).
+  - Foto a 2000 px de lado (antes 1600). Si falta algún dato, se hace una segunda lectura con la tabla como un solo
+    bloque (psm 6) y se completan los datos.
+  - «Ver lo que leyó la cámara» muestra el texto del OCR, para mandar captura cuando falle.
+  - Prueba nueva con el texto de la etiqueta real (fideos: 260 kcal, P 9, C 53, grasa calculada 1,3; la etiqueta
+    dice 1 g).
+
 ### 21:29 · v2.21.0 — Nutrición: leer la tabla de la etiqueta con la cámara
 - **Pidió:** la foto de la etiqueta para que el formulario del producto nuevo se llene solo.
 - **Hecho:**
