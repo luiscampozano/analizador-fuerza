@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-30
 
+### 21:56 · Fallo de press banca revisado (sin cambio de versión)
+- Luis descargó el fallo desde Moderación y lo adjuntó en el chat.
+  - Se agregó al banco como `fallo_bd375cc2` (real 10).
+  - El banco vive fuera del repo público: son puntos del cuerpo de Luis.
+- **La versión actual ya lo cuenta bien:** 10 reps, la primera a los 8,9 s. Los 2 movimientos de acomodarse (3,9 s y
+  6,2 s) ya no cuentan; los mejoró `quitarPreparacion` después de la v2.6.1.
+- Banco: 41/60. Luis puede marcarlo «✓ Corregido» en Moderación (desde aquí no se escribe en D1 de producción).
+
 ### 21:51 · v2.21.2 — Moderación: descargar los fallos reportados para Claude
 - **Pidió:** seguir con la hoja de ruta.
 - **Revisado** (D1, solo lectura): hay 1 fallo reportado.
