@@ -1190,3 +1190,25 @@ body.sin-scroll { overflow: hidden; }
 .nu-compartir { display: flex; gap: 8px; align-items: flex-start; font-size: .85rem; color: var(--text-muted); margin: 10px 0 2px; line-height: 1.35; }
 .nu-compartir input { margin-top: 3px; flex: none; }
 .btn-link { background: none; border: 0; padding: 0; color: var(--accent-blue); font: inherit; text-decoration: underline; cursor: pointer; }
+/* v2.20.0: Perfil parte 2 */
+.pf-cab { flex-wrap: wrap; }
+.pf-social { display: flex; gap: 18px; flex-basis: 100%; padding-left: 4px; }
+.pf-social:empty { display: none; }
+.pf-social button { background: none; border: 0; padding: 0; color: var(--text-muted); font-size: .8rem; cursor: pointer; }
+.pf-social b { color: var(--text-main); font-size: .9rem; }
+.pf-sem { width: 100%; display: block; margin-top: 8px; }
+.pf-vid-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; text-align: center; }
+.pf-vid-kpis div { background: var(--bg-input); border-radius: var(--radius-sm); padding: 8px 4px; }
+.pf-vid-kpis b { display: block; font-size: 20px; color: var(--text-main); }
+.pf-vid-kpis small { color: var(--text-muted); font-size: .7rem; line-height: 1.2; display: block; }
+.pf-vid-kpis i, .pf-vid-cambio { font-style: normal; }
+.sube { color: #4ade80; } .baja { color: #f87171; }
+.pf-vids { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.pf-vid { display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 8px 10px; color: var(--text-main); text-align: left; cursor: pointer; width: 100%; }
+.pf-vid > div { flex: 1; min-width: 0; }
+.pf-vid strong { display: block; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-vid small { color: var(--text-muted); font-size: .72rem; }
+.pf-vid-sp { width: 56px; height: 22px; flex: none; }
+.pf-vid-sp polyline { fill: none; stroke: var(--accent-blue); stroke-width: 1.8; stroke-linejoin: round; }
+.pf-vid-cambio { flex: none; text-align: right; font-weight: 800; font-size: .85rem; color: var(--text-muted); }
+.pf-vid-cambio small { display: block; font-weight: 400; font-size: .65rem; color: var(--text-muted); }

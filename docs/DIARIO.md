@@ -8,6 +8,24 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-30
 
+### 21:20 · v2.20.0 — Perfil parte 2: últimas 12 semanas, análisis de video y seguidores
+- **Pidió:** hacer la parte 2 del Perfil (estaba aprobada en la hoja de ruta).
+- **Hecho** (`js/perfil.js`, `index.html`, `style.css`):
+  - **Cabecera:** seguidores · siguiendo · publicados de la Comunidad.
+    - Se leen de `/api/comunidad/u/<alias>`, solo con sesión y perfil público.
+    - Se recuerdan en `af_pf_social` para verlos sin internet.
+    - Al tocarlos se abre el perfil público (`comunidad.verPerfil`, nuevo export).
+  - **Últimas 12 semanas:** gráfica con botones Duración (h; máx. 4 h por entreno si se olvidó terminar), Volumen (t),
+    Series y ⚡ Velocidad (promedio de la mejor rep de las series con video, en línea). Recuerda la elegida en
+    `af_pf_sem`.
+  - **⚡ Análisis de video:**
+    - totales: series medidas, últimos 30 días y m/s promedio con cambio % frente a los 30 días anteriores;
+    - los 5 ejercicios más analizados, cada uno con minigráfica de su velocidad y la comparación **con la misma
+      carga** (la que más usa): ▲/▼ % entre su primera y su última serie con ese peso;
+    - al tocar un ejercicio se abre su última serie.
+  - Nuevos deps de perfil en `app.js`: `abrirSerie`, `alias`, `verPerfil`.
+- **Probado:** en Chromium a 412 px con 30 entrenos y 25 series de prueba; sin errores.
+
 ### 16:29 · Muñecos: zancadas reales, cambio de pierna y series cortas (sin cambio de versión)
 - **Pidió:** volver a hacer los muñecos para seguir refinando el analizador; y qué sigue en la hoja de ruta.
 - **Hecho** (`pruebas/munecos/munecos.mjs`): 3 variantes basadas en los fallos del banco real.

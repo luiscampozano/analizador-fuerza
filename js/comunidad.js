@@ -507,6 +507,9 @@ export async function compartir(en, recs) {
   };
 }
 
+// abrir un perfil de la Comunidad desde otra pestaña (Perfil: seguidores / siguiendo)
+export const verPerfil = (alias) => abrirPerfil(alias);
+
 // al cerrar sesion se olvida el perfil cargado
 export function olvidar() { yo = null; try { localStorage.removeItem('af_co_alias'); } catch (e) { /* nada */ } }
 // alias publico para firmar las tarjetas; se recuerda en el telefono para no pedirlo al servidor cada vez

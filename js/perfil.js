@@ -4,6 +4,7 @@ import * as almacen from './almacen.js';
 import * as P from './progreso.js';
 import * as nube from './nube.js';
 import * as bienvenida from './bienvenida.js';
+import * as hist from './historial.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -12,7 +13,7 @@ const leerJ = (k, def) => { try { return JSON.parse(localStorage.getItem(k) || '
 const guardarJ = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
 const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
-let deps = null; // { vista, version, porId, abrirEstadisticas, abrirEjercicios, abrirProgreso }
+let deps = null; // { vista, version, porId, abrirEstadisticas, abrirEjercicios, abrirProgreso, abrirSerie, alias, verPerfil }
 
 // DOTS: coeficientes oficiales (hombres / mujeres)
 const DOTS = { h: [-307.75076, 24.0900756, -0.1918759221, 0.0007391293, -0.000001093], m: [-57.96288, 13.6175032, -0.1126655495, 0.0005158568, -0.0000010706] };
@@ -110,6 +111,7 @@ export async function pintar() {
     <div class="pf-datos"><strong>${esc(pf.nombre || 'Tu nombre')}</strong>
       <small>${[pf.categoria, pf.gimnasio].filter(Boolean).map(esc).join(' · ') || 'Toca Editar para completar tu perfil'}</small>
       ${pf.bio ? `<p>${esc(pf.bio)}</p>` : ''}</div>`;
+  pintarSocial();
 
   const lista = (await almacen.leerEntrenos()).sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
   // marcas: 1RM real si lo guardaste, si no el mejor 1RM estimado del registro
@@ -134,6 +136,8 @@ export async function pintar() {
     <div class="kpi-card"><div class="kpi-label">Volumen del mes</div><div class="kpi-value">${fmt(mes.reduce((a, e) => a + vol(e), 0) / 1000, 1)}</div><div class="kpi-sub">toneladas</div></div>
     <div class="kpi-card"><div class="kpi-label">Análisis de video</div><div class="kpi-value">${nAnalisis}</div><div class="kpi-sub">series medidas</div></div>`;
 
+  pintarSemanas(lista);
+  pintarVideo();
   pintarPeso();
   $('pf-version').textContent = `Versión ${deps.version}`;
 }
@@ -341,4 +345,114 @@ async function restaurar() {
     alert('Respaldo restaurado. La app se recargará.');
     location.reload();
   } catch (e) { alert('No pude restaurar todo: ' + (e.message || e)); }
+}
+
+// ------------------------------------------------------------------ v2.20.0: seguidores, ultimas 12 semanas y analisis de video
+// seguidores / siguiendo de la Comunidad (si tiene cuenta y perfil publico). Se recuerdan para mostrarlos sin internet.
+async function pintarSocial() {
+  const cont = $('pf-social'); if (!cont) return;
+  const dibujar = (x) => {
+    if (!x) { cont.innerHTML = ''; return; }
+    cont.innerHTML = `<button type="button" data-a="1"><b>${fmt(x.seguidores)}</b> seguidores</button><button type="button" data-a="1"><b>${fmt(x.siguiendo)}</b> siguiendo</button><button type="button" data-a="1"><b>${fmt(x.publicaciones)}</b> publicados</button>`;
+    cont.querySelectorAll('[data-a]').forEach((b) => (b.onclick = () => deps.verPerfil(x.alias)));
+  };
+  if (!nube.conectado()) { dibujar(null); return; }
+  dibujar(leerJ('af_pf_social', null));
+  try {
+    const alias = await deps.alias(); if (!alias) { dibujar(null); return; }
+    const r = await nube.api('GET', '/api/comunidad/u/' + encodeURIComponent(alias));
+    const x = { alias, seguidores: r.perfil.seguidores, siguiendo: r.perfil.siguiendo, publicaciones: r.perfil.publicaciones };
+    guardarJ('af_pf_social', x); dibujar(x);
+  } catch (e) { /* sin internet: se queda lo recordado */ }
+}
+
+const METRICAS = { dur: ['Duración', 'h'], vol: ['Volumen', 't'], ser: ['Series', 'series'], vel: ['⚡ Velocidad', 'm/s'] };
+let metrica = localStorage.getItem('af_pf_sem') || 'dur';
+const lunesDe = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+let ultimaLista = [];
+function pintarSemanas(lista = ultimaLista) {
+  ultimaLista = lista;
+  if (!METRICAS[metrica]) metrica = 'dur';
+  const L0 = lunesDe(new Date()), N = 12;
+  const sem = Array.from({ length: N }, (_, i) => { const d = new Date(L0); d.setDate(d.getDate() - 7 * (N - 1 - i)); return { ini: d, dur: 0, vol: 0, ser: 0, vels: [] }; });
+  const idx = (f) => { const k = N - 1 - Math.round((L0 - lunesDe(new Date(f))) / (7 * 86400000)); return k >= 0 && k < N ? k : -1; };
+  for (const en of lista) {
+    const k = idx(en.inicio); if (k < 0) continue;
+    if (en.fin) sem[k].dur += Math.min(4, Math.max(0, (new Date(en.fin) - new Date(en.inicio)) / 3600000)); // max 4 h (si se olvido terminar)
+    for (const e of en.ejercicios) for (const sr of e.series) if (sr.hecha && sr.tipo !== 'calentamiento') { sem[k].ser++; sem[k].vol += (sr.kg || 0) * (sr.reps || 0) / 1000; }
+  }
+  for (const r of hist.leer()) { const k = idx(r.fecha); if (k >= 0 && r.vMejor > 0) sem[k].vels.push(r.vMejor); }
+  const val = (w) => (metrica === 'vel' ? (w.vels.length ? w.vels.reduce((a, b) => a + b, 0) / w.vels.length : null) : w[metrica]);
+  const vals = sem.map(val);
+  $('pf-sem-chips').innerHTML = Object.entries(METRICAS).map(([k, [n]]) => `<button type="button" class="chip${k === metrica ? ' active' : ''}" data-m="${k}">${n}</button>`).join('');
+  $('pf-sem-chips').querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => { metrica = b.dataset.m; try { localStorage.setItem('af_pf_sem', metrica); } catch (e) { /* nada */ } pintarSemanas(); }));
+  const dec = metrica === 'vel' ? 2 : metrica === 'ser' ? 0 : 1, uni = METRICAS[metrica][1];
+  const conDato = vals.filter((v) => v != null && v > 0), prom = conDato.length ? conDato.reduce((a, b) => a + b, 0) / conDato.length : null;
+  const hoy = vals[N - 1];
+  $('pf-sem-txt').textContent = !conDato.length
+    ? (metrica === 'vel' ? 'Analiza series con video (⚡) para ver aquí cómo evoluciona tu velocidad.' : 'Registra entrenamientos para ver tu progreso semana a semana.')
+    : `Esta semana: ${hoy != null ? fmt(hoy, dec) : '--'} ${uni} · promedio: ${fmt(prom, dec)} ${uni} por semana${metrica === 'vel' ? ' (mejor rep de cada serie con video; mezcla ejercicios: compara mejor abajo, por ejercicio)' : ''}.`;
+  dibujarSemanas($('pf-sem'), sem, vals, metrica === 'vel', dec);
+}
+function dibujarSemanas(c, sem, vals, linea, dec) {
+  const dpr = window.devicePixelRatio || 1, W = c.clientWidth || 340, H = 160;
+  c.width = W * dpr; c.height = H * dpr; c.style.height = H + 'px';
+  const g = c.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+  const L = 30, B = 20, T = 14, mx = Math.max(...vals.filter((v) => v != null), 0) * 1.15 || 1, n = vals.length, paso = (W - L - 6) / n;
+  const y = (v) => T + (H - T - B) * (1 - v / mx), xc = (i) => L + paso * (i + 0.5);
+  g.font = '10px system-ui, sans-serif'; g.fillStyle = '#8e95a5'; g.strokeStyle = 'rgba(255,255,255,.07)';
+  for (let k = 0; k <= 2; k++) { const v = mx * k / 2; g.beginPath(); g.moveTo(L, y(v)); g.lineTo(W - 6, y(v)); g.stroke(); g.fillText(fmt(v, linea ? 1 : v >= 10 ? 0 : 1), 2, y(v) + 3); }
+  g.textAlign = 'center';
+  sem.forEach((w, i) => { if (i % 3 === 2 || i === n - 1) g.fillText(i === n - 1 ? 'esta' : w.ini.toLocaleDateString('es-EC', { day: 'numeric', month: 'short' }).replace('.', ''), xc(i), H - 5); });
+  if (linea) {
+    g.strokeStyle = '#22D3EE'; g.lineWidth = 2; g.beginPath(); let ab = false;
+    vals.forEach((v, i) => { if (v == null) return; if (!ab) { g.moveTo(xc(i), y(v)); ab = true; } else g.lineTo(xc(i), y(v)); }); g.stroke();
+    vals.forEach((v, i) => { if (v == null) return; g.fillStyle = i === n - 1 ? '#7C5CFF' : '#22D3EE'; g.beginPath(); g.arc(xc(i), y(v), 3.5, 0, 7); g.fill(); });
+  } else {
+    vals.forEach((v, i) => { if (!(v > 0)) return; g.fillStyle = i === n - 1 ? '#7C5CFF' : 'rgba(124,92,255,.45)'; const h = y(0) - y(v); g.beginPath(); g.roundRect ? g.roundRect(xc(i) - paso * 0.32, y(v), paso * 0.64, h, 3) : g.rect(xc(i) - paso * 0.32, y(v), paso * 0.64, h); g.fill(); });
+  }
+  const u = vals[n - 1]; if (u != null && u > 0) { g.fillStyle = '#f0f2f5'; g.font = 'bold 11px system-ui, sans-serif'; g.fillText(fmt(u, dec), xc(n - 1), y(u) - 5); }
+}
+
+// Analisis de video: lo que nos diferencia de otras apps. Por ejercicio se compara la velocidad CON LA MISMA CARGA
+// (la velocidad depende del peso): si con el mismo peso subes mas rapido, estas mas fuerte.
+function pintarVideo() {
+  const cont = $('pf-video'); if (!cont) return;
+  const h = hist.leer().filter((r) => r.vMejor > 0 && r.ejercicio).sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+  if (!h.length) {
+    cont.innerHTML = `<p class="hint" style="margin:0 0 10px">Graba una serie y la IA mide tus reps, tu velocidad, el RIR y tu 1RM. Con el tiempo verás aquí si subes el mismo peso más rápido (= más fuerza).</p>
+      <button type="button" class="btn-primary" id="pf-video-ir">⚡ Analizar mi primera serie</button>`;
+    $('pf-video-ir').onclick = () => deps.vista('v-form'); return;
+  }
+  const ahora = Date.now(), dia = 86400000;
+  const rango = (a, b) => h.filter((r) => { const t = ahora - new Date(r.fecha); return t >= a * dia && t < b * dia; });
+  const media = (l) => (l.length ? l.reduce((x, r) => x + r.vMejor, 0) / l.length : null);
+  const mes = rango(0, 30), antes = rango(30, 60), vm = media(mes), va = media(antes);
+  // por ejercicio
+  const grupos = new Map();
+  for (const r of h) { if (!grupos.has(r.ejercicio)) grupos.set(r.ejercicio, []); grupos.get(r.ejercicio).push(r); }
+  const filas = [...grupos.entries()].sort((a, b) => b[1].length - a[1].length || (a[1][a[1].length - 1].fecha < b[1][b[1].length - 1].fecha ? 1 : -1)).slice(0, 5).map(([id, l]) => {
+    const d = deps.porId && deps.porId[id], nombre = d ? d.nombre : l[0].nombre, icono = d ? d.icono : '🏋️';
+    const kg = (r) => (Number.isFinite(r.carga) ? Math.round(r.carga * 2) / 2 : null);
+    const cuenta = new Map(); for (const r of l) { const k = kg(r); if (k != null) cuenta.set(k, (cuenta.get(k) || 0) + 1); }
+    const [carga, n] = [...cuenta.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0] || [null, 0];
+    let cambio = '';
+    if (n >= 2) {
+      const misma = l.filter((r) => kg(r) === carga), v0 = misma[0].vMejor, v1 = misma[misma.length - 1].vMejor, pct = (v1 / v0 - 1) * 100;
+      cambio = `<span class="pf-vid-cambio ${pct >= 3 ? 'sube' : pct <= -3 ? 'baja' : ''}">${pct >= 0 ? '▲' : '▼'} ${fmt(Math.abs(pct))} %<small>con ${kgF(carga)} kg</small></span>`;
+    }
+    const ult = l[l.length - 1], ult12 = l.slice(-12).map((r) => r.vMejor);
+    const mn = Math.min(...ult12), mxv = Math.max(...ult12), sp = ult12.length > 1 ? ult12.map((v, i) => `${(i / (ult12.length - 1) * 70).toFixed(1)},${(22 - (mxv > mn ? (v - mn) / (mxv - mn) : 0.5) * 18).toFixed(1)}`).join(' ') : '';
+    return `<button type="button" class="pf-vid" data-id="${esc(ult.id)}"><span class="pf-rec-ic">${icono}</span>
+      <div><strong>${esc(nombre)}</strong><small>${l.length} ${l.length === 1 ? 'serie' : 'series'} · última ${fmt(ult.vMejor, 2)} m/s${kg(ult) != null ? ` con ${kgF(kg(ult))} kg` : ''}</small></div>
+      ${sp ? `<svg viewBox="0 0 70 24" class="pf-vid-sp" aria-hidden="true"><polyline points="${sp}"/></svg>` : ''}${cambio}</button>`;
+  }).join('');
+  const dif = vm && va ? (vm / va - 1) * 100 : null;
+  cont.innerHTML = `<div class="pf-vid-kpis"><div><b>${h.length}</b><small>series medidas</small></div><div><b>${mes.length}</b><small>últimos 30 días</small></div>
+      <div><b>${vm ? fmt(vm, 2) : '--'}</b><small>m/s promedio (30 días)${dif != null ? ` · <i class="${dif >= 0 ? 'sube' : 'baja'}">${dif >= 0 ? '+' : ''}${fmt(dif)} %</i>` : ''}</small></div></div>
+    <div class="pf-vids">${filas}</div>
+    <p class="hint">La flecha compara tu primera y tu última serie con el peso que más usas: si subes el mismo peso más rápido, estás más fuerte. Toca un ejercicio para ver su última serie.</p>
+    <button type="button" class="btn-sec" id="pf-video-todo" style="width:100%">Ver todas las series analizadas</button>`;
+  cont.querySelectorAll('.pf-vid').forEach((b) => (b.onclick = () => deps.abrirSerie(b.dataset.id)));
+  $('pf-video-todo').onclick = () => deps.vista('v-historial');
 }
