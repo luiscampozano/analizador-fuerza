@@ -8,6 +8,19 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-30
 
+### 21:51 · v2.21.2 — Moderación: descargar los fallos reportados para Claude
+- **Pidió:** seguir con la hoja de ruta.
+- **Revisado** (D1, solo lectura): hay 1 fallo reportado.
+  - Press de banca, v2.6.1, la app contó 12 y eran 10; la persona excluyó las reps de 3,93 s y 6,23 s.
+  - Comentario: «Me contó mientras me acomodaba en la máquina».
+  - Traer sus puntos (165 KB) a través del chat no es práctico.
+- **Hecho:** en Comunidad → 🛡️ Moderación, cada fallo tiene dos botones nuevos (`js/comunidad.js`):
+  - «⬇️ Descargar para Claude»: baja `fallo_<ejercicio>_real<N>_app<M>_<id>.json.gz` con el formato del banco
+    (W, H, dur, hz, frames) más los datos del fallo (reps reales, excluidas, comentario, versión);
+  - «✓ Corregido».
+  - Probado en Chromium con datos simulados: el archivo se descomprime con el formato correcto.
+- **Siguiente:** Luis descarga el fallo de press banca y lo adjunta en el chat; se agrega al banco y se corrige.
+
 ### 21:42 · v2.21.1 — Lectura de etiquetas: mejoras con la primera etiqueta real
 - **Luis probó** con una funda de fideos: plástico arrugado y con reflejos.
   - 1.er intento: solo leyó la porción.

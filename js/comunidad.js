@@ -441,13 +441,31 @@ async function moderar() {
     const pend = f.fallos.filter((x) => x.estado === 'pendiente');
     const fallosHtml = `<h4>🐞 Fallos de conteo reportados${pend.length ? ` · ${pend.length} pendiente${pend.length > 1 ? 's' : ''}` : ''}</h4>${f.fallos.length
       ? f.fallos.slice(0, 30).map((x) => `<div class="card co-rep"><b>${esc(x.nombre || x.ejercicio)}</b> · la app contó ${x.reps_app ?? '?'}, eran ${x.reps_real ?? '?'}
-        <small class="hint"> · ${hace(x.creado)} · v${esc(x.version || '?')} · ${esc(x.estado)}${x.pose_bytes ? '' : ' · sin puntos'}</small>${x.comentario ? `<p class="co-texto">${esc(x.comentario)}</p>` : ''}</div>`).join('')
-      : '<p class="hint">Sin fallos reportados.</p>'}<p class="hint">Pídele a Claude «revisa los fallos reportados» para corregirlos.</p>`;
+        <small class="hint"> · ${hace(x.creado)} · v${esc(x.version || '?')} · ${esc(x.estado)}${x.pose_bytes ? '' : ' · sin puntos'}</small>${x.comentario ? `<p class="co-texto">${esc(x.comentario)}</p>` : ''}
+        <div class="co-perfil-botones">${x.pose_bytes ? `<button type="button" class="btn-sec" data-bajar="${esc(x.id)}">⬇️ Descargar para Claude</button>` : ''}${x.estado !== 'corregido' ? `<button type="button" class="btn-sec" data-corregido="${esc(x.id)}">✓ Corregido</button>` : ''}</div></div>`).join('')
+      : '<p class="hint">Sin fallos reportados.</p>'}<p class="hint">Descarga el fallo y adjunta el archivo en el chat con Claude: trae solo los puntos del cuerpo (sin video) y lo que corrigió la persona.</p>`;
     modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${fallosHtml}<h4>Reportes de la comunidad</h4>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
         <b>${nombre[x.tipo]}${x.alias ? ' de @' + esc(x.alias) : ''}</b> · ${x.n} reporte${x.n > 1 ? 's' : ''}${x.oculto ? ' · <span class="pf-nube-error">oculto</span>' : ''}
         <p class="co-texto">${esc(x.contenido || '(ya no existe)')}</p><p class="hint">${esc(x.motivos)}</p>
         <div class="co-perfil-botones">${x.tipo !== 'usuario' ? `<button type="button" class="btn-sec" data-a="${x.oculto ? 'mostrar' : 'ocultar'}">${x.oculto ? 'Mostrar' : 'Ocultar'}</button>` : ''}
           <button type="button" class="btn-sec peligro" data-a="borrar">${x.tipo === 'usuario' ? 'Sacar de la comunidad' : 'Borrar'}</button><button type="button" class="btn-sec" data-a="descartar">Descartar</button></div></div>`).join('') : '<p class="hint">No hay reportes pendientes. 🎉</p>'}`);
+    // descargar un fallo (puntos del cuerpo + correccion) como archivo .json.gz con el formato del banco de pruebas
+    $('co-modal-cuerpo').querySelectorAll('[data-bajar]').forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try {
+        const { fallo: x } = await nube.api('GET', '/api/mod/fallos/' + encodeURIComponent(b.dataset.bajar));
+        const bin = Uint8Array.from(atob(x.pose), (c) => c.charCodeAt(0));
+        const pose = JSON.parse(await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+        const todo = { ...pose, hz: 30, fallo: { id: x.id, ejercicio: x.ejercicio, nombre: x.nombre, reps_app: x.reps_app, reps_real: x.reps_real, excluidas: x.excluidas, comentario: x.comentario, version: x.version, datos: x.datos, creado: x.creado } };
+        const gz = await new Response(new Blob([JSON.stringify(todo)]).stream().pipeThrough(new CompressionStream('gzip'))).blob();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(gz);
+        a.download = `fallo_${x.ejercicio}_real${x.reps_real ?? 'x'}_app${x.reps_app ?? 'x'}_${String(x.id).slice(0, 8)}.json.gz`;
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      } catch (e) { error(e); } finally { b.disabled = false; }
+    }));
+    $('co-modal-cuerpo').querySelectorAll('[data-corregido]').forEach((b) => (b.onclick = async () => {
+      try { await nube.api('POST', '/api/mod/fallos/' + encodeURIComponent(b.dataset.corregido), { estado: 'corregido' }); moderar(); } catch (e) { error(e); }
+    }));
     $('co-modal-cuerpo').querySelectorAll('.co-rep [data-a]').forEach((b) => (b.onclick = async () => {
       const x = r.reportes[+b.closest('.co-rep').dataset.i];
       if (b.dataset.a === 'borrar' && !confirm('¿Seguro? No se puede deshacer.')) return;
