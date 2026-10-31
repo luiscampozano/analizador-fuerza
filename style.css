@@ -1212,3 +1212,5 @@ body.sin-scroll { overflow: hidden; }
 .pf-vid-sp polyline { fill: none; stroke: var(--accent-blue); stroke-width: 1.8; stroke-linejoin: round; }
 .pf-vid-cambio { flex: none; text-align: right; font-weight: 800; font-size: .85rem; color: var(--text-muted); }
 .pf-vid-cambio small { display: block; font-weight: 400; font-size: .65rem; color: var(--text-muted); }
+/* v2.21.0: datos leidos de la etiqueta */
+input.nu-leido { border-color: var(--accent-green) !important; box-shadow: 0 0 0 1px var(--accent-green) inset; }

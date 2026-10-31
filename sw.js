@@ -1,9 +1,9 @@
 // Service worker: la app funciona sin internet despues de la primera visita.
-const VERSION = 'af-2.20.0';
+const VERSION = 'af-2.21.0';
 const EXTERNOS = ['cdn.jsdelivr.net', 'storage.googleapis.com'];
 const BASE = ['./', 'index.html', 'style.css', 'manifest.json', 'iconos/icono-192.png', 'iconos/icono-512.png', 'iconos/logo.png', 'iconos/favicon.png',
   'js/app.js', 'js/ejercicios.js', 'js/fisica.js', 'js/analisis.js', 'js/pose.js', 'js/render.js', 'js/historial.js', 'js/lector.js',
-  'js/excel.js', 'js/sesiones.js', 'js/trayectoria.js', 'js/tecnica.js', 'js/vivo.js', 'js/almacen.js', 'js/pdf.js', 'js/entrenar.js', 'js/importar.js', 'js/progreso.js', 'js/nutricion.js', 'js/alimentos.js', 'js/perfil.js', 'js/nube.js', 'js/comunidad.js', 'js/bienvenida.js', 'js/tarjetas.js', 'js/anatomia.js', 'js/atras.js', 'js/conteo.js', 'js/actividad.js', 'privacidad.html', 'normas.html',
+  'js/excel.js', 'js/sesiones.js', 'js/trayectoria.js', 'js/tecnica.js', 'js/vivo.js', 'js/almacen.js', 'js/pdf.js', 'js/entrenar.js', 'js/importar.js', 'js/progreso.js', 'js/nutricion.js', 'js/alimentos.js', 'js/perfil.js', 'js/nube.js', 'js/comunidad.js', 'js/bienvenida.js', 'js/tarjetas.js', 'js/anatomia.js', 'js/atras.js', 'js/conteo.js', 'js/actividad.js', 'js/etiqueta.js', 'privacidad.html', 'normas.html',
   'vendor/jspdf/jspdf.umd.min.js', 'vendor/jspdf/jspdf.plugin.autotable.min.js',
   'vendor/mp4-muxer.mjs'];
 

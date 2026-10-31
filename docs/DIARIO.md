@@ -8,6 +8,29 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-30
 
+### 21:29 · v2.21.0 — Nutrición: leer la tabla de la etiqueta con la cámara
+- **Pidió:** la foto de la etiqueta para que el formulario del producto nuevo se llene solo.
+- **Hecho:**
+  - `vendor/tesseract/` (~10 MB, licencia Apache 2.0):
+    - Tesseract.js 6.0.1 con su motor 6.0.0 (versiones con SIMD y sin SIMD);
+    - el idioma español en versión «best_int»;
+    - todo funciona en el teléfono y sin internet. Se descarga solo la primera vez que se usa (el service worker lo
+      guarda; no va en la lista BASE).
+  - `js/etiqueta.js`:
+    - `leerEtiqueta(foto)`: pasa la foto a gris con más contraste, la escala a ~1600 px y hace el OCR;
+    - `interpretar(texto)` saca porción, kcal (convierte kJ si no hay kcal), grasa, carbohidratos y proteína;
+    - detecta la columna «por 100 g/ml»;
+    - corrige errores típicos del OCR: «g» leída como «9» («6 g» → «69»), comas perdidas («6,4 g» → «649»),
+      «og» = «0 g» y «mi» = «ml»;
+    - cuando hay duda, elige la combinación cuyas kcal (4·P + 4·C + 9·G) cuadran con la etiqueta.
+  - **Formulario de alimento nuevo:** botón «📷 Leer la tabla de la etiqueta con la cámara». Llena los campos y los
+    marca en violeta; el usuario los revisa antes de guardar.
+  - Prueba nueva en `verificar.sh`: `pruebas/etiqueta/interpretar.mjs` (5 etiquetas, incluidos textos reales del OCR).
+  - Probado de punta a punta en Chromium con 2 fotos sintéticas (borrosas, giradas y con ruido): 4 de 4 datos
+    correctos en ~2 s.
+- **Pendiente:** probar con etiquetas reales ecuatorianas en el Xiaomi. Foto del plato: decidir (requiere IA de
+  visión con costo).
+
 ### 21:20 · v2.20.0 — Perfil parte 2: últimas 12 semanas, análisis de video y seguidores
 - **Pidió:** hacer la parte 2 del Perfil (estaba aprobada en la hoja de ruta).
 - **Hecho** (`js/perfil.js`, `index.html`, `style.css`):
