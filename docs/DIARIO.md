@@ -8,7 +8,7 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-10-31
 
-### 23:21 · v2.22.0 (lista, esperando la tabla en D1) — Nutrición: foto del plato con IA (Claude Haiku 5.5)
+### 23:21 · v2.22.0 — Nutrición: foto del plato con IA (Claude Haiku 5.5)
 - **Pidió:** foto del plato con Haiku, usando los créditos de API de su plan Max (USD 100 al mes).
 - **Luis configuró:**
   - la clave de la Console, guardada como secreto `ANTHROPIC_API_KEY` en Cloudflare Pages (fuerzapro → Production);
@@ -31,7 +31,7 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
     - se guarda cada alimento con `fuente: 'ia'`.
   - **Pruebas:** `pruebas/servidor/ia_test.mjs` (9 OK, con la respuesta de Claude simulada). UI probada en Chromium.
 - **Costo estimado:** ~USD 0,0004 por foto (unos USD 1,1 al mes con 30 usuarios × 3 fotos al día).
-- **Falta:** Luis debe crear la tabla `uso_ia` en la consola de D1 antes de publicar.
+- Luis creó la tabla `uso_ia` en la consola de D1 (23:24) y se publicó.
 
 ## 2026-10-30
 
