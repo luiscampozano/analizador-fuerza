@@ -37,6 +37,8 @@ export function iniciar() {
   $('nu-internet').onclick = buscarInternet;
   $('nu-escanear').onclick = escanear;
   $('nu-crear').onclick = () => formularioPropio();
+  $('nu-plato').onclick = () => { if (!nube.conectado()) return alert('La foto del plato usa IA en el servidor: inicia sesión (Perfil → Cuenta) para usarla.'); $('nu-plato-in').click(); };
+  $('nu-plato-in').onchange = () => { const f = $('nu-plato-in').files[0]; $('nu-plato-in').value = ''; if (f) fotoPlato(f); };
   $('nu-scan-cerrar').onclick = cerrarCamara;
 }
 
@@ -123,7 +125,7 @@ function pintarResultados() {
   const q = norm($('nu-buscar').value), pal = q.split(/\s+/).filter(Boolean);
   const pasa = (a) => pal.every((w) => norm(`${a.nombre} ${a.marca || ''} ${a.extra || ''}`).includes(w));
   const propios = leerLS('af_alimentos_propios', []);
-  const item = (a, i, grupo) => `<button type="button" class="en-sel-item" data-g="${grupo}" data-i="${i}"><span>${a.fuente === 'off' ? '🏷️' : a.fuente === 'comunidad' ? '👥' : a.fuente === 'propio' ? '⭐' : '🥗'}</span>
+  const item = (a, i, grupo) => `<button type="button" class="en-sel-item" data-g="${grupo}" data-i="${i}"><span>${a.fuente === 'off' ? '🏷️' : a.fuente === 'comunidad' ? '👥' : a.fuente === 'ia' ? '📸' : a.fuente === 'propio' ? '⭐' : '🥗'}</span>
     <span><b>${esc(a.nombre)}</b><small>${a.marca ? esc(a.marca) + ' · ' : ''}${fmt(a.kcal)} kcal · P ${fmt(a.p, 1)} · C ${fmt(a.c, 1)} · G ${fmt(a.g, 1)} por 100 g</small></span></button>`;
   const grupos = { r: recientes.filter(pasa), p: propios.filter(pasa), l: ALIMENTOS.filter(pasa) };
   $('nu-res').innerHTML = (grupos.r.length ? `<div class="en-sel-grupo">Recientes</div>${grupos.r.map((a, i) => item(a, i, 'r')).join('')}` : '')
@@ -233,6 +235,58 @@ async function escanear() {
 function cerrarCamara() {
   if (camara) { camara.activo = false; camara.stream.getTracks().forEach((t) => t.stop()); camara = null; }
   $('nu-scan').style.display = 'none';
+}
+
+// ------------------------------------------------------------------ foto del plato (IA: Claude Haiku en el servidor)
+// La foto se reduce en el telefono (~768 px) para que llegue rapido y cueste poco. La IA reconoce los alimentos y
+// propone gramos y macros; el usuario ajusta los gramos (la porcion es lo que mas falla en una foto). (v2.22.0)
+async function reducirFoto(archivo, lado = 768) {
+  const bmp = await createImageBitmap(archivo), k = Math.min(1, lado / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.75).split(',')[1];
+}
+async function fotoPlato(archivo) {
+  $('nu-off').innerHTML = '<p class="hint">📸 Analizando tu plato con IA… (unos segundos)</p>';
+  let r;
+  try { r = await nube.api('POST', '/api/ia/plato', { imagen: await reducirFoto(archivo) }); }
+  catch (e) { $('nu-off').innerHTML = `<p class="hint">${esc(e.message || e)}</p>`; return; }
+  $('nu-off').innerHTML = '';
+  if (!r.alimentos.length) { $('nu-off').innerHTML = `<p class="hint">${esc(r.nota || 'No reconocí alimentos en la foto.')} Prueba con otra foto, desde arriba y con buena luz.</p>`; return; }
+  const items = r.alimentos.map((a) => ({ ...a, base: { kcal: a.kcal / a.gramos * 100, p: a.p / a.gramos * 100, c: a.c / a.gramos * 100, g: a.g / a.gramos * 100 }, usar: true }));
+  $('nu-paso-buscar').style.display = 'none'; $('nu-paso-cant').style.display = '';
+  const CONF = { alta: '🟢', media: '🟡', baja: '🔴' };
+  $('nu-cant').innerHTML = `<h3 class="en-det-titulo">📸 Tu plato</h3>
+    <p class="hint" style="margin-top:2px">Estimación de la IA: reconoce bien los alimentos, pero en las porciones puede equivocarse bastante (±40 %). <b>Ajusta los gramos</b> (mejor si pesas) y desmarca lo que no comiste.${r.nota ? ' ' + esc(r.nota) : ''}</p>
+    <div class="nu-plato">${items.map((a, i) => `<label class="nu-plato-fila"><input type="checkbox" data-i="${i}" checked>
+      <span><b>${esc(a.nombre)}</b> <small title="confianza de la IA en la porción">${CONF[a.confianza] || ''}</small><small id="nu-pl-k${i}"></small></span>
+      <input type="number" inputmode="decimal" min="0" step="any" value="${Math.round(a.gramos)}" data-g="${i}"><span class="nu-plato-u">g</span></label>`).join('')}</div>
+    <div id="nu-prev" class="nu-prev"></div>
+    <p class="hint" style="margin:0">🟢🟡🔴 = qué tan segura está la IA de la porción. Te quedan ${r.quedan} fotos hoy.</p>
+    <div class="en-det-botones"><button type="button" class="btn-sec" id="nu-volver">‹ Volver</button><button type="button" class="btn-sec en-terminar" id="nu-ok">Agregar</button></div>`;
+  const total = () => {
+    let t = { kcal: 0, p: 0, c: 0, g: 0 }, n = 0;
+    items.forEach((a, i) => {
+      a.gramos = parseFloat(($(`nu-cant`).querySelector(`[data-g="${i}"]`).value || '0').replace(',', '.')) || 0;
+      a.usar = $(`nu-cant`).querySelector(`[data-i="${i}"]`).checked;
+      $(`nu-pl-k${i}`).textContent = ` · ${fmt(a.base.kcal * a.gramos / 100)} kcal`;
+      if (a.usar && a.gramos > 0) { n++; for (const k in t) t[k] += a.base[k] * a.gramos / 100; }
+    });
+    $('nu-prev').innerHTML = `<div><b>${fmt(t.kcal)}</b><small>kcal</small></div><div><b>${fmt(t.p, 1)}</b><small>proteína</small></div><div><b>${fmt(t.c, 1)}</b><small>carbos</small></div><div><b>${fmt(t.g, 1)}</b><small>grasa</small></div>`;
+    $('nu-ok').textContent = n ? `Agregar ${n} alimento${n > 1 ? 's' : ''}` : 'Agregar';
+    $('nu-ok').disabled = !n;
+  };
+  $('nu-cant').querySelectorAll('input').forEach((x) => (x.oninput = x.onchange = total)); total();
+  $('nu-volver').onclick = () => { $('nu-paso-buscar').style.display = ''; $('nu-paso-cant').style.display = 'none'; };
+  $('nu-ok').onclick = async () => {
+    let k = 0;
+    for (const a of items) {
+      if (!a.usar || !(a.gramos > 0)) continue;
+      await almacen.guardarComida({ id: `c-${Date.now()}-${k++}`, fecha: dia, comida: comidaSel, creado: Date.now(), nombre: a.nombre, marca: '', gramos: a.gramos,
+        base: a.base, porciones: [], fuente: 'ia', codigo: null });
+    }
+    cerrarHoja(); pintar();
+  };
 }
 
 // ------------------------------------------------------------------ cantidad

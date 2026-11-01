@@ -6,6 +6,33 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-10-31
+
+### 23:21 · v2.22.0 (lista, esperando la tabla en D1) — Nutrición: foto del plato con IA (Claude Haiku 5.5)
+- **Pidió:** foto del plato con Haiku, usando los créditos de API de su plan Max (USD 100 al mes).
+- **Luis configuró:**
+  - la clave de la Console, guardada como secreto `ANTHROPIC_API_KEY` en Cloudflare Pages (fuerzapro → Production);
+  - Claude nunca vio la clave.
+- **Hecho:**
+  - **Servidor** (`_worker.js`): `POST /api/ia/plato` (con sesión).
+    - La app manda la foto reducida en el teléfono (768 px, JPEG 0,75, ~80 KB en base64; así el servidor casi no
+      gasta CPU del plan gratis).
+    - El servidor llama a `claude-haiku-5-5` con un prompt en español: alimentos, gramos y macros por porción, y
+      confianza.
+    - Valida y limpia la respuesta.
+    - Límite: 10 fotos por persona al día y 600 al día en total (tabla `uso_ia`); los errores no cuentan.
+    - Sin la clave responde «disponible muy pronto».
+    - Moderación: `GET /api/mod/ia` muestra el uso de los últimos 7 días.
+  - **App** (`js/nutricion.js`):
+    - botón «📸 Foto del plato (IA, aproximado)» en Agregar alimento;
+    - muestra la lista con checkbox, gramos editables y 🟢🟡🔴 según la confianza en la porción, y los totales en
+      vivo;
+    - avisa del margen de error de ±40 % según los estudios;
+    - se guarda cada alimento con `fuente: 'ia'`.
+  - **Pruebas:** `pruebas/servidor/ia_test.mjs` (9 OK, con la respuesta de Claude simulada). UI probada en Chromium.
+- **Costo estimado:** ~USD 0,0004 por foto (unos USD 1,1 al mes con 30 usuarios × 3 fotos al día).
+- **Falta:** Luis debe crear la tabla `uso_ia` en la consola de D1 antes de publicar.
+
 ## 2026-10-30
 
 ### 21:56 · Fallo de press banca revisado (sin cambio de versión)

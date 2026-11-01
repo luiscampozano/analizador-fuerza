@@ -59,6 +59,7 @@ async function api(req, env, url) {
   if (ruta.startsWith('/api/alimentos') && m === 'GET') return leerAlimentos(env, ruta.slice(14), url); // publico: sin sesion
   const u = await sesion(req, env);
   if (ruta === '/api/alimentos' && m === 'POST') return crearAlimento(req, env, u);
+  if (ruta === '/api/ia/plato' && m === 'POST') return fotoPlato(req, env, u);
   if (/^\/api\/alimentos\/\d{6,14}\/reportar$/.test(ruta) && m === 'POST') return reportarAlimento(env, u, ruta.split('/')[3]);
   if (ruta.startsWith('/api/comunidad/')) return comunidad(req, env, u, ruta.slice(15), m, url);
   if (ruta.startsWith('/api/mod/')) return moderacion(req, env, u, ruta.slice(9), m);
@@ -306,6 +307,7 @@ async function borrarCuenta(env, u) {
     ...borrarComunidad(env, u.id),
     env.DB.prepare('DELETE FROM items WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM fallos WHERE usuario = ?1').bind(u.id),
+    env.DB.prepare('DELETE FROM uso_ia WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('UPDATE alimentos SET usuario = NULL WHERE usuario = ?1').bind(u.id), // el producto queda para todos, sin autor
     env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM credenciales WHERE usuario = ?1').bind(u.id),
@@ -629,6 +631,10 @@ async function moderacion(req, env, u, r, m) {
     await DB.prepare('UPDATE fallos SET estado = ?2 WHERE id = ?1').bind(r.slice(7), estado).run();
     return json({ ok: true });
   }
+  if (r === 'ia' && m === 'GET') { // uso de la foto del plato en los ultimos 7 dias
+    const res = await DB.prepare('SELECT dia, sum(n) AS fotos, count(*) AS usuarios FROM uso_ia GROUP BY dia ORDER BY dia DESC LIMIT 7').all();
+    return json({ dias: res.results || [], limite: LIMITE_IA_USUARIO, configurada: !!env.ANTHROPIC_API_KEY });
+  }
   if (r === 'reportes' && m === 'GET') {
     const res = await DB.prepare(`SELECT r.objeto_tipo AS tipo, r.objeto_id AS id, count(*) AS n, group_concat(r.motivo, ' · ') AS motivos, max(r.creado) AS ultimo,
         CASE r.objeto_tipo
@@ -742,3 +748,50 @@ async function reportarAlimento(env, u, codigo) {
   if (r.n >= OCULTAR_CON) await env.DB.prepare('UPDATE alimentos SET oculto = 1 WHERE codigo = ?1').bind(codigo).run();
   return json({ ok: true, oculto: r.n >= OCULTAR_CON });
 }
+
+// ================================================================== IA: FOTO DEL PLATO (Claude Haiku)
+// La app manda la foto ya reducida (~768 px, JPEG en base64); el servidor llama a la API de Claude con la clave
+// guardada como secreto ANTHROPIC_API_KEY (nunca va en el codigo ni llega al telefono). Limite por usuario y por dia,
+// y un tope general diario para que el gasto nunca se dispare. (v2.22.0)
+const LIMITE_IA_USUARIO = 10, LIMITE_IA_TOTAL = 600, MAX_FOTO = 400_000; // caracteres base64 (~300 KB)
+const MODELO_IA = 'claude-haiku-5-5';
+const PROMPT_PLATO = `Eres nutricionista. Mira la foto de una comida (puede ser comida ecuatoriana o latinoamericana) e identifica cada alimento visible.
+Para cada uno estima los gramos que hay en el plato (usa referencias: tamano del plato ~25 cm, cubiertos, manos) y sus calorias y macronutrientes PARA ESOS GRAMOS, usando valores de tablas de composicion de alimentos.
+Responde SOLO con JSON valido, sin texto antes ni despues, con este formato exacto:
+{"alimentos":[{"nombre":"arroz blanco cocido","gramos":150,"kcal":195,"p":4,"c":42,"g":0.4,"confianza":"alta"}],"nota":"una frase corta"}
+Reglas: nombres en espanol y cortos; separa los alimentos (no "plato completo"); incluye salsas o aceite visibles; confianza = alta, media o baja segun lo seguro que estes de la porcion; si la foto no es comida, devuelve {"alimentos":[],"nota":"No parece comida."}.`;
+async function fotoPlato(req, env, u) {
+  if (!env.ANTHROPIC_API_KEY) throw fallo('La foto del plato estará disponible muy pronto.', 503);
+  const b = await leerJSON(req);
+  const img = typeof b.imagen === 'string' ? b.imagen : '';
+  if (!img || img.length > MAX_FOTO || !/^[A-Za-z0-9+/=]+$/.test(img)) throw fallo('Foto no válida. Vuelve a tomarla.');
+  const dia = new Date().toISOString().slice(0, 10);
+  const yo = await env.DB.prepare('SELECT n FROM uso_ia WHERE usuario = ?1 AND dia = ?2').bind(u.id, dia).first();
+  if (yo && yo.n >= LIMITE_IA_USUARIO) throw fallo(`Ya usaste tus ${LIMITE_IA_USUARIO} fotos de hoy. Mañana tendrás más; mientras tanto puedes buscar o escanear los alimentos.`, 429);
+  const tot = await env.DB.prepare('SELECT coalesce(sum(n), 0) AS n FROM uso_ia WHERE dia = ?1').bind(dia).first();
+  if (tot && tot.n >= LIMITE_IA_TOTAL) throw fallo('La foto del plato llegó a su límite de hoy. Inténtalo mañana.', 429);
+  let r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: MODELO_IA, max_tokens: 900, system: PROMPT_PLATO, messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } },
+        { type: 'text', text: 'Analiza este plato y responde solo con el JSON.' },
+      ] }] }),
+    });
+  } catch (e) { throw fallo('No pude conectar con la IA. Inténtalo en un momento.', 502); }
+  if (!r.ok) { console.error('anthropic', r.status, (await r.text()).slice(0, 300)); throw fallo(r.status === 429 || r.status === 529 ? 'La IA está ocupada. Inténtalo en un momento.' : 'La IA no pudo analizar la foto. Inténtalo de nuevo.', 502); }
+  const datos = await r.json();
+  const texto = ((datos.content || []).find((c) => c.type === 'text') || {}).text || '';
+  let res;
+  try { res = JSON.parse(texto.slice(texto.indexOf('{'), texto.lastIndexOf('}') + 1)); } catch (e) { throw fallo('La IA respondió algo que no entendí. Toma otra foto.', 502); }
+  const num = (x, max) => { const v = +x; return Number.isFinite(v) && v >= 0 ? Math.min(max, Math.round(v * 10) / 10) : 0; };
+  const alimentos = (Array.isArray(res.alimentos) ? res.alimentos : []).slice(0, 12).map((a) => ({
+    nombre: texto_(a.nombre, 50) || 'Alimento', gramos: num(a.gramos, 2000), kcal: num(a.kcal, 5000), p: num(a.p, 500), c: num(a.c, 500), g: num(a.g, 500),
+    confianza: ['alta', 'media', 'baja'].includes(a.confianza) ? a.confianza : 'media',
+  })).filter((a) => a.gramos > 0);
+  await env.DB.prepare('INSERT INTO uso_ia (usuario, dia, n) VALUES (?1, ?2, 1) ON CONFLICT(usuario, dia) DO UPDATE SET n = n + 1').bind(u.id, dia).run();
+  return json({ alimentos, nota: texto_(res.nota, 200), quedan: LIMITE_IA_USUARIO - ((yo && yo.n) || 0) - 1 });
+}
+const texto_ = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, max) : '');

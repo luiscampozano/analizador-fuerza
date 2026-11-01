@@ -1217,3 +1217,13 @@ input.nu-leido { border-color: var(--accent-green) !important; box-shadow: 0 0 0
 input.nu-calculado { border-color: var(--accent-orange) !important; box-shadow: 0 0 0 1px var(--accent-orange) inset; }
 .nu-ocr { margin: 4px 0 0; font-size: .75rem; color: var(--text-muted); }
 .nu-ocr pre { white-space: pre-wrap; max-height: 160px; overflow: auto; background: var(--bg-input); border-radius: var(--radius-sm); padding: 6px; margin: 4px 0 0; font-size: .7rem; }
+/* v2.22.0: foto del plato con IA */
+.nu-plato-btn { width: 100%; margin: 0 0 8px; }
+.nu-plato-btn small { color: var(--text-muted); font-weight: 400; }
+.nu-plato { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.nu-plato-fila { display: flex; align-items: center; gap: 8px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 8px 10px; }
+.nu-plato-fila > span:first-of-type { flex: 1; min-width: 0; font-size: .9rem; }
+.nu-plato-fila small { color: var(--text-muted); font-size: .75rem; }
+.nu-plato-fila input[type=number] { width: 70px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 6px; text-align: center; font-weight: 700; }
+.nu-plato-fila input[type=checkbox] { flex: none; width: 18px; height: 18px; }
+.nu-plato-u { color: var(--text-muted); font-size: .8rem; }

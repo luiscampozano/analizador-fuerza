@@ -33,3 +33,6 @@ CREATE INDEX IF NOT EXISTS fallos_usuario ON fallos(usuario, creado);
 -- Datos por 100 g. Se ocultan solos con 3 reportes de personas distintas (tabla reportes, objeto_tipo 'alimento').
 CREATE TABLE IF NOT EXISTS alimentos (codigo TEXT PRIMARY KEY, nombre TEXT NOT NULL, marca TEXT, kcal REAL NOT NULL, p REAL, c REAL, g REAL, porcion REAL, usuario TEXT, creado INTEGER NOT NULL, actualizado INTEGER, usos INTEGER NOT NULL DEFAULT 0, oculto INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS alimentos_usuario ON alimentos(usuario, creado);
+-- Uso de la IA (foto del plato) por usuario y dia: limite diario y contador para Moderacion. (v2.22.0)
+CREATE TABLE IF NOT EXISTS uso_ia (usuario TEXT NOT NULL, dia TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (usuario, dia));
+CREATE INDEX IF NOT EXISTS uso_ia_dia ON uso_ia(dia);

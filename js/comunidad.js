@@ -436,7 +436,10 @@ async function pintarActividad() {
 async function moderar() {
   modal('<p class="hint co-cargando">Cargando…</p>');
   try {
-    const [r, f] = await Promise.all([nube.api('GET', '/api/mod/reportes'), nube.api('GET', '/api/mod/fallos').catch(() => ({ fallos: [] }))]);
+    const [r, f, ia] = await Promise.all([nube.api('GET', '/api/mod/reportes'), nube.api('GET', '/api/mod/fallos').catch(() => ({ fallos: [] })), nube.api('GET', '/api/mod/ia').catch(() => null)]);
+    // uso de la foto del plato (IA): fotos por dia de los ultimos 7 dias
+    const iaHtml = ia ? `<h4>📸 Foto del plato (IA)</h4><p class="hint">${ia.configurada ? `Activa · límite ${ia.limite} fotos por persona al día.` : '⚠️ Falta la clave ANTHROPIC_API_KEY en Cloudflare.'}
+      ${ia.dias.length ? ia.dias.map((d) => `${d.dia.slice(5)}: <b>${d.fotos}</b> fotos (${d.usuarios} persona${d.usuarios > 1 ? 's' : ''})`).join(' · ') : 'Sin uso todavía.'}</p>` : '';
     const nombre = { publicacion: 'Publicación', comentario: 'Comentario', usuario: 'Perfil' };
     const pend = f.fallos.filter((x) => x.estado === 'pendiente');
     const fallosHtml = `<h4>🐞 Fallos de conteo reportados${pend.length ? ` · ${pend.length} pendiente${pend.length > 1 ? 's' : ''}` : ''}</h4>${f.fallos.length
@@ -444,7 +447,7 @@ async function moderar() {
         <small class="hint"> · ${hace(x.creado)} · v${esc(x.version || '?')} · ${esc(x.estado)}${x.pose_bytes ? '' : ' · sin puntos'}</small>${x.comentario ? `<p class="co-texto">${esc(x.comentario)}</p>` : ''}
         <div class="co-perfil-botones">${x.pose_bytes ? `<button type="button" class="btn-sec" data-bajar="${esc(x.id)}">⬇️ Descargar para Claude</button>` : ''}${x.estado !== 'corregido' ? `<button type="button" class="btn-sec" data-corregido="${esc(x.id)}">✓ Corregido</button>` : ''}</div></div>`).join('')
       : '<p class="hint">Sin fallos reportados.</p>'}<p class="hint">Descarga el fallo y adjunta el archivo en el chat con Claude: trae solo los puntos del cuerpo (sin video) y lo que corrigió la persona.</p>`;
-    modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${fallosHtml}<h4>Reportes de la comunidad</h4>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
+    modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${iaHtml}${fallosHtml}<h4>Reportes de la comunidad</h4>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
         <b>${nombre[x.tipo]}${x.alias ? ' de @' + esc(x.alias) : ''}</b> · ${x.n} reporte${x.n > 1 ? 's' : ''}${x.oculto ? ' · <span class="pf-nube-error">oculto</span>' : ''}
         <p class="co-texto">${esc(x.contenido || '(ya no existe)')}</p><p class="hint">${esc(x.motivos)}</p>
         <div class="co-perfil-botones">${x.tipo !== 'usuario' ? `<button type="button" class="btn-sec" data-a="${x.oculto ? 'mostrar' : 'ocultar'}">${x.oculto ? 'Mostrar' : 'Ocultar'}</button>` : ''}

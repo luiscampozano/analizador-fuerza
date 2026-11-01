@@ -263,6 +263,7 @@ bloqueos, reportes, fallos.
 | v2.21.0 | Nutrición: leer la tabla nutricional de la etiqueta con la cámara (Tesseract.js en el teléfono, sin internet) y llenar el formulario del alimento nuevo. |
 | v2.21.1 | Etiquetas: errores típicos del OCR, macro faltante calculado con las calorías, segunda lectura si faltan datos y «Ver lo que leyó la cámara». |
 | v2.21.2 | Moderación: botón «Descargar para Claude» en cada fallo de conteo (archivo .json.gz con el formato del banco) y «Corregido». |
+| v2.22.0 | Nutrición: «📸 Foto del plato» con Claude Haiku 5.5 en el servidor (clave en el secreto ANTHROPIC_API_KEY), 10 fotos por persona al día, gramos editables y uso visible en Moderación. |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |
