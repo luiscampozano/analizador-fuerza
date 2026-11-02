@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.28.0
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.29.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -270,6 +270,7 @@ bloqueos, reportes, fallos.
 | v2.26.0 | Ejercicios de una pierna (búlgara, zancada fija, step-up): si el video tiene las dos piernas, `js/piernas.js` detecta el cambio y guarda una serie por pierna (muñecos 377/377). |
 | v2.27.0 | Editar un entrenamiento guardado: ejercicios, series, peso y reps en la pantalla del entreno; al «Guardar», nombre/foto/fecha/duración. |
 | v2.28.0 | Búlgara: se sigue la cadera respecto al pie del piso (ancla `piso`); con dos piernas y pausa, cada pierna se cuenta con su umbral (`cortePorPies`). Video real de Luis 5 → 16. |
+| v2.29.0 | Ejercicios unilaterales (brazo o pierna) con los dos lados en un video: se separan en 2 series (`cambioDeLado`); PDF con comparación entre lados. |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

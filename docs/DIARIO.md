@@ -8,6 +8,25 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-02
 
+### 15:08 · v2.29.0 — Dos lados en un video para todos los ejercicios unilaterales + PDF con comparación
+- **Pidió:** el informe de la búlgara salía con 8 reps (una pierna); quiere un PDF con las dos y aplicarlo a todos los
+  ejercicios unilaterales.
+- **Hecho:**
+  - **PDF de dos lados** (`crearPDF(..., { pareja })` en js/pdf.js): página 1 con la comparación (reps, mejor velocidad,
+    velocidad media, pérdida, fuerza y potencia pico, 1RM; diferencia en %) y una frase de qué lado fue más rápido
+    (> 10 % = lado débil); luego el detalle completo de cada lado. Se arma solo si la serie tiene pareja.
+  - **Ejercicios a un brazo o a una pierna** (`ej.unilateral`: remo con mancuerna, curl concentrado, prensa a una
+    pierna, extensión a una pierna...): `cambioDeLado` (js/fisica.js) mide cuánto se mueve cada mano/pie en ventanas
+    de 1 s; si un lado domina ≥ 3 s y después el otro, cuenta cada lado con su punto y en su parte del video
+    (`res.cambioLado`) y la app guarda 2 series («brazo derecho/izquierdo» o «pierna …»).
+  - Las series guardan `datos.lado` (texto); las de v2.26–2.28 con `datos.pierna` siguen funcionando.
+  - Pistas de los ejercicios: ya no dicen «analiza cada lado en un video aparte».
+  - Muñeco nuevo `remo_mancuerna@2brazos`: 92/105 bien contados y el cambio de lado exacto en todos.
+    Muñecos 3374/3570 (los anteriores sin cambios: 3282); banco real 42/61 sin cambios.
+- **Ojo:** en la búlgara de Luis la velocidad sale muy distinta entre piernas (posible error de medición); el PDF lo
+  marcará como lado débil hasta que se revise la escala con las piernas separadas.
+- **Pendientes:** que Luis pruebe el PDF y un remo a un brazo con los dos lados.
+
 ### 13:56 · v2.28.0 — Búlgara real con las dos piernas: 5 → 16 reps
 - **Pidió:** su búlgara de 16 reps (8 por pierna, en un video) salió con 5; mandó el reporte (fallo baba227e).
 - **Causa:** se seguían los hombros respecto al promedio de los tobillos. Luis se inclina mucho (agarrado del rack): los

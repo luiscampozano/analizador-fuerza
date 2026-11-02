@@ -21,7 +21,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO } from './actividad.js';
 
-const VERSION = '2.28.0';
+const VERSION = '2.29.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -284,11 +284,14 @@ async function analizarArchivo() {
     if (!res.reps.length) throw new Error('No se detectaron repeticiones. Revisa que elegiste el ejercicio correcto y que se vea todo el movimiento.');
     progreso(2, 1);
 
-    // v2.26.0: ejercicio de una pierna con las dos piernas en el mismo video -> una serie por pierna
-    const cambio = DE_UNA_PIERNA.test(ej.id) ? cambioDePierna(full, fps, res.reps) : null;
+    // v2.26.0: ejercicio de una pierna con las dos piernas en el mismo video -> una serie por pierna.
+    // v2.29.0: tambien los ejercicios a un brazo o a una pierna (remo con mancuerna, prensa a una pierna...): un lado y
+    // despues el otro en el mismo video (res.cambioLado lo detecta js/fisica.js)
+    const cp = !res.cambioLado && DE_UNA_PIERNA.test(ej.id) ? cambioDePierna(full, fps, res.reps) : null;
+    const cambio = res.cambioLado || (cp && { k: cp.k, lados: cp.lados.map((l) => 'pierna ' + l) });
     const partes = cambio
       ? [res.reps.slice(cambio.k), res.reps.slice(0, cambio.k)].map((otras, h) => {
-        const dh = { ...d, pierna: cambio.lados[h], otraPierna: otras.map((r) => +(r.tope / fps).toFixed(3)) };
+        const dh = { ...d, lado: cambio.lados[h], otraPierna: otras.map((r) => +(r.tope / fps).toFixed(3)) };
         return { dh, c: calcularSerie(frames, video.duration, ej, dh, { discoPts: seguidor ? seguidor.puntos : null }) };
       })
       : [{ dh: d, c: calc }];
@@ -308,12 +311,12 @@ async function analizarArchivo() {
     origen = 'video';
 
     let salida = null;
-    if ($('in-video').checked) { // un solo video con las reps de las dos piernas
+    if ($('in-video').checked) { // un solo video con las reps de los dos lados
       salida = await crearVideoSerie(video, archivo, ej, d, calc, { alAvanzar: (f) => progreso(3, f, 'Creando el video con telemetría…') });
       for (const x of infs) await almacen.guardarVideo(x.id, salida);
     }
     mostrarInforme(inf, { video: salida, nuevo: true });
-    if (infs.length === 2) aviso(`🦵 Detecté las dos piernas en el video: se guardaron como 2 series (${infs[0].datos.pierna} y ${infs[1].datos.pierna}). Arriba puedes cambiar de pierna.`, true);
+    if (infs.length === 2) aviso(`↔️ Detecté los dos lados en el video: se guardaron como 2 series (${infs[0].datos.lado} y ${infs[1].datos.lado}). Arriba puedes cambiar de lado; el PDF trae la comparación.`, true);
     if (serie.calidadBaja) aviso('⚠️ La IA no vio bien el movimiento en este video: revisa que el conteo de reps sea correcto (detalles en Interpretación).');
   } catch (e) {
     console.error(e);
@@ -476,7 +479,7 @@ $('in-rehacer').onchange = () => { const f = $('in-rehacer').files[0]; if (f && 
 // excluir: tiempos (s) del tope de las reps que el usuario dijo que no son reps · repsTotal: reps que dice que hizo
 function calcularSerie(frames, dur, e, d, { excluir = [], repsTotal = null, discoPts = null, idSerie = null } = {}) {
   const fps = 60, full = interpolar(frames, fps, dur);
-  if (d.otraPierna && d.otraPierna.length) excluir = [...excluir, ...d.otraPierna]; // video con las dos piernas: solo las reps de esta
+  if (d.otraPierna && d.otraPierna.length) excluir = [...excluir, ...d.otraPierna]; // video con los dos lados: solo las reps de este
   const res = analizar(full, fps, e, { masa: d.masa, alfa: d.alfa, relacion: d.relacion, altura: d.altura, inicio: d.ini || null, fin: d.fin || null, frames });
   if (excluir.length) {
     res.reps = res.reps.filter((r) => !excluir.some((t) => Math.abs(r.tope / fps - t) < 0.06));
@@ -491,11 +494,14 @@ function calcularSerie(frames, dur, e, d, { excluir = [], repsTotal = null, disc
   return { full, res, serie, pcv, tray, tec, fps };
 }
 const datosInforme = (d, calidad, origen, dur) => ({ carga: d.carga, masa: d.masa, pc: d.pc, alfa: d.alfa, peso: d.peso, relacion: d.relacion, calidad, origen,
-  altura: d.altura, ini: d.ini || null, fin: d.fin || null, dur, ...(d.pierna ? { pierna: d.pierna, otraPierna: d.otraPierna || [] } : {}) });
+  altura: d.altura, ini: d.ini || null, fin: d.fin || null, dur, ...(ladoDe(d) ? { lado: ladoDe(d), otraPierna: d.otraPierna || [] } : {}) });
+// lado de una serie partida en dos ('pierna izquierda', 'brazo derecho'...); las de v2.26-2.28 guardaban solo «pierna»
+const ladoDe = (d) => (d && (d.lado || (d.pierna ? 'pierna ' + d.pierna : ''))) || '';
+const otroLado = (l) => l.replace(/izquierd([ao])|derech([ao])/, (m, a, b) => (a ? 'derech' + a : 'izquierd' + b));
 function registroDe(e, d, res, serie, tray, tec, inf, origenSerie) {
   const r3 = (x, k = 3) => (Number.isFinite(x) ? +x.toFixed(k) : null);
   return {
-    ejercicio: e.id, nombre: e.nombre + (d.pierna ? ` · pierna ${d.pierna}` : ''), ...(d.pierna ? { pierna: d.pierna } : {}), equipo: e.equipo || '', carga: e.perfil === 'corporal' ? d.peso : d.carga, masa: d.masa, perfil: e.perfil, alfa: d.alfa,
+    ejercicio: e.id, nombre: e.nombre + (ladoDe(d) ? ` · ${ladoDe(d)}` : ''), ...(ladoDe(d) ? { lado: ladoDe(d) } : {}), equipo: e.equipo || '', carga: e.perfil === 'corporal' ? d.peso : d.carga, masa: d.masa, perfil: e.perfil, alfa: d.alfa,
     reps: serie.reps, repsValidas: serie.validas, vMejor: serie.vMejor, vUltima: serie.vUltima, perdida: serie.perdida, rir: serie.rir ?? null, rpe: serie.rpe,
     rm: serie.rm ?? null, rmLastre: serie.rmLastre ?? null, fPico: serie.fPico, pPico: serie.pPico,
     estatico: res.estatico, velocidades: res.reps.map((r) => +r.v_media.toFixed(3)), pesoCorporal: d.pc,
@@ -588,25 +594,24 @@ function textoTrayectoria(inf) {
     : t.vertical ? 'No se pudo medir el desvío en esta serie.' : inf.antiguo ? 'Esta serie no guardó la trayectoria.' : 'En este ejercicio el recorrido no es vertical: la trayectoria es solo informativa (no se mide desvío).';
 }
 
-// serie partida en dos piernas (v2.26.0): botones para ver la otra pierna y para corregir cual es cual
+// serie partida en dos lados (v2.26.0 piernas, v2.29.0 brazos): botones para ver el otro lado y corregir cual es cual
 function pintarPierna(inf, desde) {
   const caja = $('r-pierna'); if (!caja) return;
-  const p = inf.datos && inf.datos.pierna;
+  const p = ladoDe(inf.datos);
   if (!p || !inf.pareja) { caja.style.display = 'none'; return; }
-  const otra = p === 'izquierda' ? 'derecha' : 'izquierda';
+  const otra = otroLado(p);
   caja.style.display = '';
-  caja.innerHTML = `<span>🦵 Video con las dos piernas · estás viendo la <b>${p}</b></span>
-    <div class="r-pierna-bot"><button type="button" class="btn-sec" id="r-pierna-otra">Ver pierna ${otra} →</button><button type="button" class="btn-sec" id="r-pierna-cambiar" title="Si la app las confundió">↔ Están al revés</button></div>`;
+  caja.innerHTML = `<span>${/brazo/.test(p) ? '💪' : '🦵'} Video con los dos lados · estás viendo: <b>${p}</b></span>
+    <div class="r-pierna-bot"><button type="button" class="btn-sec" id="r-pierna-otra">Ver ${otra} →</button><button type="button" class="btn-sec" id="r-pierna-cambiar" title="Si la app los confundió">↔ Están al revés</button></div>`;
   $('r-pierna-otra').onclick = async () => {
-    const o = await almacen.leerInforme(inf.pareja); if (!o) return alert('La otra pierna ya no está guardada.');
+    const o = await almacen.leerInforme(inf.pareja); if (!o) return alert('El otro lado ya no está guardado.');
     mostrarInforme(o, { video: await almacen.leerVideo(o.id), desde });
   };
   $('r-pierna-cambiar').onclick = async () => {
     const o = await almacen.leerInforme(inf.pareja); if (!o) return;
     for (const x of [inf, o]) {
-      x.datos.pierna = x.datos.pierna === 'izquierda' ? 'derecha' : 'izquierda';
-      const r = hist.leer().find((y) => y.id === x.id);
-      if (r) hist.actualizar(x.id, { pierna: x.datos.pierna, nombre: `${x.ej.nombre} · pierna ${x.datos.pierna}` });
+      x.datos.lado = otroLado(ladoDe(x.datos)); delete x.datos.pierna;
+      hist.actualizar(x.id, { lado: x.datos.lado, nombre: `${x.ej.nombre} · ${x.datos.lado}` });
       await almacen.guardarInforme(x);
     }
     nube.sincronizar && nube.sincronizar();
@@ -618,7 +623,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   const { ej: e, s, datos: d } = inf, corporal = e.perfil === 'corporal';
   $('btn-nueva').textContent = nuevo ? '← Nueva serie' : '← Volver';
   $('r-guardado').textContent = nuevo ? '✓ Guardado en historial' : 'Serie del historial';
-  $('r-titulo').textContent = `${e.nombre}${inf.datos && inf.datos.pierna ? ` · pierna ${inf.datos.pierna}` : ''} · ${textoCarga(inf)} · ${new Date(inf.fecha || Date.now()).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}`;
+  $('r-titulo').textContent = `${e.nombre}${ladoDe(inf.datos) ? ` · ${ladoDe(inf.datos)}` : ''} · ${textoCarga(inf)} · ${new Date(inf.fecha || Date.now()).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}`;
   pintarPierna(inf, desde);
   if (s.rm) {
     if (corporal) {
@@ -829,8 +834,16 @@ $('btn-pdf').onclick = async () => {
   b.disabled = true; b.textContent = 'Generando PDF…';
   try {
     const { crearPDF } = await import('./pdf.js');
-    const { blob, nombre } = await crearPDF(informeActual, { video: videoActual, graficas: { barras: graficaBarras, trayectoria: graficaTrayectoria }, notas: notasInforme(informeActual),
-      textoTrayectoria: textoTrayectoria(informeActual), textoCarga: textoCarga(informeActual), version: VERSION });
+    // serie partida en dos lados: un solo PDF con los dos (primero el lado que se hizo primero) y su comparacion
+    let A = informeActual, pareja = null;
+    const o = A.pareja ? await almacen.leerInforme(A.pareja) : null;
+    if (o && o.reps && o.reps.length) {
+      const t0 = (x) => (x.reps[0] ? x.reps[0].tope : 0);
+      const B = t0(o) < t0(A) ? A : o; if (B === A) A = o;
+      pareja = { inf: B, notas: notasInforme(B), textoTrayectoria: textoTrayectoria(B), textoCarga: textoCarga(B) };
+    }
+    const { blob, nombre } = await crearPDF(A, { video: videoActual, pareja, graficas: { barras: graficaBarras, trayectoria: graficaTrayectoria }, notas: notasInforme(A),
+      textoTrayectoria: textoTrayectoria(A), textoCarga: textoCarga(A), version: VERSION });
     const f = new File([blob], nombre, { type: 'application/pdf' });
     if (navigator.canShare && navigator.canShare({ files: [f] })) {
       try { await navigator.share({ files: [f], title: nombre }); return; } catch (e) { if (e.name === 'AbortError') return; }

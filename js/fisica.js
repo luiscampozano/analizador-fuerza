@@ -658,5 +658,58 @@ function analizarUnilateral(full, fps, ej, cfg) {
   res.ladoActivo = new Array(res.n).fill(lado);
   res.puntosLado = [MP[lados[0]], MP[lados[1]]];
   res.lado = lado ? 'der' : 'izq';
+  // v2.29.0: un lado y despues el otro en el mismo video (remo con un brazo y luego con el otro): cada lado se cuenta
+  // con su mano (o pie) y en su parte del video; la app los guarda como dos series
+  const corte = cambioDeLado(full, fps, MP[lados[0]][0], MP[lados[1]][0], anclaPar);
+  if (corte) {
+    const tc = corte.t / fps, ini = cfg.inicio || null, fin = cfg.fin || null;
+    const rA = analizar(full, fps, { ...ej, unilateral: false, punto: lados[corte.primero] }, { ...cfg, mPx, inicio: ini, fin: fin != null ? Math.min(fin, tc) : tc });
+    const rB = analizar(full, fps, { ...ej, unilateral: false, punto: lados[1 - corte.primero] }, { ...cfg, mPx, inicio: Math.max(ini || 0, tc), fin });
+    if (rA.reps.length >= 2 && rB.reps.length >= 2) {
+      const unir = (x, y2) => x.slice(0, corte.t).concat(y2.slice(corte.t));
+      for (const k of ['s', 'v', 'a', 'fuerza', 'potencia', 'dirs', 'valido']) res[k] = unir(rA[k], rB[k]);
+      res.reps = [...rA.reps, ...rB.reps];
+      res.ladoActivo = res.ladoActivo.map((_, i) => (i < corte.t ? corte.primero : 1 - corte.primero));
+      res.visPunto = (rA.visPunto + rB.visPunto) / 2;
+      res.conteo = { usado: 'lados', principal: res.reps.length };
+      const nombre = (l) => (lados[0] === 'mano_i' ? (l ? 'brazo derecho' : 'brazo izquierdo') : (l ? 'pierna derecha' : 'pierna izquierda'));
+      res.cambioLado = { k: rA.reps.length, lados: [nombre(corte.primero), nombre(1 - corte.primero)], corte: tc };
+    }
+  }
   return res;
+}
+// Cuadro donde el movimiento pasa de un lado al otro (null si todo el video es del mismo lado). Se mide cuanto se mueve
+// cada mano (o pie) respecto al ancla, en ventanas de 1 s; cada lado debe dominar al menos 3 s de su parte del video.
+function cambioDeLado(full, fps, kI, kD, anclaPar) {
+  const n = full.length;
+  const vel = (k) => {
+    const xs = [], ys = [], vis = [];
+    for (const f of full) {
+      const p = f[k]; let ax = 0, ay = 0;
+      if (anclaPar) { const a0 = f[anclaPar[0]], a1 = f[anclaPar[1]]; ax = (a0[0] + a1[0]) / 2; ay = (a0[1] + a1[1]) / 2; }
+      xs.push(Number.isFinite(p[0] - ax) ? p[0] - ax : 0); ys.push(Number.isFinite(p[1] - ay) ? p[1] - ay : 0); vis.push(p[2] || 0);
+    }
+    const sx = savgol(xs, fps * 0.4, 2), sy = savgol(ys, fps * 0.4, 2);
+    return sx.map((_, i) => (i && vis[i] > 0.3 ? Math.hypot(sx[i] - sx[i - 1], sy[i] - sy[i - 1]) : 0));
+  };
+  const vI = vel(kI), vD = vel(kD), paso = Math.round(fps / 4), w = Math.round(fps / 2);
+  const tam = mediana(full.map((f) => Math.hypot(f[11][0] - f[23][0], f[11][1] - f[23][1])).filter(Number.isFinite)) || 1;
+  const muestras = []; // [indice, parte del derecho] solo donde algo se mueve
+  for (let i = w; i < n - w; i += paso) {
+    let a = 0, b = 0; for (let j = i - w; j < i + w; j++) { a += vI[j]; b += vD[j]; }
+    if ((a + b) / (2 * w) > 0.004 * tam) muestras.push([i, b / (a + b)]);
+  }
+  const m = muestras.length, min = 8; // >= 2 s de movimiento por lado
+  if (m < 2 * min) return null;
+  const pre = [0]; for (const [, x] of muestras) pre.push(pre[pre.length - 1] + x);
+  let mejor = null;
+  for (let k = min; k <= m - min; k++) {
+    if (muestras[k][0] - muestras[0][0] < 3 * fps || muestras[m - 1][0] - muestras[k][0] < 3 * fps) continue;
+    const A = pre[k] / k, B = (pre[m] - pre[k]) / (m - k), d = Math.abs(A - B);
+    if (!mejor || d > mejor.d) mejor = { k, A, B, d };
+  }
+  if (!mejor || !((mejor.A <= 0.3 && mejor.B >= 0.7) || (mejor.A >= 0.7 && mejor.B <= 0.3))) return null;
+  // el corte, a mitad de camino entre el ultimo movimiento del primer lado y el primero del segundo
+  const t = Math.round((muestras[mejor.k - 1][0] + muestras[mejor.k][0]) / 2);
+  return { t, primero: mejor.A > 0.5 ? 1 : 0 };
 }

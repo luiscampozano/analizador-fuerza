@@ -210,7 +210,15 @@ Object.assign(EJ, {
       const mano = mix(add(hom, [0.03, -(BRAZO + ANTEB) + 0.02, 0.02]), add(hom, [-0.2, -0.3, 0.05]), f); return [ik(hom, mano, BRAZO, ANTEB, [-1, 0.6, 0.2]), mano]; } });
   },
 });
-Object.assign(CENTROS_EXTRA, { prensa_45: [0.2, 0.7, 0], curl_femoral_sentado: [0.2, 0.6, 0], remo_polea: [0.2, 0.6, 0], abdominales: [0.1, 0.3, 0],
+// remo a un brazo: 3 reps con el brazo derecho y 3 con el izquierdo en el mismo video (v2.29.0)
+EJ['remo_mancuerna@2brazos'] = (f, e = {}) => {
+  const izq = (e.hechas ?? 0) >= 3 && !((e.k ?? 0) < 3 && e.u > 0), rema = izq ? -1 : 1;
+  const { pelvis, piernas } = deFrente(22, -12, 0.2);
+  return armar({ pelvis, tronco: 72, piernas, brazos: (lado, hom) => {
+    if (lado !== rema) { const mano = add(hom, [0.15, -0.5, 0]); return [mix(hom, mano, 0.5), mano]; }
+    const mano = mix(add(hom, [0.03, -(BRAZO + ANTEB) + 0.02, 0.02 * lado]), add(hom, [-0.2, -0.3, 0.05 * lado]), f); return [ik(hom, mano, BRAZO, ANTEB, [-1, 0.6, 0.2 * lado]), mano]; } });
+};
+Object.assign(CENTROS_EXTRA, { 'remo_mancuerna@2brazos': [0, 0.7, 0], prensa_45: [0.2, 0.7, 0], curl_femoral_sentado: [0.2, 0.6, 0], remo_polea: [0.2, 0.6, 0], abdominales: [0.1, 0.3, 0],
   elevacion_piernas_colgado: [0, 1.4, 0], fondos: [0, 1.2, 0], remo_mancuerna: [0, 0.7, 0], bulgara_mancuernas: [-0.1, 0.8, 0] });
 
 // ---------------------------------------------------------------- variantes con pasos (zancadas reales) y cambio de pierna
@@ -344,8 +352,8 @@ for (const id of Object.keys(EJ)) {
       const res = analizar(full, fps, ej, { masa, alfa: ej.perfil === 'riel' ? 45 : 90, relacion: 1, altura: H, frames, pesoCorporal: 70 });
       n = res.reps.length;
       // v2.26.0: cambio de pierna en el mismo video (solo se evalua cuando el conteo total salio bien)
-      if (DE_UNA_PIERNA.test(id.split('@')[0]) && n === meta) {
-        const c = cambioDePierna(full, fps, res.reps), quiere = id.endsWith('@2piernas') && meta === 6 ? 3 : null;
+      if ((DE_UNA_PIERNA.test(id.split('@')[0]) || ej.unilateral) && n === meta) {
+        const c = ej.unilateral ? res.cambioLado : cambioDePierna(full, fps, res.reps), quiere = /@2(piernas|brazos)$/.test(id) && meta === 6 ? 3 : null;
         piernasT++; if ((c ? c.k : null) === quiere) piernasOk++; else piernasMal.push(`${id} | ${esc} | ${nc} | ${na} | ${nm}: ${c ? 'cambio en ' + c.k : 'sin cambio'} (real ${quiere ?? 'sin cambio'})`);
       }
       if (process.env.DET) console.log(`${id} | ${esc} | ${nc} | ${nm} -> ${n}/${meta}  conteo=${JSON.stringify(res.conteo)} t=[${res.reps.map((r) => (r.tope / fps).toFixed(1)).join(' ')}]`);

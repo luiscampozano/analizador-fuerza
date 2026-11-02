@@ -31,8 +31,8 @@ const EQ = {
 const SENT = { punto: 'hombros', ancla: 'tobillos', sentido: 'arriba' }; // el cuerpo sube y baja
 // v2.28.0: en la búlgara se sigue la CADERA respecto al pie apoyado en el piso (el torso se inclina mucho y los hombros
 // casi no bajan; el pie de atras va sobre el banco y se mueve al cambiar de pierna)
-const UNI_P = 'Graba de lado, desde el lado de la pierna que trabaja. Analiza cada pierna en un video aparte.';
-const UNI_B = 'Analiza cada brazo en un video aparte; la app sigue la mano que se mueve. Peso = el de un solo lado.';
+const UNI_P = 'Graba de lado, desde el lado de la pierna que trabaja. Puedes hacer las dos piernas seguidas en el mismo video: la app las separa en dos series.';
+const UNI_B = 'La app sigue la mano que se mueve. Puedes hacer los dos brazos seguidos en el mismo video (uno y después el otro): los separa en dos series. Peso = el de un solo lado.';
 const MANOS = (sentido = 'arriba', ancla = 'cadera') => ({ punto: 'manos', ancla, sentido });
 
 // E(id, grupo, equipo, icono, nombre, corto, config, alias en ingles)
@@ -57,7 +57,7 @@ export const EJERCICIOS = [
   E('prensa_horizontal_unilateral', 'Piernas', 'maquina', '🦵', 'Prensa horizontal a una pierna', 'Prensa horiz. 1 pierna', { punto: 'pies', ancla: 'cadera', sentido: 'lejos_ancla', mvt: 0.25, unilateral: true, hint: UNI_P }, 'single leg seated leg press'),
   E('belt_squat', 'Piernas', 'palanca', '🏋️', 'Belt squat', 'Belt squat', { ...SENT, punto: 'cadera', ancla: 'piso', mvt: 0.30 }, 'belt squat'),
   E('zancada', 'Piernas', 'mancuernas', '🚶', 'Zancada / búlgara', 'Zancada', { ...SENT, mvt: 0.30, hint: 'Pon el peso total de las mancuernas o de la barra con discos.' }, 'lunge bulgarian split squat'),
-  E('bulgara_mancuernas', 'Piernas', 'mancuernas', '🦿', 'Sentadilla búlgara con mancuernas', 'Búlgara', { ...SENT, punto: 'cadera', ancla: 'piso', mvt: 0.30, hint: 'Graba de lado. Peso = suma de las dos mancuernas. Analiza cada pierna en un video aparte.' }, 'bulgarian split squat dumbbell'),
+  E('bulgara_mancuernas', 'Piernas', 'mancuernas', '🦿', 'Sentadilla búlgara con mancuernas', 'Búlgara', { ...SENT, punto: 'cadera', ancla: 'piso', mvt: 0.30, hint: 'Graba de lado. Peso = suma de las dos mancuernas. Puedes hacer las dos piernas seguidas en el mismo video: la app las separa.' }, 'bulgarian split squat dumbbell'),
   E('bulgara_barra', 'Piernas', 'barra', '🦿', 'Sentadilla búlgara con barra', 'Búlgara barra', { ...SENT, punto: 'cadera', ancla: 'piso', mvt: 0.30 }, 'bulgarian split squat barbell'),
   E('zancada_barra', 'Piernas', 'barra', '🚶', 'Zancada con barra', 'Zancada barra', { ...SENT, mvt: 0.30 }, 'barbell lunge'),
   E('zancada_atras', 'Piernas', 'mancuernas', '🔙', 'Zancada hacia atrás', 'Zancada atrás', { ...SENT, mvt: 0.30 }, 'reverse lunge'),
@@ -168,7 +168,7 @@ export const EJERCICIOS = [
   E('remo_t', 'Espalda', 'barra', '🅃', 'Remo en T', 'Remo en T', { ...MANOS('arriba', 'tobillos'), mvt: 0.45, carro: 0, aprox: true,
     hint: 'Peso = discos cargados. La barra apoyada en un extremo hace la carga aproximada.' }, 't bar row landmine row'),
   E('remo_mancuerna', 'Espalda', 'mancuerna', '↗️', 'Remo con mancuerna (un brazo)', 'Remo mancuerna', { ...MANOS('arriba', 'cadera'), mvt: 0.45, unilateral: true,
-    hint: 'Peso = la mancuerna. Analiza cada brazo en un video aparte.' }, 'one arm dumbbell row'),
+    hint: 'Peso = la mancuerna. Puedes hacer los dos brazos seguidos en el mismo video: la app los separa en dos series.' }, 'one arm dumbbell row'),
   E('remo_mancuernas_pecho', 'Espalda', 'mancuernas', '↗️', 'Remo con pecho apoyado', 'Remo pecho apoyado', { ...MANOS('arriba', 'cadera'), mvt: 0.45 }, 'chest supported row incline dumbbell row'),
   E('remo_riel', 'Espalda', 'riel', '🚣', 'Remo en máquina de riel', 'Remo en riel', { ...MANOS('arriba', 'cadera'), mvt: 0.40 }, 'machine row lever row'),
   E('remo_maquina', 'Espalda', 'maquina', '🚣', 'Remo sentado en máquina', 'Remo máquina', { ...MANOS('hacia_ancla', 'cadera'), mvt: 0.40,
@@ -222,7 +222,7 @@ export const EJERCICIOS = [
   E('curl_predicador', 'Brazos', 'ez', '🙏', 'Curl predicador (Scott)', 'Curl predicador', { ...MANOS('arriba', 'hombros'), mvt: 0.25 }, 'preacher curl scott'),
   E('curl_predicador_unilateral', 'Brazos', 'mancuerna', '💪', 'Curl predicador a un brazo', 'Predicador 1 brazo', { ...MANOS('arriba', 'hombros'), mvt: 0.25, unilateral: true, hint: UNI_B }, 'single arm preacher curl dumbbell'),
   E('curl_concentrado', 'Brazos', 'mancuerna', '🎯', 'Curl concentrado', 'Curl concentrado', { ...MANOS('arriba', 'hombros'), mvt: 0.25, unilateral: true,
-    hint: 'Peso = la mancuerna. Analiza cada brazo en un video aparte.' }, 'concentration curl'),
+    hint: 'Peso = la mancuerna. Puedes hacer los dos brazos seguidos en el mismo video: la app los separa en dos series.' }, 'concentration curl'),
   E('curl_inclinado', 'Brazos', 'mancuernas', '📐', 'Curl inclinado con mancuernas', 'Curl inclinado', { ...MANOS('arriba', 'hombros'), mvt: 0.25 }, 'incline dumbbell curl'),
   E('curl_polea', 'Brazos', 'polea', '💪', 'Curl en polea baja', 'Curl polea', { ...MANOS('arriba', 'hombros'), mvt: 0.25 }, 'cable curl bicep curl cable'),
   E('curl_polea_unilateral', 'Brazos', 'polea', '💪', 'Curl en polea a una mano', 'Curl polea 1 mano', { ...MANOS('arriba', 'hombros'), mvt: 0.25, unilateral: true, hint: UNI_B }, 'single arm cable curl'),

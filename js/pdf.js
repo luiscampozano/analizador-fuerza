@@ -46,27 +46,83 @@ function grafica(dibujar, ancho, alto) {
   return c.toDataURL('image/png');
 }
 
-export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, textoCarga, version }) {
+// pareja (v2.29.0): la otra mitad de un video con los dos lados (búlgara, remo a un brazo...): { inf, notas,
+// textoTrayectoria, textoCarga }. El PDF sale con una pagina de comparacion entre lados y el detalle de cada lado.
+const ladoDe = (inf) => (inf.datos && (inf.datos.lado || (inf.datos.pierna ? 'pierna ' + inf.datos.pierna : ''))) || '';
+export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, textoCarga, version, pareja = null }) {
   const jsPDF = await cargarLibreria();
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const W = 210, M = 14, ancho = W - 2 * M;
-  const { ej: e, s, datos: d } = inf, corporal = e.perfil === 'corporal';
   const fecha = new Date(inf.fecha || Date.now());
   let y = 0;
-
-  // ---- encabezado
+  const seccion = (titulo, yy, anchoS = ancho) => {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text(titulo.toUpperCase(), M, yy);
+    doc.setDrawColor(...C.linea); doc.line(M, yy + 1.6, M + anchoS, yy + 1.6);
+    return yy + 6.5;
+  };
+  const tabla = (titulo, cabeza, cuerpo, extra = {}) => {
+    if (y > 245) { doc.addPage(); y = 18; }
+    y = seccion(titulo, y);
+    doc.autoTable({ startY: y, head: [cabeza.map(limpio)], body: cuerpo.map((f) => f.map(limpio)), margin: { left: M, right: M },
+      styles: { font: 'helvetica', fontSize: 8.3, cellPadding: 1.6, textColor: C.texto, lineColor: C.linea, lineWidth: 0.1 },
+      headStyles: { fillColor: C.oscuro, textColor: 255, fontStyle: 'bold' }, alternateRowStyles: { fillColor: [248, 249, 251] }, ...extra });
+    y = doc.lastAutoTable.finalY + 6;
+  };
+  const encabezado = (sub) => {
   doc.setFillColor(...C.oscuro); doc.rect(0, 0, W, 28, 'F');
   doc.setFillColor(...C.verdeClaro); doc.rect(0, 28, W, 1.2, 'F');
   doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.text('FuerzaPro', M, 13);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(190, 196, 206);
-  doc.text('Informe de serie  ·  Ing. Luis Campozano, MBA', M, 20);
+  doc.text(limpio(`${sub}  ·  Ing. Luis Campozano, MBA`), M, 20);
   doc.setTextColor(255, 255, 255); doc.setFontSize(9.5);
   doc.text(limpio(fecha.toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })), W - M, 13, { align: 'right' });
   doc.text(fecha.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' }), W - M, 20, { align: 'right' });
+  };
+
+  // ---- comparacion entre lados (video con los dos lados)
+  if (pareja) {
+    const A = inf, B = pareja.inf, la = ladoDe(A) || 'lado 1', lb = ladoDe(B) || 'lado 2';
+    encabezado('Informe de serie a los dos lados');
+    y = 39;
+    doc.setTextColor(...C.texto); doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text(limpio(A.ej.nombre), M, y);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.gris);
+    doc.text(limpio(`${textoCarga}  ·  ${A.reps.length + B.reps.length} reps en el video (${A.reps.length} ${la} + ${B.reps.length} ${lb})`), M, y + 6);
+    y += 14;
+    const num = (x) => (Number.isFinite(x) ? x : null);
+    const media = (inf) => (inf.stats && inf.stats.vars.v ? inf.stats.vars.v.media : null);
+    const filas = [
+      ['Reps', A.reps.length, B.reps.length, 0],
+      ['Mejor velocidad (m/s)', num(A.s.vMejor), num(B.s.vMejor), 2],
+      ['Velocidad media (m/s)', media(A), media(B), 2],
+      ['Pérdida de velocidad (%)', num(A.s.perdida), num(B.s.perdida), 0],
+      ['Fuerza pico (kg)', num(A.s.fPico), num(B.s.fPico), 0],
+      ['Potencia pico (W)', num(A.s.pPico), num(B.s.pPico), 0],
+      ['1RM estimado (kg)', num(A.s.rm), num(B.s.rm), 1],
+    ];
+    const dif = (a, b) => (a > 0 && b > 0 ? (b - a) / Math.max(a, b) * 100 : null); // + = el segundo lado es mayor
+    const art = (l, may = false) => `${/^pierna/.test(l) ? (may ? 'La' : 'la') : /^brazo/.test(l) ? (may ? 'El' : 'el') : (may ? 'El lado' : 'el lado')} ${l}`;
+    tabla('Comparación entre lados', ['', la, lb, 'Diferencia'], filas.map(([n, a, b, dd]) => {
+      const df = n.startsWith('Pérdida') ? null : dif(a, b);
+      return [n, a == null ? '--' : fmt(a, dd), b == null ? '--' : fmt(b, dd), df == null ? '--' : `${df > 0 ? '+' : ''}${fmt(df)} %`];
+    }), { columnStyles: { 0: { cellWidth: 62 } } });
+    const dv = dif(media(A), media(B)) ?? dif(A.s.vMejor, B.s.vMejor);
+    const frase = dv == null ? 'No hay datos suficientes para comparar la velocidad de los dos lados.'
+      : Math.abs(dv) < 10 ? `Los dos lados están parejos: la velocidad con la misma carga difiere ${fmt(Math.abs(dv))} %.`
+        : `${art(dv > 0 ? lb : la, true)} fue ${fmt(Math.abs(dv))} % más rápid${/^pierna/.test(la) ? 'a' : 'o'} con la misma carga: ${art(dv > 0 ? la : lb)} podría estar más débil. Una diferencia mayor al 10 % suele valer la pena trabajarla (empieza la serie con el lado débil). Revisa también que la cámara viera bien los dos lados.`;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.texto);
+    const pf = doc.splitTextToSize(limpio(frase), ancho); doc.text(pf, M, y); y += pf.length * 4.2 + 2;
+    doc.setFontSize(8); doc.setTextColor(...C.gris);
+    doc.text(limpio('En las páginas siguientes está el detalle de cada lado.'), M, y);
+  }
+
+  async function serie(inf, notas, textoTrayectoria, textoCarga) {
+  const { ej: e, s, datos: d } = inf, corporal = e.perfil === 'corporal';
+  if (pareja) doc.addPage();
+  encabezado(pareja ? `Informe de serie · ${ladoDe(inf)}` : 'Informe de serie');
 
   // ---- ejercicio
   y = 39;
-  doc.setTextColor(...C.texto); doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text(limpio(e.nombre), M, y);
+  doc.setTextColor(...C.texto); doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text(limpio(e.nombre + (ladoDe(inf) ? ' · ' + ladoDe(inf) : '')), M, y);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.gris);
   const det = [limpio(textoCarga), e.equipo, e.grupo, d.origen === 'vivo' ? 'grabado en modo en vivo' : null,
     corporal && d.pc ? `peso corporal ${fmt(d.pc, 1)} kg` : null, e.perfil === 'riel' ? `riel a ${fmt(d.alfa)}°` : null].filter(Boolean).join('  ·  ');
@@ -110,11 +166,6 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   const yImgFin = img ? y + anchoImg * img.proporcion + 8 : yIzq;
 
   // ---- interpretacion (columna izquierda mientras haya imagen)
-  const seccion = (titulo, yy, anchoS = ancho) => {
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text(titulo.toUpperCase(), M, yy);
-    doc.setDrawColor(...C.linea); doc.line(M, yy + 1.6, M + anchoS, yy + 1.6);
-    return yy + 6.5;
-  };
   const vinetas = (lineas, yy, anchoT) => {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.texto);
     for (const l of lineas) {
@@ -160,14 +211,6 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   const tt = doc.splitTextToSize(limpio(textoTrayectoria), ancho); doc.text(tt, M, y); y += tt.length * 4 + 3;
 
   // ---- tablas
-  const tabla = (titulo, cabeza, cuerpo, extra = {}) => {
-    if (y > 245) { doc.addPage(); y = 18; }
-    y = seccion(titulo, y);
-    doc.autoTable({ startY: y, head: [cabeza.map(limpio)], body: cuerpo.map((f) => f.map(limpio)), margin: { left: M, right: M },
-      styles: { font: 'helvetica', fontSize: 8.3, cellPadding: 1.6, textColor: C.texto, lineColor: C.linea, lineWidth: 0.1 },
-      headStyles: { fillColor: C.oscuro, textColor: 255, fontStyle: 'bold' }, alternateRowStyles: { fillColor: [248, 249, 251] }, ...extra });
-    y = doc.lastAutoTable.finalY + 6;
-  };
   const st = inf.stats;
   if (st) {
     const fila = (n, x, dd, u) => (x ? [n, `${fmt(x.media, dd)} ${u}`, `+/-${fmt(x.de, dd)}`, `${fmt(x.cv, 1)} %`, `${fmt(x.min, dd)} - ${fmt(x.max, dd)}`] : null);
@@ -202,7 +245,12 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
     }
   }
 
+  }
+  await serie(inf, notas, textoTrayectoria, textoCarga);
+  if (pareja) await serie(pareja.inf, pareja.notas, pareja.textoTrayectoria, pareja.textoCarga);
+
   // ---- metodo y pie de pagina
+  const e = inf.ej;
   if (y > 250) { doc.addPage(); y = 18; }
   y = seccion('Cómo se calculó', y);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gris);
@@ -220,7 +268,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
     doc.text(limpio(`FuerzaPro ${version ? 'v' + version : ''} · Ing. Luis Campozano, MBA · fuerzapro.pages.dev`), M, 291.5);
     doc.text(`Página ${i} de ${paginas}`, W - M, 291.5, { align: 'right' });
   }
-  const nombre = `informe_${e.id}_${fecha.toISOString().slice(0, 16).replace(/[-:T]/g, '')}.pdf`;
+  const nombre = `informe_${e.id}${pareja ? '_2lados' : ''}_${fecha.toISOString().slice(0, 16).replace(/[-:T]/g, '')}.pdf`;
   return { blob: doc.output('blob'), nombre };
 }
 
