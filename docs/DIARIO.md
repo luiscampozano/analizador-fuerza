@@ -6,6 +6,28 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-01
+
+### 22:56 · v2.23.0 — Cardio (calorías, récords, natación en metros) y 3 funciones más con IA
+- **Pidió:** seguir con 1 (mejoras de cardio) y 2 (más usos de la IA), y saber el costo de guardar imágenes en la comunidad.
+- **Hecho (cardio):**
+  - Calorías estimadas por ejercicio de cardio (tabla MET del ACSM; correr/caminar según el ritmo, bici según la
+    velocidad) con el peso corporal más reciente; se ven al registrar y en el detalle del entrenamiento.
+  - Récords de cardio: distancia más larga, más tiempo y mejor ritmo/velocidad.
+  - Natación se registra en metros y el ritmo en min/100 m.
+- **Hecho (IA, Claude Haiku 5.5 en el servidor, cada una con su propio límite diario por persona):**
+  - «✍️ Escribir lo que comí» (`POST /api/ia/texto`, 20 al día): lista editable igual que la foto del plato.
+  - «🤖 Leerla con IA» en el formulario de producto cuando la lectura del teléfono queda incompleta
+    (`POST /api/ia/etiqueta`, 10 al día; foto de 1280 px).
+  - «🤖 Entrenador IA» en Perfil (`POST /api/ia/entrenador`, 3 al día): la app arma un resumen de las últimas 4 semanas
+    (entrenos, mejores series, velocidad con video, cardio, nutrición de 7 días, peso), sin nombre ni correo; el último
+    análisis queda guardado en el teléfono (`af_pf_coach`).
+  - Sin cambios en la base de datos: `uso_ia` guarda cada función con un sufijo en el día (`:t`, `:e`, `:c`); el tope
+    general de 600 al día cuenta todas. Moderación muestra el uso por función.
+  - Pruebas: `ia_test` pasa de 9 a 15.
+- **Costo de imágenes en la comunidad (solo respuesta, nada hecho):** casi cero con Cloudflare R2 (10 GB gratis).
+- **Pendientes:** que Luis pruebe las 3 funciones de IA y el cardio en el celular.
+
 ## 2026-10-31
 
 ### 23:21 · v2.22.0 — Nutrición: foto del plato con IA (Claude Haiku 5.5)

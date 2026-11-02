@@ -28,4 +28,15 @@ respuesta=()=>new Response('{"error":"overloaded"}',{status:529});
 respuesta=claude('{"alimentos":[],"nota":"x"}');
 for(let i=0;i<9;i++) await call(A,'POST','ia/plato',{imagen:foto});
 [s,r]=await call(A,'POST','ia/plato',{imagen:foto}); ok(s===429&&/10 fotos/.test(r.error),'límite de 10 fotos por día');
+// ---- v2.23.0: comida escrita, etiqueta y entrenador (cada una con su propio límite)
+respuesta=claude('{"alimentos":[{"nombre":"Bolón de verde","gramos":200,"kcal":420,"p":9,"c":55,"g":18,"confianza":"media"}],"nota":"ok"}');
+[s,r]=await call(A,'POST','ia/texto',{texto:'un bolón con café'}); ok(s===200&&r.alimentos[0].kcal===420&&r.quedan===19&&ultimo.body.messages[0].content[0].text==='un bolón con café','comida escrita: usa su propio cupo (20) aunque las fotos se acabaron');
+[s,r]=await call(A,'POST','ia/texto',{texto:'a'}); ok(s===400,'texto vacío rechazado');
+respuesta=claude('{"porcion":"30","base":"100g","kcal":380,"p":12,"c":75,"g":"1,5","nombre":"Fideo","marca":"<x>"}');
+[s,r]=await call(A,'POST','ia/etiqueta',{imagen:foto}); ok(s===200&&r.por100&&r.kcal===380&&r.porcion===30&&r.g===1.5&&r.marca==='x'&&r.quedan===9,'etiqueta con IA: números limpios y por 100 g');
+respuesta=claude('🏋️ Subiste el volumen 10%.');
+[s,r]=await call(A,'POST','ia/entrenador',{datos:{semanas:[{vol:1000}]}}); ok(s===200&&/volumen/.test(r.texto)&&r.quedan===2&&/semanas/.test(ultimo.body.messages[0].content[0].text),'entrenador: manda los datos y devuelve el texto');
+await call(A,'POST','ia/entrenador',{datos:{}}); await call(A,'POST','ia/entrenador',{datos:{}});
+[s,r]=await call(A,'POST','ia/entrenador',{datos:{}}); ok(s===429&&/3 análisis/.test(r.error),'entrenador: 3 por día');
+[s,r]=await call(A,'POST','ia/entrenador',{datos:{x:'a'.repeat(13000)}}); ok(s===400,'entrenador: datos demasiado grandes');
 [s,r]=await call(A,'DELETE','cuenta'); ok(s===200&&db.prepare('select count(*) n from uso_ia').get().n===0,'borrar la cuenta borra su uso');

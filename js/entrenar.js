@@ -48,7 +48,35 @@ function velTxt(e, km, min) {
   if (d.vel === '100') return `${mmss(min / (km * 10))} /100 m`;
   return `${mmss(min / km)} /km`;
 }
-const cardioTxt = (e, s) => [s.km > 0 ? `${fmt(s.km, s.km % 1 ? 2 : 0)} km` : '', s.min > 0 ? tiempoTxt(s.min) : ''].filter(Boolean).join(' · ');
+// natacion: la distancia se escribe en metros (se guarda en km como el resto)
+const enMetros = (e) => !!(defEj(e) && defEj(e).vel === '100');
+const distTxt = (e, km) => (enMetros(e) ? `${fmt(Math.round(km * 1000))} m` : `${fmt(km, km % 1 ? 2 : 0)} km`);
+const cardioTxt = (e, s) => [s.km > 0 ? distTxt(e, s.km) : '', s.min > 0 ? tiempoTxt(s.min) : ''].filter(Boolean).join(' · ');
+// Calorias estimadas del cardio (v2.23.0): MET (Compendio de Actividades Fisicas) x peso x horas. Al correr y caminar el
+// MET sale de la velocidad (ecuaciones del ACSM); en bici, del rango de velocidad. Es una estimacion (±20-30 %).
+const MET = { caminata_inclinada: 6, senderismo: 6, spinning: 8.5, bicicleta_aire: 9, eliptica: 5, remo_ergometro: 7, ski_erg: 7, natacion: 7,
+  patinaje: 7, kayak: 5, escaladora: 9, saltar_cuerda: 11, hiit: 8, cuerdas_batalla: 8, burpees: 8, jumping_jacks: 8, escaladores: 8,
+  boxeo: 5.5, baile: 6.5, futbol: 7, basquet: 6.5, tenis: 7, cardio_otro: 6, correr: 9, cinta: 9, intervalos_carrera: 10, caminar: 3.5,
+  bicicleta: 7, bicicleta_estatica: 6.5 };
+function pesoCorporal() {
+  try { const log = JSON.parse(localStorage.getItem('af_peso_log') || '[]'); if (log.length) return log[log.length - 1].kg; } catch (e) { /* nada */ }
+  try { const n = JSON.parse(localStorage.getItem('af_nutri_perfil') || '{}'); if (n.peso > 0) return n.peso; } catch (e) { /* nada */ }
+  return parseFloat(localStorage.getItem('af_pc')) || 70;
+}
+function metDe(e, s) {
+  const d = defEj(e) || {}, id = e.ej; let m = MET[id] || 6;
+  if (s.km > 0 && s.min > 0) {
+    const mmin = s.km * 1000 / s.min, kmh = s.km / (s.min / 60); // metros por minuto y km/h
+    if (id === 'correr' || id === 'cinta' || id === 'intervalos_carrera') m = Math.max(6, (0.2 * mmin + 3.5) / 3.5);
+    else if (id === 'caminar' || id === 'senderismo') m = Math.max(2.5, (0.1 * mmin + 3.5) / 3.5);
+    else if (d.vel === 'kmh' && /bici|spinning/.test(id)) m = kmh < 16 ? 4 : kmh < 19 ? 6.8 : kmh < 22 ? 8 : kmh < 26 ? 10 : 12;
+  }
+  return m;
+}
+const kcalSerie = (e, s) => (s.hecha && s.tipo !== 'calentamiento' && s.min > 0 ? metDe(e, s) * pesoCorporal() * s.min / 60 : 0);
+const kcalCardio = (e) => e.series.reduce((a, s) => a + kcalSerie(e, s), 0);
+const kcalTxt = (e) => { const k = kcalCardio(e); return k > 0 ? `🔥 ≈ ${fmt(k)} kcal (estimado con tu peso de ${fmt(pesoCorporal(), 1)} kg)` : ''; };
+const kcalEntreno = (en) => en.ejercicios.filter(esCardio).reduce((a, e) => a + kcalCardio(e), 0);
 const volumen = (en) => en.ejercicios.reduce((a, e) => a + e.series.filter(cuenta).reduce((b, s) => b + (s.kg || 0) * (s.reps || 0), 0), 0);
 const seriesHechas = (en) => en.ejercicios.reduce((a, e) => a + e.series.filter(cuenta).length, 0);
 function duracion(ms) {
@@ -375,10 +403,10 @@ function abrirDetalle(id, nuevo = null) {
   const recs = nuevo && nuevo.length ? `<div class="en-records"><b>🏆 ¡Nuevos récords!</b>${nuevo.map((r) => `<div><strong>${esc(r.nombre)}</strong><br>${r.records.map((x) => `<span>${x.tipo}: <b>${x.texto}</b></span>`).join('<br>')}</div>`).join('')}</div>` : '';
   $('en-det-cuerpo').innerHTML = `${nuevo ? '<div class="en-ok">✅ ¡Entrenamiento guardado!</div>' + recs : ''}
     <div class="en-det-cab"><h3 class="en-det-titulo">${esc(en.titulo || 'Entrenamiento')}</h3><button type="button" class="btn-sec" id="en-det-editar">✏️ Editar</button></div>
-    <p class="hint" style="margin-top:2px">${fechaTxt(en.inicio)}${en.fin ? ' · ' + duracion(new Date(en.fin) - new Date(en.inicio)) : ''} · ${fmt(volumen(en))} kg · ${seriesHechas(en)} series</p>
+    <p class="hint" style="margin-top:2px">${fechaTxt(en.inicio)}${en.fin ? ' · ' + duracion(new Date(en.fin) - new Date(en.inicio)) : ''} · ${fmt(volumen(en))} kg · ${seriesHechas(en)} series${kcalEntreno(en) > 0 ? ` · 🔥 ≈ ${fmt(kcalEntreno(en))} kcal de cardio` : ''}</p>
     ${en.descripcion ? `<p class="en-det-desc">${esc(en.descripcion)}</p>` : ''}${en.foto ? `<img class="en-det-foto" src="${en.foto}" alt="Foto del entrenamiento">` : ''}
     ${en.ejercicios.map((e) => `<div class="en-det-ej"><strong>${iconoEj(e)} ${esc(nombreEj(e))}</strong>${e.ej && deps.porId[e.ej] && norm(e.nombre) !== norm(deps.porId[e.ej].nombre) ? `<small> (${esc(e.nombre)})</small>` : ''}
-      ${e.notas ? `<div class="hint" style="margin:2px 0 4px">📝 ${esc(e.notas)}</div>` : ''}
+      ${e.notas ? `<div class="hint" style="margin:2px 0 4px">📝 ${esc(e.notas)}</div>` : ''}${esCardio(e) && kcalCardio(e) > 0 ? `<div class="hint" style="margin:2px 0 4px">🔥 ≈ ${fmt(kcalCardio(e))} kcal</div>` : ''}
       ${e.series.map((s, i) => `<div class="en-det-serie${s.tipo === 'calentamiento' ? ' cal' : ''}"><span>${TIPOS[s.tipo] || i + 1 - e.series.slice(0, i).filter((x) => x.tipo === 'calentamiento').length}</span>
         <span>${esCardio(e) ? (cardioTxt(e, s) || '—') + (velTxt(e, s.km, s.min) ? ` · ${velTxt(e, s.km, s.min)}` : '') : `${kgTxt(s.kg) || '—'} kg × ${s.reps ?? '—'}${s.rpe ? ` @${fmt(s.rpe, s.rpe % 1 ? 1 : 0)}` : ''}`}</span>
         ${s.actividad ? `<button type="button" class="en-vel" data-act="${s.actividad.id}">⚡ ${s.actividad.ritmo ?? '--'} ${esc(s.actividad.unidad || '')}</button>` : ''}
@@ -392,11 +420,11 @@ function abrirDetalle(id, nuevo = null) {
   $('en-det-cuerpo').querySelectorAll('[data-act]').forEach((b) => (b.onclick = () => { $('en-detalle').style.display = 'none'; deps.abrirActividad(b.dataset.act); }));
   $('en-tarjetas').onclick = () => {
     $('en-detalle').style.display = 'none';
-    abrirTarjetas(en, nuevo || P.recordsNuevos(en, lista.filter((x) => x.id !== en.id && x.inicio < en.inicio), nombreEj), false);
+    abrirTarjetas(en, nuevo || P.recordsNuevos(en, lista.filter((x) => x.id !== en.id && x.inicio < en.inicio), nombreEj, defEj), false);
   };
   $('en-compartir').onclick = () => {
     // records de ese entrenamiento frente a los anteriores
-    const recs = nuevo || P.recordsNuevos(en, lista.filter((x) => x.id !== en.id && x.inicio < en.inicio), nombreEj);
+    const recs = nuevo || P.recordsNuevos(en, lista.filter((x) => x.id !== en.id && x.inicio < en.inicio), nombreEj, defEj);
     $('en-detalle').style.display = 'none';
     if (deps.compartir) deps.compartir(en, recs);
   };
@@ -559,14 +587,15 @@ function pintarActivo() {
         <button type="button" class="en-mini" data-acc="quitar" title="Quitar">✕</button></div>
       ${r && !esCardio(e) ? `<div class="en-ref">1RM de referencia: <b>${fmt(r.kg)} kg</b> ${r.fuente === 'hoy' ? '(calculado con tu serie de hoy)' : r.fuente === 'real' ? '(tu 1RM real)' : r.fuente === 'reciente' ? '(estimado, últimos 90 días)' : '(estimado de tu historial; puede estar desactualizado)'}. Pon reps y RPE y te sugiero el peso.</div>` : ''}
       <input class="en-nota" data-acc="nota" placeholder="Nota (opcional)" value="${esc(e.notas || '')}">
-      ${esCardio(e) ? `<div class="en-fila en-fila-cab en-cardio"><span>Serie</span><span>${modoRutina ? '' : 'Anterior'}</span><span>${defEj(e).medida === 'dist' ? 'km' : ''}</span><span>Min</span><span>${defEj(e).medida === 'dist' ? 'Ritmo' : ''}</span><span>✓</span><span></span></div>
+      ${esCardio(e) ? `<div class="en-fila en-fila-cab en-cardio"><span>Serie</span><span>${modoRutina ? '' : 'Anterior'}</span><span>${defEj(e).medida === 'dist' ? (enMetros(e) ? 'm' : 'km') : ''}</span><span>Min</span><span>${defEj(e).medida === 'dist' ? 'Ritmo' : ''}</span><span>✓</span><span></span></div>
       ${e.series.map((s, is) => {
         const p = prev[is], etiqueta = TIPOS[s.tipo] || String(++nNormal), dist = defEj(e).medida === 'dist';
         const ptxt = p && (p.km || p.min) ? cardioTxt(e, p) : modoRutina ? '' : '—';
         return `<div class="en-fila en-cardio${s.hecha ? ' hecha' : ''}" data-is="${is}">
           <button type="button" class="en-num t-${s.tipo}" data-acc="tipo">${etiqueta}</button>
           <button type="button" class="en-prev" data-acc="copiar">${ptxt}</button>
-          ${dist ? `<input type="number" inputmode="decimal" step="any" min="0" data-campo="km" value="${s.km ?? ''}" placeholder="${p && p.km ? fmt(p.km, p.km % 1 ? 2 : 0) : ''}">` : '<span></span>'}
+          ${dist ? (enMetros(e) ? `<input type="number" inputmode="numeric" step="any" min="0" data-campo="km" data-escala="1000" value="${s.km != null ? Math.round(s.km * 1000) : ''}" placeholder="${p && p.km ? Math.round(p.km * 1000) : ''}">`
+    : `<input type="number" inputmode="decimal" step="any" min="0" data-campo="km" value="${s.km ?? ''}" placeholder="${p && p.km ? fmt(p.km, p.km % 1 ? 2 : 0) : ''}">`) : '<span></span>'}
           <input type="number" inputmode="decimal" step="any" min="0" data-campo="min" value="${s.min ?? ''}" placeholder="${p && p.min ? fmt(p.min, p.min % 1 ? 1 : 0) : ''}">
           <span class="en-ritmo">${dist ? velTxt(e, s.km, s.min) : ''}</span>
           <button type="button" class="en-check" data-acc="hecha">✓</button>
@@ -587,6 +616,7 @@ function pintarActivo() {
           <button type="button" class="en-video${s.analisis ? ' con' : ''}" data-acc="video" title="Analizar con video">${s.analisis ? '⚡' : '🎥'}</button>
         </div>${s.analisis ? `<button type="button" class="en-analisis" data-acc="ver" data-is="${is}">⚡ ${fmt(s.analisis.v, 2)} m/s${s.analisis.rpe ? ` · RPE ${fmt(s.analisis.rpe, 1)}` : ''}${s.analisis.rm ? ` · 1RM ≈ ${fmt(s.analisis.rm)} kg` : ''} · ver análisis</button>` : ''}`;
       }).join('')}`}
+      ${esCardio(e) ? `<div class="en-kcal">${kcalTxt(e)}</div>` : ''}
       <button type="button" class="btn-sec en-mas-serie" data-acc="serie">+ Agregar serie</button>
     </div>`;
   }).join('') || '<p class="vacio">Agrega tu primer ejercicio.</p>';
@@ -600,10 +630,11 @@ function enlazarEventos() {
     caja.querySelectorAll('input[data-campo]').forEach((inp) => {
       inp.oninput = () => {
         const fila = inp.closest('.en-fila'), is = +fila.dataset.is, s = e.series[is];
-        const v = inp.value === '' ? null : parseFloat(inp.value.replace(',', '.'));
+        let v = inp.value === '' ? null : parseFloat(inp.value.replace(',', '.'));
+        if (Number.isFinite(v) && inp.dataset.escala) v /= +inp.dataset.escala; // natacion: metros -> km
         s[inp.dataset.campo] = Number.isFinite(v) ? v : null;
         if (inp.dataset.campo === 'kg') ultimoKg = s.kg;
-        if (esCardio(e)) { const rt = fila.querySelector('.en-ritmo'); if (rt && defEj(e).medida === 'dist') rt.textContent = velTxt(e, s.km, s.min); }
+        if (esCardio(e)) { const rt = fila.querySelector('.en-ritmo'); if (rt && defEj(e).medida === 'dist') rt.textContent = velTxt(e, s.km, s.min); const kc = caja.querySelector('.en-kcal'); if (kc) kc.textContent = kcalTxt(e); }
         else if (inp.dataset.campo !== 'kg') { // al cambiar reps o RPE se recalcula el peso sugerido
           const m = marcadores(e, is, activo.rutina ? [] : anterior(e, activo.id) || [], ref(e)), k = fila.querySelector('[data-campo="kg"]');
           k.placeholder = m.kg != null ? kgTxt(m.kg) : ''; k.classList.toggle('sug', m.sug);
@@ -1048,7 +1079,7 @@ async function terminar() {
 
   const en = { id: activo.id, titulo: g.titulo, inicio: g.inicio, fin: g.fin, origen: 'app', ejercicios,
     ...(g.descripcion ? { descripcion: g.descripcion } : {}), ...(g.foto ? { foto: g.foto } : {}) };
-  const recs = P.recordsNuevos(en, lista.filter((x) => x.id !== en.id), nombreEj);
+  const recs = P.recordsNuevos(en, lista.filter((x) => x.id !== en.id), nombreEj, defEj);
   const nRec = recs.reduce((a, r) => a + r.records.length, 0);
   if (nRec) en.records = nRec;
   try { await almacen.guardarEntreno(en); } catch (e) { alert('No pude guardar el entrenamiento: ' + (e.message || e)); return; }

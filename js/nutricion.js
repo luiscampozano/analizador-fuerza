@@ -39,6 +39,7 @@ export function iniciar() {
   $('nu-crear').onclick = () => formularioPropio();
   $('nu-plato').onclick = () => { if (!nube.conectado()) return alert('La foto del plato usa IA en el servidor: inicia sesión (Perfil → Cuenta) para usarla.'); $('nu-plato-in').click(); };
   $('nu-plato-in').onchange = () => { const f = $('nu-plato-in').files[0]; $('nu-plato-in').value = ''; if (f) fotoPlato(f); };
+  $('nu-texto').onclick = () => { if (!nube.conectado()) return alert('Escribir lo que comiste usa IA en el servidor: inicia sesión (Perfil → Cuenta) para usarlo.'); comidaEscrita(); };
   $('nu-scan-cerrar').onclick = cerrarCamara;
 }
 
@@ -253,16 +254,42 @@ async function fotoPlato(archivo) {
   catch (e) { $('nu-off').innerHTML = `<p class="hint">${esc(e.message || e)}</p>`; return; }
   $('nu-off').innerHTML = '';
   if (!r.alimentos.length) { $('nu-off').innerHTML = `<p class="hint">${esc(r.nota || 'No reconocí alimentos en la foto.')} Prueba con otra foto, desde arriba y con buena luz.</p>`; return; }
+  listaIA(r, '📸 Tu plato', `Te quedan ${r.quedan} fotos hoy.`);
+}
+
+// comida escrita: "arroz con menestra, carne asada y un jugo de mora" -> lista editable igual que la foto (v2.23.0)
+function comidaEscrita(previo = '') {
+  $('nu-paso-buscar').style.display = 'none'; $('nu-paso-cant').style.display = '';
+  $('nu-cant').innerHTML = `<h3 class="en-det-titulo">✍️ ¿Qué comiste?</h3>
+    <p class="hint" style="margin-top:2px">Escríbelo como se lo contarías a alguien, con cantidades si las sabes. Ej.: «2 huevos revueltos, un bolón de verde con queso y café con leche».</p>
+    <textarea id="nu-texto-in" class="nu-texto-in" maxlength="400">${esc(previo)}</textarea><p class="hint" id="nu-texto-txt" style="margin:4px 0 0"></p>
+    <div class="en-det-botones"><button type="button" class="btn-sec" id="nu-volver">‹ Volver</button><button type="button" class="btn-sec en-terminar" id="nu-texto-ok">Calcular</button></div>`;
+  $('nu-volver').onclick = () => { $('nu-paso-buscar').style.display = ''; $('nu-paso-cant').style.display = 'none'; };
+  $('nu-texto-in').focus();
+  $('nu-texto-ok').onclick = async () => {
+    const t = $('nu-texto-in').value.trim();
+    if (t.length < 3) return alert('Escribe qué comiste.');
+    $('nu-texto-ok').disabled = true; $('nu-texto-txt').textContent = '🤖 Calculando… (unos segundos)';
+    let r;
+    try { r = await nube.api('POST', '/api/ia/texto', { texto: t }); }
+    catch (e) { $('nu-texto-ok').disabled = false; $('nu-texto-txt').textContent = e.message || String(e); return; }
+    if (!r.alimentos.length) { $('nu-texto-ok').disabled = false; $('nu-texto-txt').textContent = (r.nota || 'No entendí qué comiste.') + ' Prueba escribiéndolo de otra forma.'; return; }
+    listaIA(r, '✍️ Lo que comiste', `Te quedan ${r.quedan} consultas escritas hoy.`, () => comidaEscrita(t));
+  };
+}
+
+// lista editable de alimentos que propone la IA (foto o texto): el usuario ajusta gramos y desmarca lo que no comio
+function listaIA(r, titulo, pie, volver = null) {
   const items = r.alimentos.map((a) => ({ ...a, base: { kcal: a.kcal / a.gramos * 100, p: a.p / a.gramos * 100, c: a.c / a.gramos * 100, g: a.g / a.gramos * 100 }, usar: true }));
   $('nu-paso-buscar').style.display = 'none'; $('nu-paso-cant').style.display = '';
   const CONF = { alta: '🟢', media: '🟡', baja: '🔴' };
-  $('nu-cant').innerHTML = `<h3 class="en-det-titulo">📸 Tu plato</h3>
+  $('nu-cant').innerHTML = `<h3 class="en-det-titulo">${titulo}</h3>
     <p class="hint" style="margin-top:2px">Estimación de la IA: reconoce bien los alimentos, pero en las porciones puede equivocarse bastante (±40 %). <b>Ajusta los gramos</b> (mejor si pesas) y desmarca lo que no comiste.${r.nota ? ' ' + esc(r.nota) : ''}</p>
     <div class="nu-plato">${items.map((a, i) => `<label class="nu-plato-fila"><input type="checkbox" data-i="${i}" checked>
       <span><b>${esc(a.nombre)}</b> <small title="confianza de la IA en la porción">${CONF[a.confianza] || ''}</small><small id="nu-pl-k${i}"></small></span>
       <input type="number" inputmode="decimal" min="0" step="any" value="${Math.round(a.gramos)}" data-g="${i}"><span class="nu-plato-u">g</span></label>`).join('')}</div>
     <div id="nu-prev" class="nu-prev"></div>
-    <p class="hint" style="margin:0">🟢🟡🔴 = qué tan segura está la IA de la porción. Te quedan ${r.quedan} fotos hoy.</p>
+    <p class="hint" style="margin:0">🟢🟡🔴 = qué tan segura está la IA de la porción. ${pie}</p>
     <div class="en-det-botones"><button type="button" class="btn-sec" id="nu-volver">‹ Volver</button><button type="button" class="btn-sec en-terminar" id="nu-ok">Agregar</button></div>`;
   const total = () => {
     let t = { kcal: 0, p: 0, c: 0, g: 0 }, n = 0;
@@ -277,7 +304,7 @@ async function fotoPlato(archivo) {
     $('nu-ok').disabled = !n;
   };
   $('nu-cant').querySelectorAll('input').forEach((x) => (x.oninput = x.onchange = total)); total();
-  $('nu-volver').onclick = () => { $('nu-paso-buscar').style.display = ''; $('nu-paso-cant').style.display = 'none'; };
+  $('nu-volver').onclick = volver || (() => { $('nu-paso-buscar').style.display = ''; $('nu-paso-cant').style.display = 'none'; });
   $('nu-ok').onclick = async () => {
     let k = 0;
     for (const a of items) {
@@ -337,6 +364,7 @@ function formularioPropio(codigo = null) {
     <button type="button" class="btn-sec" id="pa-foto" style="width:100%;margin-top:8px">📷 Leer la tabla de la etiqueta con la cámara</button>
     <input type="file" id="pa-foto-in" accept="image/*" capture="environment" hidden>
     <p class="hint" id="pa-foto-txt" style="margin:4px 0 0"></p>
+    <button type="button" class="btn-sec" id="pa-ia" style="width:100%;margin-top:6px" hidden>🤖 Leerla con IA (más preciso)</button>
     <details id="pa-foto-det" class="nu-ocr" hidden><summary>Ver lo que leyó la cámara</summary><pre id="pa-foto-ocr"></pre></details>
     <div class="form-grid" style="margin-top:8px">
       <div class="form-group full"><label for="pa-nombre">Nombre</label><input id="pa-nombre" maxlength="60" value="${esc($('nu-buscar').value.trim())}"></div>
@@ -371,9 +399,28 @@ function formularioPropio(codigo = null) {
       const NOM = { kcal: 'las calorías', p: 'la proteína', c: 'los carbohidratos', g: 'la grasa' };
       txt.textContent = n ? `Leí ${n} de 4 datos (en violeta)${nc ? ` y calculé ${calc.map((k) => NOM[k]).join(' y ')} con los demás (en amarillo)` : ''}. Revísalos con la etiqueta antes de guardar: la lectura automática puede equivocarse.${n + nc < 4 ? ' Escribe los que falten.' : ''}`
         : 'No pude leer los números. Toma la foto de cerca, solo la tabla, derecha y con buena luz; o escríbelos a mano.';
+      // si la lectura del telefono quedo incompleta, se ofrece leer la misma foto con IA en el servidor
+      if (n < 4 && nube.conectado()) { fotoEt = f; $('pa-ia').hidden = false; txt.textContent += ' O toca «Leerla con IA».'; }
     } catch (e) {
       txt.textContent = 'No pude leer la etiqueta: ' + (e.message || e) + ' Escribe los datos a mano.';
+      if (nube.conectado()) { fotoEt = f; $('pa-ia').hidden = false; }
     } finally { b.disabled = false; }
+  };
+  let fotoEt = null;
+  $('pa-ia').onclick = async () => {
+    if (!fotoEt) return;
+    const b = $('pa-ia'), txt = $('pa-foto-txt'); b.disabled = true; txt.textContent = '🤖 Leyendo la tabla con IA… (unos segundos)';
+    try {
+      const r = await nube.api('POST', '/api/ia/etiqueta', { imagen: await reducirFoto(fotoEt, 1280) });
+      if (r.kcal == null) { txt.textContent = (r.nota || 'La IA no encontró la tabla nutricional.') + ' Toma otra foto solo de la tabla o escribe los datos.'; b.disabled = false; return; }
+      const poner = (id, v) => { if (v != null) { $(id).value = String(v); $(id).classList.remove('nu-leido', 'nu-calculado'); $(id).classList.add('nu-ia'); } };
+      poner('pa-kcal', r.kcal); poner('pa-p', r.p); poner('pa-c', r.c); poner('pa-g', r.g); poner('pa-porcion', r.porcion);
+      $('pa-base').value = r.por100 || !r.porcion ? '100' : 'porcion';
+      if (r.nombre && !$('pa-nombre').value.trim()) $('pa-nombre').value = r.nombre;
+      if (r.marca && !$('pa-marca').value.trim()) $('pa-marca').value = r.marca;
+      txt.textContent = `La IA leyó la tabla (en celeste). Revisa que coincida con la etiqueta antes de guardar. Te quedan ${r.quedan} lecturas con IA hoy.`;
+      b.hidden = true;
+    } catch (e) { txt.textContent = e.message || String(e); b.disabled = false; }
   };
   $('pa-ok').onclick = async () => {
     const v = (id) => parseFloat(($(id).value || '0').replace(',', '.')) || 0;

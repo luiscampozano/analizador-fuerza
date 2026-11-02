@@ -60,6 +60,9 @@ async function api(req, env, url) {
   const u = await sesion(req, env);
   if (ruta === '/api/alimentos' && m === 'POST') return crearAlimento(req, env, u);
   if (ruta === '/api/ia/plato' && m === 'POST') return fotoPlato(req, env, u);
+  if (ruta === '/api/ia/texto' && m === 'POST') return comidaTexto(req, env, u);
+  if (ruta === '/api/ia/etiqueta' && m === 'POST') return etiquetaIA(req, env, u);
+  if (ruta === '/api/ia/entrenador' && m === 'POST') return entrenadorIA(req, env, u);
   if (/^\/api\/alimentos\/\d{6,14}\/reportar$/.test(ruta) && m === 'POST') return reportarAlimento(env, u, ruta.split('/')[3]);
   if (ruta.startsWith('/api/comunidad/')) return comunidad(req, env, u, ruta.slice(15), m, url);
   if (ruta.startsWith('/api/mod/')) return moderacion(req, env, u, ruta.slice(9), m);
@@ -632,7 +635,9 @@ async function moderacion(req, env, u, r, m) {
     return json({ ok: true });
   }
   if (r === 'ia' && m === 'GET') { // uso de la foto del plato en los ultimos 7 dias
-    const res = await DB.prepare('SELECT dia, sum(n) AS fotos, count(*) AS usuarios FROM uso_ia GROUP BY dia ORDER BY dia DESC LIMIT 7').all();
+    const res = await DB.prepare(`SELECT substr(dia, 1, 10) AS dia, sum(CASE WHEN length(dia) = 10 THEN n ELSE 0 END) AS fotos, sum(CASE WHEN dia LIKE '%:t' THEN n ELSE 0 END) AS textos,
+        sum(CASE WHEN dia LIKE '%:e' THEN n ELSE 0 END) AS etiquetas, sum(CASE WHEN dia LIKE '%:c' THEN n ELSE 0 END) AS entrenador, count(DISTINCT usuario) AS usuarios
+      FROM uso_ia GROUP BY substr(dia, 1, 10) ORDER BY 1 DESC LIMIT 7`).all();
     return json({ dias: res.results || [], limite: LIMITE_IA_USUARIO, configurada: !!env.ANTHROPIC_API_KEY });
   }
   if (r === 'reportes' && m === 'GET') {
@@ -749,49 +754,99 @@ async function reportarAlimento(env, u, codigo) {
   return json({ ok: true, oculto: r.n >= OCULTAR_CON });
 }
 
-// ================================================================== IA: FOTO DEL PLATO (Claude Haiku)
-// La app manda la foto ya reducida (~768 px, JPEG en base64); el servidor llama a la API de Claude con la clave
-// guardada como secreto ANTHROPIC_API_KEY (nunca va en el codigo ni llega al telefono). Limite por usuario y por dia,
-// y un tope general diario para que el gasto nunca se dispare. (v2.22.0)
+// ================================================================== IA (Claude Haiku en el servidor)
+// La app nunca ve la clave: el servidor llama a la API de Claude con el secreto ANTHROPIC_API_KEY. Cada funcion tiene
+// su limite por persona y por dia (tabla uso_ia; el "dia" lleva un sufijo por funcion: "2026-11-01" = foto del plato,
+// "2026-11-01:t" = texto, ":e" = etiqueta, ":c" = entrenador), y hay un tope general diario para todas. (v2.22-2.23)
 const LIMITE_IA_USUARIO = 10, LIMITE_IA_TOTAL = 600, MAX_FOTO = 400_000; // caracteres base64 (~300 KB)
+const LIMITES_IA = { '': 10, t: 20, e: 10, c: 3 }; // plato, texto, etiqueta, entrenador
 const MODELO_IA = 'claude-haiku-5-5';
-const PROMPT_PLATO = `Eres nutricionista. Mira la foto de una comida (puede ser comida ecuatoriana o latinoamericana) e identifica cada alimento visible.
-Para cada uno estima los gramos que hay en el plato (usa referencias: tamano del plato ~25 cm, cubiertos, manos) y sus calorias y macronutrientes PARA ESOS GRAMOS, usando valores de tablas de composicion de alimentos.
-Responde SOLO con JSON valido, sin texto antes ni despues, con este formato exacto:
-{"alimentos":[{"nombre":"arroz blanco cocido","gramos":150,"kcal":195,"p":4,"c":42,"g":0.4,"confianza":"alta"}],"nota":"una frase corta"}
-Reglas: nombres en espanol y cortos; separa los alimentos (no "plato completo"); incluye salsas o aceite visibles; confianza = alta, media o baja segun lo seguro que estes de la porcion; si la foto no es comida, devuelve {"alimentos":[],"nota":"No parece comida."}.`;
-async function fotoPlato(req, env, u) {
-  if (!env.ANTHROPIC_API_KEY) throw fallo('La foto del plato estará disponible muy pronto.', 503);
-  const b = await leerJSON(req);
-  const img = typeof b.imagen === 'string' ? b.imagen : '';
-  if (!img || img.length > MAX_FOTO || !/^[A-Za-z0-9+/=]+$/.test(img)) throw fallo('Foto no válida. Vuelve a tomarla.');
-  const dia = new Date().toISOString().slice(0, 10);
+const texto_ = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, max) : '');
+const numIA = (x, max) => { const v = +String(x).replace(',', '.'); return Number.isFinite(v) && v >= 0 ? Math.min(max, Math.round(v * 10) / 10) : 0; };
+async function cupoIA(env, u, tipo, queHace) {
+  if (!env.ANTHROPIC_API_KEY) throw fallo('Esta función con IA estará disponible muy pronto.', 503);
+  const hoy = new Date().toISOString().slice(0, 10), dia = tipo ? `${hoy}:${tipo}` : hoy, lim = LIMITES_IA[tipo];
   const yo = await env.DB.prepare('SELECT n FROM uso_ia WHERE usuario = ?1 AND dia = ?2').bind(u.id, dia).first();
-  if (yo && yo.n >= LIMITE_IA_USUARIO) throw fallo(`Ya usaste tus ${LIMITE_IA_USUARIO} fotos de hoy. Mañana tendrás más; mientras tanto puedes buscar o escanear los alimentos.`, 429);
-  const tot = await env.DB.prepare('SELECT coalesce(sum(n), 0) AS n FROM uso_ia WHERE dia = ?1').bind(dia).first();
-  if (tot && tot.n >= LIMITE_IA_TOTAL) throw fallo('La foto del plato llegó a su límite de hoy. Inténtalo mañana.', 429);
+  if (yo && yo.n >= lim) throw fallo(`Ya usaste tus ${lim} ${queHace} de hoy. Mañana tendrás más.`, 429);
+  const tot = await env.DB.prepare("SELECT coalesce(sum(n), 0) AS n FROM uso_ia WHERE substr(dia, 1, 10) = ?1").bind(hoy).first();
+  if (tot && tot.n >= LIMITE_IA_TOTAL) throw fallo('Las funciones con IA llegaron a su límite de hoy. Inténtalo mañana.', 429);
+  return { dia, quedan: lim - ((yo && yo.n) || 0) - 1, contar: () => env.DB.prepare('INSERT INTO uso_ia (usuario, dia, n) VALUES (?1, ?2, 1) ON CONFLICT(usuario, dia) DO UPDATE SET n = n + 1').bind(u.id, dia).run() };
+}
+async function llamarClaude(env, system, content, maxTokens = 900) {
   let r;
   try {
     r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODELO_IA, max_tokens: 900, system: PROMPT_PLATO, messages: [{ role: 'user', content: [
-        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } },
-        { type: 'text', text: 'Analiza este plato y responde solo con el JSON.' },
-      ] }] }),
+      body: JSON.stringify({ model: MODELO_IA, max_tokens: maxTokens, system, messages: [{ role: 'user', content }] }),
     });
   } catch (e) { throw fallo('No pude conectar con la IA. Inténtalo en un momento.', 502); }
-  if (!r.ok) { console.error('anthropic', r.status, (await r.text()).slice(0, 300)); throw fallo(r.status === 429 || r.status === 529 ? 'La IA está ocupada. Inténtalo en un momento.' : 'La IA no pudo analizar la foto. Inténtalo de nuevo.', 502); }
+  if (!r.ok) { console.error('anthropic', r.status, (await r.text()).slice(0, 300)); throw fallo(r.status === 429 || r.status === 529 ? 'La IA está ocupada. Inténtalo en un momento.' : 'La IA no pudo responder. Inténtalo de nuevo.', 502); }
   const datos = await r.json();
-  const texto = ((datos.content || []).find((c) => c.type === 'text') || {}).text || '';
-  let res;
-  try { res = JSON.parse(texto.slice(texto.indexOf('{'), texto.lastIndexOf('}') + 1)); } catch (e) { throw fallo('La IA respondió algo que no entendí. Toma otra foto.', 502); }
-  const num = (x, max) => { const v = +x; return Number.isFinite(v) && v >= 0 ? Math.min(max, Math.round(v * 10) / 10) : 0; };
-  const alimentos = (Array.isArray(res.alimentos) ? res.alimentos : []).slice(0, 12).map((a) => ({
-    nombre: texto_(a.nombre, 50) || 'Alimento', gramos: num(a.gramos, 2000), kcal: num(a.kcal, 5000), p: num(a.p, 500), c: num(a.c, 500), g: num(a.g, 500),
-    confianza: ['alta', 'media', 'baja'].includes(a.confianza) ? a.confianza : 'media',
-  })).filter((a) => a.gramos > 0);
-  await env.DB.prepare('INSERT INTO uso_ia (usuario, dia, n) VALUES (?1, ?2, 1) ON CONFLICT(usuario, dia) DO UPDATE SET n = n + 1').bind(u.id, dia).run();
-  return json({ alimentos, nota: texto_(res.nota, 200), quedan: LIMITE_IA_USUARIO - ((yo && yo.n) || 0) - 1 });
+  return ((datos.content || []).find((c) => c.type === 'text') || {}).text || '';
 }
-const texto_ = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, max) : '');
+const jsonDe = (texto) => { try { return JSON.parse(texto.slice(texto.indexOf('{'), texto.lastIndexOf('}') + 1)); } catch (e) { throw fallo('La IA respondió algo que no entendí. Inténtalo de nuevo.', 502); } };
+const fotoValida = (img) => { if (typeof img !== 'string' || !img || img.length > MAX_FOTO || !/^[A-Za-z0-9+/=]+$/.test(img)) throw fallo('Foto no válida. Vuelve a tomarla.'); return img; };
+const alimentosIA = (lista) => (Array.isArray(lista) ? lista : []).slice(0, 12).map((a) => ({
+  nombre: texto_(a.nombre, 50) || 'Alimento', gramos: numIA(a.gramos, 2000), kcal: numIA(a.kcal, 5000), p: numIA(a.p, 500), c: numIA(a.c, 500), g: numIA(a.g, 500),
+  confianza: ['alta', 'media', 'baja'].includes(a.confianza) ? a.confianza : 'media',
+})).filter((a) => a.gramos > 0);
+const FORMATO_ALIMENTOS = `Responde SOLO con JSON valido, sin texto antes ni despues, con este formato exacto:
+{"alimentos":[{"nombre":"arroz blanco cocido","gramos":150,"kcal":195,"p":4,"c":42,"g":0.4,"confianza":"alta"}],"nota":"una frase corta"}
+kcal, p (proteina), c (carbohidratos) y g (grasa) son PARA ESOS GRAMOS, con valores de tablas de composicion de alimentos. Nombres en espanol y cortos; separa los alimentos (no "plato completo"); confianza = alta, media o baja segun lo seguro que estes de la porcion.`;
+
+// ---------- foto del plato
+const PROMPT_PLATO = `Eres nutricionista. Mira la foto de una comida (puede ser comida ecuatoriana o latinoamericana) e identifica cada alimento visible.
+Para cada uno estima los gramos que hay en el plato (usa referencias: tamano del plato ~25 cm, cubiertos, manos). Incluye salsas o aceite visibles.
+${FORMATO_ALIMENTOS}
+Si la foto no es comida, devuelve {"alimentos":[],"nota":"No parece comida."}.`;
+async function fotoPlato(req, env, u) {
+  const cupo = await cupoIA(env, u, '', 'fotos del plato');
+  const img = fotoValida((await leerJSON(req)).imagen);
+  const res = jsonDe(await llamarClaude(env, PROMPT_PLATO, [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } }, { type: 'text', text: 'Analiza este plato y responde solo con el JSON.' }]));
+  await cupo.contar();
+  return json({ alimentos: alimentosIA(res.alimentos), nota: texto_(res.nota, 200), quedan: cupo.quedan });
+}
+
+// ---------- comida escrita ("arroz con menestra y carne asada")
+const PROMPT_TEXTO = `Eres nutricionista. La persona describe lo que comio (en Ecuador o Latinoamerica, en lenguaje coloquial). Conviertelo en alimentos con gramos.
+Si dice cantidades ("2 huevos", "una taza", "medio plato"), usalas; si no, usa porciones tipicas de un adulto. Platos tipicos (encebollado, seco de pollo, bolon, tigrillo, guatita, etc.) separalos en sus componentes principales.
+${FORMATO_ALIMENTOS}
+Si el texto no describe comida, devuelve {"alimentos":[],"nota":"No entendi que comiste."}.`;
+async function comidaTexto(req, env, u) {
+  const t = texto_((await leerJSON(req)).texto, 400);
+  if (t.length < 3) throw fallo('Escribe qué comiste.');
+  const cupo = await cupoIA(env, u, 't', 'consultas escritas');
+  const res = jsonDe(await llamarClaude(env, PROMPT_TEXTO, [{ type: 'text', text: t }], 900));
+  await cupo.contar();
+  return json({ alimentos: alimentosIA(res.alimentos), nota: texto_(res.nota, 200), quedan: cupo.quedan });
+}
+
+// ---------- tabla nutricional de una etiqueta (respaldo cuando la lectura del telefono falla)
+const PROMPT_ETIQUETA = `Lee la tabla de informacion nutricional de la foto (etiqueta de un producto, puede estar arrugada o con reflejos).
+Responde SOLO con JSON valido: {"porcion":30,"base":"porcion","kcal":150,"p":2,"c":21,"g":6,"nombre":"","marca":"","nota":""}
+porcion = gramos (o ml) de una porcion o null; base = "100g" si los numeros que das son por 100 g/ml, o "porcion" si son por porcion (prefiere la columna por 100 g si existe);
+kcal = energia en kcal (si solo hay kJ, divide para 4,184); p = proteina, c = carbohidratos totales, g = grasa total, en gramos; nombre y marca del producto si se ven (si no, "").
+Si no ves una tabla nutricional, devuelve {"kcal":null,"nota":"No veo la tabla nutricional."}.`;
+async function etiquetaIA(req, env, u) {
+  const cupo = await cupoIA(env, u, 'e', 'lecturas de etiquetas con IA');
+  const img = fotoValida((await leerJSON(req)).imagen);
+  const r = jsonDe(await llamarClaude(env, PROMPT_ETIQUETA, [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } }, { type: 'text', text: 'Lee la tabla y responde solo con el JSON.' }], 400));
+  await cupo.contar();
+  const n = (x, max) => (x == null || x === '' ? null : numIA(x, max));
+  return json({ porcion: n(r.porcion, 2000), por100: r.base === '100g', kcal: n(r.kcal, 2000), p: n(r.p, 100), c: n(r.c, 100), g: n(r.g, 100),
+    nombre: texto_(r.nombre, 60), marca: texto_(r.marca, 40), nota: texto_(r.nota, 200), quedan: cupo.quedan });
+}
+
+// ---------- entrenador IA: resumen de la semana con los datos del propio usuario (los arma la app, sin nombres)
+const PROMPT_COACH = `Eres un entrenador de fuerza y nutricionista deportivo, directo y motivador. Recibes en JSON los datos reales de las ultimas semanas de un atleta (entrenamientos, volumen, velocidad medida con video a la misma carga, cardio, nutricion y metas).
+Escribe en espanol de Ecuador, tuteando, un analisis de su semana: 4 a 6 vinetas cortas (empieza cada una con un emoji), con numeros concretos de sus datos: que mejoro, que se estanco, una recomendacion concreta de carga o volumen para la proxima semana (por ejemplo subir 2,5-5 kg si la velocidad con la misma carga subio) y una de nutricion si hay datos.
+No inventes datos que no esten en el JSON; si faltan datos, dilo en una vineta y sugiere registrarlos. No des consejos medicos. Maximo 170 palabras. Solo el texto de las vinetas.`;
+async function entrenadorIA(req, env, u) {
+  const b = await leerJSON(req), datos = JSON.stringify(b.datos || {});
+  if (datos.length > 12000) throw fallo('Demasiados datos para el análisis.');
+  const cupo = await cupoIA(env, u, 'c', 'análisis del entrenador');
+  const texto = texto_(await llamarClaude(env, PROMPT_COACH, [{ type: 'text', text: datos }], 700), 2000);
+  await cupo.contar();
+  return json({ texto, quedan: cupo.quedan });
+}

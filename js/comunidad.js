@@ -438,8 +438,8 @@ async function moderar() {
   try {
     const [r, f, ia] = await Promise.all([nube.api('GET', '/api/mod/reportes'), nube.api('GET', '/api/mod/fallos').catch(() => ({ fallos: [] })), nube.api('GET', '/api/mod/ia').catch(() => null)]);
     // uso de la foto del plato (IA): fotos por dia de los ultimos 7 dias
-    const iaHtml = ia ? `<h4>📸 Foto del plato (IA)</h4><p class="hint">${ia.configurada ? `Activa · límite ${ia.limite} fotos por persona al día.` : '⚠️ Falta la clave ANTHROPIC_API_KEY en Cloudflare.'}
-      ${ia.dias.length ? ia.dias.map((d) => `${d.dia.slice(5)}: <b>${d.fotos}</b> fotos (${d.usuarios} persona${d.usuarios > 1 ? 's' : ''})`).join(' · ') : 'Sin uso todavía.'}</p>` : '';
+    const iaHtml = ia ? `<h4>🤖 Funciones con IA</h4><p class="hint">${ia.configurada ? `Activa · límite ${ia.limite} fotos por persona al día.` : '⚠️ Falta la clave ANTHROPIC_API_KEY en Cloudflare.'}
+      ${ia.dias.length ? ia.dias.map((d) => `${d.dia.slice(5)}: <b>${d.fotos}</b> fotos${d.textos ? ` · ${d.textos} escritas` : ''}${d.etiquetas ? ` · ${d.etiquetas} etiquetas` : ''}${d.entrenador ? ` · ${d.entrenador} entrenador` : ''} (${d.usuarios} persona${d.usuarios > 1 ? 's' : ''})`).join(' · ') : 'Sin uso todavía.'}</p>` : '';
     const nombre = { publicacion: 'Publicación', comentario: 'Comentario', usuario: 'Perfil' };
     const pend = f.fallos.filter((x) => x.estado === 'pendiente');
     const fallosHtml = `<h4>🐞 Fallos de conteo reportados${pend.length ? ` · ${pend.length} pendiente${pend.length > 1 ? 's' : ''}` : ''}</h4>${f.fallos.length

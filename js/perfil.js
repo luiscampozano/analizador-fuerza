@@ -138,6 +138,7 @@ export async function pintar() {
 
   pintarSemanas(lista);
   pintarVideo();
+  pintarCoach(lista);
   pintarPeso();
   $('pf-version').textContent = `Versión ${deps.version}`;
 }
@@ -455,4 +456,66 @@ function pintarVideo() {
     <button type="button" class="btn-sec" id="pf-video-todo" style="width:100%">Ver todas las series analizadas</button>`;
   cont.querySelectorAll('.pf-vid').forEach((b) => (b.onclick = () => deps.abrirSerie(b.dataset.id)));
   $('pf-video-todo').onclick = () => deps.vista('v-historial');
+}
+
+// ------------------------------------------------------------------ entrenador IA (v2.23.0)
+// La app arma un resumen corto de las ultimas 4 semanas (sin nombre ni correo) y la IA en el servidor lo comenta.
+// El ultimo analisis queda guardado en el telefono (af_pf_coach) para verlo sin gastar otra consulta.
+const r1 = (x) => Math.round(x * 10) / 10;
+async function datosEntrenador(lista) {
+  const L0 = lunesDe(new Date()), dia = 86400000;
+  const semanas = [3, 2, 1, 0].map((k) => {
+    const ini = new Date(L0 - 7 * k * dia), fin = new Date(+ini + 7 * dia);
+    const ens = lista.filter((e) => new Date(e.inicio) >= ini && new Date(e.inicio) < fin);
+    const w = { semana: k ? `hace ${k} sem` : 'esta semana (en curso)', desde: ini.toISOString().slice(0, 10), entrenos: ens.length, horas: 0, series: 0, volumen_t: 0, cardio_min: 0, cardio_km: 0, ejercicios: {} };
+    for (const en of ens) {
+      if (en.fin) w.horas += Math.min(4, Math.max(0, (new Date(en.fin) - new Date(en.inicio)) / 3600000));
+      for (const e of en.ejercicios) {
+        const d = e.ej && deps.porId && deps.porId[e.ej], nombre = (d ? d.nombre : e.nombre) || 'Ejercicio';
+        for (const sr of e.series) {
+          if (!sr.hecha || sr.tipo === 'calentamiento') continue;
+          if (d && d.cardio) { w.cardio_min += sr.min || 0; w.cardio_km += sr.km || 0; continue; }
+          w.series++; w.volumen_t += (sr.kg || 0) * (sr.reps || 0) / 1000;
+          const x = w.ejercicios[nombre] || (w.ejercicios[nombre] = { series: 0, mejor: '', e1rm: 0 });
+          x.series++;
+          const rm = P.e1rm(sr.kg, sr.reps, sr.rpe);
+          if (rm && rm > x.e1rm) { x.e1rm = Math.round(rm); x.mejor = `${sr.kg} kg x ${sr.reps}${sr.rpe ? ' @' + sr.rpe : ''}`; }
+        }
+      }
+    }
+    w.horas = r1(w.horas); w.volumen_t = r1(w.volumen_t); w.cardio_km = r1(w.cardio_km);
+    w.ejercicios = Object.fromEntries(Object.entries(w.ejercicios).sort((a, b) => b[1].series - a[1].series).slice(0, 8));
+    return w;
+  });
+  const video = hist.leer().filter((r) => r.vMejor > 0 && Date.now() - new Date(r.fecha) < 42 * dia).slice(-25)
+    .map((r) => ({ fecha: String(r.fecha).slice(0, 10), ejercicio: (deps.porId && deps.porId[r.ejercicio] || {}).nombre || r.nombre, kg: Number.isFinite(r.carga) ? r1(r.carga) : null, v_mejor: Math.round(r.vMejor * 100) / 100, reps: r.reps ?? null, rir: r.rir ?? null }));
+  // nutricion de los ultimos 7 dias
+  const hoy = hoyISO(), d7 = new Date(Date.now() - 6 * dia), desde = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, '0')}-${String(d7.getDate()).padStart(2, '0')}`;
+  let nutricion = null;
+  try {
+    const regs = await almacen.leerComidas(desde, hoy), dias = {};
+    for (const r of regs) { const t = dias[r.fecha] || (dias[r.fecha] = { kcal: 0, p: 0 }); t.kcal += (r.base.kcal || 0) * r.gramos / 100; t.p += (r.base.p || 0) * r.gramos / 100; }
+    const l = Object.entries(dias).sort().map(([f, t]) => ({ fecha: f, kcal: Math.round(t.kcal), proteina_g: Math.round(t.p) }));
+    if (l.length) nutricion = { dias_registrados: l, metas: leerJ('af_nutri_metas', null) };
+  } catch (e) { /* sin datos */ }
+  const np = leerJ('af_nutri_perfil', {});
+  return { hoy, atleta: { sexo: np.sexo || null, edad: np.edad || null, estatura_cm: np.altura || null }, peso_corporal: leerJ('af_peso_log', []).slice(-6), semanas, video_misma_carga: video, nutricion };
+}
+function pintarCoach(lista) {
+  const cont = $('pf-coach'); if (!cont) return;
+  const c = leerJ('af_pf_coach', null);
+  const texto = c ? c.texto.split(/\n+/).map((l) => l.trim()).filter(Boolean).map((l) => `<p class="pf-coach-l">${esc(l.replace(/^[-*•]\s*/, ''))}</p>`).join('') : '';
+  cont.innerHTML = `${c ? `${texto}<p class="hint" style="margin:6px 0 10px">Análisis del ${new Date(c.fecha).toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'short' })}. Es una guía: escucha a tu cuerpo y a tu entrenador.</p>`
+    : '<p class="hint" style="margin:0 0 10px">La IA revisa tus entrenamientos, tu velocidad con video y tu nutrición de las últimas 4 semanas y te dice qué mejoró, qué se estancó y qué hacer la próxima semana.</p>'}
+    <button type="button" class="btn-sec" id="pf-coach-ir" style="width:100%">${c ? '🔄 Analizar de nuevo' : '🤖 Analizar mi semana'}</button><p class="hint" id="pf-coach-txt" style="margin:6px 0 0"></p>`;
+  $('pf-coach-ir').onclick = async () => {
+    if (!nube.conectado()) return alert('El entrenador usa IA en el servidor: inicia sesión (Perfil → ⚙️ → Cuenta) para usarlo.');
+    if (!lista.length) return alert('Registra al menos un entrenamiento para que la IA tenga algo que analizar.');
+    const b = $('pf-coach-ir'); b.disabled = true; $('pf-coach-txt').textContent = '🤖 Analizando tus últimas semanas… (unos segundos)';
+    try {
+      const r = await nube.api('POST', '/api/ia/entrenador', { datos: await datosEntrenador(lista) });
+      guardarJ('af_pf_coach', { fecha: new Date().toISOString(), texto: r.texto });
+      pintarCoach(lista); $('pf-coach-txt').textContent = `Te quedan ${r.quedan} análisis hoy.`;
+    } catch (e) { b.disabled = false; $('pf-coach-txt').textContent = e.message || String(e); }
+  };
 }

@@ -45,9 +45,33 @@ export function registros(lista, clave) {
 }
 
 // Records nuevos de un entrenamiento recien terminado, comparado con todo lo anterior.
-export function recordsNuevos(entreno, previos, nombre) {
+// Records de cardio (v2.23.0): distancia mas larga, mas tiempo y mejor ritmo/velocidad en una serie.
+// def: { medida: 'dist'|'tiempo', vel: 'ritmo'|'kmh'|'500'|'100' } del catalogo de ejercicios.
+const validaCardio = (s) => s.hecha && s.tipo !== 'calentamiento' && (s.km > 0 || s.min > 0);
+function recordsCardio(e, previos, def) {
+  const clave = claveEj(e), series = e.series.filter(validaCardio); if (!series.length) return [];
+  const antes = previos.flatMap((en) => en.ejercicios.filter((x) => claveEj(x) === clave)).flatMap((x) => x.series).filter(validaCardio);
+  if (!antes.length) return []; // primera vez: no es record
+  const max = (l, f) => Math.max(0, ...l.map(f).filter(Number.isFinite));
+  const velo = (s) => (s.km >= (def.vel === '100' ? 0.1 : 0.5) && s.min > 0 ? s.km / s.min : NaN); // km por minuto (mas = mejor)
+  const out = [], natacion = def.vel === '100';
+  const dist = (km) => (natacion ? `${Math.round(km * 1000).toLocaleString('es-EC')} m` : `${fmt1(km)} km`);
+  const kmHoy = max(series, (s) => s.km || 0), kmAntes = max(antes, (s) => s.km || 0);
+  if (def.medida === 'dist' && kmHoy > kmAntes + 1e-6) out.push({ tipo: 'Distancia más larga', texto: dist(kmHoy) });
+  const minHoy = max(series, (s) => s.min || 0), minAntes = max(antes, (s) => s.min || 0);
+  if (minHoy > minAntes + 1e-6) out.push({ tipo: 'Más tiempo', texto: `${fmt1(minHoy)} min` });
+  const vHoy = max(series, velo), vAntes = max(antes, velo);
+  if (def.medida === 'dist' && vHoy > 0 && vAntes > 0 && vHoy > vAntes * 1.001) {
+    const t = (mpk) => { const sg = Math.round(mpk * 60); return `${Math.floor(sg / 60)}:${String(sg % 60).padStart(2, '0')}`; };
+    out.push({ tipo: def.vel === 'kmh' ? 'Mejor velocidad' : 'Mejor ritmo', texto: def.vel === 'kmh' ? `${fmt1(vHoy * 60)} km/h` : def.vel === '500' ? `${t(1 / (vHoy * 2))} /500 m` : natacion ? `${t(1 / (vHoy * 10))} /100 m` : `${t(1 / vHoy)} /km` });
+  }
+  return out;
+}
+export function recordsNuevos(entreno, previos, nombre, defDe = null) {
   const out = [];
   for (const e of entreno.ejercicios) {
+    const def = defDe && defDe(e);
+    if (def && def.cardio) { const l = recordsCardio(e, previos, def); if (l.length) out.push({ nombre: nombre(e), records: l }); continue; }
     const series = e.series.filter(valida); if (!series.length) continue;
     const r = registros(previos, claveEj(e));
     if (!r.puntos.length) continue; // primera vez: no se cuenta como record
