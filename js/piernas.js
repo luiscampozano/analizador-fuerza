@@ -1,11 +1,9 @@
 // Ejercicios de una pierna (búlgara, zancada fija, step-up): si en el mismo video se hacen las dos piernas una tras
 // otra, se detecta el cambio y la serie se parte en dos (una por pierna). (v2.26.0)
 //
-// En cada rep se mira el fondo (la cadera mas baja): la pierna que trabaja es la de adelante o la que esta sobre el
-// cajon, y su rodilla queda MAS ALTA; la de atras baja casi hasta el piso. Se compara la altura de las dos rodillas
-// medida en largos de muslo, asi vale desde cualquier angulo y distancia. Si las primeras reps son de un lado y las
-// siguientes del otro (cada bloque con 2 reps o mas), hay cambio de pierna. Si alterna rep a rep (zancada alterna),
-// no se parte.
+// En el fondo de cada rep se mide la postura de las piernas (rodilla y tobillo izquierdos respecto a los derechos).
+// Con la misma pierna adelante la postura se repite; si las primeras reps tienen una postura y las siguientes otra
+// claramente distinta (cada grupo con 2 reps o mas), hubo cambio de pierna. Si alterna rep a rep, no se parte.
 const CAD_I = 23, CAD_D = 24, ROD_I = 25, ROD_D = 26, TOB_I = 27, TOB_D = 28;
 export const DE_UNA_PIERNA = /^(bulgara_|zancada$|zancada_barra$|zancada_atras$|zancada_curtsy$|step_up$)/;
 

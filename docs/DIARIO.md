@@ -8,6 +8,15 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-02
 
+### 13:10 · v2.27.0 — Editar un entrenamiento guardado por completo
+- **Pidió (con captura):** al editar un entreno solo dejaba cambiar nombre/foto/fecha/duración; quiere editar primero
+  ejercicios, series y reps, y al final esa ventana.
+- **Hecho:** «✏️ Editar» abre el entreno en la misma pantalla del entreno en curso (modo `editando`): agregar, quitar o
+  cambiar ejercicios y series. Botones «Cancelar» (vuelve al detalle sin cambios) y «Guardar» (abre la ventana de
+  nombre, foto, fecha y duración y guarda sobre el mismo entreno). Los récords se recalculan. Sin reloj de descanso
+  ni cronómetro en este modo. Si hay un entreno en curso, pide terminarlo primero.
+- **Pendientes:** que Luis lo pruebe en el celular.
+
 ### 12:54 · v2.26.0 — Búlgara/zancada/step-up: las dos piernas en un mismo video
 - **Pidió:** que el analizador detecte el cambio de pierna cuando se graban las dos piernas seguidas y lo parta en dos series.
 - **Hecho:**

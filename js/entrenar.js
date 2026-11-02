@@ -139,6 +139,10 @@ export async function iniciar(d) {
   $('en-exportar').onclick = () => { if (!lista.length) return alert('Todavía no hay entrenamientos.'); compartir(exportar(), `entrenamientos-${new Date().toISOString().slice(0, 10)}.xlsx`); };
   $('en-terminar').onclick = terminar;
   $('en-descartar').onclick = () => {
+    if (activo.editando) { // editar un entreno guardado: se sale sin cambiar nada y vuelve a su detalle
+      if (!confirm('¿Salir sin guardar los cambios?')) return;
+      const id = activo.id; cerrarActivo(); abrirDetalle(id); return;
+    }
     if (confirm(activo.rutina ? '¿Salir sin guardar los cambios de la rutina?' : '¿Descartar este entrenamiento? Se pierde lo registrado.')) cerrarActivo();
   };
   $('en-agregar').onclick = () => abrirSelector();
@@ -496,6 +500,7 @@ function llenarDuracion() {
 }
 function abrirDuracion() {
   if (!activo || activo.rutina) return;
+  if (activo.editando) return alert('La fecha y la duración se cambian al tocar «Guardar».');
   llenarDuracion(); $('en-duracion').style.display = 'flex';
 }
 
@@ -550,18 +555,41 @@ function abrirGuardar(d) {
   });
 }
 const resumenGuardar = (en) => ({ volumen: volumen(en), series: seriesHechas(en), nEj: en.ejercicios.length });
-async function editarEntreno(en) {
-  const r = await abrirGuardar({ modo: 'editar', titulo: en.titulo, descripcion: en.descripcion, foto: en.foto, inicio: en.inicio,
-    min: en.fin ? (new Date(en.fin) - new Date(en.inicio)) / 60000 : 0, ...resumenGuardar(en) });
-  if (!r) return;
-  en.titulo = r.titulo; en.inicio = r.inicio; en.fin = r.fin;
-  if (r.descripcion) en.descripcion = r.descripcion; else delete en.descripcion;
-  if (r.foto) en.foto = r.foto; else delete en.foto;
-  try { await almacen.guardarEntreno(en); } catch (e) { return alert('No pude guardar los cambios: ' + (e.message || e)); }
-  lista.sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
-  pintar(); abrirDetalle(en.id);
+// Editar un entrenamiento guardado (v2.27.0): se abre en la misma pantalla del entreno en curso para cambiar
+// ejercicios, series, peso y reps; al tocar «Guardar» sale la ventana de nombre, foto, fecha y duracion.
+function editarEntreno(en) {
+  if (activo && !(activo.editando && activo.id === en.id)) return alert('Tienes un entrenamiento en curso. Termínalo o descártalo antes de editar otro.');
+  $('en-detalle').style.display = 'none';
+  if (!activo) {
+    activo = { ...JSON.parse(JSON.stringify(en)), editando: true, descanso: null, durMin: en.fin ? Math.max(0, (new Date(en.fin) - new Date(en.inicio)) / 60000) : 0 };
+    activo.ejercicios.forEach((e) => e.series.forEach((x) => { x.hecha = true; })); // lo guardado son series hechas
+    guardarBorrador();
+  }
+  deps.vista('v-entrenar'); pintar(); tic();
+  window.scrollTo(0, 0);
 }
-
+async function guardarEdicion() {
+  const sinMarcar = activo.ejercicios.reduce((a, e) => a + e.series.filter((x) => !x.hecha && (x.kg > 0 || x.reps > 0 || x.km > 0 || x.min > 0)).length, 0);
+  if (sinMarcar && confirm(`Tienes ${sinMarcar} serie${sinMarcar > 1 ? 's' : ''} con datos sin marcar ✓.\n\nAceptar = marcarlas como hechas\nCancelar = no guardarlas`))
+    activo.ejercicios.forEach((e) => e.series.forEach((x) => { if (!x.hecha && (x.kg > 0 || x.reps > 0 || x.km > 0 || x.min > 0)) x.hecha = true; }));
+  const ejercicios = activo.ejercicios.map((e) => ({ ...e, series: e.series.filter((x) => x.hecha).map(({ obj, ...x }) => x) })).filter((e) => e.series.length);
+  if (!ejercicios.length) return alert('Deja al menos una serie hecha. Si quieres eliminar el entrenamiento, usa «Borrar» en su detalle.');
+  const g = await abrirGuardar({ modo: 'editar', titulo: activo.titulo, descripcion: activo.descripcion, foto: activo.foto, inicio: activo.inicio,
+    min: activo.durMin || 0, ...resumenGuardar({ ejercicios }) });
+  if (!g) return; // sigue editando
+  const viejo = lista.find((x) => x.id === activo.id) || {};
+  const en = { ...viejo, id: activo.id, titulo: g.titulo, inicio: g.inicio, fin: g.fin, ejercicios };
+  if (g.descripcion) en.descripcion = g.descripcion; else delete en.descripcion;
+  if (g.foto) en.foto = g.foto; else delete en.foto;
+  delete en.records; // los records se vuelven a calcular con los datos corregidos
+  const recs = P.recordsNuevos(en, lista.filter((x) => x.id !== en.id && x.inicio < en.inicio), nombreEj, defEj);
+  const nRec = recs.reduce((a, r) => a + r.records.length, 0);
+  if (nRec) en.records = nRec;
+  try { await almacen.guardarEntreno(en); } catch (e) { return alert('No pude guardar los cambios: ' + (e.message || e)); }
+  lista = [en, ...lista.filter((x) => x.id !== en.id)].sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
+  cerrarActivo();
+  abrirDetalle(en.id);
+}
 function cerrarActivo() {
   activo = null; enlacePendiente = null;
   try { localStorage.removeItem(BORRADOR); } catch (e) { /* nada */ }
@@ -573,9 +601,13 @@ function pintarActivo() {
   $('en-activo').classList.toggle('modo-rutina', modoRutina);
   $('en-titulo').value = activo.titulo || '';
   $('en-titulo').placeholder = modoRutina ? 'Nombre de la rutina (ej.: Pierna A)' : 'Nombre del entrenamiento';
-  $('en-terminar').textContent = modoRutina ? 'Guardar rutina' : 'Terminar';
-  $('en-descartar').textContent = modoRutina ? 'Cancelar' : 'Descartar';
-  $('en-rutina-aviso').style.display = modoRutina ? '' : 'none';
+  const editando = !!activo.editando;
+  $('en-terminar').textContent = modoRutina ? 'Guardar rutina' : editando ? 'Guardar' : 'Terminar';
+  $('en-descartar').textContent = modoRutina || editando ? 'Cancelar' : 'Descartar';
+  const aviso = $('en-rutina-aviso');
+  if (!aviso.dataset.rutina) aviso.dataset.rutina = aviso.textContent;
+  aviso.textContent = editando ? '✏️ Editando un entrenamiento guardado: cambia ejercicios, series, peso y reps. Al tocar «Guardar» podrás cambiar el nombre, la foto, la fecha y la duración.' : aviso.dataset.rutina;
+  aviso.style.display = modoRutina || editando ? '' : 'none';
   $('en-ejercicios').innerHTML = activo.ejercicios.map((e, ie) => {
     const prev = modoRutina ? [] : anterior(e, activo.id) || [];
     const r = ref(e);
@@ -986,6 +1018,7 @@ function abrirDiscos(kg = null) {
 
 // ------------------------------------------------------------------ descanso y reloj
 function iniciarDescanso() {
+  if (activo.editando) return; // corrigiendo un entreno guardado: sin reloj de descanso
   const seg = parseInt($('en-descanso').value, 10) || 0;
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) { /* sin audio */ }
   activo.descanso = seg ? { fin: Date.now() + seg * 1000, total: seg } : null;
@@ -1009,7 +1042,7 @@ function tic() {
   const barra = $('en-barra'), desc = $('en-desc');
   if (!activo || activo.rutina) { barra.style.display = activo && vistaActual !== 'v-entrenar' ? 'flex' : 'none'; desc.style.display = 'none';
     if (activo) barra.innerHTML = `<span>✏️ Editando rutina <b>${esc(activo.titulo || '')}</b></span><b class="en-volver">Volver ›</b>`; return; }
-  const trans = reloj2((Date.now() - new Date(activo.inicio)) / 1000);
+  const trans = activo.editando ? reloj2((activo.durMin || 0) * 60) : reloj2((Date.now() - new Date(activo.inicio)) / 1000);
   let resta = null;
   if (activo.descanso) {
     resta = Math.ceil((activo.descanso.fin - Date.now()) / 1000);
@@ -1027,11 +1060,12 @@ function tic() {
     $('desc-barra').style.width = `${Math.max(0, Math.min(100, 100 * resta / activo.descanso.total))}%`;
   }
   barra.style.display = vistaActual !== 'v-entrenar' ? 'flex' : 'none';
-  barra.innerHTML = `<span>🏋️ <b>${esc(activo.titulo || 'Entrenamiento')}</b> · ${trans}${resta !== null ? ` · descanso <b>${reloj2(resta)}</b>` : ''}</span><b class="en-volver">Volver ›</b>`;
+  barra.innerHTML = activo.editando ? `<span>✏️ Editando <b>${esc(activo.titulo || 'Entrenamiento')}</b></span><b class="en-volver">Volver ›</b>` : `<span>🏋️ <b>${esc(activo.titulo || 'Entrenamiento')}</b> · ${trans}${resta !== null ? ` · descanso <b>${reloj2(resta)}</b>` : ''}</span><b class="en-volver">Volver ›</b>`;
 }
 
 async function terminar() {
   if (activo.rutina) return guardarRutinaEditada();
+  if (activo.editando) return guardarEdicion();
   const sinMarcar = activo.ejercicios.reduce((a, e) => a + e.series.filter((s) => !s.hecha && (s.kg > 0 || s.reps > 0)).length, 0);
   if (sinMarcar) {
     if (confirm(`Tienes ${sinMarcar} serie${sinMarcar > 1 ? 's' : ''} con datos sin marcar ✓.\n\nAceptar = marcarlas como hechas\nCancelar = descartarlas`))
