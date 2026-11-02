@@ -1234,3 +1234,7 @@ input.nu-calculado { border-color: var(--accent-orange) !important; box-shadow: 
 .pf-coach-l { margin: 0 0 8px; font-size: .92rem; line-height: 1.4; }
 input.nu-ia { border-color: var(--accent-cyan, #22D3EE) !important; box-shadow: 0 0 0 1px var(--accent-cyan, #22D3EE) inset; }
 .nu-texto-in { width: 100%; min-height: 90px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: var(--radius-md); padding: 10px; font: inherit; resize: vertical; box-sizing: border-box; }
+.co-img { display: block; width: calc(100% + 0px); max-height: 560px; object-fit: contain; background: #0B0B12; border-radius: var(--radius-md); margin: 8px 0; cursor: pointer; }
+.co-pub-imgbox { position: relative; margin-top: 4px; }
+.co-pub-imgbox img { display: block; width: 100%; max-height: 340px; object-fit: contain; background: #0B0B12; border-radius: var(--radius-md); }
+.co-pub-imgbox .co-ico { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.6); border-radius: 50%; width: 32px; height: 32px; }

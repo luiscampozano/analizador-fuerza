@@ -8,6 +8,19 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-01
 
+### 23:24 · v2.24.0 — Comunidad: publicaciones con imagen (Cloudflare R2)
+- **Pidió:** guardar imágenes en la comunidad; Luis activó R2, creó el bucket `fuerzapro-imagenes` y la conexión
+  `IMAGENES` en Cloudflare Pages (Settings → Bindings).
+- **Hecho:**
+  - Al compartir desde las tarjetas, la tarjeta que se estaba viendo acompaña la publicación; también se puede poner
+    una foto propia o quitarla. La app la convierte a JPEG de máximo 1350 px (~100–500 KB).
+  - Servidor: `PUT/DELETE /api/comunidad/publicaciones/<id>/imagen` (solo el dueño, solo JPEG, máx. ~500 KB) y
+    `GET /api/img/pub/<id>` (pública, no se sirve si la publicación está oculta). Se guarda como `pub/<id>.jpg`;
+    `datos.img` = hora de subida (sin cambios en D1). Editar el texto conserva la imagen.
+  - Borrar la publicación, dejar la comunidad, eliminar la cuenta o borrar desde Moderación borra también la imagen.
+  - Pruebas: `com_test` pasa de 44 a 53.
+- **Pendientes:** que Luis publique un entreno con tarjeta y otro con foto desde el celular.
+
 ### 22:56 · v2.23.0 — Cardio (calorías, récords, natación en metros) y 3 funciones más con IA
 - **Pidió:** seguir con 1 (mejoras de cardio) y 2 (más usos de la IA), y saber el costo de guardar imágenes en la comunidad.
 - **Hecho (cardio):**

@@ -1243,6 +1243,7 @@ $('tj-compartir').onclick = () => {
 };
 $('tj-comunidad').onclick = () => {
   const t = tjActual; if (!t) return;
+  const sel = t.lista[t.i]; // la tarjeta que se esta viendo acompana la publicacion
   cerrarTarjetas(false);
-  if (deps.compartir) deps.compartir(t.en, t.recs);
+  if (deps.compartir) deps.compartir(t.en, t.recs, sel ? sel.blob : null);
 };

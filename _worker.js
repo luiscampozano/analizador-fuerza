@@ -56,6 +56,7 @@ async function api(req, env, url) {
   if (ruta === '/api/auth/correo' && m === 'POST') return entrarCorreo(req, env);
   if (ruta === '/api/salir' && m === 'POST') return salir(req, env);
   if (ruta.startsWith('/api/foto/') && m === 'GET') return foto(env, decodeURIComponent(ruta.slice(10)));
+  if (/^\/api\/img\/pub\/p[A-Za-z0-9_-]{6,40}$/.test(ruta) && m === 'GET') return imagenPub(env, ruta.slice(13));
   if (ruta.startsWith('/api/alimentos') && m === 'GET') return leerAlimentos(env, ruta.slice(14), url); // publico: sin sesion
   const u = await sesion(req, env);
   if (ruta === '/api/alimentos' && m === 'POST') return crearAlimento(req, env, u);
@@ -306,6 +307,7 @@ async function sincronizar(req, env, u) {
 }
 
 async function borrarCuenta(env, u) {
+  const ids = await idsPublicaciones(env, u.id);
   await env.DB.batch([
     ...borrarComunidad(env, u.id),
     env.DB.prepare('DELETE FROM items WHERE usuario = ?1').bind(u.id),
@@ -316,6 +318,7 @@ async function borrarCuenta(env, u) {
     env.DB.prepare('DELETE FROM credenciales WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM usuarios WHERE id = ?1').bind(u.id),
   ]);
+  await borrarImagenes(env, ids);
   return json({ ok: true });
 }
 
@@ -356,6 +359,26 @@ async function foto(env, usuario) {
   const bytes = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
   return new Response(bytes, { headers: { 'content-type': m[1], 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' } });
 }
+
+// ---------------- imagen de una publicacion (Cloudflare R2, binding IMAGENES; v2.24.0)
+// Una imagen por publicacion (la tarjeta del entreno o una foto), JPEG reducida en el telefono. Se guarda como
+// pub/<id>.jpg; en datos.img queda la hora de subida (sirve para que el navegador no muestre una version vieja).
+const MAX_IMG = 700_000; // caracteres base64 (~520 KB)
+const claveImg = (id) => `pub/${id}.jpg`;
+async function imagenPub(env, id) {
+  if (!env.IMAGENES) return new Response('', { status: 404 });
+  const p = await env.DB.prepare('SELECT oculto FROM publicaciones WHERE id = ?1').bind(id).first();
+  if (!p || p.oculto) return new Response('', { status: 404 });
+  const obj = await env.IMAGENES.get(claveImg(id));
+  if (!obj) return new Response('', { status: 404 });
+  return new Response(obj.body, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=604800', 'x-content-type-options': 'nosniff' } });
+}
+// borra de R2 las imagenes de esas publicaciones (si falla, no impide borrar lo demas)
+async function borrarImagenes(env, ids) {
+  if (!env.IMAGENES || !ids.length) return;
+  try { for (let i = 0; i < ids.length; i += 1000) await env.IMAGENES.delete(ids.slice(i, i + 1000).map(claveImg)); } catch (e) { console.error('r2 borrar', e); }
+}
+const idsPublicaciones = async (env, uid) => ((await env.DB.prepare('SELECT id FROM publicaciones WHERE usuario = ?1').bind(uid).all()).results || []).map((f) => f.id);
 
 function publicacionJSON(f) {
   let datos = null;
@@ -406,7 +429,9 @@ async function comunidad(req, env, u, r, m, url) {
     return json({ perfil: perfilJSON(await miPerfil(env, u), u) });
   }
   if (r === 'perfil' && m === 'DELETE') { // dejar la comunidad (la cuenta y la sincronizacion siguen)
+    const ids = await idsPublicaciones(env, u.id);
     await DB.batch(borrarComunidad(env, u.id));
+    await borrarImagenes(env, ids);
     return json({ ok: true });
   }
 
@@ -431,16 +456,37 @@ async function comunidad(req, env, u, r, m, url) {
     const d = await leerJSON(req);
     const ref = texto(d.ref, 120);
     if (!ref) throw fallo('Falta el entrenamiento a publicar.');
+    if (d.datos && typeof d.datos === 'object') delete d.datos.img; // solo el servidor marca la imagen
     const datos = JSON.stringify(d.datos ?? null);
     if (!d.datos || typeof d.datos !== 'object' || datos.length > 40000) throw fallo('El resumen del entrenamiento es inválido o demasiado grande.');
     const recientes = await DB.prepare('SELECT count(*) AS n FROM publicaciones WHERE usuario = ?1 AND creado > ?2').bind(u.id, ahora - 3600000).first();
     if (recientes.n >= 15) throw fallo('Publicaste mucho en la última hora. Espera un poco.', 429);
     const previa = await DB.prepare('SELECT id FROM publicaciones WHERE usuario = ?1 AND ref = ?2').bind(u.id, ref).first();
     const id = previa ? previa.id : 'p' + aleatorio(12);
-    if (previa) await DB.prepare('UPDATE publicaciones SET texto = ?2, datos = ?3, editado = ?4 WHERE id = ?1').bind(id, texto(d.texto, 1000), datos, ahora).run();
+    if (previa) await DB.prepare(`UPDATE publicaciones SET texto = ?2, editado = ?4,
+      datos = CASE WHEN json_extract(datos, '$.img') IS NULL THEN ?3 ELSE json_set(?3, '$.img', json_extract(datos, '$.img')) END WHERE id = ?1`).bind(id, texto(d.texto, 1000), datos, ahora).run();
     else await DB.prepare('INSERT INTO publicaciones (id, usuario, ref, texto, datos, creado) VALUES (?1, ?2, ?3, ?4, ?5, ?6)').bind(id, u.id, ref, texto(d.texto, 1000), datos, ahora).run();
     const f = await DB.prepare(consultaPub('p.id = ?2')).bind(u.id, id).first();
     return json({ publicacion: publicacionJSON(f), nueva: !previa });
+  }
+  if (partes[0] === 'publicaciones' && partes[2] === 'imagen' && partes.length === 3 && (m === 'PUT' || m === 'DELETE')) {
+    if (!env.IMAGENES) throw fallo('Las imágenes en la comunidad estarán disponibles muy pronto.', 503);
+    const id = partes[1];
+    const p = await DB.prepare('SELECT usuario FROM publicaciones WHERE id = ?1').bind(id).first();
+    if (!p) throw fallo('Esta publicación ya no está disponible.', 404);
+    if (p.usuario !== u.id) throw fallo('Solo puedes cambiar la imagen de tus publicaciones.', 403);
+    if (m === 'DELETE') {
+      await env.IMAGENES.delete(claveImg(id));
+      await DB.prepare("UPDATE publicaciones SET datos = json_remove(datos, '$.img') WHERE id = ?1").bind(id).run();
+      return json({ ok: true });
+    }
+    const img = (await leerJSON(req)).imagen;
+    // solo JPEG (empieza con /9j/ en base64) y de tamano razonable
+    if (typeof img !== 'string' || !img.startsWith('/9j/') || img.length > MAX_IMG || !/^[A-Za-z0-9+/=]+$/.test(img)) throw fallo('La imagen no es válida o es muy grande (máximo ~500 KB).');
+    const bytes = Uint8Array.from(atob(img), (c) => c.charCodeAt(0));
+    await env.IMAGENES.put(claveImg(id), bytes, { httpMetadata: { contentType: 'image/jpeg' } });
+    await DB.prepare("UPDATE publicaciones SET datos = json_set(coalesce(datos, '{}'), '$.img', ?2) WHERE id = ?1").bind(id, ahora).run();
+    return json({ img: ahora });
   }
   if (partes[0] === 'publicaciones' && partes[1] && partes.length === 2) {
     const id = partes[1];
@@ -456,6 +502,7 @@ async function comunidad(req, env, u, r, m, url) {
       if (!p) return json({ ok: true });
       if (p.usuario !== u.id && !esAdmin(env, u)) throw fallo('Solo puedes borrar tus publicaciones.', 403);
       await DB.batch(borrarPublicacion(env, id));
+      await borrarImagenes(env, [id]);
       return json({ ok: true });
     }
   }
@@ -661,19 +708,20 @@ async function moderacion(req, env, u, r, m) {
   if (r === 'accion' && m === 'POST') {
     const { tipo, id, accion } = await leerJSON(req);
     const tabla = { publicacion: 'publicaciones', comentario: 'comentarios', alimento: 'alimentos' }[tipo], clave = tipo === 'alimento' ? 'codigo' : 'id';
-    const lote = [];
+    const lote = [], imgs = [];
     if (accion === 'ocultar' || accion === 'mostrar') {
       if (!tabla) throw fallo('Solo se pueden ocultar publicaciones, comentarios o alimentos.');
       lote.push(DB.prepare(`UPDATE ${tabla} SET oculto = ?2 WHERE ${clave} = ?1`).bind(id, accion === 'ocultar' ? 1 : 0));
     } else if (accion === 'borrar') {
       if (tipo === 'alimento') lote.push(DB.prepare('DELETE FROM alimentos WHERE codigo = ?1').bind(id));
-      else if (tipo === 'publicacion') lote.push(...borrarPublicacion(env, id));
+      else if (tipo === 'publicacion') { lote.push(...borrarPublicacion(env, id)); imgs.push(id); }
       else if (tipo === 'comentario') lote.push(DB.prepare('DELETE FROM comentarios WHERE id = ?1').bind(id));
-      else if (tipo === 'usuario') lote.push(...borrarComunidad(env, id)); // saca a la persona de la comunidad
+      else if (tipo === 'usuario') { lote.push(...borrarComunidad(env, id)); imgs.push(...await idsPublicaciones(env, id)); } // saca a la persona de la comunidad
       else throw fallo('Tipo inválido.');
     } else if (accion !== 'descartar') throw fallo('Acción inválida.');
     lote.push(DB.prepare("UPDATE reportes SET estado = 'revisado' WHERE objeto_tipo = ?1 AND objeto_id = ?2").bind(tipo, id));
     await DB.batch(lote);
+    await borrarImagenes(env, imgs);
     return json({ ok: true });
   }
   throw fallo('No encontrado.', 404);

@@ -217,13 +217,16 @@ function bloqueEntreno(d, completo = false) {
       return `<div class="co-ej-linea"><span>${esc(e.icono || '🏋️')} ${validas.length} × ${esc(e.nombre)}</span><span>${m ? resumenSerie(m) : ''}${vel.length ? ` <span class="co-vel">⚡ ${fmt(Math.max(...vel.map((s) => s.v)), 2)}</span>` : ''}</span></div>`;
     }).join('')}${!completo && ejs.length > 4 ? `<div class="hint">y ${ejs.length - 4} ejercicio${ejs.length - 4 > 1 ? 's' : ''} más…</div>` : ''}</div></div>`;
 }
+// imagen de la publicacion (guardada en Cloudflare R2; v2.24.0)
+const urlImg = (p) => `/api/img/pub/${encodeURIComponent(p.id)}?v=${encodeURIComponent(p.datos.img)}`;
+const imgPub = (p) => (p.datos && p.datos.img ? `<img class="co-img" src="${urlImg(p)}" alt="Imagen de la publicación" loading="lazy" onerror="this.remove()">` : '');
 function tarjeta(p) {
   const mia = yo && yo.perfil && p.autor.id === yo.perfil.id;
   return `<article class="card co-pub" data-id="${esc(p.id)}">
     <header class="co-pub-cab"><button type="button" class="co-autor" data-alias="${esc(p.autor.alias)}">${avatar(p.autor)}<div><strong>${esc(p.autor.nombre)}</strong><small>@${esc(p.autor.alias)} · ${hace(p.creado)}${p.editado ? ' · editado' : ''}</small></div></button>
       <button type="button" class="co-ico co-menu" aria-label="Opciones">⋯</button></header>
     ${p.texto ? `<p class="co-texto">${esc(p.texto)}</p>` : ''}
-    <div class="co-abrir">${bloqueEntreno(p.datos)}</div>
+    ${imgPub(p)}<div class="co-abrir">${bloqueEntreno(p.datos)}</div>
     <footer class="co-pub-pie"><button type="button" class="co-like${p.meGusta ? ' activo' : ''}">${p.meGusta ? '❤️' : '🤍'} <span>${p.likes}</span></button>
       <button type="button" class="co-coment">💬 <span>${p.comentarios}</span></button>${mia ? '<span class="co-tuya">Tu publicación</span>' : ''}</footer>
   </article>`;
@@ -235,6 +238,7 @@ function conectarTarjetas(cont, pubs) {
     const p = porId.get(el.dataset.id); if (!p) return;
     el.querySelector('.co-autor').onclick = () => abrirPerfil(p.autor.alias);
     const ab = el.querySelector('.co-abrir'); if (ab) ab.onclick = () => abrirPublicacion(p.id);
+    const im = el.querySelector('.co-img'); if (im) im.onclick = () => (el.closest('#co-modal-cuerpo') ? window.open(im.src, '_blank') : abrirPublicacion(p.id));
     // dentro del detalle, el boton de comentarios solo lleva al cuadro de texto
     el.querySelector('.co-coment').onclick = () => (el.closest('#co-modal-cuerpo') && $('co-com-in') ? $('co-com-in').focus() : abrirPublicacion(p.id, true));
     el.querySelector('.co-like').onclick = (ev) => darLike(p, ev.currentTarget);
@@ -499,7 +503,16 @@ export function resumen(en, recs = []) {
     records: (recs || []).slice(0, 20).map((r) => ({ nombre: String(r.nombre).slice(0, 80), records: r.records.slice(0, 6).map((x) => ({ tipo: x.tipo, texto: x.texto })) })) };
 }
 
-export async function compartir(en, recs) {
+// imagen -> JPEG de maximo 1350 px (la tarjeta 1080x1350 queda igual; una foto del celular baja a ~200-400 KB)
+async function aJPEG(archivo) {
+  const bmp = await createImageBitmap(archivo), k = Math.min(1, 1350 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  const g = c.getContext('2d'); g.fillStyle = '#0B0B12'; g.fillRect(0, 0, c.width, c.height); // fondo para el sticker transparente
+  g.drawImage(bmp, 0, 0, c.width, c.height);
+  for (const q of [0.82, 0.7, 0.55]) { const b64 = c.toDataURL('image/jpeg', q).split(',')[1]; if (b64.length <= 690000 || q === 0.55) return b64; }
+}
+
+export async function compartir(en, recs, imagen = null) {
   if (!nube.conectado()) {
     if (confirm('Para compartir en la comunidad necesitas iniciar sesión. ¿Ir a la Comunidad?')) deps.vista('v-comunidad');
     return;
@@ -514,16 +527,36 @@ export async function compartir(en, recs) {
   modal(`<h3 class="en-det-titulo">📣 ${previo ? 'Actualizar publicación' : 'Compartir en la comunidad'}</h3>
     <textarea id="co-pub-txt" maxlength="1000" rows="3" placeholder="¿Cómo te fue? (opcional)">${esc(previo && previo.texto ? previo.texto : en.descripcion || '')}</textarea>
     <p class="hint">Así lo verán tus seguidores y la pestaña Descubrir:</p>
+    <div id="co-pub-img"></div>
     <div class="co-previa">${bloqueEntreno(datos)}</div>
     <button type="button" class="btn-primary" id="co-publicar" style="margin-top:12px">${previo ? 'Actualizar' : 'Publicar'}</button>`);
+  // imagen: la tarjeta que venia viendo, una foto suya, o ninguna. previo.img = la que ya esta publicada
+  let nueva = imagen, quitar = false, url = null;
+  const pintarImg = () => {
+    if (url) { URL.revokeObjectURL(url); url = null; }
+    const actual = !nueva && previo && previo.img && !quitar;
+    if (nueva) url = URL.createObjectURL(nueva);
+    $('co-pub-img').innerHTML = `${nueva || actual ? `<div class="co-pub-imgbox"><img src="${nueva ? url : urlImg({ id: previo.id, datos: { img: previo.img } })}" alt="Imagen de la publicación"><button type="button" class="co-ico" id="co-img-quitar" aria-label="Quitar imagen">✕</button></div>` : ''}
+      <button type="button" class="btn-sec" id="co-img-foto" style="width:100%;margin-top:8px">📷 ${nueva || actual ? 'Cambiar por una foto mía' : 'Agregar una foto (opcional)'}</button><input type="file" id="co-img-in" accept="image/*" hidden>`;
+    $('co-img-foto').onclick = () => $('co-img-in').click();
+    $('co-img-in').onchange = () => { const f = $('co-img-in').files[0]; if (f) { nueva = f; pintarImg(); } };
+    if ($('co-img-quitar')) $('co-img-quitar').onclick = () => { if (nueva) nueva = null; else quitar = true; pintarImg(); };
+  };
+  pintarImg();
   $('co-publicar').onclick = async () => {
     $('co-publicar').disabled = true;
     try {
       const texto = $('co-pub-txt').value.trim();
       const r = await api('POST', 'publicaciones', { ref: en.id, texto, datos });
-      const c = leerJ(COMPARTIDOS, {}); c[en.id] = { id: r.publicacion.id, texto, fecha: Date.now() }; guardarJ(COMPARTIDOS, c);
+      let img = (r.publicacion.datos && r.publicacion.datos.img) || null, aviso = '';
+      try {
+        if (nueva) { $('co-publicar').textContent = 'Subiendo imagen…'; img = (await api('PUT', `publicaciones/${r.publicacion.id}/imagen`, { imagen: await aJPEG(nueva) })).img; }
+        else if (quitar && img) { await api('DELETE', `publicaciones/${r.publicacion.id}/imagen`); img = null; }
+      } catch (e) { aviso = `\n\nPero la imagen no se pudo subir: ${e.message || e}`; }
+      const c = leerJ(COMPARTIDOS, {}); c[en.id] = { id: r.publicacion.id, texto, fecha: Date.now(), img }; guardarJ(COMPARTIDOS, c);
+      if (url) URL.revokeObjectURL(url);
       cerrarModal();
-      alert(previo ? 'Publicación actualizada.' : '¡Publicado! Tus seguidores ya lo pueden ver.');
+      alert((previo ? 'Publicación actualizada.' : '¡Publicado! Tus seguidores ya lo pueden ver.') + aviso);
     } catch (e) { error(e); const b = $('co-publicar'); if (b) b.disabled = false; }
   };
 }

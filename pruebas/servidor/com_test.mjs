@@ -27,6 +27,18 @@ const [,,rf]=await call(null,'GET','foto/1'); ok(rf.status===200&&rf.headers.get
 const datos={titulo:'Pierna pesada',inicio:'2026-10-26T10:00:00Z',duracion:65,volumen:5400,series:12,ejercicios:[{nombre:'Sentadilla',ej:'sentadilla',series:[{kg:140,reps:5,rpe:8}]}],records:[{nombre:'Sentadilla',records:[{tipo:'1RM estimado',texto:'163 kg'}]}]};
 [s,r]=await call(L,'POST','comunidad/publicaciones',{ref:'e1',texto:'Buen día 💪',datos}); ok(s===200&&r.nueva,'Luis publica'); const P1=r.publicacion.id;
 [s,r]=await call(L,'POST','comunidad/publicaciones',{ref:'e1',texto:'Editado',datos}); ok(r.publicacion.id===P1&&!r.nueva&&r.publicacion.texto==='Editado','republicar mismo entreno edita');
+// ---- imagen de la publicación en R2 (v2.24.0)
+const jpg=Buffer.from([0xff,0xd8,0xff,0xe0,1,2,3,4,5,6]).toString('base64');
+[s,r]=await call(L,'PUT',`comunidad/publicaciones/${P1}/imagen`,{imagen:jpg}); ok(s===503,'sin R2 configurado: aviso claro');
+const R2=new Map(); env.IMAGENES={put:async(k,v)=>{R2.set(k,Buffer.from(v));},get:async k=>R2.has(k)?{body:R2.get(k)}:null,delete:async k=>{for(const x of [].concat(k))R2.delete(x);}};
+[s,r]=await call(A,'PUT',`comunidad/publicaciones/${P1}/imagen`,{imagen:jpg}); ok(s===403,'otra persona no puede poner imagen');
+[s,r]=await call(L,'PUT',`comunidad/publicaciones/${P1}/imagen`,{imagen:Buffer.from('<svg>').toString('base64')}); ok(s===400,'solo JPEG');
+[s,r]=await call(L,'PUT',`comunidad/publicaciones/${P1}/imagen`,{imagen:jpg}); ok(s===200&&r.img>0&&R2.has(`pub/${P1}.jpg`),'Luis sube la imagen a R2');
+[s,r]=await call(L,'POST','comunidad/publicaciones',{ref:'e1',texto:'Editado',datos:{...datos,img:1}}); ok(r.publicacion.datos.img>1,'editar el texto conserva la imagen (y el cliente no la puede falsear)');
+let ri=await W.fetch(new Request(`https://x.dev/api/img/pub/${P1}`),env); ok(ri.status===200&&ri.headers.get('content-type')==='image/jpeg'&&Buffer.from(await ri.arrayBuffer()).length===10,'imagen pública servida');
+ri=await W.fetch(new Request('https://x.dev/api/img/pub/pNOEXISTE12'),env); ok(ri.status===404,'imagen inexistente: 404');
+[s,r]=await call(L,'DELETE',`comunidad/publicaciones/${P1}/imagen`); [, r]=await call(L,'GET',`comunidad/publicaciones/${P1}`); ok(!R2.has(`pub/${P1}.jpg`)&&!r.publicacion.datos.img,'quitar la imagen');
+await call(L,'PUT',`comunidad/publicaciones/${P1}/imagen`,{imagen:jpg});
 [s,r]=await call(A,'GET','comunidad/feed?modo=siguiendo'); ok(r.publicaciones.length===0,'Ana sin seguir: feed vacío');
 [s,r]=await call(A,'GET','comunidad/feed?modo=descubrir'); ok(r.publicaciones.length===1&&r.publicaciones[0].autor.alias==='luispl','Descubrir muestra a Luis');
 [s,r]=await call(A,'GET','comunidad/sugerencias'); ok(r.personas.some(p=>p.alias==='luispl'),'sugerencias');
@@ -77,3 +89,4 @@ await call(A,'DELETE','cuenta');
 const resto=['perfiles','seguidores','likes','comentarios'].map(t=>t+':'+db.prepare(`select count(*) n from ${t} where ${t==='seguidores'?'seguidor':'usuario'}='2'`).get().n).join(' ');
 ok(!/:[1-9]/.test(resto),'cuenta de Ana borrada en comunidad ('+resto+')');
 [s,r]=await call(L,'DELETE','comunidad/perfil'); ok(db.prepare("select count(*) n from publicaciones where usuario='1'").get().n===0,'dejar la comunidad borra publicaciones');
+ok(R2.size===0,'dejar la comunidad borra también sus imágenes de R2');
