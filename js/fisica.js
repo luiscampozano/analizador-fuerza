@@ -1,6 +1,7 @@
 // Motor fisico (port del motor Python validado con el remo de prueba).
 // Entrada: puntos MediaPipe por cuadro. Salida: posicion, velocidad, aceleracion, fuerza, potencia y repeticiones.
 import { contarPorAngulos, preferirAngulos, contarAlterno } from './conteo.js';
+import { DE_UNA_PIERNA, cortePorPies } from './piernas.js';
 
 export const G = 9.81;
 
@@ -11,7 +12,7 @@ export const MP = {
   pie_i: [27, 27], pie_d: [28, 28], rodilla_i: [25, 25], rodilla_d: [26, 26],
 };
 const ANCLAS = { cadera: MP.cadera, hombros: MP.hombros, tobillos: MP.pies, rodillas: MP.rodillas, codos: MP.codos, ninguna: null, manos: MP.manos, puntas: [31, 32],
-  hombro_i: MP.hombro_i, hombro_d: MP.hombro_d };
+  hombro_i: MP.hombro_i, hombro_d: MP.hombro_d, piso: MP.pies };
 // Proporciones segmento/estatura para los puntos de MediaPipe (calibradas con videos reales de pie y sentado)
 const SEGMENTOS = [
   { a: [23, 24], b: [25, 26], r: 0.235 }, // muslo
@@ -338,7 +339,10 @@ export function analizar(full, fps, ej, cfg) {
 
   const punto = medio(full, MP[ej.punto]);
   const anclaPar = ANCLAS[ej.ancla];
-  const ancla = anclaPar ? medio(full, anclaPar) : null;
+  // v2.28.0 'piso': el tobillo mas bajo (el pie apoyado en el suelo). En búlgara y zancadas un pie sube al banco o da un
+  // paso al cambiar de pierna; con el promedio de los dos tobillos eso parecia una rep
+  const ancla = ej.ancla === 'piso' ? full.map((f) => [(f[27][0] + f[28][0]) / 2, Math.max(f[27][1], f[28][1])])
+    : anclaPar ? medio(full, anclaPar) : null;
   const relPx = punto.map((p, i) => (ancla ? [p[0] - ancla[i][0], p[1] - ancla[i][1]] : [p[0], p[1]]));
   const rel = relPx.map((p, i) => [Number.isFinite(p[0]) ? p[0] * mPx[i] : 0, Number.isFinite(p[1]) ? p[1] * mPx[i] : 0]);
 
@@ -390,25 +394,36 @@ export function analizar(full, fps, ej, cfg) {
   // Asi no cuentan desenganchar/re-rackear ni el temblor, una rep luchada con estancamiento no se parte en dos, y la
   // primera y la ultima rep cuentan aunque esten al borde del video (antes se exigia bajada a los dos lados del tope).
   const i0 = cfg.inicio ? Math.round(cfg.inicio * fps) : 0, i1 = cfg.fin ? Math.round(cfg.fin * fps) : n;
-  let pares;
+  let pares, corte = null;
   if (cuerpo) pares = cuerpo.pares;
   else {
-    const prom = umbralReps(s, fps);
-    const piv = zigzag(s, prom);
+    // v2.28.0: con ventana (p. ej. una pierna de la búlgara) el umbral se mide solo en esa parte del video. Y en búlgara
+    // o zancada con las dos piernas en el video, cada pierna se cuenta por separado con su propio umbral: el cambio de
+    // pierna (pararse, mover los pies) es un movimiento enorme y cada pierna puede verse con otro recorrido en la camara
+    corte = !cfg.inicio && !cfg.fin && DE_UNA_PIERNA.test(ej.id || '') ? cortePorPies(full, fps) : null;
+    if (corte && corte.ini - corte.fin < fps) corte = null; // cambio instantaneo (sin pausa): no hace falta separar
+    const tramos = corte ? [[0, corte.fin], [corte.ini, n]] : [[0, n]];
     pares = [];
-    for (let q = 0; q < piv.length - 1; q++) if (piv[q].tipo === 'bajo' && piv[q + 1].tipo === 'alto') pares.push([piv[q].i, piv[q + 1].i, piv[q + 2] ? piv[q + 2].i : n - 1]);
-    // v2.18.1: la ultima (o primera) rep seguida de caminar/acomodarse sin bajar: la subida sigue de largo y la rep se unia
-    // con ese movimiento. Si el tope queda muy por encima de los demas, se toma el primer momento en que llego al nivel
-    // de los otros topes (muñecos 3D)
-    if (pares.length >= 4) {
-      const topes = pares.map((p) => s[p[1]]), recs = pares.map((p) => s[p[1]] - s[p[0]]);
-      const mTope = mediana(topes), mRec = mediana(recs);
-      for (const p of pares) {
-        if (!(s[p[1]] - mTope > 0.6 * mRec)) continue;
-        let k = p[0]; while (k < p[1] && s[k] < mTope - 0.1 * mRec) k++;
-        let pk = k; for (let i = k; i <= Math.min(p[1], k + Math.round(0.6 * fps)); i++) if (s[i] > s[pk]) pk = i;
-        if (pk < p[1] && s[pk] - s[p[0]] > 0.5 * mRec) p[1] = pk;
+    for (const [a0, b0] of tramos) {
+      const ss = corte ? s.slice(a0, b0) : s;
+      const prom = umbralReps(corte ? ss : cfg.inicio || cfg.fin ? s.slice(i0, i1) : s, fps);
+      const piv = zigzag(ss, prom).map((p) => ({ ...p, i: p.i + a0 }));
+      const pz = [];
+      for (let q = 0; q < piv.length - 1; q++) if (piv[q].tipo === 'bajo' && piv[q + 1].tipo === 'alto') pz.push([piv[q].i, piv[q + 1].i, piv[q + 2] ? piv[q + 2].i : b0 - 1]);
+      // v2.18.1: la ultima (o primera) rep seguida de caminar/acomodarse sin bajar: la subida sigue de largo y la rep se
+      // unia con ese movimiento. Si el tope queda muy por encima de los demas, se toma el primer momento en que llego al
+      // nivel de los otros topes (muñecos 3D)
+      if (pz.length >= 4) {
+        const topes = pz.map((p) => s[p[1]]), recs = pz.map((p) => s[p[1]] - s[p[0]]);
+        const mTope = mediana(topes), mRec = mediana(recs);
+        for (const p of pz) {
+          if (!(s[p[1]] - mTope > 0.6 * mRec)) continue;
+          let k = p[0]; while (k < p[1] && s[k] < mTope - 0.1 * mRec) k++;
+          let pk = k; for (let i = k; i <= Math.min(p[1], k + Math.round(0.6 * fps)); i++) if (s[i] > s[pk]) pk = i;
+          if (pk < p[1] && s[pk] - s[p[0]] > 0.5 * mRec) p[1] = pk;
+        }
       }
+      pares.push(...pz);
     }
   }
   // metricas de una rep a partir de su despegue (ini), su tope (pk) y su final (fin)
@@ -452,6 +467,8 @@ export function analizar(full, fps, ej, cfg) {
   // al soltar o agarrar la carga las manos se mueven en otra direccion: fuera reps de borde atipicas
   // con carga nadie sube a mas de ~2 m/s de media: eso es la IA perdiendo el cuerpo un instante
   if (cuerpo) reps = reps.filter((x) => x.v_media <= 2);
+  // con cambio de pierna, los bordes (soltar, acomodarse, cambiar de pie) se revisan en cada pierna por separado
+  const limpiar = (reps) => {
   if (reps.length >= 3 && !cuerpo) {
     const ang = reps.map((x) => {
       const d = [relPx[x.tope][0] - relPx[x.inicio][0], relPx[x.tope][1] - relPx[x.inicio][1]];
@@ -459,11 +476,16 @@ export function analizar(full, fps, ej, cfg) {
     });
     const m = mediana(ang), mr = mediana(reps.map((x) => x.recorrido_cm));
     // atipica: otra direccion, o un recorrido mucho mayor que el resto (p. ej. pararse despues de soltar la barra)
-    const atipica = reps.map((x, k) => Math.abs(((ang[k] - m + 540) % 360) - 180) > 25 || x.recorrido_cm > 1.6 * mr);
+    // (v2.28.0: en búlgara y zancada la cadera tambien va un poco atras al subir la ultima rep y bajarse: tolera 35°)
+    const tolAng = DE_UNA_PIERNA.test(ej.id || '') ? 35 : 25;
+    const atipica = reps.map((x, k) => Math.abs(((ang[k] - m + 540) % 360) - 180) > tolAng || x.recorrido_cm > 1.6 * mr);
     while (reps.length >= 3 && atipica[atipica.length - 1]) { reps.pop(); atipica.pop(); }
     while (reps.length >= 3 && atipica[0]) { reps.shift(); atipica.shift(); }
   }
   if (reps.length >= 3 && !cuerpo) reps = quitarPreparacion(reps, full, fps, ej, rel, mPx, cfg.altura);
+  return reps;
+  };
+  reps = corte ? [...limpiar(reps.filter((r) => r.tope < corte.corte)), ...limpiar(reps.filter((r) => r.tope >= corte.corte))] : limpiar(reps);
   if (reps.length) {
     marcarReps(reps);
     // desenganchar o re-rackear la barra, acomodarse en la maquina: movimientos cortos en los bordes de la serie.

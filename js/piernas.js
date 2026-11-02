@@ -63,3 +63,41 @@ export function cambioDePierna(full, fps, reps) {
   const corte = ((reps[mejor.k - 1].fin + reps[mejor.k].inicio) / 2) / fps;
   return { k: mejor.k, lados, corte };
 }
+
+
+// v2.28.0: cuadro donde cambia la postura de los pies durante el video (cambio de pierna), sin depender de las reps.
+// En búlgara y zancada fija los pies casi no se mueven durante la serie: el tobillo izquierdo respecto al derecho
+// (en largos de muslo) es constante y, al cambiar de pierna, se invierte. Devuelve null o { fin (ultimo cuadro de la
+// primera pierna), ini (primer cuadro de la segunda), corte }.
+// Sirve para contar cada pierna con su propio umbral (el recorrido de cada pierna puede verse distinto en la camara).
+export function cortePorPies(full, fps) {
+  const n = full.length, paso = Math.max(1, Math.round(fps / 10)), xs = [], idx = [];
+  for (let i = 0; i < n; i += paso) {
+    const f = full[i]; if (![CAD_I, CAD_D, ROD_I, ROD_D, TOB_I, TOB_D].every((k) => ok(f[k]))) continue;
+    const L = (Math.hypot(f[CAD_I][0] - f[ROD_I][0], f[CAD_I][1] - f[ROD_I][1]) + Math.hypot(f[CAD_D][0] - f[ROD_D][0], f[CAD_D][1] - f[ROD_D][1])) / 2;
+    if (!(L > 0)) continue;
+    xs.push([(f[TOB_I][0] - f[TOB_D][0]) / L, (f[TOB_I][1] - f[TOB_D][1]) / L]); idx.push(i);
+  }
+  const m = xs.length, minimo = Math.round(3 * fps / paso); // cada pierna al menos 3 s
+  if (m < 2 * minimo) return null;
+  const pre = [[0, 0]]; for (const x of xs) { const u = pre[pre.length - 1]; pre.push([u[0] + x[0], u[1] + x[1]]); }
+  const med = (a, b) => [(pre[b][0] - pre[a][0]) / (b - a), (pre[b][1] - pre[a][1]) / (b - a)];
+  let mejor = null;
+  for (let k = minimo; k <= m - minimo; k++) {
+    const A = med(0, k), B = med(k, m), d = Math.hypot(A[0] - B[0], A[1] - B[1]);
+    if (!mejor || d > mejor.d) mejor = { k, d, A, B };
+  }
+  if (!mejor || mejor.d < 1) return null;
+  // la mayoria de los cuadros de cada lado deben parecerse a su grupo (no un cambio que va y viene)
+  const cerca = (x, c) => Math.hypot(x[0] - c[0], x[1] - c[1]) < mejor.d / 2;
+  const bienA = xs.slice(0, mejor.k).filter((x) => cerca(x, mejor.A)).length / mejor.k;
+  const bienB = xs.slice(mejor.k).filter((x) => cerca(x, mejor.B)).length / (m - mejor.k);
+  if (bienA < 0.8 || bienB < 0.8) return null;
+  // el cambio de pierna (pararse, mover los pies) queda afuera: la pierna A termina en su ultimo cuadro con su postura
+  // y la B empieza cuando su postura ya se mantiene (1 s seguido casi siempre igual)
+  const firme = (x, c) => Math.hypot(x[0] - c[0], x[1] - c[1]) < mejor.d / 4;
+  let fa = mejor.k - 1; while (fa > 0 && !firme(xs[fa], mejor.A)) fa--;
+  const seg = Math.round(fps / paso);
+  let ib = mejor.k; while (ib < m - 1 && !(firme(xs[ib], mejor.B) && xs.slice(ib, ib + seg).filter((x) => firme(x, mejor.B)).length >= 0.9 * Math.min(seg, m - ib))) ib++;
+  return { fin: idx[fa] + paso, ini: idx[ib], corte: idx[mejor.k] };
+}

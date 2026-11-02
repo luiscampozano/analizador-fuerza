@@ -8,6 +8,24 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-02
 
+### 13:56 · v2.28.0 — Búlgara real con las dos piernas: 5 → 16 reps
+- **Pidió:** su búlgara de 16 reps (8 por pierna, en un video) salió con 5; mandó el reporte (fallo baba227e).
+- **Causa:** se seguían los hombros respecto al promedio de los tobillos. Luis se inclina mucho (agarrado del rack): los
+  hombros casi no bajan; y al cambiar de pierna el pie de atrás baja/sube del banco, un movimiento enorme que subía el
+  umbral del conteo y tapaba las reps de la segunda pierna.
+- **Hecho:**
+  - Búlgara (mancuernas, barra, Smith): se sigue la **cadera** respecto al **pie apoyado en el piso** (ancla nueva
+    `piso` = tobillo más bajo).
+  - `cortePorPies` (js/piernas.js): detecta en qué cuadros cambia la postura de los pies; si hay pausa (≥ 1 s) cada
+    pierna se cuenta con su propio umbral y sus bordes se limpian por separado (`analizar` en js/fisica.js).
+  - En búlgara/zancada se tolera 35° (antes 25°) de dirección en las reps de los bordes (la última rep al bajarse).
+  - Prueba nueva `pruebas/piernas/bulgara_real.mjs` (16 reps, cambio en 8) en `verificar.sh`.
+- **Resultado:** su video 16/16 y 8 + 8. Banco real 42/61 (se sumó su video; el otro de búlgara pasó de 2 a 9 con real 8).
+  Muñecos 3275 → 3282; búlgara de una pierna 94 → 102 de 105.
+- **Ojo:** la velocidad medida sale distinta entre piernas en su video (≈0,8 vs ≈0,35 m/s); falta revisar la escala
+  con las piernas separadas. Zancadas y step-up siguen con hombros (con alternas empeoraba).
+- **Pendientes:** que Luis vuelva a analizar el video original; revisar su reporte de sentadilla (11 vs 12).
+
 ### 13:10 · v2.27.0 — Editar un entrenamiento guardado por completo
 - **Pidió (con captura):** al editar un entreno solo dejaba cambiar nombre/foto/fecha/duración; quiere editar primero
   ejercicios, series y reps, y al final esa ventana.

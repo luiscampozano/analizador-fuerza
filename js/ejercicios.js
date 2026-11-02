@@ -29,6 +29,8 @@ const EQ = {
   cardio: { equipo: 'Cardio', perfil: 'cardio', cardio: true, hint: 'Se registra tiempo y distancia; no tiene análisis por video.' },
 };
 const SENT = { punto: 'hombros', ancla: 'tobillos', sentido: 'arriba' }; // el cuerpo sube y baja
+// v2.28.0: en la búlgara se sigue la CADERA respecto al pie apoyado en el piso (el torso se inclina mucho y los hombros
+// casi no bajan; el pie de atras va sobre el banco y se mueve al cambiar de pierna)
 const UNI_P = 'Graba de lado, desde el lado de la pierna que trabaja. Analiza cada pierna en un video aparte.';
 const UNI_B = 'Analiza cada brazo en un video aparte; la app sigue la mano que se mueve. Peso = el de un solo lado.';
 const MANOS = (sentido = 'arriba', ancla = 'cadera') => ({ punto: 'manos', ancla, sentido });
@@ -53,14 +55,14 @@ export const EJERCICIOS = [
   E('prensa_45_unilateral', 'Piernas', 'riel', '🦵', 'Prensa 45° a una pierna', 'Prensa 1 pierna', { punto: 'pies', ancla: 'cadera', sentido: 'lejos_ancla', mvt: 0.25, unilateral: true,
     hint: UNI_P + ' El carro de la prensa también pesa: ponlo en «Carro de la máquina» si lo sabes.' }, 'single leg press unilateral leg press'),
   E('prensa_horizontal_unilateral', 'Piernas', 'maquina', '🦵', 'Prensa horizontal a una pierna', 'Prensa horiz. 1 pierna', { punto: 'pies', ancla: 'cadera', sentido: 'lejos_ancla', mvt: 0.25, unilateral: true, hint: UNI_P }, 'single leg seated leg press'),
-  E('belt_squat', 'Piernas', 'palanca', '🏋️', 'Belt squat', 'Belt squat', { ...SENT, punto: 'cadera', mvt: 0.30 }, 'belt squat'),
+  E('belt_squat', 'Piernas', 'palanca', '🏋️', 'Belt squat', 'Belt squat', { ...SENT, punto: 'cadera', ancla: 'piso', mvt: 0.30 }, 'belt squat'),
   E('zancada', 'Piernas', 'mancuernas', '🚶', 'Zancada / búlgara', 'Zancada', { ...SENT, mvt: 0.30, hint: 'Pon el peso total de las mancuernas o de la barra con discos.' }, 'lunge bulgarian split squat'),
-  E('bulgara_mancuernas', 'Piernas', 'mancuernas', '🦿', 'Sentadilla búlgara con mancuernas', 'Búlgara', { ...SENT, mvt: 0.30, hint: 'Graba de lado. Peso = suma de las dos mancuernas. Analiza cada pierna en un video aparte.' }, 'bulgarian split squat dumbbell'),
-  E('bulgara_barra', 'Piernas', 'barra', '🦿', 'Sentadilla búlgara con barra', 'Búlgara barra', { ...SENT, mvt: 0.30 }, 'bulgarian split squat barbell'),
+  E('bulgara_mancuernas', 'Piernas', 'mancuernas', '🦿', 'Sentadilla búlgara con mancuernas', 'Búlgara', { ...SENT, punto: 'cadera', ancla: 'piso', mvt: 0.30, hint: 'Graba de lado. Peso = suma de las dos mancuernas. Analiza cada pierna en un video aparte.' }, 'bulgarian split squat dumbbell'),
+  E('bulgara_barra', 'Piernas', 'barra', '🦿', 'Sentadilla búlgara con barra', 'Búlgara barra', { ...SENT, punto: 'cadera', ancla: 'piso', mvt: 0.30 }, 'bulgarian split squat barbell'),
   E('zancada_barra', 'Piernas', 'barra', '🚶', 'Zancada con barra', 'Zancada barra', { ...SENT, mvt: 0.30 }, 'barbell lunge'),
   E('zancada_atras', 'Piernas', 'mancuernas', '🔙', 'Zancada hacia atrás', 'Zancada atrás', { ...SENT, mvt: 0.30 }, 'reverse lunge'),
   E('zancada_caminando', 'Piernas', 'mancuernas', '🚶', 'Zancada caminando', 'Zancada caminando', { ...SENT, mvt: 0.30, hint: 'Graba de lado y con el cuerpo completo en el cuadro durante todo el recorrido.' }, 'walking lunge'),
-  E('bulgara_smith', 'Piernas', 'smith', '🦿', 'Sentadilla búlgara en Smith', 'Búlgara Smith', { ...SENT, mvt: 0.30, hint: UNI_P }, 'smith machine bulgarian split squat'),
+  E('bulgara_smith', 'Piernas', 'smith', '🦿', 'Sentadilla búlgara en Smith', 'Búlgara Smith', { ...SENT, punto: 'cadera', ancla: 'piso', mvt: 0.30, hint: UNI_P }, 'smith machine bulgarian split squat'),
   E('step_up', 'Piernas', 'mancuernas', '🪜', 'Subida al cajón (step-up)', 'Step-up', { ...SENT, mvt: 0.30 }, 'step up box'),
   E('extension_cuadriceps', 'Piernas', 'maquina', '🦵', 'Extensión de cuádriceps', 'Extensión cuád.', { punto: 'pies', ancla: 'cadera', sentido: 'lejos_ancla', mvt: 0.40,
     hint: 'Graba de lado. Peso = lo que marca la pila. Movimiento en arco: fuerza y potencia aproximadas.' }, 'leg extension'),

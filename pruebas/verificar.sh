@@ -38,6 +38,7 @@ SAL=$(node pruebas/actividad/sinteticos.mjs 2>&1); if echo "$SAL" | grep -q 'Tod
 SAL=$(node pruebas/alterno/sinteticos.mjs 2>&1); if echo "$SAL" | grep -q 'Todos los casos dentro'; then bien "Curl alterno (muñecos) OK"; else mal "Curl alterno (muñecos)"; echo "$SAL"; fi
 SAL=$(node pruebas/munecos/munecos.mjs 2>&1); N=$(echo "$SAL" | grep -o 'TOTAL [0-9]*' | grep -o '[0-9]*'); if [ "${N:-0}" -ge 3270 ]; then bien "Muñecos 3D: $(echo "$SAL" | grep '^TOTAL')"; else mal "Muñecos 3D bajaron: $(echo "$SAL" | grep '^TOTAL') (mínimo 3270)"; fi
 PI=$(echo "$SAL" | grep -o 'PIERNAS [0-9]*/[0-9]*'); if [ -n "$PI" ] && [ "$(echo "$PI" | cut -d' ' -f2 | cut -d/ -f1)" = "$(echo "$PI" | cut -d/ -f2)" ]; then bien "Cambio de pierna (muñecos): $PI"; else mal "Cambio de pierna (muñecos): ${PI:-sin resultado}"; fi
+SAL=$(node pruebas/piernas/bulgara_real.mjs 2>&1); if echo "$SAL" | grep -q '^OK'; then bien "$SAL"; else mal "$SAL"; fi
 SAL=$(node pruebas/etiqueta/interpretar.mjs 2>&1); if echo "$SAL" | grep -q 'Todas las etiquetas bien'; then bien "Lectura de etiquetas OK"; else mal "Lectura de etiquetas"; echo "$SAL"; fi
 SAL=$(node pruebas/actividad/boxeo_real.mjs 2>&1); if echo "$SAL" | grep -q '^OK'; then bien "Boxeo real: $(echo "$SAL" | head -1)"; else mal "Boxeo real"; echo "$SAL"; fi
 

@@ -40,7 +40,7 @@ export function senalesDe(ej) {
   if (/patada_gluteo|abduccion|hiperext|crunch|abdominal|elevacion_piernas|superman|pull_through/.test(id)) return ['cadera', 'hombroCad'];
   if (/remo_barra|remo_pendlay|remo_t$|flexiones|remo_invertido|fondos|dominad|chin_up|muscle/.test(id)) return ['codo', 'hombro'];
   if (ej.punto === 'manos' && ej.ancla === 'tobillos') return ['cadera', 'rodilla']; // bisagras y olimpicos
-  if ((ej.punto === 'hombros' || ej.punto === 'cadera') && ej.ancla === 'tobillos') return ['rodilla', 'cadera'];
+  if ((ej.punto === 'hombros' || ej.punto === 'cadera') && (ej.ancla === 'tobillos' || ej.ancla === 'piso')) return ['rodilla', 'cadera'];
   if (ej.punto === 'pies' || ej.punto === 'rodillas') return ['rodilla', 'cadera'];
   if (ej.punto === 'manos' || ej.punto === 'codos') return ['codo', 'munecaY'];
   return ['cadera', 'rodilla'];
