@@ -5,6 +5,7 @@
 // Uso: node pruebas/munecos/munecos.mjs [filtro]      (29/10/2026)
 import { interpolar, analizar } from '../../js/fisica.js';
 import { POR_ID } from '../../js/ejercicios.js';
+import { cambioDePierna, DE_UNA_PIERNA } from '../../js/piernas.js';
 
 // ---------------------------------------------------------------- utilidades 3D (x adelante, y arriba, z derecha)
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -326,7 +327,7 @@ const CENTROS = { ...CENTROS_EXTRA, press_banca: [0, 0.6, 0], dominadas: [0, 1.4
 export { EJ, filmar, CAMARAS, CENTROS, ESCENAS };
 const principal = import.meta.url === `file://${process.argv[1]}`;
 const filtro = principal ? process.argv[2] || '' : '\u0000';
-const REPS = 6, tabla = {}; let total = 0, bien = 0;
+const REPS = 6, tabla = {}; let total = 0, bien = 0, piernasT = 0, piernasOk = 0; const piernasMal = [];
 for (const id of Object.keys(EJ)) {
   if (!principal || (filtro && !id.includes(filtro))) continue;
   const ej = POR_ID[id.split('@')[0]]; if (!ej) { console.log('no existe', id); continue; }
@@ -342,6 +343,11 @@ for (const id of Object.keys(EJ)) {
       const masa = ej.perfil === 'corporal' ? 70 : 40;
       const res = analizar(full, fps, ej, { masa, alfa: ej.perfil === 'riel' ? 45 : 90, relacion: 1, altura: H, frames, pesoCorporal: 70 });
       n = res.reps.length;
+      // v2.26.0: cambio de pierna en el mismo video (solo se evalua cuando el conteo total salio bien)
+      if (DE_UNA_PIERNA.test(id.split('@')[0]) && n === meta) {
+        const c = cambioDePierna(full, fps, res.reps), quiere = id.endsWith('@2piernas') && meta === 6 ? 3 : null;
+        piernasT++; if ((c ? c.k : null) === quiere) piernasOk++; else piernasMal.push(`${id} | ${esc} | ${nc} | ${na} | ${nm}: ${c ? 'cambio en ' + c.k : 'sin cambio'} (real ${quiere ?? 'sin cambio'})`);
+      }
       if (process.env.DET) console.log(`${id} | ${esc} | ${nc} | ${nm} -> ${n}/${meta}  conteo=${JSON.stringify(res.conteo)} t=[${res.reps.map((r) => (r.tope / fps).toFixed(1)).join(' ')}]`);
     } catch (e) { err = e.message; }
     total++; if (n === meta) bien++;
@@ -354,3 +360,4 @@ for (const [id, filas] of Object.entries(tabla)) {
   for (const x of filas) if (x.n !== x.meta) console.log(`    ${x.cam}: app ${x.n} (real ${x.meta})${x.err ? ' (' + x.err.slice(0, 60) + ')' : ''}`);
 }
 if (principal) console.log(`\nTOTAL ${bien}/${total} tomas exactas`);
+if (principal && piernasT) { if (process.env.DET) piernasMal.forEach((x) => console.log('  pierna:', x)); console.log(`PIERNAS ${piernasOk}/${piernasT} cambios de pierna bien detectados`); }

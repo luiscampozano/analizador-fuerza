@@ -1131,12 +1131,23 @@ export function vincularActividad(a) {
   return true;
 }
 
+// la otra pierna (video con las dos piernas, v2.26.0) va en la serie siguiente del mismo ejercicio (se crea si no hay)
+let ultimoEnlace = null;
+export function vincularOtraPierna(registro) {
+  const p = ultimoEnlace; ultimoEnlace = null;
+  if (!p || !activo || activo.id !== p.entreno) return false;
+  const e = activo.ejercicios[p.ie]; if (!e) return false;
+  if (!e.series[p.is + 1]) e.series.push(serieVacia(e.series[p.is] ? e.series[p.is].tipo : 'normal'));
+  enlacePendiente = { ...p, is: p.is + 1 };
+  return vincular(registro);
+}
 export function vincular(registro) {
   const p = enlacePendiente; enlacePendiente = null;
   if (!p || !activo || activo.id !== p.entreno || registro.ejercicio !== p.ej) return false;
   const e = activo.ejercicios[p.ie], s = e && e.series[p.is];
   if (!s) return false;
   s.analisis = { id: registro.id, v: registro.vMejor, rpe: registro.rpe ?? null, rm: registro.rm ?? null };
+  ultimoEnlace = p;
   if (s.kg == null) s.kg = registro.carga;
   if (s.reps == null) s.reps = registro.repsValidas ?? registro.reps;
   if (s.rpe == null && registro.rpe) s.rpe = registro.rpe;

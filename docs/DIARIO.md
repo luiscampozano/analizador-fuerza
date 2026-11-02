@@ -8,6 +8,23 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-02
 
+### 12:54 · v2.26.0 — Búlgara/zancada/step-up: las dos piernas en un mismo video
+- **Pidió:** que el analizador detecte el cambio de pierna cuando se graban las dos piernas seguidas y lo parta en dos series.
+- **Hecho:**
+  - `js/piernas.js` (nuevo): en el fondo de cada rep mide la postura de las piernas (rodilla y tobillo izquierdos respecto
+    a los derechos, en largos de muslo). Busca el punto donde la postura cambia claramente (dos grupos de 2+ reps,
+    diferencia > ½ muslo y > 2,5 veces lo que varía dentro de cada grupo). Si alterna rep a rep, no parte.
+    Qué pierna es cuál: la que trabaja tiene la rodilla más alta en el fondo (estimado; hay botón «↔ Están al revés»).
+  - Ejercicios: búlgara (mancuernas, barra, Smith), zancada fija/barra/atrás/curtsy y step-up.
+  - App: se guardan 2 series (historial «… · pierna izquierda/derecha»), cada una con sus reps, velocidad, RIR y 1RM
+    (se reusan las reps del video completo excluyendo las de la otra pierna, también al corregir el conteo).
+    Un solo video con telemetría para las dos. En Resultados: «Ver pierna X →». En un entreno, la 2.ª pierna va a la
+    serie siguiente (se crea si falta).
+  - Muñecos: 377/377 tomas bien (0 falsos cambios en una pierna ni en zancada alterna; cambio exacto en las de 2 piernas);
+    `verificar.sh` lo revisa. Conteo total de muñecos sin cambios (3275).
+- **Ojo:** los 3 videos reales de búlgara/zancada del banco ya fallaban en el conteo (no sirven para validar esto).
+- **Pendientes:** que Luis grabe una búlgara con las dos piernas y la reporte si sale mal.
+
 ### 11:07 · v2.25.0 — Comunidad: publicar la serie analizada con su video
 - **Pidió:** poder publicar el video del analizador en la comunidad, sin límite de duración (los límites irán en las
   suscripciones), y que el video se borre de la comunidad al año.
