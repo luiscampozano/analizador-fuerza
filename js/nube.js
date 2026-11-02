@@ -30,8 +30,8 @@ export async function api(metodo, ruta, cuerpo) {
   const s = sesion();
   const r = await fetch(ruta, {
     method: metodo, cache: 'no-store',
-    headers: { 'content-type': 'application/json', ...(s && s.token ? { authorization: 'Bearer ' + s.token } : {}) },
-    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+    headers: { 'content-type': cuerpo instanceof Blob ? 'application/octet-stream' : 'application/json', ...(s && s.token ? { authorization: 'Bearer ' + s.token } : {}) },
+    body: cuerpo instanceof Blob ? cuerpo : cuerpo ? JSON.stringify(cuerpo) : undefined, // Blob: partes del video
   });
   let datos = null;
   try { datos = await r.json(); } catch (e) { /* respuesta sin JSON */ }

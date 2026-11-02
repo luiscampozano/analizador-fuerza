@@ -1238,3 +1238,5 @@ input.nu-ia { border-color: var(--accent-cyan, #22D3EE) !important; box-shadow: 
 .co-pub-imgbox { position: relative; margin-top: 4px; }
 .co-pub-imgbox img { display: block; width: 100%; max-height: 340px; object-fit: contain; background: #0B0B12; border-radius: var(--radius-md); }
 .co-pub-imgbox .co-ico { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.6); border-radius: 50%; width: 32px; height: 32px; }
+.co-vid { display: block; width: 100%; max-height: 62vh; background: #000; border-radius: var(--radius-md); margin: 8px 0; }
+.co-vid-exp { margin: 6px 0; }

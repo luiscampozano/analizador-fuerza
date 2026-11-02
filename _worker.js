@@ -57,6 +57,7 @@ async function api(req, env, url) {
   if (ruta === '/api/salir' && m === 'POST') return salir(req, env);
   if (ruta.startsWith('/api/foto/') && m === 'GET') return foto(env, decodeURIComponent(ruta.slice(10)));
   if (/^\/api\/img\/pub\/p[A-Za-z0-9_-]{6,40}$/.test(ruta) && m === 'GET') return imagenPub(env, ruta.slice(13));
+  if (/^\/api\/vid\/pub\/p[A-Za-z0-9_-]{6,40}$/.test(ruta) && m === 'GET') return videoPub(req, env, ruta.slice(13));
   if (ruta.startsWith('/api/alimentos') && m === 'GET') return leerAlimentos(env, ruta.slice(14), url); // publico: sin sesion
   const u = await sesion(req, env);
   if (ruta === '/api/alimentos' && m === 'POST') return crearAlimento(req, env, u);
@@ -373,10 +374,35 @@ async function imagenPub(env, id) {
   if (!obj) return new Response('', { status: 404 });
   return new Response(obj.body, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=604800', 'x-content-type-options': 'nosniff' } });
 }
-// borra de R2 las imagenes de esas publicaciones (si falla, no impide borrar lo demas)
+// ---------------- video del analizador en una publicacion (v2.25.0)
+// Sin limite de duracion: el telefono lo comprime (720p) y lo sube por partes de ~8 MB (multipart de R2), asi no
+// choca con el maximo de 100 MB por peticion del plan gratis. Se ve durante 1 año; despues el servidor ya no lo
+// entrega y la regla de ciclo de vida del bucket (prefijo vid/, 365 dias) lo borra de R2.
+const claveVid = (id) => `vid/${id}`;
+const VIDA_VIDEO = 365 * 86400000, MAX_PARTE = 12_000_000, MAX_PARTES = 400;
+async function videoPub(req, env, id) {
+  const no = () => new Response('', { status: 404 });
+  if (!env.IMAGENES) return no();
+  const p = await env.DB.prepare("SELECT oculto, json_extract(datos, '$.video.t') AS t FROM publicaciones WHERE id = ?1").bind(id).first();
+  if (!p || p.oculto || !p.t || Date.now() - p.t > VIDA_VIDEO) return no();
+  // rangos (bytes=inicio-fin): el reproductor los pide para empezar rapido y para adelantar
+  const rg = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get('range') || '');
+  let range;
+  if (rg && (rg[1] || rg[2])) range = rg[1] === '' ? { suffix: +rg[2] } : rg[2] === '' ? { offset: +rg[1] } : { offset: +rg[1], length: Math.max(1, +rg[2] - +rg[1] + 1) };
+  let obj;
+  try { obj = await env.IMAGENES.get(claveVid(id), range ? { range } : {}); } catch (e) { return new Response('', { status: 416 }); }
+  if (!obj) return no();
+  const h = { 'content-type': (obj.httpMetadata && obj.httpMetadata.contentType) || 'video/mp4', 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' };
+  if (!range) return new Response(obj.body, { headers: { ...h, 'content-length': String(obj.size) } });
+  const total = obj.size, r = obj.range || range;
+  const ini = r.offset != null ? r.offset : Math.max(0, total - r.suffix), largo = Math.min(r.length != null ? r.length : total - ini, total - ini);
+  return new Response(obj.body, { status: 206, headers: { ...h, 'content-range': `bytes ${ini}-${ini + largo - 1}/${total}`, 'content-length': String(largo) } });
+}
+// borra de R2 las imagenes y videos de esas publicaciones (si falla, no impide borrar lo demas)
 async function borrarImagenes(env, ids) {
   if (!env.IMAGENES || !ids.length) return;
-  try { for (let i = 0; i < ids.length; i += 1000) await env.IMAGENES.delete(ids.slice(i, i + 1000).map(claveImg)); } catch (e) { console.error('r2 borrar', e); }
+  const claves = ids.flatMap((id) => [claveImg(id), claveVid(id)]);
+  try { for (let i = 0; i < claves.length; i += 1000) await env.IMAGENES.delete(claves.slice(i, i + 1000)); } catch (e) { console.error('r2 borrar', e); }
 }
 const idsPublicaciones = async (env, uid) => ((await env.DB.prepare('SELECT id FROM publicaciones WHERE usuario = ?1').bind(uid).all()).results || []).map((f) => f.id);
 
@@ -456,7 +482,7 @@ async function comunidad(req, env, u, r, m, url) {
     const d = await leerJSON(req);
     const ref = texto(d.ref, 120);
     if (!ref) throw fallo('Falta el entrenamiento a publicar.');
-    if (d.datos && typeof d.datos === 'object') delete d.datos.img; // solo el servidor marca la imagen
+    if (d.datos && typeof d.datos === 'object') { delete d.datos.img; delete d.datos.video; } // solo el servidor marca imagen y video
     const datos = JSON.stringify(d.datos ?? null);
     if (!d.datos || typeof d.datos !== 'object' || datos.length > 40000) throw fallo('El resumen del entrenamiento es inválido o demasiado grande.');
     const recientes = await DB.prepare('SELECT count(*) AS n FROM publicaciones WHERE usuario = ?1 AND creado > ?2').bind(u.id, ahora - 3600000).first();
@@ -464,7 +490,7 @@ async function comunidad(req, env, u, r, m, url) {
     const previa = await DB.prepare('SELECT id FROM publicaciones WHERE usuario = ?1 AND ref = ?2').bind(u.id, ref).first();
     const id = previa ? previa.id : 'p' + aleatorio(12);
     if (previa) await DB.prepare(`UPDATE publicaciones SET texto = ?2, editado = ?4,
-      datos = CASE WHEN json_extract(datos, '$.img') IS NULL THEN ?3 ELSE json_set(?3, '$.img', json_extract(datos, '$.img')) END WHERE id = ?1`).bind(id, texto(d.texto, 1000), datos, ahora).run();
+      datos = json_patch(?3, json_object('img', json_extract(datos, '$.img'), 'video', json(json_extract(datos, '$.video')))) WHERE id = ?1`).bind(id, texto(d.texto, 1000), datos, ahora).run();
     else await DB.prepare('INSERT INTO publicaciones (id, usuario, ref, texto, datos, creado) VALUES (?1, ?2, ?3, ?4, ?5, ?6)').bind(id, u.id, ref, texto(d.texto, 1000), datos, ahora).run();
     const f = await DB.prepare(consultaPub('p.id = ?2')).bind(u.id, id).first();
     return json({ publicacion: publicacionJSON(f), nueva: !previa });
@@ -487,6 +513,50 @@ async function comunidad(req, env, u, r, m, url) {
     await env.IMAGENES.put(claveImg(id), bytes, { httpMetadata: { contentType: 'image/jpeg' } });
     await DB.prepare("UPDATE publicaciones SET datos = json_set(coalesce(datos, '{}'), '$.img', ?2) WHERE id = ?1").bind(id, ahora).run();
     return json({ img: ahora });
+  }
+  if (partes[0] === 'publicaciones' && partes[2] === 'video' && partes.length === 4) {
+    if (!env.IMAGENES) throw fallo('Los videos en la comunidad estarán disponibles muy pronto.', 503);
+    const id = partes[1], paso = partes[3], R2 = env.IMAGENES;
+    const p = await DB.prepare('SELECT usuario FROM publicaciones WHERE id = ?1').bind(id).first();
+    if (!p) throw fallo('Esta publicación ya no está disponible.', 404);
+    if (p.usuario !== u.id) throw fallo('Solo puedes cambiar el video de tus publicaciones.', 403);
+    if (paso === 'inicio' && m === 'POST') {
+      const tipo = (await leerJSON(req)).tipo === 'video/webm' ? 'video/webm' : 'video/mp4';
+      const sub = await R2.createMultipartUpload(claveVid(id), { httpMetadata: { contentType: tipo } });
+      return json({ uploadId: sub.uploadId });
+    }
+    const uploadId = texto(q('uploadId'), 1000);
+    if (!uploadId) throw fallo('Falta el identificador de la subida.');
+    const sub = R2.resumeMultipartUpload(claveVid(id), uploadId);
+    if (paso === 'parte' && m === 'PUT') {
+      const n = Math.floor(+q('n'));
+      if (!(n >= 1 && n <= MAX_PARTES)) throw fallo('Parte inválida.');
+      const largo = +(req.headers.get('content-length') || 0);
+      if (largo > MAX_PARTE) throw fallo('Parte demasiado grande.', 413);
+      const datos = await req.arrayBuffer();
+      if (!datos.byteLength || datos.byteLength > MAX_PARTE) throw fallo('Parte vacía o demasiado grande.', 413);
+      const r = await sub.uploadPart(n, datos);
+      return json({ n: r.partNumber, etag: r.etag });
+    }
+    if (paso === 'fin' && m === 'POST') {
+      const partes_ = (await leerJSON(req)).partes;
+      if (!Array.isArray(partes_) || !partes_.length || partes_.length > MAX_PARTES) throw fallo('Faltan las partes del video.');
+      await sub.complete(partes_.map((x) => ({ partNumber: Math.floor(+x.n), etag: texto(x.etag, 200) })));
+      const t = Date.now();
+      await DB.prepare("UPDATE publicaciones SET datos = json_set(coalesce(datos, '{}'), '$.video', json_object('t', ?2)) WHERE id = ?1").bind(id, t).run();
+      return json({ video: { t } });
+    }
+    if (paso === 'cancelar' && m === 'POST') { try { await sub.abort(); } catch (e) { /* ya no existe */ } return json({ ok: true }); }
+    throw fallo('No encontrado.', 404);
+  }
+  if (partes[0] === 'publicaciones' && partes[2] === 'video' && partes.length === 3 && m === 'DELETE') {
+    const id = partes[1];
+    const p = await DB.prepare('SELECT usuario FROM publicaciones WHERE id = ?1').bind(id).first();
+    if (!p) return json({ ok: true });
+    if (p.usuario !== u.id && !esAdmin(env, u)) throw fallo('Solo puedes quitar el video de tus publicaciones.', 403);
+    if (env.IMAGENES) await env.IMAGENES.delete(claveVid(id));
+    await DB.prepare("UPDATE publicaciones SET datos = json_remove(datos, '$.video') WHERE id = ?1").bind(id).run();
+    return json({ ok: true });
   }
   if (partes[0] === 'publicaciones' && partes[1] && partes.length === 2) {
     const id = partes[1];

@@ -197,8 +197,18 @@ function mejorSerie(e) {
   const v = (e.series || []).filter((s) => s.tipo !== 'calentamiento');
   return v.reduce((m, s) => (!m || (s.kg || 0) * (1 + (s.reps || 0) / 30) > (m.kg || 0) * (1 + (m.reps || 0) / 30) ? s : m), null);
 }
+// serie o actividad analizada con video (v2.25.0)
+function bloqueAnalisis(d) {
+  const kpis = d.tipo === 'serie'
+    ? [['Reps', d.reps], ['Vel. máx.', d.vMejor != null ? fmt(d.vMejor, 2) + ' m/s' : null], ['RIR', d.rir], ['1RM est.', d.rm ? fmt(d.rm, d.rm % 1 ? 1 : 0) + ' kg' : null], ['Pérdida vel.', d.perdida != null ? fmt(d.perdida) + ' %' : null]]
+    : (Array.isArray(d.kpis) ? d.kpis : []).map((k) => [k.label, k.valor]);
+  return `<div class="co-entreno"><div class="co-entreno-tit">${esc(d.icono || '⚡')} ${esc(d.titulo || 'Serie')}${d.carga ? ` <small class="hint">· ${esc(d.carga)}</small>` : ''}</div>
+    <div class="co-stats">${kpis.filter((k) => k[1] != null && k[1] !== '' && k[1] !== '--').slice(0, 6).map(([l, v]) => `<span><small>${esc(l)}</small>${esc(v)}</span>`).join('')}</div>
+    <div class="hint" style="margin-top:4px">⚡ Medido con video en FuerzaPro</div></div>`;
+}
 function bloqueEntreno(d, completo = false) {
   if (!d) return '';
+  if (d.tipo === 'serie' || d.tipo === 'actividad') return bloqueAnalisis(d);
   const ejs = Array.isArray(d.ejercicios) ? d.ejercicios : [];
   const mostrar = completo ? ejs : ejs.slice(0, 4);
   const recs = Array.isArray(d.records) ? d.records : [];
@@ -219,6 +229,10 @@ function bloqueEntreno(d, completo = false) {
 }
 // imagen de la publicacion (guardada en Cloudflare R2; v2.24.0)
 const urlImg = (p) => `/api/img/pub/${encodeURIComponent(p.id)}?v=${encodeURIComponent(p.datos.img)}`;
+const VIDA_VIDEO = 365 * 86400000;
+const vidPub = (p) => (!p.datos || !p.datos.video ? '' : Date.now() - p.datos.video.t > VIDA_VIDEO
+  ? '<p class="hint co-vid-exp">🎬 El video ya no está disponible (se guardan 1 año).</p>'
+  : `<video class="co-vid" src="/api/vid/pub/${encodeURIComponent(p.id)}?v=${encodeURIComponent(p.datos.video.t)}" controls playsinline preload="metadata"></video>`);
 const imgPub = (p) => (p.datos && p.datos.img ? `<img class="co-img" src="${urlImg(p)}" alt="Imagen de la publicación" loading="lazy" onerror="this.remove()">` : '');
 function tarjeta(p) {
   const mia = yo && yo.perfil && p.autor.id === yo.perfil.id;
@@ -226,7 +240,7 @@ function tarjeta(p) {
     <header class="co-pub-cab"><button type="button" class="co-autor" data-alias="${esc(p.autor.alias)}">${avatar(p.autor)}<div><strong>${esc(p.autor.nombre)}</strong><small>@${esc(p.autor.alias)} · ${hace(p.creado)}${p.editado ? ' · editado' : ''}</small></div></button>
       <button type="button" class="co-ico co-menu" aria-label="Opciones">⋯</button></header>
     ${p.texto ? `<p class="co-texto">${esc(p.texto)}</p>` : ''}
-    ${imgPub(p)}<div class="co-abrir">${bloqueEntreno(p.datos)}</div>
+    ${imgPub(p)}${vidPub(p)}<div class="co-abrir">${bloqueEntreno(p.datos)}</div>
     <footer class="co-pub-pie"><button type="button" class="co-like${p.meGusta ? ' activo' : ''}">${p.meGusta ? '❤️' : '🤍'} <span>${p.likes}</span></button>
       <button type="button" class="co-coment">💬 <span>${p.comentarios}</span></button>${mia ? '<span class="co-tuya">Tu publicación</span>' : ''}</footer>
   </article>`;
@@ -558,6 +572,64 @@ export async function compartir(en, recs, imagen = null) {
       cerrarModal();
       alert((previo ? 'Publicación actualizada.' : '¡Publicado! Tus seguidores ya lo pueden ver.') + aviso);
     } catch (e) { error(e); const b = $('co-publicar'); if (b) b.disabled = false; }
+  };
+}
+
+// ------------------------------------------------------------------ publicar una serie analizada con su video (v2.25.0)
+// Sin limite de duracion: el telefono baja el video a 720p (bitrate segun el largo) y lo sube por partes de 8 MB.
+async function comprimirVideo(blob, alAvanzar) {
+  const { Input, Output, BlobSource, BufferTarget, Mp4OutputFormat, Conversion, ALL_FORMATS } = await import('../vendor/mediabunny.min.mjs');
+  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS });
+  const dur = await input.computeDuration();
+  const bitrate = dur <= 60 ? 2_500_000 : dur <= 300 ? 1_600_000 : 1_000_000;
+  const output = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target: new BufferTarget() });
+  const conv = await Conversion.init({ input, output, video: { width: 720, bitrate }, audio: { bitrate: 96_000 } });
+  if (!conv.isValid) throw new Error('no se puede convertir');
+  conv.onProgress = (p) => alAvanzar(p);
+  await conv.execute();
+  return new Blob([output.target.buffer], { type: 'video/mp4' });
+}
+async function subirVideo(id, blob, alAvanzar) {
+  const tipo = /webm/.test(blob.type) ? 'video/webm' : 'video/mp4';
+  const { uploadId } = await api('POST', `publicaciones/${id}/video/inicio`, { tipo });
+  const q = `uploadId=${encodeURIComponent(uploadId)}`, PARTE = 8 * 1024 * 1024, partes = [];
+  try {
+    for (let i = 0, n = 1; i < blob.size; i += PARTE, n++) {
+      let r = null;
+      for (let intento = 0; !r; intento++) { // si se corta la conexion, reintenta esa parte
+        try { r = await api('PUT', `publicaciones/${id}/video/parte?${q}&n=${n}`, blob.slice(i, i + PARTE)); }
+        catch (e) { if (intento >= 2) throw e; await new Promise((ok) => setTimeout(ok, 1500 * (intento + 1))); }
+      }
+      partes.push(r); alAvanzar(Math.min(1, (i + PARTE) / blob.size));
+    }
+    return await api('POST', `publicaciones/${id}/video/fin?${q}`, { partes });
+  } catch (e) { api('POST', `publicaciones/${id}/video/cancelar?${q}`).catch(() => {}); throw e; }
+}
+const mb = (b) => (b / 1048576).toLocaleString('es-EC', { maximumFractionDigits: 1 });
+export async function compartirAnalisis({ ref, datos, video }) {
+  if (!nube.conectado()) { if (confirm('Para publicar en la comunidad necesitas iniciar sesión. ¿Ir a la Comunidad?')) deps.vista('v-comunidad'); return; }
+  const uid = nube.sesion().usuario.id;
+  try { if (!yo || yo.uid !== uid) yo = { ...(await api('GET', 'yo')), uid }; } catch (e) { return error(e); }
+  if (!yo.perfil) { if (confirm('Primero crea tu perfil de la comunidad (1 minuto). ¿Ir ahora?')) deps.vista('v-comunidad'); return; }
+  const url = URL.createObjectURL(video);
+  modal(`<h3 class="en-det-titulo">📣 Publicar en la comunidad</h3>
+    <textarea id="co-pub-txt" maxlength="1000" rows="2" placeholder="¿Cómo te fue? (opcional)"></textarea>
+    <video class="co-vid" src="${url}" controls playsinline preload="metadata" muted style="max-height:38vh"></video>
+    <div class="co-previa">${bloqueAnalisis(datos)}</div>
+    <p class="hint" id="co-vid-txt">El video se comprime en tu teléfono antes de subirlo y se verá en la comunidad durante 1 año.</p>
+    <button type="button" class="btn-primary" id="co-publicar" style="margin-top:8px">Publicar</button>`);
+  $('co-publicar').onclick = async () => {
+    const b = $('co-publicar'), txt = $('co-vid-txt'); b.disabled = true;
+    try {
+      txt.textContent = 'Comprimiendo el video… 0 %';
+      let blob = video;
+      try { const c = await comprimirVideo(video, (p) => { txt.textContent = `Comprimiendo el video… ${Math.round(p * 100)} %`; }); if (c.size < video.size) blob = c; }
+      catch (e) { console.info('[comunidad] sin comprimir:', e.message); } // se sube tal cual
+      const r = await api('POST', 'publicaciones', { ref, texto: $('co-pub-txt').value.trim(), datos });
+      await subirVideo(r.publicacion.id, blob, (p) => { txt.textContent = `Subiendo el video (${mb(blob.size)} MB)… ${Math.round(p * 100)} %`; });
+      URL.revokeObjectURL(url); cerrarModal();
+      alert('¡Publicado con tu video! Tus seguidores ya lo pueden ver.');
+    } catch (e) { b.disabled = false; txt.textContent = 'No se pudo publicar: ' + (e.message || e) + ' Inténtalo de nuevo (con wifi es más rápido).'; }
   };
 }
 

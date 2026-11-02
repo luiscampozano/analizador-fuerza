@@ -39,6 +39,23 @@ let ri=await W.fetch(new Request(`https://x.dev/api/img/pub/${P1}`),env); ok(ri.
 ri=await W.fetch(new Request('https://x.dev/api/img/pub/pNOEXISTE12'),env); ok(ri.status===404,'imagen inexistente: 404');
 [s,r]=await call(L,'DELETE',`comunidad/publicaciones/${P1}/imagen`); [, r]=await call(L,'GET',`comunidad/publicaciones/${P1}`); ok(!R2.has(`pub/${P1}.jpg`)&&!r.publicacion.datos.img,'quitar la imagen');
 await call(L,'PUT',`comunidad/publicaciones/${P1}/imagen`,{imagen:jpg});
+// ---- video del analizador por partes (v2.25.0)
+const subidas=new Map();
+Object.assign(env.IMAGENES,{createMultipartUpload:async(k,o)=>{const id='up'+subidas.size;subidas.set(id,{k,o,partes:{}});return{uploadId:id};},
+ resumeMultipartUpload:(k,id)=>({uploadPart:async(n,d)=>{const x=subidas.get(id);if(!x||x.k!==k)throw new Error('no');x.partes[n]=Buffer.from(d);return{partNumber:n,etag:'e'+n};},
+  complete:async(ps)=>{const x=subidas.get(id);R2.set(k,Object.assign(Buffer.concat(ps.map(p=>x.partes[p.partNumber])),{tipo:x.o.httpMetadata.contentType}));},abort:async()=>subidas.delete(id)})});
+const get0=env.IMAGENES.get; env.IMAGENES.get=async(k,o={})=>{const b=R2.get(k);if(!b)return null;if(!o.range)return{body:b,size:b.length,httpMetadata:{contentType:b.tipo||'image/jpeg'}};const r=o.range,ini=r.offset??(b.length-r.suffix),fin=r.length!=null?ini+r.length:b.length;return{body:b.subarray(ini,fin),size:b.length,range:r,httpMetadata:{contentType:b.tipo}};};
+const callB=async(tok,m,p,body)=>{const r=await W.fetch(new Request('https://x.dev/api/'+p,{method:m,headers:{'content-type':'application/octet-stream','content-length':String(body.length),authorization:'Bearer '+tok},body}),env);return [r.status,await r.json()];};
+[s,r]=await call(A,'POST',`comunidad/publicaciones/${P1}/video/inicio`,{tipo:'video/mp4'}); ok(s===403,'video: otra persona no puede subir');
+[s,r]=await call(L,'POST',`comunidad/publicaciones/${P1}/video/inicio`,{tipo:'video/mp4'}); ok(s===200&&r.uploadId,'video: inicia la subida por partes'); const UP=r.uploadId;
+const p1=Buffer.alloc(1000,1), p2=Buffer.alloc(500,2);
+const e1=(await callB(L,'PUT',`comunidad/publicaciones/${P1}/video/parte?uploadId=${UP}&n=1`,p1))[1], e2=(await callB(L,'PUT',`comunidad/publicaciones/${P1}/video/parte?uploadId=${UP}&n=2`,p2))[1];
+[s,r]=await call(L,'POST',`comunidad/publicaciones/${P1}/video/fin?uploadId=${UP}`,{partes:[e1,e2]}); ok(s===200&&r.video.t>0&&R2.get(`vid/${P1}`).length===1500,'video: une las partes en R2');
+[s,r]=await call(L,'POST','comunidad/publicaciones',{ref:'e1',texto:'Editado otra vez',datos:{...datos,video:{t:1}}}); ok(r.publicacion.datos.video&&r.publicacion.datos.video.t>1&&r.publicacion.datos.img>1,'editar conserva video e imagen');
+let rv=await W.fetch(new Request(`https://x.dev/api/vid/pub/${P1}`),env); ok(rv.status===200&&rv.headers.get('content-type')==='video/mp4'&&rv.headers.get('accept-ranges')==='bytes','video público servido');
+rv=await W.fetch(new Request(`https://x.dev/api/vid/pub/${P1}`,{headers:{range:'bytes=1000-'}}),env); ok(rv.status===206&&rv.headers.get('content-range')==='bytes 1000-1499/1500'&&Buffer.from(await rv.arrayBuffer())[0]===2,'video por rangos (para adelantar)');
+db.prepare("update publicaciones set datos=json_set(datos,'$.video.t',?) where id=?").run(Date.now()-366*86400000,P1);
+rv=await W.fetch(new Request(`https://x.dev/api/vid/pub/${P1}`),env); ok(rv.status===404,'después de 1 año el video ya no se muestra');
 [s,r]=await call(A,'GET','comunidad/feed?modo=siguiendo'); ok(r.publicaciones.length===0,'Ana sin seguir: feed vacío');
 [s,r]=await call(A,'GET','comunidad/feed?modo=descubrir'); ok(r.publicaciones.length===1&&r.publicaciones[0].autor.alias==='luispl','Descubrir muestra a Luis');
 [s,r]=await call(A,'GET','comunidad/sugerencias'); ok(r.personas.some(p=>p.alias==='luispl'),'sugerencias');

@@ -6,6 +6,25 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-02
+
+### 11:07 · v2.25.0 — Comunidad: publicar la serie analizada con su video
+- **Pidió:** poder publicar el video del analizador en la comunidad, sin límite de duración (los límites irán en las
+  suscripciones), y que el video se borre de la comunidad al año.
+- **Hecho:**
+  - Botón «📣 Publicar en la comunidad» bajo el video de una serie y de una actividad (boxeo, cardio). La publicación
+    muestra el video y los datos (reps, velocidad, RIR, 1RM, pérdida; o los indicadores de la actividad).
+  - El teléfono comprime el video a 720p con Mediabunny (ya estaba en vendor/): 2,5 Mbps hasta 1 min, 1,6 hasta 5 min,
+    1 Mbps más largo (prueba: 30 s de 30 MB → 9,3 MB en ~20 s). Si no puede comprimir, sube el original.
+  - Subida por partes de 8 MB (multipart de R2, reintenta cada parte 2 veces): sin tope por el límite de 100 MB por
+    petición de Cloudflare. Servidor: `POST …/video/inicio`, `PUT …/video/parte`, `POST …/video/fin`, `…/cancelar`,
+    `DELETE …/video`; `GET /api/vid/pub/<id>` con rangos (para adelantar). Se guarda como `vid/<id>`; `datos.video.t`.
+  - Al año el servidor deja de entregarlo y la app muestra «el video ya no está disponible»; para liberar el espacio,
+    Luis debe crear en el bucket una regla de ciclo de vida (prefijo `vid/`, borrar a los 365 días).
+  - Se borra con la publicación, la cuenta, al dejar la comunidad o desde Moderación. Editar conserva el video.
+  - `nube.api` acepta un Blob como cuerpo (partes del video). Pruebas: `com_test` pasa de 53 a 60.
+- **Pendientes:** regla de ciclo de vida en R2 (Luis); probar publicar una serie real desde el celular.
+
 ## 2026-11-01
 
 ### 23:24 · v2.24.0 — Comunidad: publicaciones con imagen (Cloudflare R2)

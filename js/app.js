@@ -20,7 +20,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO } from './actividad.js';
 
-const VERSION = '2.24.0';
+const VERSION = '2.25.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -360,6 +360,9 @@ function mostrarActividad(a, { video = null, desde = 'v-form' } = {}) {
     const f = new File([video.blob], $('act-descargar').download, { type: video.tipo });
     $('act-compartir').style.display = navigator.canShare && navigator.canShare({ files: [f] }) ? '' : 'none';
     $('act-compartir').onclick = () => navigator.share({ files: [f], title: 'FuerzaPro' }).catch(() => {});
+    $('act-pub-com').onclick = () => comunidad.compartirAnalisis({ ref: 'act:' + (a.id || Date.now()), video: video.blob, datos: {
+      v: 1, tipo: 'actividad', ej: a.ejercicio, titulo: a.nombre, icono: a.icono || '🏃', fecha: a.fecha, dur: a.dur,
+      kpis: (a.kpis || []).slice(0, 6).map((k) => ({ label: String(k.label), valor: String(k.valor ?? '--'), sub: String(k.sub || '') })) } });
   } else $('act-sec-video').style.display = 'none';
 }
 function graficaRitmo(c, a) {
@@ -604,6 +607,11 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
     const f = new File([video.blob], $('btn-descargar').download, { type: video.tipo });
     $('btn-compartir').style.display = navigator.canShare && navigator.canShare({ files: [f] }) ? '' : 'none';
     $('btn-compartir').onclick = () => navigator.share({ files: [f], title: 'FuerzaPro' }).catch(() => {});
+    // publicar la serie con su video en la Comunidad (v2.25.0)
+    $('btn-pub-com').onclick = () => comunidad.compartirAnalisis({ ref: 'serie:' + (inf.id || Date.now()), video: video.blob, datos: {
+      v: 1, tipo: 'serie', ej: e.id, titulo: e.nombre, icono: e.icono || '🏋️', fecha: inf.fecha || new Date().toISOString(), carga: textoCarga(inf),
+      reps: inf.corregida ? inf.corregida.real : inf.reps.length, vMejor: s.vMejor ?? null, perdida: s.perdida ?? null,
+      rir: s.rirTexto ?? null, rpe: s.rpeTexto ?? null, rm: !corporal && s.rm ? Math.round(s.rm * 10) / 10 : null } });
   } else {
     $('sec-video').style.display = 'none';
     $('r-sin-video').style.display = nuevo ? 'none' : '';
