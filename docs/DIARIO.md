@@ -8,6 +8,19 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 10:24 · v2.31.0 — Calculadora de calentamiento + plan de suscripciones acordado
+- **Pidió:** igualar a Hevy/Lyfta: calculadora de calentamiento y fotos/videos de demostración de cada ejercicio (no
+  emojis). Acordó los planes (ver abajo).
+- **Hecho:** en el menú «⋯» de cada ejercicio, «🔥 Calcular calentamiento»: con el peso de trabajo arma barra sola × 10,
+  40 % × 5, 60 % × 3 y 80 % × 2 (menos pasos con pesos livianos), redondeado a 2,5 kg; barra 20 kg (Barra Z 10, sin
+  barra en mancuernas/máquinas). Reemplaza los calentamientos no hechos y los pone al inicio. `seriesCalentamiento()`.
+- **Planes acordados (cobro apagado hasta que Luis diga):** Gratis / Plus $3,99 / Pro $9,99 / Pro Max $19,99.
+  Video al mes 3 / 20 / 40 / ilimitado. Bolsa de créditos IA al mes (foto del plato, comida escrita, etiqueta)
+  9 / 27 / 81 / 243. Entrenador IA 1 al mes / 1 por semana / 3 por semana / diario. PDF: muestra en Gratis, completo
+  desde Plus. Comunidad con video desde Plus. Progreso de velocidad: último mes en Gratis. Excel/respaldo desde Plus.
+  Pro Max: atleta serio + entrenadores con alumnos (función futura). Anual = 2 meses gratis; 7 días de prueba de Pro.
+- **Pendiente decidir:** de dónde salen las fotos/animaciones de los ejercicios (derechos de uso).
+
 ### 10:04 · v2.30.0 — Búlgara: velocidad pareja entre piernas; reporte de sentadilla revisado
 - **Pidió:** arreglar la velocidad distinta entre piernas de la búlgara y revisar su reporte de sentadilla (11 vs 12).
 - **Causa (búlgara):** la IA confundía a ratos los tobillos (la mancuerna tapa el pie de adelante), así que el «piso»

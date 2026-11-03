@@ -1243,3 +1243,7 @@ input.nu-ia { border-color: var(--accent-cyan, #22D3EE) !important; box-shadow: 
 .r-pierna { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; font-size: .9rem; }
 .r-pierna-bot { display: flex; gap: 8px; }
 .r-pierna-bot .btn-sec { flex: 1; }
+.ca-lista { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
+.ca-fila { display: grid; grid-template-columns: 34px 1fr 1fr auto; align-items: center; gap: 8px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 8px 10px; }
+.ca-fila small { color: var(--text-muted); }
+.ca-trabajo { border-color: var(--accent-purple, #7C5CFF); }

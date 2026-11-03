@@ -736,6 +736,7 @@ function abrirOpcionesEjercicio(ie) {
   if (!activo.rutina) {
     op.push(['📈', 'Progreso y músculos', () => abrirProgreso(e)]);
   }
+  if (!esCardio(e)) op.push(['🔥', 'Calcular calentamiento', () => abrirCalentamiento(ie)]);
   if (ie > 0) {
     op.push(['↑', 'Mover arriba', () => {
       activo.ejercicios.splice(ie - 1, 0, activo.ejercicios.splice(ie, 1)[0]);
@@ -988,6 +989,53 @@ function grafica(c, puntos, linea) {
 }
 
 // ------------------------------------------------------------------ calculadora de discos
+// ------------------------------------------------------------------ calculadora de calentamiento (v2.31.0)
+// Con el peso de trabajo arma las series de aproximacion: barra sola x 10, 40 % x 5, 60 % x 3 y 80 % x 2 (con pesos
+// livianos, menos pasos). Se redondea al disco mas chico y se insertan al inicio como series de calentamiento.
+export function seriesCalentamiento(trabajo, barra = 20, paso = 2.5) {
+  if (!(trabajo > 0)) return [];
+  const red = (x) => Math.max(barra, Math.round(x / paso) * paso);
+  const plan = trabajo >= 60 ? [[0, 10], [0.4, 5], [0.6, 3], [0.8, 2]] : trabajo >= 30 ? [[0, 10], [0.5, 6], [0.75, 3]] : [[0.5, 8], [0.75, 4]];
+  const out = [];
+  for (const [f, reps] of plan) {
+    const kg = f ? red(trabajo * f) : barra;
+    if (!(kg > 0) || kg >= trabajo || (out.length && kg <= out[out.length - 1].kg)) continue;
+    out.push({ kg, reps });
+  }
+  return out;
+}
+function abrirCalentamiento(ie) {
+  const e = activo.ejercicios[ie], def = defEj(e);
+  const trabajo = (e.series.find((x) => x.tipo !== 'calentamiento' && x.kg > 0) || {}).kg
+    || (e.series.find((x) => x.tipo !== 'calentamiento' && x.obj && x.obj.kg > 0) || { obj: {} }).obj.kg || '';
+  const cfg = (() => { try { return JSON.parse(leerLS('af_discos') || 'null') || {}; } catch (er) { return {}; } })();
+  const barra0 = def && def.equipo === 'Barra' ? cfg.barra ?? 20 : def && def.equipo === 'Barra Z' ? 10 : 0;
+  $('en-det-cuerpo').innerHTML = `<h3 class="en-det-titulo">🔥 Calentamiento</h3>
+    <p class="hint" style="margin-top:2px">${esc(nombreEj(e))}: escribe el peso de tu primera serie efectiva y te armo las series de aproximación.</p>
+    <div class="form-grid" style="margin-top:10px">
+      <div class="form-group"><label for="ca-kg">Peso de trabajo (kg)</label><input id="ca-kg" type="number" inputmode="decimal" step="any" value="${trabajo}" placeholder="ej.: 100"></div>
+      <div class="form-group"><label for="ca-barra">Barra (kg)</label><select id="ca-barra">${[20, 15, 10, 25, 0].map((b) => `<option value="${b}"${b === barra0 ? ' selected' : ''}>${b ? b + ' kg' : 'Sin barra'}</option>`).join('')}</select></div>
+    </div>
+    <div id="ca-lista" class="ca-lista"></div>
+    <button type="button" class="btn-primary" id="ca-ok" style="width:100%">Agregar al ejercicio</button>`;
+  let series = [];
+  const pintarLista = () => {
+    const kg = parseFloat(($('ca-kg').value || '').replace(',', '.')), barra = +$('ca-barra').value;
+    series = seriesCalentamiento(kg, barra, barra ? 2.5 : 1);
+    $('ca-lista').innerHTML = series.length ? series.map((x, i) => `<div class="ca-fila"><span class="en-num t-calentamiento">C</span><b>${kgTxt(x.kg)} kg</b><span>× ${x.reps}</span><small>${i === 0 && x.kg === barra ? 'barra sola' : `${Math.round(x.kg / kg * 100)} %`}</small></div>`).join('')
+      + `<div class="ca-fila ca-trabajo"><span class="en-num">1</span><b>${kgTxt(kg)} kg</b><span>serie efectiva</span><small>100 %</small></div>`
+      : '<p class="hint">Escribe el peso de trabajo.</p>';
+    $('ca-ok').disabled = !series.length;
+  };
+  $('ca-kg').oninput = $('ca-barra').onchange = pintarLista; pintarLista();
+  $('ca-ok').onclick = () => {
+    // reemplaza los calentamientos que aun no se hicieron; los ya hechos se quedan
+    e.series = [...series.map((x) => ({ ...serieVacia('calentamiento'), kg: x.kg, reps: x.reps })), ...e.series.filter((x) => x.tipo !== 'calentamiento' || x.hecha)];
+    guardarBorrador(); $('en-detalle').style.display = 'none'; pintarActivo();
+  };
+  $('en-detalle').style.display = 'flex'; $('en-det-cuerpo').scrollTop = 0;
+}
+
 function abrirDiscos(kg = null) {
   const cfg = (() => { try { return JSON.parse(leerLS('af_discos') || 'null') || {}; } catch (e) { return {}; } })();
   const barra = cfg.barra ?? 20, disp = cfg.disp || [25, 20, 15, 10, 5, 2.5, 1.25];
