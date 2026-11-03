@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 13:55 · v2.35.1 — Figuras de los deportes
+- **Pidió:** las figuras de los deportes no eran correctas (fútbol, básquet y tenis tenían la misma; vóley, emoji).
+- **Hecho (js/figura.js):** plantillas nuevas `patada` (con el balón en el piso), `tiro` (salta y lanza con el balón en la
+  mano), `remate` (salta y golpea el balón arriba) y `raqueta` (golpe de derecha con raqueta dibujada: mango + cabeza
+  en la dirección del antebrazo). Natación muestra la brazada de lado. La caja del dibujo ahora incluye el balón.
+
 ### 13:47 · v2.35.0 — Deportes en el analizador + IA del balón (experimental)
 - **Pidió:** analizar fútbol, básquet, vóley, pádel y natación (esta solo grabando desde fuera de la piscina), con dos
   opciones: «Solo cuerpo» (modelo actual) y «Análisis completo» con la IA del balón, con etiqueta «Experimental».

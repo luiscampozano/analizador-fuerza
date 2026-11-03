@@ -184,7 +184,7 @@ const T = {
   eliptica: { cuadros: [P({ tau: 5, piernas: [[25, 5], [-15, -15]], brazos: [[60, 120], [20, 90]] }), P({ tau: 5, piernas: [[-15, -15], [25, 5]], brazos: [[20, 90], [60, 120]] })], ciclo: true, props: ['eliptica'] },
   remo_ergometro: { cuadros: [{ H: [-0.3, -0.35], suelo: false, tau: 30, piernas: [[150, -10]], brazos: [[100, 100]] }, { H: [0.25, -0.35], suelo: false, tau: -20, piernas: [[90, 90]], brazos: [[-30, 90]] }], props: ['remo_maq'] },
   ski: { A: P({ brazos: [[170, 170]] }), B: P({ tau: 45, piernas: [[30, -15]], brazos: [[-20, -20]] }), eq: 'cable', ancla: [0.4, -2.2] },
-  nadar: { cuadros: [0, 1, 2, 3].map((k) => ({ H: [0, -0.5], suelo: false, tau: 92, cabeza: 5, piernas: [[-88 + (k % 2 ? 10 : -10), -88], [-88 + (k % 2 ? -10 : 10), -88]], brazos: [[180 + 90 * k, 180 + 90 * k], [90 * k, 90 * k]] })), ciclo: true, props: ['agua'] },
+  nadar: { cuadros: [0, 1, 2, 3].map((k) => ({ H: [0, -0.5], suelo: false, tau: 92, cabeza: 5, piernas: [[-88 + (k % 2 ? 10 : -10), -88], [-88 + (k % 2 ? -10 : 10), -88]], brazos: [[180 + 90 * k, 180 + 90 * k], [90 * k, 90 * k]] })), ciclo: true, mini: 1, props: ['agua'] },
   saltar_cuerda: { cuadros: [P({ piernas: [[0, 0, 120]], brazos: [[20, 60]] }), P({ H: [0, -1.02], suelo: false, piernas: [[5, -5, 120]], brazos: [[20, 60]] })], eq: 'cuerda' },
   boxeo: { cuadros: [P({ tau: 5, piernas: [[15, 0], [-15, -10]], brazos: [[60, 160], [40, 150]] }), P({ tau: 10, piernas: [[15, 0], [-15, -10]], brazos: [[90, 90], [40, 150]] }), P({ tau: 5, piernas: [[15, 0], [-15, -10]], brazos: [[60, 160], [40, 150]] }), P({ tau: 10, piernas: [[15, 0], [-15, -10]], brazos: [[60, 160], [90, 90]] })], ciclo: true, props: ['saco'] },
   burpee: { cuadros: [P({ brazos: [[0, 0]] }), P({ tau: 40, piernas: [[110, -40]], brazos: [[-10, -10]] }), P({ H: [0, -0.32], suelo: false, tau: 78, piernas: [[-102, -102, 180]], brazos: [[-12, -12]] }), P({ tau: 40, piernas: [[110, -40]], brazos: [[-10, -10]] }), P({ H: [0, -1.12], suelo: false, piernas: [[0, 0, 130]], brazos: [[175, 175]] })], ciclo: true },
@@ -192,6 +192,14 @@ const T = {
   escaladores: { cuadros: [P({ H: [0, -0.42], suelo: false, tau: 70, piernas: [[60, -60, 180], [-110, -110, 180]], brazos: [[-20, -20]] }), P({ H: [0, -0.42], suelo: false, tau: 70, piernas: [[-110, -110, 180], [60, -60, 180]], brazos: [[-20, -20]] })], ciclo: true },
   cuerdas: { A: P({ tau: 20, piernas: [[60, -30]], brazos: [[100, 110], [40, 60]] }), B: P({ tau: 20, piernas: [[60, -30]], brazos: [[40, 60], [100, 110]] }), eq: 'cuerdas' },
   escaladora: { cuadros: [P({ H: [0, -1.05], suelo: false, tau: 10, piernas: [[60, -10], [0, 0]], brazos: [[60, 90]] }), P({ H: [0, -1.05], suelo: false, tau: 10, piernas: [[0, 0], [60, -10]], brazos: [[60, 90]] })], ciclo: true, props: ['escalones'] },
+  // v2.35.1 deportes: una figura por deporte
+  patada: { cuadros: [P({ piernas: [[0, 0], [5, 0]], brazos: [[10, 20], [-10, 0]] }), P({ tau: 5, piernas: [[-35, -110], [5, 0]], brazos: [[-40, -20], [50, 80]] }),
+    P({ tau: -5, piernas: [[25, 15], [5, 0]], brazos: [[30, 50], [-30, -10]] }), P({ tau: -15, piernas: [[85, 80], [5, 0]], brazos: [[50, 80], [-50, -30]] })], ciclo: true, mini: 3, eq: 'balon_fijo', balon: [0.36, -0.11] },
+  tiro: { A: P({ tau: 12, piernas: [[55, -25]], brazos: [[55, 150]] }), B: P({ H: [0, -1.02], suelo: false, piernas: [[5, -5, 125]], brazos: [[165, 175]] }), mini: 0.8, eq: 'balon' },
+  remate: { cuadros: [P({ tau: 20, piernas: [[60, -30]], brazos: [[-60, -50]] }), P({ H: [0, -1.12], suelo: false, tau: -10, piernas: [[30, -40, 120]], brazos: [[150, 235], [120, 120]] }),
+    P({ H: [0, -1.15], suelo: false, tau: 5, piernas: [[25, -35, 120]], brazos: [[170, 168], [60, 70]] }), P({ H: [0, -1.05], suelo: false, tau: 20, piernas: [[30, -30, 120]], brazos: [[50, 40], [20, 30]] })],
+    mini: 2, eq: 'balon_fijo', balon: [0.3, -2.42] },
+  raqueta: { A: P({ tau: 8, piernas: [[25, -5], [-20, -15]], brazos: [[-75, -35], [60, 100]] }), B: P({ tau: 8, piernas: [[25, -5], [-20, -15]], brazos: [[110, 150], [10, 40]] }), mini: 0.62, eq: 'raqueta' },
   deporte: { cuadros: [P({ tau: 15, piernas: [[40, -20], [-30, -70]], brazos: [[-30, 60], [60, 120]] }), P({ tau: 15, piernas: [[-30, -70], [40, -20]], brazos: [[60, 120], [-30, 60]] })], ciclo: true, eq: 'balon_piso' },
   baile: { frente: true, A: { dy: 0.02, brazos: [[150, 20], [30, 60]], piernas: [[10], [-2]] }, B: { dy: 0.02, brazos: [[30, 60], [150, 20]], piernas: [[-2], [10]] } },
   abductores: { frente: true, A: { dy: 0.35, brazos: [[20, 0]], piernas: [[20, 90]] }, B: { dy: 0.35, brazos: [[20, 0]], piernas: [[45, 90]] }, props: ['asiento_frente'] },
@@ -244,7 +252,7 @@ const MAPA = [
   [/^(correr|cinta|intervalos_carrera)$/, 'correr'], [/^(caminar|caminata_inclinada|senderismo|patinaje)$/, 'caminar'], [/^(bicicleta|bicicleta_estatica|spinning|bicicleta_aire)$/, 'bici'],
   [/^eliptica$/, 'eliptica'], [/^(remo_ergometro|kayak)$/, 'remo_ergometro'], [/^ski_erg$/, 'ski'], [/^natacion$/, 'nadar'], [/^saltar_cuerda$/, 'saltar_cuerda'],
   [/^(boxeo)$/, 'boxeo'], [/^(burpees|hiit)$/, 'burpee'], [/^jumping_jacks$/, 'jumping_jacks'], [/^escaladores$/, 'escaladores'], [/^cuerdas_batalla$/, 'cuerdas'],
-  [/^escaladora$/, 'escaladora'], [/^(futbol|basquet|tenis)$/, 'deporte'], [/^baile$/, 'baile'], [/^cardio_otro$/, 'correr'],
+  [/^escaladora$/, 'escaladora'], [/^futbol$/, 'patada'], [/^basquet$/, 'tiro'], [/^voley$/, 'remate'], [/^tenis$/, 'raqueta'], [/^baile$/, 'baile'], [/^cardio_otro$/, 'correr'],
 ];
 export function plantillaDe(id) { for (const [re, t] of MAPA) if (re.test(id || '')) return t; return null; }
 
@@ -290,6 +298,11 @@ function equipo(t, g) {
   else if (e === 'cuerda') out.push({ tipo: 'l', d: `M${r2(m[0])} ${r2(m[1])}Q${r2(m[0] + 0.25)} ${r2(g.pies[0][1] + 0.1)} ${r2(m[0] + 0.5)} ${r2(m[1])}` });
   else if (e === 'cuerdas') out.push({ tipo: 'l', d: `M${r2(m[0])} ${r2(m[1])}Q${r2(m[0] + 0.4)} ${r2(m[1] + 0.3)} ${r2(m[0] + 0.8)} 0` });
   else if (e === 'balon_piso') disco([g.pies[0][0] + 0.12, -0.11], 0.11);
+  else if (e === 'balon_fijo') disco(t.balon, 0.11);
+  else if (e === 'raqueta') { // mango en la direccion del antebrazo y la cabeza ovalada
+    const c = g.codos ? g.codos[0] : g.hombros[0], d = Math.hypot(m[0] - c[0], m[1] - c[1]) || 1, u = [(m[0] - c[0]) / d, (m[1] - c[1]) / d];
+    const f = [m[0] + 0.25 * u[0], m[1] + 0.25 * u[1]]; out.push({ tipo: 'l', d: linea([m, f]) }); disco([f[0] + 0.12 * u[0], f[1] + 0.12 * u[1]], 0.12);
+  }
   return out;
 }
 // accesorios fijos (banco, barra fija, maquinas)
@@ -359,6 +372,7 @@ function armar(id, animada) {
   for (const g of gs) { xs.push(g.cab[0]); ys.push(g.cab[1] - L.cabeza); }
   const ac = accesorios(t);
   for (const m of ac.matchAll(/(-?[\d.]+)[ ,](-?[\d.]+)/g)) { xs.push(+m[1]); ys.push(+m[2]); }
+  for (const g of gs) for (const e of equipo(t, g)) if (e.tipo === 'c') { xs.push(e.x - e.r, e.x + e.r); ys.push(e.y - e.r, e.y + e.r); }
   ys.push(0);
   let x0 = Math.min(...xs) - 0.25, x1 = Math.max(...xs) + 0.25, y0 = Math.min(...ys) - 0.25, y1 = Math.max(...ys) + 0.08;
   const lado = Math.max(x1 - x0, y1 - y0); const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
