@@ -282,7 +282,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     const baja = nGuardia ? guardiaBaja / nGuardia * 100 : 0; kpi('Guardia baja', r1(baja), '% del tiempo');
     if (baja > 40) aviso(`Bajas la guardia ${r1(baja)} % del tiempo: después de cada golpe regresa la mano a la cara.`); else bien('Buena guardia: las manos vuelven a la cara.');
     if (golpes.length >= 6 && Math.min(iz, de) / Math.max(iz, de) < 0.35) aviso(`Usas mucho más una mano (izq. ${iz} / der. ${de}). Combina las dos.`);
-    if (fr < 45) aviso('Video a menos de 60 fps: en golpes muy rápidos la IA puede perder la mano. Para más precisión elige «Máxima» y graba a 60 fps.');
+    if (fr < 45) aviso('Video a menos de 60 fps: en golpes muy rápidos la IA puede perder la mano. Graba a 60 fps (la app lo analiza a 60 automáticamente).');
     return fin('Golpes', 'golpes/min', ev);
   }
 
@@ -368,7 +368,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       res.fuerzaGolpe = { max: r1(mejor.kg), media: r1(med(golpes.map((g) => g.kg))), newton: r1(mejor.kg * 9.81) };
       if (B) { if (medidos) bien(`La IA del balón lo siguió en ${medidos} de ${golpes.length}: esas velocidades son medidas, no estimadas.`); else aviso('La IA del balón no lo pudo seguir después del contacto (muy lejos, borroso o tapado). Se muestran valores estimados.'); }
     };
-    const avisoFps = () => { if (fr < 45) aviso('Video a menos de 60 fps: en movimientos tan rápidos la IA pierde parte del recorrido y la velocidad sale más baja. Graba a 60 fps y elige «Máxima».'); };
+    const avisoFps = () => { if (fr < 45) aviso('Video a menos de 60 fps: en movimientos tan rápidos la IA pierde parte del recorrido y la velocidad sale más baja. Graba a 60 fps (la app lo analiza a 60 automáticamente).'); };
     if (!cfg.peso) aviso('Pon tu peso corporal para que la estimación de fuerza sea tuya (se usó 75 kg).');
 
     if (tipo === 'futbol') {

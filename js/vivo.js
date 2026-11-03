@@ -42,11 +42,16 @@ function pitar(veces = 1, frec = 880) {
   }
 }
 
-async function abrirCamara(frente) {
+// v2.36.0 calidad elegida por la persona ('1080-60' = 1080p a 60 fps) y zoom (si la cámara lo permite)
+const RES = { '720-30': [1280, 720, 30], '1080-30': [1920, 1080, 30], '1080-60': [1920, 1080, 60], '2160-30': [3840, 2160, 30], '2160-60': [3840, 2160, 60] };
+const BITS = { 720: 6e6, 1080: 12e6, 2160: 35e6 }; // grabacion: mas resolucion, mas bits
+async function abrirCamara(frente, res = '1080-30') {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Este navegador no permite usar la cámara. Usa Chrome actualizado.');
+  const [w, h, f] = RES[res] || RES['1080-30'];
+  const video = { facingMode: frente ? 'user' : 'environment', width: { ideal: w }, height: { ideal: h }, frameRate: { ideal: f } };
   try {
-    return await navigator.mediaDevices.getUserMedia({ audio: false,
-      video: { facingMode: frente ? 'user' : 'environment', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } });
+    try { return await navigator.mediaDevices.getUserMedia({ audio: false, video: { ...video, zoom: true } }); } // zoom: pide permiso de zoom
+    catch (e) { if (e.name === 'NotAllowedError') throw e; return await navigator.mediaDevices.getUserMedia({ audio: false, video }); }
   } catch (e) {
     throw new Error(e.name === 'NotAllowedError' ? 'Necesito permiso para usar la cámara. Actívalo en los ajustes del navegador para esta página.'
       : 'No pude abrir la cámara: ' + (e.message || e.name));
@@ -68,12 +73,14 @@ export async function abrir({ ej, datos, calidad, alTerminar }) {
   $('vivo-aviso').style.display = 'none'; $('vivo-cuenta').style.display = 'none';
   $('vivo-accion').textContent = cardio ? '▶ Empezar' : '▶ Empezar serie'; $('vivo-accion').disabled = true;
   $('vivo-estado').textContent = 'Abriendo la cámara…';
+  try { const r = localStorage.getItem('af_vivo_res'); if (r && RES[r]) $('vivo-res').value = r; } catch (e) { /* nada */ }
   const video = $('vivo-video'), lienzo = $('vivo-canvas'), ctx = lienzo.getContext('2d');
 
   const conectar = async () => {
     if (yo.stream) yo.stream.getTracks().forEach((t) => t.stop());
-    yo.stream = await abrirCamara(yo.frente);
+    yo.stream = await abrirCamara(yo.frente, $('vivo-res').value);
     video.srcObject = yo.stream;
+    prepararZoom(yo);
     video.style.transform = lienzo.style.transform = yo.frente ? 'scaleX(-1)' : '';
     await video.play().catch(() => {});
   };
@@ -118,6 +125,11 @@ export async function abrir({ ej, datos, calidad, alTerminar }) {
     try { await conectar(); } catch (e) { alert(e.message); }
   };
   $('vivo-voz').onchange = () => { yo.voz = $('vivo-voz').value; };
+  $('vivo-res').onchange = async () => {
+    try { localStorage.setItem('af_vivo_res', $('vivo-res').value); } catch (e) { /* nada */ }
+    if (yo.grabando) return;
+    try { await conectar(); } catch (e) { alert(e.message); }
+  };
   $('vivo-salir').onclick = () => { detener(); document.querySelector('.nav button[data-vista="v-form"]').click(); };
   $('vivo-accion').onclick = () => (yo.grabando ? terminar(yo) : empezar(yo));
 }
@@ -145,7 +157,9 @@ function iniciarGrabacion(yo) {
     .find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
   if (!tipo) { alert('Este navegador no puede grabar la cámara.'); return; }
   yo.partes = []; yo.tipo = tipo;
-  yo.rec = new MediaRecorder(yo.stream, { mimeType: tipo, videoBitsPerSecond: 6_000_000 });
+  const alto = Math.min(yo.cam?.width || 1280, yo.cam?.height || 720), fpsCam = yo.cam?.frameRate || 30;
+  const bits = (alto >= 1440 ? BITS[2160] : alto >= 1000 ? BITS[1080] : BITS[720]) * (fpsCam > 45 ? 1.5 : 1);
+  yo.rec = new MediaRecorder(yo.stream, { mimeType: tipo, videoBitsPerSecond: Math.round(bits) });
   yo.rec.ondataavailable = (e) => e.data.size && yo.partes.push(e.data);
   yo.rec.start(1000);
   yo.frames = []; yo.t0 = performance.now(); yo.grabando = true; yo.anunciadas = 0; yo.avisado = false;
@@ -210,4 +224,30 @@ function terminar(yo) {
     cb(f);
   };
   yo.rec.stop();
+}
+
+// ---------------------------------------------------------------- zoom y datos de la camara (v2.36.0)
+// Barra de zoom y pellizco con dos dedos sobre la imagen, si el navegador y la camara lo permiten (Chrome en Android).
+function prepararZoom(yo) {
+  const pista = yo.stream && yo.stream.getVideoTracks()[0];
+  const cap = pista && pista.getCapabilities ? pista.getCapabilities() : {}, aj = pista && pista.getSettings ? pista.getSettings() : {};
+  yo.cam = aj;
+  $('vivo-cam-info').textContent = aj.width ? `Cámara: ${Math.max(aj.width, aj.height)}×${Math.min(aj.width, aj.height)} · ${Math.round(aj.frameRate || 30)} fps${cap.zoom ? '' : ' · este celular no permite zoom desde el navegador'}` : '';
+  const g = $('g-vivo-zoom'), r = $('vivo-zoom');
+  if (!cap.zoom || !(cap.zoom.max > cap.zoom.min)) { g.style.display = 'none'; return; }
+  g.style.display = '';
+  r.min = cap.zoom.min; r.max = cap.zoom.max; r.step = cap.zoom.step || 0.1; r.value = aj.zoom || cap.zoom.min;
+  const poner = (z) => {
+    z = Math.max(cap.zoom.min, Math.min(cap.zoom.max, z)); r.value = z;
+    $('vivo-zoom-v').textContent = `${String(Math.round(z * 10) / 10).replace('.', ',')}×`;
+    pista.applyConstraints({ advanced: [{ zoom: z }] }).catch(() => {});
+  };
+  poner(+r.value);
+  r.oninput = () => poner(+r.value);
+  // pellizco: la distancia entre los dos dedos cambia el zoom
+  const pant = $('vivo-pantalla'); let d0 = 0, z0 = 1;
+  const dist = (e) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+  pant.ontouchstart = (e) => { if (e.touches.length === 2) { d0 = dist(e); z0 = +r.value; } };
+  pant.ontouchmove = (e) => { if (e.touches.length === 2 && d0) { e.preventDefault(); poner(z0 * dist(e) / d0); } };
+  pant.ontouchend = () => { d0 = 0; };
 }

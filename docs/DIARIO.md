@@ -8,6 +8,18 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 16:48 · v2.36.0 — 60 fps automático en deportes + cámara del modo en vivo
+- **Pidió:** graba en 4K a 60 fps pero el análisis decía «menos de 60 fps»; en el modo en vivo quiere zoom y elegir
+  calidad y fps.
+- **Causa:** el análisis toma cuadros según la precisión (Rápida 15, Normal 30, Máxima 60 por segundo); con «Normal» un
+  video de 60 fps se leía a 30. (El video con telemetría que se descarga siempre es de 30 fps.)
+- **Hecho:**
+  - `js/lector.js`: lee los fps reales del video (`computePacketStats`). `js/app.js`: en boxeo y deportes con balón,
+    si el video es de 50 fps o más se analiza a 60 Hz aunque la precisión sea Normal. Avisos de fps actualizados.
+  - Modo en vivo (`js/vivo.js`, index.html, style.css): selector «Calidad de cámara» (720p/1080p/4K a 30 o 60 fps,
+    guardado en `af_vivo_res`), línea con la resolución y fps reales que entrega la cámara, zoom con barra y pellizco
+    (si Chrome y la cámara lo permiten; se pide `zoom: true`), grabación con más bits según la calidad (6–52 Mbps).
+
 ### 16:28 · v2.35.4 — Tenis: contaba el doble; video de deportes más claro
 - **Pidió:** en su video de tenis (2 golpes de derecha, 5 s a 30 fps) contó 4 y el video no mostraba lo esperado
   («1800 por minuto», «Balón» en vez de pelota).

@@ -676,6 +676,9 @@ td.tec { color: #ffb070; font-size: 11.5px; max-width: 150px; }
 .vivo-cuenta { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 120px; font-weight: 800; color: #fff; text-shadow: 0 4px 20px #000; }
 .vivo-estado { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; color: #fff; font-size: 13px; text-shadow: 0 1px 4px #000; margin: 0; }
 .vivo-controles { margin-top: 12px; }
+.vivo-zoom { display: flex; align-items: center; gap: 12px; margin: 10px 0 0; }
+.vivo-zoom label { white-space: nowrap; font-size: 14px; color: var(--text-muted); }
+.vivo-zoom input { flex: 1; accent-color: var(--accent-purple, #7c5cff); }
 .btn-pdf { width: 100%; margin-bottom: 16px; }
 .aviso-video { margin: 0 0 14px; }
 .historial-item[role=button], .serie[role=button] { cursor: pointer; }

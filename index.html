@@ -248,10 +248,22 @@
             </select>
           </div>
           <div class="form-group">
+            <label for="vivo-res">Calidad de cámara</label>
+            <select id="vivo-res">
+              <option value="720-30">720p · 30 fps</option><option value="1080-30" selected>1080p · 30 fps</option>
+              <option value="1080-60">1080p · 60 fps</option><option value="2160-30">4K · 30 fps</option><option value="2160-60">4K · 60 fps</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label for="vivo-voz">Voz</label>
             <select id="vivo-voz"><option value="si">Contar en voz alta</option><option value="aviso">Solo el aviso</option><option value="no">Silencio</option></select>
           </div>
         </div>
+        <div class="vivo-zoom" id="g-vivo-zoom" style="display:none">
+          <label for="vivo-zoom">🔍 Zoom <b id="vivo-zoom-v">1×</b></label>
+          <input type="range" id="vivo-zoom" min="1" max="1" step="0.1" value="1">
+        </div>
+        <p class="hint" id="vivo-cam-info" style="margin:4px 0 8px"></p>
         <div class="fila-botones">
           <button type="button" class="btn-sec" id="vivo-salir">Salir</button>
           <button type="button" class="btn-sec" id="vivo-camara">🔄 Cámara</button>

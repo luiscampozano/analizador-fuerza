@@ -29,8 +29,10 @@ async function fuenteWebCodecs(archivo) {
   const W = Math.round((dw * esc) / 2) * 2, H = Math.round((dh * esc) / 2) * 2;
   const t0 = await track.getFirstTimestamp().catch(() => 0);
   const fin = await track.computeDuration();
+  // v2.36.0 cuadros por segundo reales del video (para analizar a 60 Hz los videos de 60 fps en boxeo y deportes)
+  const fps = await track.computePacketStats(120).then((st) => st.averagePacketRate).catch(() => null);
   return {
-    tipo: 'webcodecs', videoWidth: W, videoHeight: H, duration: Math.max(0.1, fin - t0),
+    tipo: 'webcodecs', videoWidth: W, videoHeight: H, duration: Math.max(0.1, fin - t0), fps,
     async *iterar(tiempos) {
       const sink = new CanvasSink(track, { width: W, height: H, fit: 'fill', poolSize: 3 });
       let i = 0;
