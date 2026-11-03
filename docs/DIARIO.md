@@ -8,6 +8,20 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 16:01 · v2.35.2 — Preparación para Google Play (cuenta personal, app gratis)
+- **Pidió:** publicar con cuenta personal (la SAS queda para cuando se cobre; Google permite transferir la app).
+  Su verificación de identidad está en revisión; el teléfono se verifica después.
+- **Hecho:**
+  - `borrar-cuenta.html`: cómo eliminar la cuenta desde la app o la web (Perfil → 🗑️ Eliminar cuenta) o por correo a
+    fuerzapro2026@gmail.com (30 días); qué se borra y qué se conserva (alimentos sin autor, copias de D1 ≤30 días).
+  - `privacidad.html`: IA de nutrición y entrenador (Anthropic), fotos/videos de la comunidad en R2 (videos 1 año),
+    plan y uso, enlace a borrar-cuenta. Correo de contacto público ahora fuerzapro2026@gmail.com (también en
+    normas.html y en «olvidé mi contraseña»).
+  - `docs/play/`: FICHA_PLAY_STORE.md (nombre, descripciones, categoría, políticas, clasificación, seguridad de datos,
+    prueba cerrada), icono-512.png e imagen-destacada-1024x500.png.
+- **Pendiente:** aprobación de identidad → teléfono → PWABuilder (.aab; la llave la guarda Luis) → assetlinks.json →
+  prueba cerrada con 12+ probadores 14 días → producción. Herramienta de moderación para borrar cuentas pedidas por correo.
+
 ### 13:55 · v2.35.1 — Figuras de los deportes
 - **Pidió:** las figuras de los deportes no eran correctas (fútbol, básquet y tenis tenían la misma; vóley, emoji).
 - **Hecho (js/figura.js):** plantillas nuevas `patada` (con el balón en el piso), `tiro` (salta y lanza con el balón en la

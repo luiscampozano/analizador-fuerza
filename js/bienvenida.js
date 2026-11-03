@@ -68,7 +68,7 @@ function pintarCorreo(modo) {
   $('bv-atras').onclick = pintarInicio;
   $('bv-caja').querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => pintarCorreo(b.dataset.m)));
   $('bv-ver').onclick = () => { const i = $('bv-clave'); i.type = i.type === 'password' ? 'text' : 'password'; };
-  if (!reg) $('bv-olvide').onclick = () => alert('Por ahora la recuperación es manual: escríbenos a campozanoluis1@gmail.com desde el correo de tu cuenta y te ayudamos a restablecerla.');
+  if (!reg) $('bv-olvide').onclick = () => alert('Por ahora la recuperación es manual: escríbenos a fuerzapro2026@gmail.com desde el correo de tu cuenta y te ayudamos a restablecerla.');
   setTimeout(() => (reg ? $('bv-nombre') : $('bv-email'))?.focus(), 100);
   $('bv-form').onsubmit = async (ev) => {
     ev.preventDefault();
