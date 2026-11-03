@@ -23,7 +23,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO } from './actividad.js';
 
-const VERSION = '2.33.1';
+const VERSION = '2.34.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -350,7 +350,7 @@ async function leerActs() {
 }
 async function analizarActividadVideo(frames, video, d) {
   progreso(2, 0.5, 'Midiendo el ritmo y la técnica…');
-  const act = analizarActividad(frames, video.duration, ej, { altura: d.altura });
+  const act = analizarActividad(frames, video.duration, ej, { altura: d.altura, peso: d.pc });
   act.id = 'act-' + Date.now(); act.fecha = new Date().toISOString(); act.icono = ej.icono;
   progreso(2, 1);
   let salida = null;

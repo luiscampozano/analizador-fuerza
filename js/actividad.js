@@ -91,7 +91,7 @@ function curvaRitmo(tiempos, dur, factor = 1) {
 }
 
 // ---------------------------------------------------------------- analisis
-// frames: [{ t, puntos: [[x, y, vis] x 33] | null }] tal como salen de la IA · cfg: { altura (m) }
+// frames: [{ t, puntos: [[x, y, vis] x 33] | null }] tal como salen de la IA · cfg: { altura (m), peso (kg corporal) }
 export function analizarActividad(frames, dur, ej, cfg = {}) {
   const tipo = tipoActividad(ej); if (!tipo) throw new Error('Este ejercicio no tiene análisis por video.');
   const t = frames.map((f) => f.t), P = frames.map((f) => (f.puntos && f.puntos.length >= 33 ? f.puntos : null));
@@ -259,6 +259,18 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     const vel = pct(golpes.map((g) => g.v), 0.9), cl = (c) => golpes.filter((g) => g.clase === c).length;
     kpi('Golpes', golpes.length, `izq. ${iz} · der. ${de}`); kpi('Ritmo', r1(ritmo(ev)), 'golpes por minuto');
     kpi('Mano más rápida', r1(vel, 1), 'm/s (aprox.)'); kpi('Tipos', `${cl('recto')} · ${cl('gancho')} · ${cl('uppercut')}`, 'rectos · ganchos · uppercuts (aprox.)');
+    // v2.34.0 fuerza aproximada del golpe (impulso): F = k · m_ef · v. Masa efectiva ~4 % del peso corporal (puño + brazo
+    // + parte del cuerpo que acompaña); k = 129 /s calibrado con boxeadores olímpicos (Walilko 2005: 2,9 kg, 9,1 m/s,
+    // 3427 N). Margen amplio (±35 %): depende de la técnica, el guante y lo duro del saco. La altura entra en la escala.
+    if (cfg.peso > 0 && golpes.length) {
+      const fuerza = (v, clase) => 129 * cfg.peso * (clase === 'recto' ? 0.04 : 0.035) * v / 9.81; // kg
+      for (const g of golpes) g.fuerza = fuerza(g.v, g.clase);
+      const fMax = pct(golpes.map((g) => g.fuerza), 0.9), fMed = med(golpes.map((g) => g.fuerza));
+      res.fuerzaGolpe = { max: r1(fMax), media: r1(fMed), newton: r1(fMax * 9.81) };
+      res.eventos = golpes.map((g) => ({ t: g.t, lado: g.lado, clase: g.clase, fuerza: r1(g.fuerza) }));
+      kpi('Golpe más fuerte', r1(fMax), `kg aprox. (±35 %) · ${r1(fMax * 9.81 / 10) * 10} N · típico ${r1(fMed)} kg`);
+      bien(`Fuerza estimada con la velocidad de tu mano y tu peso: tu golpe más fuerte equivale a ~${r1(fMax)} kg (±35 %). Es la fuerza si impacta un saco; al aire es solo referencia.`);
+    }
     const baja = nGuardia ? guardiaBaja / nGuardia * 100 : 0; kpi('Guardia baja', r1(baja), '% del tiempo');
     if (baja > 40) aviso(`Bajas la guardia ${r1(baja)} % del tiempo: después de cada golpe regresa la mano a la cara.`); else bien('Buena guardia: las manos vuelven a la cara.');
     if (golpes.length >= 6 && Math.min(iz, de) / Math.max(iz, de) < 0.35) aviso(`Usas mucho más una mano (izq. ${iz} / der. ${de}). Combina las dos.`);

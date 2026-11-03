@@ -8,6 +8,17 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 13:13 · v2.34.0 — Boxeo: fuerza aproximada del golpe
+- **Pidió:** que el boxeo calcule la fuerza del golpe con la velocidad, el peso y la altura. La IA que sigue el balón
+  queda solo para deportes con pelota (fútbol, básquet, pádel, vóley) y con aviso de que tarda más; pesas no la necesitan.
+- **Hecho:** en `js/actividad.js` cada golpe lleva `fuerza` (kg) = 129 · masa efectiva · velocidad / 9,81, con masa
+  efectiva 4 % del peso corporal en rectos y 3,5 % en ganchos/uppercuts (calibrado con boxeadores olímpicos, Walilko
+  2005: 2,9 kg, 9,1 m/s, 3427 N). La altura ya entra en la escala (m por píxel). KPI «Golpe más fuerte» (kg, N y típico,
+  ±35 %) y nota de que es la fuerza si impacta un saco. app.js y vivo.js pasan el peso corporal. Video real de prueba:
+  149 kg el más fuerte (sombra, 30 fps).
+- **Pendiente:** videos de Luis golpeando un saco, de lado, a 60 fps (y en cámara lenta) para validar; soporte de videos
+  en cámara lenta; fuerza en patada, remate y lanzamiento (fase siguiente).
+
 ### 11:25 · v2.33.1 — «Créditos IA para nutrición» 10 / 30 / 90 / 300
 - **Pidió:** que los créditos digan «para nutrición» (no confundir con el analizador) y subirlos a 10 / 30 / 90 / 300.
 - **Hecho:** `PLANES.ia` = 10 / 30 / 90 / 300; textos «Créditos IA para nutrición» en la ventana de planes, «créditos IA de

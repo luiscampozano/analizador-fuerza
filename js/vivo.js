@@ -188,7 +188,7 @@ function cardioEnVivo(yo) {
   if (!yo.grabando || yo.frames.length < 30) return;
   const dur = yo.frames[yo.frames.length - 1].t;
   $('vivo-p').textContent = `${Math.floor(dur / 60)}:${String(Math.floor(dur % 60)).padStart(2, '0')}`;
-  let a; try { a = analizarActividad(yo.frames, dur, yo.ej, { altura: yo.datos.altura }); } catch (e) { return; }
+  let a; try { a = analizarActividad(yo.frames, dur, yo.ej, { altura: yo.datos.altura, peso: yo.datos.pc }); } catch (e) { return; }
   const r = a.curva && a.curva.length ? a.curva[a.curva.length - 1].v : null;
   yo.anunciadas = Math.max(yo.anunciadas, a.total);
   $('vivo-n').textContent = yo.anunciadas; // nunca retrocede
