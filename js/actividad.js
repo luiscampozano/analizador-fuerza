@@ -8,9 +8,12 @@ const TIPOS = {
   correr: 'carrera', cinta: 'carrera', intervalos_carrera: 'carrera', caminar: 'caminata', caminata_inclinada: 'caminata', senderismo: 'caminata',
   bicicleta: 'bici', bicicleta_estatica: 'bici', spinning: 'bici', bicicleta_aire: 'bici',
   remo_ergometro: 'remo', ski_erg: 'ski', eliptica: 'eliptica', escaladora: 'escaladora', saltar_cuerda: 'cuerda',
-  boxeo: 'boxeo', burpees: 'burpees', jumping_jacks: 'jacks', escaladores: 'escaladores', hiit: 'generico', cuerdas_batalla: 'ondas',
+  boxeo: 'boxeo', futbol: 'futbol', basquet: 'basquet', voley: 'voley', tenis: 'raqueta', natacion: 'natacion', burpees: 'burpees', jumping_jacks: 'jacks', escaladores: 'escaladores', hiit: 'generico', cuerdas_batalla: 'ondas',
 };
 export const tipoActividad = (ej) => (ej && TIPOS[ej.id]) || null;
+// v2.35.0: deportes. Con balon se puede elegir «Análisis completo» (la IA del balón, experimental, tarda más)
+export const CON_BALON = ['futbol', 'basquet', 'voley', 'raqueta'];
+export const EXPERIMENTAL = ['natacion'];
 export const CONSEJO = {
   carrera: 'Graba de lado, en cinta o con alguien siguiéndote, con el cuerpo completo (pies incluidos). 20-60 s bastan.',
   caminata: 'Graba de lado con el cuerpo completo. 20-60 s bastan.',
@@ -24,6 +27,11 @@ export const CONSEJO = {
   burpees: 'Graba de lado con el cuerpo completo.', jacks: 'Graba de frente con el cuerpo completo.',
   escaladores: 'Graba de lado con el cuerpo completo.', generico: 'Graba con el cuerpo completo y el celular fijo.',
   ondas: 'Graba de lado o de frente con los brazos a la vista.',
+  futbol: 'Graba DE LADO a la persona que patea, con el celular fijo, el cuerpo completo y el balón a la vista. Mejor a 60 fps («Máxima»).',
+  basquet: 'Graba DE LADO al que lanza, con el celular fijo y el cuerpo completo (y el balón a la vista). Mejor a 60 fps.',
+  voley: 'Graba DE LADO, con el celular fijo y el cuerpo completo, incluido el salto y el brazo arriba. Mejor a 60 fps.',
+  raqueta: 'Graba DE LADO o desde atrás, con el celular fijo y el cuerpo completo. Mejor a 60 fps («Máxima»).',
+  natacion: '🧪 Experimental. Graba desde FUERA de la piscina, de lado al nadador, con el celular fijo (sin seguirlo) y buena luz. 15-30 s.',
 };
 
 // ---------------------------------------------------------------- utilidades
@@ -278,6 +286,196 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     return fin('Golpes', 'golpes/min', ev);
   }
 
+  // ---------------------------------------------------------------- deportes (v2.35.0)
+  // Velocidad del pie o la mano en el instante del contacto y, con fisica de choque, una estimacion de la velocidad del
+  // balon y de la fuerza media del impacto. Con «Análisis completo» (cfg.balon) la velocidad del balon se MIDE con la
+  // IA que lo detecta en cada cuadro. Todo es aproximado: video 2D, la escala sale de la estatura.
+  if (['futbol', 'basquet', 'voley', 'raqueta', 'natacion'].includes(tipo)) {
+    const corto = Math.round(0.15 * fr), nn = Math.max(1, Math.round(0.02 * fr));
+    const serieVis = (k, f) => { // solo con el punto bien visible; rellena huecos cortos
+      const x = suave(P.map((p) => { if (!p || !((p[k][2] ?? 1) >= 0.4)) return NaN; const v = f(p); return Number.isFinite(v) ? v : NaN; }), nn);
+      const y = rellenar(x); let i = 0;
+      while (i < x.length) { if (Number.isFinite(x[i])) { i++; continue; } let j = i; while (j < x.length && !Number.isFinite(x[j])) j++; if (j - i > corto || i === 0 || j === x.length) for (let q = i; q < j; q++) y[q] = NaN; i = j; }
+      return y;
+    };
+    const velDe = (k) => { // m/s; vy + = hacia abajo
+      const x = serieVis(k, (p) => p[k][0]), y = serieVis(k, (p) => p[k][1]);
+      const v = x.map(() => NaN), vx = v.slice(), vy = v.slice();
+      for (let i = 1; i < x.length; i++) { const dt = t[i] - t[i - 1] || 1 / fr; vx[i] = (x[i] - x[i - 1]) / dt * mPorPx; vy[i] = (y[i] - y[i - 1]) / dt * mPorPx; v[i] = Math.hypot(vx[i], vy[i]); }
+      return { v, vx, vy, x, y };
+    };
+    // maximos locales de v por encima de vmin, separados al menos sep segundos (se queda el mas alto)
+    const picos = (v, vmin, sep, ok = () => true) => {
+      const out = [];
+      for (let i = 1; i < v.length - 1; i++) {
+        if (!(v[i] >= vmin) || !(v[i] >= v[i - 1]) || !(v[i] >= v[i + 1]) || !ok(i)) continue;
+        const u = out[out.length - 1];
+        if (u != null && t[i] - t[u] < sep) { if (v[i] > v[u]) out[out.length - 1] = i; continue; }
+        out.push(i);
+      }
+      return out;
+    };
+    const peso = cfg.peso > 0 ? cfg.peso : 75;
+    // choque: el pie/mano (masa efectiva M, a velocidad v) golpea un balon quieto (masa m); e = rebote. Fuerza media
+    // del impacto = cantidad de movimiento del balon / tiempo de contacto. Devuelve km/h y kg.
+    const choque = (v, M, m, e, tc) => { const vb = v * (1 + e) * M / (M + m); return { vb, kmh: vb * 3.6, kg: m * vb / tc / 9.81 }; };
+    const caderaY = serie((p) => (p[23][1] + p[24][1]) / 2);
+    const saltoCm = (i) => { // cuanto sube la cadera respecto a estar de pie (ventana de 2 s alrededor)
+      const a = Math.max(0, i - Math.round(1.2 * fr)), b = Math.min(P.length - 1, i + Math.round(0.8 * fr));
+      const tramo = caderaY.slice(a, b + 1), base = pct(tramo, 0.8), alto = Math.min(...tramo.filter(Number.isFinite));
+      return Number.isFinite(base - alto) ? (base - alto) * mPorPx * 100 : NaN;
+    };
+    // IA del balon (analisis completo): velocidad medida justo despues del contacto, siguiendo al balon cuadro a cuadro
+    const B = Array.isArray(cfg.balon) && cfg.balon.length === P.length ? cfg.balon : null;
+    const balonTras = (i, punto) => {
+      if (!B) return null;
+      const fin = Math.min(P.length - 1, i + Math.round(0.4 * fr)); let prev = punto, pts = [];
+      for (let j = Math.max(0, i - 1); j <= fin; j++) {
+        const cand = B[j]; if (!cand || !cand.length) continue;
+        let mejor = null, dm = Infinity;
+        for (const c of cand) { const d = prev ? Math.hypot(c[0] - prev[0], c[1] - prev[1]) : 0; if (d < dm) { dm = d; mejor = c; } }
+        if (prev && dm > Math.max(4 * (mejor[2] || 20), 60 / mPorPx * (t[j] - t[Math.max(0, i - 1)] + 0.05))) continue; // salto imposible: otra cosa
+        pts.push([t[j], mejor[0], mejor[1]]); prev = mejor;
+        if (pts.length >= 7) break;
+      }
+      const tras = pts.filter((q) => q[0] > t[i]);
+      if (tras.length < 2) return null;
+      const ajuste = (k) => { const mt = media(tras.map((q) => q[0])), mk = media(tras.map((q) => q[k])); let a = 0, b = 0; for (const q of tras) { a += (q[0] - mt) * (q[k] - mk); b += (q[0] - mt) ** 2; } return b ? a / b : NaN; };
+      const vb = Math.hypot(ajuste(1), ajuste(2)) * mPorPx;
+      return vb > 1 && vb < 60 ? vb : null;
+    };
+    const coma = (x, d = 1) => String(r1(x, d)).replace('.', ',');
+    const resumenGolpes = (golpes, nombre, unidad, mB, tc, quePega) => {
+      // velocidad medida del balon (si la IA lo vio) reemplaza a la estimada; la fuerza se recalcula con ella
+      let medidos = 0;
+      for (const g of golpes) {
+        const p = P[g.i], pto = p ? [p[g.k][0], p[g.k][1]] : null, vm = balonTras(g.i, pto);
+        if (vm) { medidos++; g.vb = vm; g.kmh = vm * 3.6; g.kg = mB * vm / tc / 9.81; g.medido = true; }
+      }
+      res.eventos = golpes.map((g) => ({ t: g.t, lado: g.lado, v: r1(g.v, 1), kmh: r1(g.kmh), fuerza: r1(g.kg), medido: !!g.medido }));
+      const iz = golpes.filter((g) => g.lado === 'izq').length;
+      kpi(nombre, golpes.length, `izq. ${iz} · der. ${golpes.length - iz}`);
+      if (!golpes.length) return;
+      const mejor = golpes.reduce((a, g) => (g.kmh > a.kmh ? g : a));
+      kpi(quePega, coma(Math.max(...golpes.map((g) => g.v))), 'm/s en el contacto (aprox.)');
+      kpi(unidad, r1(mejor.kmh), mejor.medido ? 'km/h · medida con la IA del balón' : 'km/h · estimada (±30 %)');
+      kpi('Fuerza del impacto', r1(mejor.kg), `kg aprox. · ${r1(mejor.kg * 9.81 / 10) * 10} N (fuerza media del contacto)`);
+      res.fuerzaGolpe = { max: r1(mejor.kg), media: r1(med(golpes.map((g) => g.kg))), newton: r1(mejor.kg * 9.81) };
+      if (B) { if (medidos) bien(`La IA del balón lo siguió en ${medidos} de ${golpes.length}: esas velocidades son medidas, no estimadas.`); else aviso('La IA del balón no lo pudo seguir después del contacto (muy lejos, borroso o tapado). Se muestran valores estimados.'); }
+    };
+    const avisoFps = () => { if (fr < 45) aviso('Video a menos de 60 fps: en movimientos tan rápidos la IA pierde parte del recorrido y la velocidad sale más baja. Graba a 60 fps y elige «Máxima».'); };
+    if (!cfg.peso) aviso('Pon tu peso corporal para que la estimación de fuerza sea tuya (se usó 75 kg).');
+
+    if (tipo === 'futbol') {
+      const pies = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.pie) }));
+      const vtop = pct(pies.flatMap((q) => q.v), 0.995);
+      const golpes = [];
+      for (const pg of pies) {
+        const otro = pies.find((q) => q !== pg);
+        const ok = (i) => { const p = P[i]; if (!p) return false;
+          if (otro.v[i] > 0.6 * pg.v[i]) return false; // el otro pie apoyado (no es correr)
+          if (!(p[pg.s.pie][1] > (p[23][1] + p[24][1]) / 2)) return false; // el pie por debajo de la cadera
+          return !(ang(p[pg.s.cad], p[pg.s.rod], p[pg.s.tob]) < 120); }; // rodilla casi estirada al pegarle
+        for (const i of picos(pg.v, Math.max(5, 0.55 * vtop), 1.0, ok)) {
+          const c = choque(pg.v[i], 0.028 * peso, 0.43, 0.5, 0.009); // balon 430 g; contacto ~9 ms
+          golpes.push({ i, t: t[i], lado: pg.nom, k: pg.s.pie, v: pg.v[i], ...c, kmh: c.kmh });
+        }
+      }
+      golpes.sort((a, b) => a.t - b.t);
+      resumenGolpes(golpes, 'Patadas', 'Velocidad del balón', 0.43, 0.009, 'Pie más rápido');
+      if (!golpes.length) aviso('No encontré patadas. Graba de lado, con el pie y el balón a la vista y el celular fijo.');
+      else bien('Velocidad del balón: con el pie a esa velocidad, un balón sale ~1,25 veces más rápido (choque pie-balón).');
+      avisoFps();
+      return fin('Patadas', 'por minuto', golpes.map((g) => g.t));
+    }
+
+    if (tipo === 'voley' || tipo === 'raqueta') {
+      const manos = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.mun) }));
+      const vtop = pct(manos.flatMap((q) => q.v), 0.995), golpes = [];
+      for (const m of manos) {
+        const ok = (i) => { const p = P[i]; if (!p) return false;
+          return tipo === 'raqueta' || p[m.s.mun][1] < Math.min(p[11][1], p[12][1]); }; // voley: remate o saque, mano arriba
+        for (const i of picos(m.v, Math.max(4, 0.5 * vtop), 0.8, ok)) {
+          const p = P[i], arriba = p && p[m.s.mun][1] < Math.min(p[11][1], p[12][1]);
+          // voley: la mano (masa efectiva ~4 % del peso) contra un balon de 270 g; raqueta: la cabeza va ~1,5 veces
+          // mas rapido que la mano y pega con ~0,6 kg efectivos a una pelota de 58 g
+          const c = tipo === 'voley' ? choque(m.v[i], 0.04 * peso, 0.27, 0.5, 0.012) : choque(1.5 * m.v[i], 0.6, 0.058, 0.75, 0.005);
+          golpes.push({ i, t: t[i], lado: m.nom, k: m.s.mun, v: m.v[i], arriba, salto: saltoCm(i), ...c });
+        }
+      }
+      golpes.sort((a, b) => a.t - b.t);
+      if (tipo === 'voley') {
+        resumenGolpes(golpes, 'Remates', 'Velocidad del balón', 0.27, 0.012, 'Mano más rápida');
+        const s = med(golpes.map((g) => g.salto));
+        if (s > 5) kpi('Salto', r1(s), 'cm (aprox.)');
+        if (!golpes.length) aviso('No encontré remates ni saques: la mano debe golpear por encima de la cabeza y verse completa.');
+      } else {
+        resumenGolpes(golpes, 'Golpes', 'Velocidad de la pelota', 0.058, 0.005, 'Mano más rápida');
+        if (golpes.length) kpi('Por arriba', golpes.filter((g) => g.arriba).length, 'remates o saques');
+        if (!golpes.length) aviso('No encontré golpes: graba con el brazo de la raqueta a la vista.');
+        else bien('Velocidad de la pelota estimada con la mano: la cabeza de la raqueta va ~1,5 veces más rápido que la mano.');
+      }
+      avisoFps();
+      return fin(tipo === 'voley' ? 'Remates' : 'Golpes', 'por minuto', golpes.map((g) => g.t));
+    }
+
+    if (tipo === 'basquet') {
+      // tiro: la mano sube rapido por encima de los hombros y el codo se estira al soltar el balon
+      const manos = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.mun) }));
+      const tiros = [];
+      for (const m of manos) {
+        const sube = m.vy.map((x) => -x), top = pct(sube, 0.995);
+        const ok = (i) => { const p = P[i]; return p && p[m.s.mun][1] < Math.min(p[11][1], p[12][1]) && !(ang(p[m.s.hom], p[m.s.cod], p[m.s.mun]) < 130); };
+        for (const i of picos(sube, Math.max(2.5, 0.5 * top), 1.5, ok)) {
+          if (tiros.some((x) => Math.abs(x.t - t[i]) < 0.5)) { const x = tiros.find((y) => Math.abs(y.t - t[i]) < 0.5); if (m.v[i] > x.v) Object.assign(x, { i, t: t[i], lado: m.nom, k: m.s.mun, v: m.v[i], ang: Math.atan2(-m.vy[i], Math.abs(m.vx[i])) * 180 / Math.PI }); continue; }
+          // empuje: desde que la mano empieza a subir hasta soltar el balon
+          let a = i; while (a > 0 && t[i] - t[a] < 0.7 && sube[a - 1] > 0.2 * sube[i]) a--;
+          const tEmp = Math.max(0.15, Math.min(0.7, t[i] - t[a]));
+          tiros.push({ i, t: t[i], lado: m.nom, k: m.s.mun, v: m.v[i], ang: Math.atan2(-m.vy[i], Math.abs(m.vx[i])) * 180 / Math.PI, tEmp, salto: saltoCm(i) });
+        }
+      }
+      tiros.sort((a, b) => a.t - b.t);
+      for (const g of tiros) { g.kmh = g.v * 3.6; g.vb = g.v; g.kg = 0.62 * (g.v / (g.tEmp || 0.3) + 9.81) / 9.81; } // balon 620 g
+      // con la IA del balon: velocidad medida al salir de la mano (el empuje dura tEmp)
+      let medidos = 0;
+      for (const g of tiros) { const p = P[g.i], vm = balonTras(g.i, p ? [p[g.k][0], p[g.k][1]] : null); if (vm) { medidos++; g.vb = vm; g.kmh = vm * 3.6; g.kg = 0.62 * (vm / (g.tEmp || 0.3) + 9.81) / 9.81; g.medido = true; } }
+      res.eventos = tiros.map((g) => ({ t: g.t, lado: g.lado, v: r1(g.vb, 1), kmh: r1(g.kmh), fuerza: r1(g.kg, 1), medido: !!g.medido }));
+      const iz = tiros.filter((g) => g.lado === 'izq').length;
+      kpi('Tiros', tiros.length, `mano izq. ${iz} · der. ${tiros.length - iz}`);
+      if (tiros.length) {
+        const vs = med(tiros.map((g) => g.vb)), an = med(tiros.map((g) => g.ang)), s = med(tiros.map((g) => g.salto));
+        kpi('Velocidad de salida', coma(vs), medidos ? 'm/s · medida con la IA del balón' : 'm/s de la mano al soltar (aprox.)');
+        kpi('Ángulo de salida', r1(an), '° (aprox.)');
+        if (s > 5) kpi('Salto', r1(s), 'cm (aprox.)');
+        kpi('Fuerza de empuje', coma(med(tiros.map((g) => g.kg))), 'kg sobre el balón (aprox.)');
+        res.fuerzaGolpe = { max: r1(Math.max(...tiros.map((g) => g.kg)), 1), media: r1(med(tiros.map((g) => g.kg)), 1) };
+        if (an < 40) aviso(`Sueltas el balón muy plano (~${r1(an)}°): con 45-55° entra más fácil en el aro.`); else if (an > 62) aviso(`Sueltas el balón muy alto (~${r1(an)}°): lo usual es 45-55°.`); else bien(`Buen ángulo de salida (~${r1(an)}°).`);
+        if (B) { if (medidos) bien(`La IA del balón lo siguió en ${medidos} de ${tiros.length} tiros.`); else aviso('La IA del balón no lo pudo seguir al salir de la mano. Se usó la velocidad de la mano.'); }
+      } else aviso('No encontré tiros: la mano debe subir por encima de la cabeza al soltar el balón y verse completa.');
+      avisoFps();
+      return fin('Tiros', 'por minuto', tiros.map((g) => g.t));
+    }
+
+    // natacion (experimental): grabando desde fuera de la piscina, de lado. Cada ciclo = el brazo que mejor se ve
+    // va adelante y vuelve. Velocidad = avance de la cadera (celular fijo).
+    const brazo = visib([11, 13, 15]) >= visib([12, 14, 16]) ? L : R;
+    const sep = serie((p) => (p[brazo.mun][0] - p[brazo.hom][0]) / torsoPx);
+    const haciaCabeza = Math.sign(med(P.map((p) => (p ? p[0][0] - (p[23][0] + p[24][0]) / 2 : NaN)))) || 1; // hacia donde nada
+    const piv = pivotes(sep, 0.5), ev = tiempos(piv.filter((q) => q.tipo === (haciaCabeza > 0 ? 'alto' : 'bajo')));
+    const ciclos = ev.length, rt = ritmo(ev);
+    const cx = serie((p) => (p[23][0] + p[24][0]) / 2);
+    const a0 = ev.length ? Math.max(0, Math.round(ev[0] * fr)) : 0, a1 = ev.length ? Math.min(P.length - 1, Math.round(ev[ev.length - 1] * fr)) : P.length - 1;
+    const vNado = a1 > a0 ? Math.abs(cx[a1] - cx[a0]) * mPorPx / (t[a1] - t[a0]) : NaN;
+    kpi('Ciclos de brazada', ciclos, 'en el video'); kpi('Ritmo', r1(rt), 'ciclos por minuto');
+    if (vNado > 0.2 && vNado < 3) {
+      kpi('Velocidad', coma(vNado, 2), 'm/s (aprox.)');
+      kpi('Ritmo por 100 m', `${Math.floor(100 / vNado / 60)}:${String(Math.round(100 / vNado % 60)).padStart(2, '0')}`, 'min (aprox.)');
+      if (rt) kpi('Avance por ciclo', coma(vNado / (rt / 60), 2), 'm (más = brazada más eficiente)');
+    }
+    aviso('🧪 Experimental: el agua tapa parte del cuerpo y la IA puede perder los brazos. Tómalo como referencia.');
+    return fin('Ciclos', 'ciclos/min', ev);
+  }
+
   if (tipo === 'escaladores') {
     const sep = serie((p) => (p[25][0] - p[26][0]) / torsoPx);
     const ev = tiempos(pivotes(sep, 0.5));
@@ -317,7 +515,7 @@ const COL = { bg: '#101218', rosa: '#ec48c8', verde: '#5adc78', cian: '#22d3ee',
 const LINEAS = [[11, 13], [13, 15], [12, 14], [14, 16], [11, 12], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 31], [28, 32]];
 const FUENTE = 'system-ui, -apple-system, Roboto, "Segoe UI", sans-serif';
 // full: puntos interpolados por cuadro (fps). Devuelve dibujar(ctx, t, imagen) para generarVideo.
-export function dibujoActividad(fuente, full, fps, a) {
+export function dibujoActividad(fuente, full, fps, a, balon = null) {
   const W = fuente.videoWidth, H = fuente.videoHeight, esc = OW / W, Hs = H * esc;
   const off = Hs < VH ? (VH - Hs) / 2 : 0;
   const cy = full.map((f) => { const ys = [11, 12, 23, 24].map((k) => f[k][1]).filter(Number.isFinite); return ys.length ? ys.reduce((x, y) => x + y) / ys.length * esc : Hs / 2; });
@@ -338,6 +536,12 @@ export function dibujoActividad(fuente, full, fps, a) {
     // destello en el instante de cada evento (paso, golpe, salto...)
     const reciente = (a.eventos || []).filter((e) => e.t <= t && t - e.t < 0.25);
     if (reciente.length && a.tipo === 'boxeo') for (const e of reciente) { const p = P(e.lado === 'izq' ? 15 : 16); ctx.beginPath(); ctx.arc(p[0], p[1], 34, 0, 7); ctx.strokeStyle = COL.amarillo; ctx.lineWidth = 8; ctx.stroke(); }
+    // v2.35.0 analisis completo: el balon que vio la IA en este cuadro
+    if (balon && balon.length) {
+      const dtB = balon.length > 1 ? (balon[balon.length - 1].t - balon[0].t) / (balon.length - 1) : 1;
+      const q = balon[Math.max(0, Math.min(balon.length - 1, Math.round((t - balon[0].t) / dtB)))];
+      if (q && q.b && q.b[0]) { const [bx, by, br] = q.b[0]; ctx.beginPath(); ctx.arc(bx * esc, by * esc - s0 + off, Math.max(18, br * esc * 1.3), 0, 7); ctx.strokeStyle = COL.cian; ctx.lineWidth = 6; ctx.stroke(); }
+    }
     ctx.restore();
     // panel
     const hechos = (a.eventos || []).filter((e) => e.t <= t);
@@ -358,6 +562,16 @@ export function dibujoActividad(fuente, full, fps, a) {
         ctx.fillText(ult.fuerza != null ? `Golpe ~${ult.fuerza} kg · ${coma(ult.v)} m/s` : `Golpe ${coma(ult.v)} m/s`, OW - 40, VH + 150);
         const fMax = Math.max(...hechos.map((e) => e.fuerza ?? -1));
         if (fMax > 0) { ctx.fillStyle = COL.gris; ctx.font = `600 30px ${FUENTE}`; ctx.fillText(`Máx. ~${fMax} kg`, OW - 40, VH + 205); }
+      }
+    }
+    // v2.35.0 deportes: velocidad del balón y fuerza del último contacto, debajo del ritmo
+    if (['futbol', 'basquet', 'voley', 'raqueta'].includes(a.tipo)) {
+      const ult = hechos[hechos.length - 1];
+      if (ult && ult.kmh != null) {
+        ctx.textAlign = 'right'; ctx.fillStyle = COL.amarillo; ctx.font = `700 38px ${FUENTE}`;
+        ctx.fillText(`${a.tipo === 'basquet' ? 'Salida' : 'Balón'} ~${ult.kmh} km/h${ult.medido ? ' ✓' : ''} · ${ult.fuerza} kg`, OW - 40, VH + 150);
+        const mx = Math.max(...hechos.map((e) => e.kmh ?? -1));
+        ctx.fillStyle = COL.gris; ctx.font = `600 30px ${FUENTE}`; ctx.fillText(`Máx. ~${mx} km/h`, OW - 40, VH + 205);
       }
     }
     ctx.font = `600 32px ${FUENTE}`; ctx.fillStyle = COL.gris; ctx.textAlign = 'left';

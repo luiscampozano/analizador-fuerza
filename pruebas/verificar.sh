@@ -35,6 +35,7 @@ done
 
 # 5) Analisis de cardio/boxeo: esqueletos sinteticos y un video real
 SAL=$(node pruebas/actividad/sinteticos.mjs 2>&1); if echo "$SAL" | grep -q 'Todos los casos dentro'; then bien "Cardio/boxeo sintéticos OK"; else mal "Cardio/boxeo sintéticos"; echo "$SAL" | tail -15; fi
+SAL=$(node pruebas/actividad/deportes.mjs 2>&1); if echo "$SAL" | grep -q 'Todos los deportes dentro'; then bien "Deportes (fútbol, vóley, pádel, básquet, natación, balón) OK"; else mal "Deportes"; echo "$SAL"; fi
 SAL=$(node pruebas/alterno/sinteticos.mjs 2>&1); if echo "$SAL" | grep -q 'Todos los casos dentro'; then bien "Curl alterno (muñecos) OK"; else mal "Curl alterno (muñecos)"; echo "$SAL"; fi
 SAL=$(node pruebas/munecos/munecos.mjs 2>&1); N=$(echo "$SAL" | grep -o 'TOTAL [0-9]*' | grep -o '[0-9]*'); if [ "${N:-0}" -ge 3350 ]; then bien "Muñecos 3D: $(echo "$SAL" | grep '^TOTAL')"; else mal "Muñecos 3D bajaron: $(echo "$SAL" | grep '^TOTAL') (mínimo 3350)"; fi
 PI=$(echo "$SAL" | grep -o 'PIERNAS [0-9]*/[0-9]*'); if [ -n "$PI" ] && [ "$(echo "$PI" | cut -d' ' -f2 | cut -d/ -f1)" = "$(echo "$PI" | cut -d/ -f2)" ]; then bien "Cambio de pierna (muñecos): $PI"; else mal "Cambio de pierna (muñecos): ${PI:-sin resultado}"; fi

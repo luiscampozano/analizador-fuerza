@@ -319,6 +319,7 @@ export const EJERCICIOS = [
     ['baile', '💃', 'Baile / zumba', 'tiempo', '', 'dancing dance zumba aerobics'],
     ['futbol', '⚽', 'Fútbol', 'tiempo', '', 'soccer football'],
     ['basquet', '🏀', 'Básquet', 'tiempo', '', 'basketball'],
+    ['voley', '🏐', 'Vóley', 'tiempo', '', 'volleyball beach volleyball voley playa'],
     ['tenis', '🎾', 'Tenis / pádel', 'tiempo', '', 'tennis padel squash racquetball'],
     ['cardio_otro', '❤️', 'Otro cardio', 'tiempo', '', 'cardio other aerobic'],
   ].map(([id, icono, nombre, medida, vel, en, correr]) => E(id, 'Cardio', 'cardio', icono, nombre, nombre.length > 18 ? nombre.slice(0, 17) + '…' : nombre,

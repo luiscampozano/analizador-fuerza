@@ -1,6 +1,6 @@
 // FuerzaPro — interfaz principal. Todo el procesamiento ocurre en el dispositivo.
 import { EJERCICIOS, POR_ID, GRUPOS, GRUPOS_MUSCULO, GRUPO_PROPIOS, agregarPropio, quitarPropio } from './ejercicios.js';
-import { detectarPose, cargarModelo } from './pose.js';
+import { detectarPose, cargarModelo, cargarDetectorBalon } from './pose.js';
 import { interpolar, analizar, anguloArticular, MP, escala, marcarReps } from './fisica.js';
 import { analizarSerie, perfilCargaVelocidad, sugerirCalibracion, estadisticasSerie } from './analisis.js';
 import * as almacen from './almacen.js';
@@ -21,9 +21,9 @@ import * as nube from './nube.js';
 import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
-import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO } from './actividad.js';
+import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.34.1';
+const VERSION = '2.35.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -77,6 +77,19 @@ function pintarElegido() {
     if (!abierto) $('buscar-ej').focus({ preventScroll: true });
   };
   $('hint-ej').textContent = ej.cardio ? '🎥 ' + (CONSEJO[tipoActividad(ej)] || '') : ej.hint;
+  pintarModoDep();
+}
+// v2.35.0 deportes con balón: «Solo cuerpo» (rápido) o «Análisis completo» con la IA del balón (experimental, más lento)
+const modoDep = () => (CON_BALON.includes(tipoActividad(ej)) && leer('af_modo_dep') === 'completo' ? 'completo' : 'cuerpo');
+function pintarModoDep() {
+  const con = CON_BALON.includes(tipoActividad(ej));
+  $('g-modo-dep').style.display = con ? '' : 'none';
+  if (!con) return;
+  const m = modoDep();
+  $('modo-dep').querySelectorAll('.chip').forEach((c) => { c.classList.toggle('active', c.dataset.m === m); c.onclick = () => { guardar('af_modo_dep', c.dataset.m); pintarModoDep(); }; });
+  $('modo-dep-hint').textContent = m === 'completo'
+    ? '🧪 Experimental: además del cuerpo, otra IA busca el balón en cada cuadro y MIDE su velocidad. Tarda más (la primera vez descarga ~7 MB). El balón debe verse bien.'
+    : 'Mide tu cuerpo (velocidad del pie o la mano) y ESTIMA la velocidad del balón y la fuerza del impacto con física.';
 }
 function pintarLista() {
   const q = $('buscar-ej').value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -260,14 +273,18 @@ async function analizarArchivo() {
     const seguidor = marca && CON_DISCO.includes(ej.equipo) ? crearSeguidor(video.videoWidth, video.videoHeight, marca) : null;
     // Si la IA casi no ve a la persona puede ser el celular (la GPU o el decodificador de video entregan cuadros vacios),
     // no el video: se reintenta con la CPU y despues con el reproductor de video antes de rendirse.
+    // v2.35.0 análisis completo: la IA del balón mira los mismos cuadros que la IA de pose (solo en el primer intento)
+    let detBalon = null; const balonT = new Map();
+    if (ej.cardio && modoDep() === 'completo') { progreso(0, 0, 'Cargando la IA del balón (la primera vez descarga ~7 MB)…'); detBalon = await cargarDetectorBalon(); }
     const intentos = [{}, { soloCPU: true }, { soloCPU: true, conReproductor: true }];
     let frames = [], delegado = '', diag = [];
     for (let k = 0; k < intentos.length; k++) {
       const op = intentos[k];
       if (op.conReproductor) { if (video.tipo !== 'webcodecs') break; video = await abrirVideo(archivo, { conReproductor: true }); }
       const r = await detectarPose(video, {
-        calidad, hz, cancelado: () => cancelar, soloCPU: !!op.soloCPU, alCuadro: seguidor && k === 0 ? (img, t) => seguidor.procesar(img, t) : null,
-        alAvanzar: (f, resta, del) => progreso(1, f, `${k ? 'Reintentando con otro método · ' : ''}Detectando pose (${del === 'GPU' ? 'GPU' : 'CPU'})${minutos(resta)}`),
+        calidad, hz, cancelado: () => cancelar, soloCPU: !!op.soloCPU,
+        alCuadro: seguidor && k === 0 ? (img, t) => seguidor.procesar(img, t) : detBalon ? (img, t) => balonT.set(t, detBalon(img, video.videoWidth, video.videoHeight)) : null,
+        alAvanzar: (f, resta, del) => progreso(1, f, `${k ? 'Reintentando con otro método · ' : ''}Detectando ${detBalon ? 'pose y balón (más lento)' : 'pose'} (${del === 'GPU' ? 'GPU' : 'CPU'})${minutos(resta)}`),
       });
       frames = r.frames; delegado = r.delegado;
       const vistos = frames.filter((f) => f.puntos).length / Math.max(1, frames.length);
@@ -279,7 +296,7 @@ async function analizarArchivo() {
         throw e;
       }
     }
-    if (ej.cardio) { await analizarActividadVideo(frames, video, d); plan.contarAnalisis(); return; }
+    if (ej.cardio) { await analizarActividadVideo(frames, video, d, detBalon ? frames.map((f) => balonT.get(f.t) || null) : null); plan.contarAnalisis(); return; }
     progreso(2, 0.2, 'Calculando la física…');
     const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
     d.ini = ini > 0 ? ini : null; d.fin = fin > 0 ? fin : null;
@@ -348,15 +365,16 @@ async function leerActs() {
   } catch (e) { /* nada */ }
   return (await almacen.todos('informes')).filter((x) => x.actividad).sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
 }
-async function analizarActividadVideo(frames, video, d) {
+async function analizarActividadVideo(frames, video, d, balon = null) {
   progreso(2, 0.5, 'Midiendo el ritmo y la técnica…');
-  const act = analizarActividad(frames, video.duration, ej, { altura: d.altura, peso: d.pc });
+  const act = analizarActividad(frames, video.duration, ej, { altura: d.altura, peso: d.pc, balon });
+  if (balon) act.completo = true;
   act.id = 'act-' + Date.now(); act.fecha = new Date().toISOString(); act.icono = ej.icono;
   progreso(2, 1);
   let salida = null;
   if ($('in-video').checked) {
     const full = interpolar(frames, 30, video.duration);
-    salida = await generarVideo(video, archivo, dibujoActividad(video, full, 30, act), { cancelado: () => cancelar, alAvanzar: (f) => progreso(3, f, 'Creando el video con telemetría…') });
+    salida = await generarVideo(video, archivo, dibujoActividad(video, full, 30, act, balon && frames.map((f, i) => ({ t: f.t, b: balon[i] }))), { cancelado: () => cancelar, alAvanzar: (f) => progreso(3, f, 'Creando el video con telemetría…') });
     await almacen.guardarVideo(act.id, salida);
   }
   almacen.guardarPose(act.id, frames, { dur: video.duration, W: video.videoWidth, H: video.videoHeight, version: VERSION });

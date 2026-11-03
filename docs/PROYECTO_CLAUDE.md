@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.34.1
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.35.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -278,6 +278,7 @@ bloqueos, reportes, fallos.
 | v2.33.1 | «Créditos IA para nutrición» 10/30/90/300. |
 | v2.34.0 | Boxeo: fuerza aproximada del golpe (velocidad de la mano + peso corporal). |
 | v2.34.1 | Boxeo: fuerza y velocidad de cada golpe en el video con telemetría. |
+| v2.35.0 | Deportes: fútbol, básquet, vóley, tenis/pádel y natación (experimental); «Completo con balón» con la IA del balón (experimental). |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

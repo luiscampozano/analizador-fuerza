@@ -8,6 +8,27 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 13:47 · v2.35.0 — Deportes en el analizador + IA del balón (experimental)
+- **Pidió:** analizar fútbol, básquet, vóley, pádel y natación (esta solo grabando desde fuera de la piscina), con dos
+  opciones: «Solo cuerpo» (modelo actual) y «Análisis completo» con la IA del balón, con etiqueta «Experimental».
+- **Hecho (js/actividad.js):**
+  - Fútbol: patadas = pico de velocidad del pie con el otro pie apoyado y la rodilla casi estirada (no cuenta correr).
+    Balón estimado por choque pie-balón (masa efectiva 2,8 % del peso, rebote 0,5 → ~1,25× el pie); fuerza media =
+    0,43 kg · v / 9 ms.
+  - Vóley: remates/saques con la mano sobre los hombros (mano 4 % del peso, balón 270 g, 12 ms) + altura de salto.
+  - Tenis/pádel: golpes; cabeza de la raqueta ~1,5× la mano; pelota 58 g, 5 ms. Cuenta los «por arriba».
+  - Básquet: tiro = la mano sube sobre los hombros con el codo estirado; velocidad y ángulo de salida (45-55° ideal),
+    salto y fuerza de empuje.
+  - Natación 🧪: ciclos de brazada del brazo visible, ritmo, velocidad (avance de la cadera, celular fijo), ritmo por
+    100 m y avance por ciclo.
+  - Nuevo ejercicio `voley`. Telemetría: «Balón ~X km/h · Y kg» y «Máx.» debajo del ritmo; círculo cian en el balón.
+- **IA del balón:** `cargarDetectorBalon()` en js/pose.js (EfficientDet-Lite0 de MediaPipe, clase «sports ball», ~7 MB).
+  Corre sobre los mismos cuadros que la pose; tras cada contacto sigue el balón 0,4 s y mide su velocidad (ajuste
+  lineal). Si lo ve, reemplaza la estimación («medida con la IA del balón»). Selector en el formulario (`af_modo_dep`).
+- **Pruebas:** `pruebas/actividad/deportes.mjs` (esqueletos de velocidad conocida + balón sintético a 90 km/h) en
+  verificar.sh. Detector probado en Chromium con un balón dibujado.
+- **Pendiente:** videos reales de Luis (patada, tiro, remate, pádel, natación) para calibrar; prueba vertical de salto.
+
 ### 13:24 · v2.34.1 — Fuerza del golpe en el video con telemetría
 - **Pidió:** la fuerza salía en el informe pero no en el video; ponerla debajo de la velocidad (ritmo).
 - **Hecho:** cada golpe guarda su velocidad (`v`). En el video, debajo de «golpes/min»: «Golpe ~X kg · Y m/s» del último

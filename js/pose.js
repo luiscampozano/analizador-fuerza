@@ -142,3 +142,28 @@ export function detectarEnVivo(lm, video) {
   const W = video.videoWidth, H = video.videoHeight;
   return puntos.map((p) => [p.x * W, p.y * H, p.visibility ?? 1]);
 }
+
+// v2.35.0 IA del balón (análisis completo de deportes, experimental): detector de objetos de MediaPipe (EfficientDet,
+// ~7 MB, se descarga la primera vez) limitado a la clase «sports ball». Devuelve detectar(imagen, W, H) ->
+// [[x, y, radio] ...] en pixeles del video (los balones que vio en ese cuadro, del más seguro al menos).
+const DETECTOR = 'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/latest/efficientdet_lite0.tflite';
+let detectorBalon = null;
+export async function cargarDetectorBalon() {
+  if (detectorBalon) return detectorBalon;
+  const { FilesetResolver, ObjectDetector } = await libreria();
+  if (!fileset) {
+    const local = new URL('../vendor/mediapipe/wasm', import.meta.url).href;
+    fileset = await FilesetResolver.forVisionTasks(await existe(local + '/vision_wasm_internal.js') ? local : `${CDN}/wasm`);
+  }
+  const opciones = (delegate) => ({ baseOptions: { modelAssetPath: DETECTOR, delegate }, runningMode: 'IMAGE', scoreThreshold: 0.2, maxResults: 3, categoryAllowlist: ['sports ball'] });
+  let od;
+  try { od = await ObjectDetector.createFromOptions(fileset, opciones('GPU')); } catch (e) {
+    try { od = await ObjectDetector.createFromOptions(fileset, opciones('CPU')); } catch (e2) { throw new Error('No pude cargar la IA del balón. Revisa tu conexión a internet y vuelve a intentarlo.'); }
+  }
+  detectorBalon = (imagen, W, H) => {
+    const iw = imagen.videoWidth || imagen.width, ih = imagen.videoHeight || imagen.height;
+    let r; try { r = od.detect(imagen); } catch (e) { return null; }
+    return (r.detections || []).map((d) => { const b = d.boundingBox; return [(b.originX + b.width / 2) / iw * W, (b.originY + b.height / 2) / ih * H, (b.width + b.height) / 4 / iw * W]; });
+  };
+  return detectorBalon;
+}
