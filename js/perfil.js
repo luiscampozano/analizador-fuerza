@@ -5,6 +5,7 @@ import * as P from './progreso.js';
 import * as nube from './nube.js';
 import * as bienvenida from './bienvenida.js';
 import * as hist from './historial.js';
+import { icono as figIcono } from './figura.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -155,7 +156,7 @@ function pintarMarcas(lista, marca, pc, cuerpo) {
   for (const en of lista) for (const e of en.ejercicios) { const k = P.claveEj(e); if (!ejs.has(k)) ejs.set(k, { e }); }
   const reg = (k) => { const x = ejs.get(k); if (!x) return null; if (!x.r) x.r = P.registros(lista, k); return x.r; };
   const nombre = (k) => { const x = ejs.get(k), d = x && x.e.ej && deps.porId && deps.porId[x.e.ej]; return d ? d.nombre : x ? x.e.nombre : k; };
-  const icono = (k) => { const x = ejs.get(k), d = x && x.e.ej && deps.porId && deps.porId[x.e.ej]; return d ? d.icono : '🏋️'; };
+  const icono = (k) => { const x = ejs.get(k), d = x && x.e.ej && deps.porId && deps.porId[x.e.ej]; return d ? figIcono(d.id, d.icono) : '🏋️'; };
   let html = '';
   if (tabMarcas === 'rec') {
     const top = [...ejs.keys()].map((k) => [k, reg(k)]).filter(([k, r]) => r && r.maxKg && !/asistid/.test(k)).sort((a, b) => b[1].maxKg.kg - a[1].maxKg.kg).slice(0, 6); // en las asistidas el peso ayuda, no es carga
@@ -433,7 +434,7 @@ function pintarVideo() {
   const grupos = new Map();
   for (const r of h) { if (!grupos.has(r.ejercicio)) grupos.set(r.ejercicio, []); grupos.get(r.ejercicio).push(r); }
   const filas = [...grupos.entries()].sort((a, b) => b[1].length - a[1].length || (a[1][a[1].length - 1].fecha < b[1][b[1].length - 1].fecha ? 1 : -1)).slice(0, 5).map(([id, l]) => {
-    const d = deps.porId && deps.porId[id], nombre = d ? d.nombre : l[0].nombre, icono = d ? d.icono : '🏋️';
+    const d = deps.porId && deps.porId[id], nombre = d ? d.nombre : l[0].nombre, icono = d ? figIcono(d.id, d.icono) : '🏋️';
     const kg = (r) => (Number.isFinite(r.carga) ? Math.round(r.carga * 2) / 2 : null);
     const cuenta = new Map(); for (const r of l) { const k = kg(r); if (k != null) cuenta.set(k, (cuenta.get(k) || 0) + 1); }
     const [carga, n] = [...cuenta.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0] || [null, 0];

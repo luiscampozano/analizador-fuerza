@@ -2,6 +2,7 @@
 // rutinas, records personales, progreso por ejercicio, cargas sugeridas por RPE y calculadora de discos,
 // con enlace opcional al analisis por video de cada serie e importacion desde Hevy, Strong o Excel.
 import * as tarjetas from './tarjetas.js';
+import { icono as figIcono, animacion } from './figura.js';
 import * as almacen from './almacen.js';
 import { leerArchivo, convertir } from './importar.js';
 import { crearExcel } from './excel.js';
@@ -32,7 +33,7 @@ export let enlacePendiente = null; // serie que espera su analisis por video
 
 // ------------------------------------------------------------------ utilidades de datos
 const nombreEj = (e) => (e.ej && deps.porId[e.ej] ? deps.porId[e.ej].nombre : e.nombre);
-const iconoEj = (e) => (e.ej && deps.porId[e.ej] ? deps.porId[e.ej].icono : '🏋️');
+const iconoEj = (e) => (e.ej && deps.porId[e.ej] ? figIcono(e.ej, deps.porId[e.ej].icono) : '🏋️');
 const mismoEj = (a, b) => (a.ej && b.ej ? a.ej === b.ej : norm(a.nombre) === norm(b.nombre));
 const cuenta = (s) => s.hecha && s.tipo !== 'calentamiento';
 // ---- cardio: se registra tiempo (min) y distancia (km) en vez de kg y reps
@@ -789,9 +790,9 @@ function pintarSelector() {
   const bib = deps.ejercicios.filter((e) => pasa([e.nombre, e.grupo, e.equipo, e.musculo, e.en].join(' ')));
   const item = (ej, nombre, sub, icono) => `<button type="button" class="en-sel-item" data-ej="${ej || ''}" data-nombre="${esc(nombre)}"><span>${icono}</span><span><b>${esc(nombre)}</b><small>${esc(sub)}</small></span></button>`;
   $('en-sel-lista').innerHTML = (rec.length ? `<div class="en-sel-grupo">Recientes</div>${rec.map((r) => {
-    const x = r.ej && deps.porId[r.ej]; return item(r.ej, x ? x.nombre : r.nombre, x ? x.equipo || x.grupo : 'Sin análisis por video', x ? x.icono : '🏋️');
+    const x = r.ej && deps.porId[r.ej]; return item(r.ej, x ? x.nombre : r.nombre, x ? x.equipo || x.grupo : 'Sin análisis por video', x ? figIcono(r.ej, x.icono) : '🏋️');
   }).join('')}` : '')
-    + `<div class="en-sel-grupo">Biblioteca</div>${bib.map((e) => item(e.id, e.nombre, [e.grupo, e.equipo].filter(Boolean).join(' · '), e.icono)).join('')}`
+    + `<div class="en-sel-grupo">Biblioteca</div>${bib.map((e) => item(e.id, e.nombre, [e.grupo, e.equipo].filter(Boolean).join(' · '), figIcono(e.id, e.icono))).join('')}`
     + (q ? `<button type="button" class="en-sel-item nuevo" data-ej="" data-nombre="${esc($('en-buscar').value.trim())}"><span>➕</span><span><b>Usar «${esc($('en-buscar').value.trim())}»</b><small>Ejercicio nuevo (solo registro, sin análisis por video)</small></span></button>` : '');
   $('en-sel-lista').querySelectorAll('.en-sel-item').forEach((b) => (b.onclick = () => agregarEjercicio(b.dataset.ej || null, b.dataset.nombre)));
 }
@@ -907,7 +908,9 @@ export function abrirProgreso(e) {
   const tablaRPE = base ? `<table class="tabla en-tabla"><thead><tr><th>Reps</th><th>@7</th><th>@8</th><th>@9</th><th>@10</th></tr></thead><tbody>${[1, 2, 3, 4, 5, 6, 8, 10].map((n) => `<tr><td><b>${n}</b></td>${[7, 8, 9, 10].map((rpe) => `<td>${kgTxt(P.redondear(P.cargaPara(base, n, rpe)))}</td>`).join('')}</tr>`).join('')}</tbody></table>
     <p class="hint">Cargas (kg) según tu ${real ? '1RM real' : '1RM estimado'} de ${fmt(base)} kg, redondeadas a 2,5 kg. RPE 8 = te quedaban 2 reps.</p>` : '';
   const musc = obtenerMusculos(e);
+  const demo = e.ej && animacion(e.ej);
   $('en-det-cuerpo').innerHTML = `<h3 class="en-det-titulo">${iconoEj(e)} ${esc(nombreEj(e))}</h3>
+    ${demo ? `<div class="fig-demo">${demo}</div>` : ''}
     <div class="en-musc-box">
       <canvas id="en-musc-graf" class="en-musc-graf"></canvas>
       <div class="en-musc-info">

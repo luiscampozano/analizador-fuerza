@@ -1247,3 +1247,11 @@ input.nu-ia { border-color: var(--accent-cyan, #22D3EE) !important; box-shadow: 
 .ca-fila { display: grid; grid-template-columns: 34px 1fr 1fr auto; align-items: center; gap: 8px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 8px 10px; }
 .ca-fila small { color: var(--text-muted); }
 .ca-trabajo { border-color: var(--accent-purple, #7C5CFF); }
+.fig-mini { display: inline-flex; width: 2.2em; height: 2.2em; vertical-align: middle; background: #16161f; border-radius: 10px; }
+.fig-mini svg { width: 100%; height: 100%; }
+.preset-icon .fig-mini { width: 44px; height: 44px; }
+.en-ej-icono .fig-mini, .en-sel-item .fig-mini, .pf-rec-ic .fig-mini { width: 40px; height: 40px; }
+.en-det-titulo .fig-mini { width: 1.6em; height: 1.6em; }
+.fig-demo { background: #16161f; border-radius: var(--radius-md); margin: 8px 0 12px; display: flex; justify-content: center; }
+.fig-demo svg { width: min(100%, 260px); height: 260px; }
+.fig-demo-chica svg { height: 170px; }

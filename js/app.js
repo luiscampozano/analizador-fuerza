@@ -10,6 +10,7 @@ import { agruparSesiones, tonelajeSemanal, exportarExcel } from './sesiones.js';
 import * as vivo from './vivo.js';
 import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
+import { icono as figIcono, animacion } from './figura.js';
 import { DE_UNA_PIERNA, cambioDePierna } from './piernas.js';
 import { abrirVideo } from './lector.js';
 import * as entrenar from './entrenar.js';
@@ -21,7 +22,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO } from './actividad.js';
 
-const VERSION = '2.31.0';
+const VERSION = '2.32.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -62,7 +63,8 @@ function aviso(txt, ok = false) {
 // ------------------------------------------------------------------ ejercicios
 function pintarElegido() {
   const sub = [ej.propio ? (ej.musculo || GRUPO_PROPIOS) : ej.grupo, ej.equipo].filter(Boolean).join(' · ');
-  $('ej-elegido').innerHTML = `<span class="preset-icon">${ej.icono}</span><div><strong>${esc(ej.nombre)}</strong>
+  const demo = animacion(ej.id); $('ej-demo').innerHTML = demo || ''; $('ej-demo').style.display = demo ? '' : 'none'; // como se hace (v2.32.0)
+  $('ej-elegido').innerHTML = `<span class="preset-icon">${figIcono(ej.id, ej.icono)}</span><div><strong>${esc(ej.nombre)}</strong>
     <small>${esc(sub)}</small></div><div class="ej-botones">${ej.propio ? '<button type="button" class="btn-sec peligro" id="btn-borrar-ej">Borrar</button>' : ''}<button type="button" class="btn-sec" id="btn-cambiar">Cambiar</button></div>`;
   if (ej.propio) $('btn-borrar-ej').onclick = () => {
     if (!confirm(`¿Borrar el ejercicio "${ej.nombre}"? Tu historial de ese ejercicio se conserva.`)) return;
@@ -88,7 +90,7 @@ function pintarLista() {
     return palabras.every((w) => texto.includes(w));
   });
   $('lista-ej').innerHTML = lista.map((e) => `<button type="button" class="preset-card${e.id === ej.id ? ' active' : ''}" data-id="${e.id}">
-    <span class="preset-icon">${e.icono}</span><span class="preset-name">${esc(e.corto)}</span><span class="preset-sub">${esc(e.equipo || e.grupo)}</span></button>`).join('')
+    <span class="preset-icon">${figIcono(e.id, e.icono)}</span><span class="preset-name">${esc(e.corto)}</span><span class="preset-sub">${esc(e.equipo || e.grupo)}</span></button>`).join('')
     || '<p class="vacio">No encontré ese ejercicio. Puedes crearlo con el botón de abajo.</p>';
   $('lista-ej').querySelectorAll('.preset-card').forEach((b) => (b.onclick = () => elegir(POR_ID[b.dataset.id])));
 }

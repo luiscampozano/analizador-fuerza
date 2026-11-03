@@ -8,6 +8,19 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 10:40 · v2.32.0 — Figuras animadas propias para los 198 ejercicios
+- **Pidió:** reemplazar los emojis por una imagen de cada ejercicio (opción 1: animaciones propias; después, poco a
+  poco, videos suyos).
+- **Hecho:** `js/figura.js` (nuevo): una persona estilizada dibujada en SVG desde los ángulos de cada segmento
+  (vista de lado o de frente), con equipo (barra vista de punta, mancuernas, kettlebell, cables con su anclaje) y
+  accesorios (banco, banco inclinado, barra fija, paralelas, asientos, bici, remo...). ~70 plantillas de movimiento
+  cubren los 198 ejercicios (`MAPA`). `miniatura(id)` = cuadro fijo (~0,8 KB) para listas; `animacion(id)` = SVG
+  animado con SMIL (~4 KB, sin JavaScript). Sin archivos nuevos que descargar: se generan en el teléfono.
+  - Dónde se ven: selector de ejercicios y tarjetas del entreno, «Progreso y músculos» (animada, arriba), elegir
+    ejercicio en Analizar (animada), Mis marcas y Análisis de video en Perfil. Los ejercicios creados por el usuario
+    siguen con emoji.
+- **Pendiente:** afinar algunas figuras (hack, prensa, step-up, escaladores); suscripciones (siguiente paso).
+
 ### 10:24 · v2.31.0 — Calculadora de calentamiento + plan de suscripciones acordado
 - **Pidió:** igualar a Hevy/Lyfta: calculadora de calentamiento y fotos/videos de demostración de cada ejercicio (no
   emojis). Acordó los planes (ver abajo).
