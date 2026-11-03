@@ -8,6 +8,11 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 11:25 · v2.33.1 — «Créditos IA para nutrición» 10 / 30 / 90 / 300
+- **Pidió:** que los créditos digan «para nutrición» (no confundir con el analizador) y subirlos a 10 / 30 / 90 / 300.
+- **Hecho:** `PLANES.ia` = 10 / 30 / 90 / 300; textos «Créditos IA para nutrición» en la ventana de planes, «créditos IA de
+  nutrición» en Perfil y en el aviso de límite. Tablas de D1 ya creadas por Luis (v2.33.0 publicada).
+
 ### 11:13 · v2.33.0 — Suscripciones programadas (límites apagados)
 - **Pidió:** programar los planes con el cobro apagado; no ponerlo a él en Pro Max (quiere probar cada plan).
 - **Luis corre en D1:** tablas `planes`, `uso_plan`, `ajustes_app` (+ `limites = apagado`). Están en sql/esquema.sql.

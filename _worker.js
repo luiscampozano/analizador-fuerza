@@ -941,10 +941,10 @@ async function cupoIA(env, u, tipo, queHace) {
 // administradores, para probar cada plan) o 'activo' (todos). El cobro con Google Play llegara despues; por ahora los
 // planes pagados se asignan desde Moderacion (regalos y pruebas).
 const PLANES = {
-  gratis: { nombre: 'Gratis', video: 3, ia: 9, coach: [1, 'mes'], pdf: false, videoComunidad: false, excel: false, historialDias: 30 },
-  plus: { nombre: 'Plus', video: 20, ia: 27, coach: [1, 'semana'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
-  pro: { nombre: 'Pro', video: 40, ia: 81, coach: [3, 'semana'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
-  promax: { nombre: 'Pro Max', video: null, ia: 243, coach: [1, 'dia'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
+  gratis: { nombre: 'Gratis', video: 3, ia: 10, coach: [1, 'mes'], pdf: false, videoComunidad: false, excel: false, historialDias: 30 },
+  plus: { nombre: 'Plus', video: 20, ia: 30, coach: [1, 'semana'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
+  pro: { nombre: 'Pro', video: 40, ia: 90, coach: [3, 'semana'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
+  promax: { nombre: 'Pro Max', video: null, ia: 300, coach: [1, 'dia'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
 };
 const PRECIOS = { plus: 3.99, pro: 9.99, promax: 19.99 };
 // periodo en hora de Ecuador: mes '2026-11', semana '2026-S45' (lunes a domingo), dia '2026-11-03'
@@ -961,7 +961,7 @@ function limiteDe(plan, clave) {
   if (clave === 'coach') return { lim: p.coach[0], per: p.coach[1] };
   return { lim: p[clave], per: 'mes' };
 }
-const QUE = { video: 'análisis de video', ia: 'créditos IA', coach: 'análisis del entrenador IA' };
+const QUE = { video: 'análisis de video', ia: 'créditos IA de nutrición', coach: 'análisis del entrenador IA' };
 const POR = { mes: 'este mes', semana: 'esta semana', dia: 'hoy' };
 function mensajeLimite(plan, clave) {
   const { lim, per } = limiteDe(plan, clave), sig = { gratis: 'Plus', plus: 'Pro', pro: 'Pro Max' }[plan];

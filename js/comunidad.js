@@ -487,7 +487,7 @@ async function moderar() {
           <button type="button" class="btn-sec peligro" data-a="borrar">${x.tipo === 'usuario' ? 'Sacar de la comunidad' : 'Borrar'}</button><button type="button" class="btn-sec" data-a="descartar">Descartar</button></div></div>`).join('') : '<p class="hint">No hay reportes pendientes. 🎉</p>'}`);
     const cuerpo = $('co-modal-cuerpo'), recargar = () => { plan.actualizar(); moderar(); };
     cuerpo.querySelectorAll('[data-modo]').forEach((b) => (b.onclick = async () => {
-      if (b.dataset.modo === 'activo' && !confirm('¿Activar los límites para TODOS los usuarios? Quienes no tengan un plan regalado pasan a Gratis (3 análisis de video al mes, 9 créditos IA...).')) return;
+      if (b.dataset.modo === 'activo' && !confirm('¿Activar los límites para TODOS los usuarios? Quienes no tengan un plan regalado pasan a Gratis (3 análisis de video al mes, 10 créditos IA de nutrición...).')) return;
       try { await nube.api('POST', '/api/mod/planes', { modo: b.dataset.modo }); recargar(); } catch (e) { error(e); }
     }));
     cuerpo.querySelectorAll('[data-yo]').forEach((b) => (b.onclick = async () => {

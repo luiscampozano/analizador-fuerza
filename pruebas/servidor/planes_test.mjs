@@ -22,11 +22,11 @@ let [s,r]=await call(A,'GET','plan'); ok(s===200&&r.modo==='apagado'&&!r.aplica&
 [s,r]=await call(A,'POST','mod/planes',{modo:'activo'}); ok(s===404,'solo el administrador cambia el modo');
 [s,r]=await call(L,'POST','mod/planes',{modo:'prueba'}); ok(s===200&&r.modo==='prueba','Luis pone el modo prueba');
 [s,r]=await call(A,'GET','plan'); ok(!r.aplica,'modo prueba: Ana (no admin) sigue sin límites');
-[s,r]=await call(L,'GET','plan'); ok(r.aplica&&r.plan==='gratis'&&r.limites.video.lim===3&&r.limites.ia.lim===9&&r.limites.coach.lim===1&&!r.permisos.pdf&&r.permisos.historialDias===30,'modo prueba: Luis ve el plan Gratis');
+[s,r]=await call(L,'GET','plan'); ok(r.aplica&&r.plan==='gratis'&&r.limites.video.lim===3&&r.limites.ia.lim===10&&r.limites.coach.lim===1&&!r.permisos.pdf&&r.permisos.historialDias===30,'modo prueba: Luis ve el plan Gratis');
 for(let i=0;i<3;i++) await call(L,'POST','plan/usar',{tipo:'video'});
 [s,r]=await call(L,'POST','plan/usar',{tipo:'video'}); ok(s===429&&/3 análisis de video/.test(r.error)&&/Plus/.test(r.error)&&r.limite==='video','Gratis: 3 videos al mes y luego invita a Plus');
-for(let i=0;i<9;i++) await call(L,'POST',['ia/texto','ia/texto','ia/texto'][0],{texto:'arroz con pollo'});
-[s,r]=await call(L,'POST','ia/texto',{texto:'arroz con pollo'}); ok(s===429&&/9 créditos IA/.test(r.error),'Gratis: bolsa de 9 créditos IA al mes');
+for(let i=0;i<10;i++) await call(L,'POST',['ia/texto','ia/texto','ia/texto'][0],{texto:'arroz con pollo'});
+[s,r]=await call(L,'POST','ia/texto',{texto:'arroz con pollo'}); ok(s===429&&/10 créditos IA de nutrición/.test(r.error),'Gratis: bolsa de 10 créditos IA de nutrición al mes');
 [s,r]=await call(L,'POST','mod/plan_usuario',{quien:'yo',plan:'plus',reiniciarUso:true}); ok(s===200&&r.plan==='plus','Luis se pone Plus para probar');
 [s,r]=await call(L,'GET','plan'); ok(r.plan==='plus'&&r.limites.video.lim===20&&r.usos.video===0&&r.limites.coach.por==='semana'&&r.permisos.pdf,'Plus: 20 videos, entrenador semanal, PDF');
 [s,r]=await call(L,'POST','mod/plan_usuario',{quien:'ana@x.com',plan:'promax',dias:30}); ok(s===200&&r.hasta>Date.now(),'regalar Pro Max a Ana por 30 días (por correo)');
