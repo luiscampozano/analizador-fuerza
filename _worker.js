@@ -37,7 +37,7 @@ export default {
 };
 
 class Respuesta { constructor(r) { this.r = r; } }
-const fallo = (msg, status = 400) => new Respuesta(json({ error: msg }, status));
+const fallo = (msg, status = 400, extra = {}) => new Respuesta(json({ error: msg, ...extra }, status));
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
     status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' },
@@ -69,6 +69,8 @@ async function api(req, env, url) {
   if (ruta.startsWith('/api/comunidad/')) return comunidad(req, env, u, ruta.slice(15), m, url);
   if (ruta.startsWith('/api/mod/')) return moderacion(req, env, u, ruta.slice(9), m);
   if (ruta === '/api/yo' && m === 'GET') return json({ usuario: publico(u) });
+  if (ruta === '/api/plan' && m === 'GET') return json(await estadoPlan(env, u));
+  if (ruta === '/api/plan/usar' && m === 'POST') return usarPlan(req, env, u);
   if (ruta === '/api/auth/clave' && m === 'POST') return cambiarClave(req, env, u);
   if (ruta === '/api/sync' && m === 'POST') return sincronizar(req, env, u);
   if (ruta === '/api/cuenta' && m === 'DELETE') return borrarCuenta(env, u);
@@ -314,6 +316,7 @@ async function borrarCuenta(env, u) {
     env.DB.prepare('DELETE FROM items WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM fallos WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM uso_ia WHERE usuario = ?1').bind(u.id),
+    ...(await tablasPlan(env) ? [env.DB.prepare('DELETE FROM uso_plan WHERE usuario = ?1').bind(u.id), env.DB.prepare('DELETE FROM planes WHERE usuario = ?1').bind(u.id)] : []),
     env.DB.prepare('UPDATE alimentos SET usuario = NULL WHERE usuario = ?1').bind(u.id), // el producto queda para todos, sin autor
     env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM credenciales WHERE usuario = ?1').bind(u.id),
@@ -521,6 +524,8 @@ async function comunidad(req, env, u, r, m, url) {
     if (!p) throw fallo('Esta publicación ya no está disponible.', 404);
     if (p.usuario !== u.id) throw fallo('Solo puedes cambiar el video de tus publicaciones.', 403);
     if (paso === 'inicio' && m === 'POST') {
+      const pl = await planDe(env, u);
+      if (pl.aplica && !PLANES[pl.plan].videoComunidad) throw fallo('Publicar videos en la comunidad es parte de Plus. Puedes publicar con texto e imagen.', 403, { plan: pl.plan, limite: 'videoComunidad' });
       const tipo = (await leerJSON(req)).tipo === 'video/webm' ? 'video/webm' : 'video/mp4';
       const sub = await R2.createMultipartUpload(claveVid(id), { httpMetadata: { contentType: tipo } });
       return json({ uploadId: sub.uploadId });
@@ -751,6 +756,36 @@ async function moderacion(req, env, u, r, m) {
     await DB.prepare('UPDATE fallos SET estado = ?2 WHERE id = ?1').bind(r.slice(7), estado).run();
     return json({ ok: true });
   }
+  // ---- suscripciones (v2.33.0): modo de los limites, planes regalados y uso
+  if (r === 'planes' && m === 'GET') {
+    if (!(await tablasPlan(env))) return json({ sinTablas: true });
+    const modo = await modoLimites(env), ahora = Date.now();
+    const lista = await DB.prepare(`SELECT p.usuario, p.plan, p.hasta, p.origen, p.nota, p.actualizado, pf.alias, us.email FROM planes p
+      LEFT JOIN perfiles pf ON pf.usuario = p.usuario LEFT JOIN usuarios us ON us.id = p.usuario WHERE p.hasta IS NULL OR p.hasta > ?1 ORDER BY p.actualizado DESC LIMIT 100`).bind(ahora).all();
+    const total = await DB.prepare('SELECT count(*) AS n FROM usuarios').first();
+    return json({ modo, usuarios: lista.results || [], totalUsuarios: total ? total.n : 0, yo: u.id });
+  }
+  if (r === 'planes' && m === 'POST') {
+    if (!(await tablasPlan(env))) throw fallo('Primero crea las tablas de planes en D1.', 409);
+    const modo = (await leerJSON(req)).modo;
+    if (!['apagado', 'prueba', 'activo'].includes(modo)) throw fallo('Modo inválido.');
+    await DB.prepare("INSERT INTO ajustes_app (clave, valor) VALUES ('limites', ?1) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor").bind(modo).run();
+    return json({ modo });
+  }
+  if (r === 'plan_usuario' && m === 'POST') {
+    if (!(await tablasPlan(env))) throw fallo('Primero crea las tablas de planes en D1.', 409);
+    const d = await leerJSON(req), quien = texto(d.quien, 120).replace(/^@/, '');
+    if (!PLANES[d.plan]) throw fallo('Plan inválido.');
+    const x = quien === 'yo' ? { id: u.id } : await DB.prepare('SELECT us.id FROM usuarios us LEFT JOIN perfiles pf ON pf.usuario = us.id WHERE lower(us.email) = lower(?1) OR pf.alias = ?1 COLLATE NOCASE LIMIT 1').bind(quien).first();
+    if (!x) throw fallo('No encontré a esa persona (escribe su @alias de la comunidad o su correo).', 404);
+    const dias = Math.floor(+d.dias) || 0, hasta = dias > 0 ? Date.now() + dias * 86400000 : null;
+    if (d.plan === 'gratis') await DB.prepare('DELETE FROM planes WHERE usuario = ?1').bind(x.id).run();
+    else await DB.prepare(`INSERT INTO planes (usuario, plan, hasta, origen, nota, actualizado) VALUES (?1, ?2, ?3, 'regalo', ?4, ?5)
+      ON CONFLICT(usuario) DO UPDATE SET plan = excluded.plan, hasta = excluded.hasta, origen = excluded.origen, nota = excluded.nota, actualizado = excluded.actualizado`)
+      .bind(x.id, d.plan, hasta, texto(d.nota, 120), Date.now()).run();
+    if (d.reiniciarUso) await DB.prepare('DELETE FROM uso_plan WHERE usuario = ?1').bind(x.id).run();
+    return json({ ok: true, usuario: x.id, plan: d.plan, hasta });
+  }
   if (r === 'ia' && m === 'GET') { // uso de la foto del plato en los ultimos 7 dias
     const res = await DB.prepare(`SELECT substr(dia, 1, 10) AS dia, sum(CASE WHEN length(dia) = 10 THEN n ELSE 0 END) AS fotos, sum(CASE WHEN dia LIKE '%:t' THEN n ELSE 0 END) AS textos,
         sum(CASE WHEN dia LIKE '%:e' THEN n ELSE 0 END) AS etiquetas, sum(CASE WHEN dia LIKE '%:c' THEN n ELSE 0 END) AS entrenador, count(DISTINCT usuario) AS usuarios
@@ -883,12 +918,98 @@ const texto_ = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u0
 const numIA = (x, max) => { const v = +String(x).replace(',', '.'); return Number.isFinite(v) && v >= 0 ? Math.min(max, Math.round(v * 10) / 10) : 0; };
 async function cupoIA(env, u, tipo, queHace) {
   if (!env.ANTHROPIC_API_KEY) throw fallo('Esta función con IA estará disponible muy pronto.', 503);
-  const hoy = new Date().toISOString().slice(0, 10), dia = tipo ? `${hoy}:${tipo}` : hoy, lim = LIMITES_IA[tipo];
-  const yo = await env.DB.prepare('SELECT n FROM uso_ia WHERE usuario = ?1 AND dia = ?2').bind(u.id, dia).first();
-  if (yo && yo.n >= lim) throw fallo(`Ya usaste tus ${lim} ${queHace} de hoy. Mañana tendrás más.`, 429);
+  const hoy = new Date().toISOString().slice(0, 10), dia = tipo ? `${hoy}:${tipo}` : hoy;
   const tot = await env.DB.prepare("SELECT coalesce(sum(n), 0) AS n FROM uso_ia WHERE substr(dia, 1, 10) = ?1").bind(hoy).first();
   if (tot && tot.n >= LIMITE_IA_TOTAL) throw fallo('Las funciones con IA llegaron a su límite de hoy. Inténtalo mañana.', 429);
-  return { dia, quedan: lim - ((yo && yo.n) || 0) - 1, contar: () => env.DB.prepare('INSERT INTO uso_ia (usuario, dia, n) VALUES (?1, ?2, 1) ON CONFLICT(usuario, dia) DO UPDATE SET n = n + 1').bind(u.id, dia).run() };
+  const stat = () => env.DB.prepare('INSERT INTO uso_ia (usuario, dia, n) VALUES (?1, ?2, 1) ON CONFLICT(usuario, dia) DO UPDATE SET n = n + 1').bind(u.id, dia).run();
+  // v2.33.0: con los limites de los planes activos, la IA sale de la bolsa de creditos del mes (y el entrenador de su cupo)
+  const pl = await planDe(env, u);
+  if (pl.aplica) {
+    const clave = tipo === 'c' ? 'coach' : 'ia', { lim, per } = limiteDe(pl.plan, clave);
+    const usado = await usoDe(env, u.id, clave, per);
+    if (lim != null && usado >= lim) throw fallo(mensajeLimite(pl.plan, clave), 429, { plan: pl.plan, limite: clave });
+    return { dia, quedan: lim == null ? null : lim - usado - 1, contar: async () => { await stat(); await sumarUso(env, u.id, clave, per); } };
+  }
+  const lim = LIMITES_IA[tipo];
+  const yo = await env.DB.prepare('SELECT n FROM uso_ia WHERE usuario = ?1 AND dia = ?2').bind(u.id, dia).first();
+  if (yo && yo.n >= lim) throw fallo(`Ya usaste tus ${lim} ${queHace} de hoy. Mañana tendrás más.`, 429);
+  return { dia, quedan: lim - ((yo && yo.n) || 0) - 1, contar: stat };
+}
+
+// ================================================================== PLANES DE SUSCRIPCION (v2.33.0)
+// Los limites se aplican segun ajustes_app.limites: 'apagado' (nadie tiene limites, como antes), 'prueba' (solo los
+// administradores, para probar cada plan) o 'activo' (todos). El cobro con Google Play llegara despues; por ahora los
+// planes pagados se asignan desde Moderacion (regalos y pruebas).
+const PLANES = {
+  gratis: { nombre: 'Gratis', video: 3, ia: 9, coach: [1, 'mes'], pdf: false, videoComunidad: false, excel: false, historialDias: 30 },
+  plus: { nombre: 'Plus', video: 20, ia: 27, coach: [1, 'semana'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
+  pro: { nombre: 'Pro', video: 40, ia: 81, coach: [3, 'semana'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
+  promax: { nombre: 'Pro Max', video: null, ia: 243, coach: [1, 'dia'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
+};
+const PRECIOS = { plus: 3.99, pro: 9.99, promax: 19.99 };
+// periodo en hora de Ecuador: mes '2026-11', semana '2026-S45' (lunes a domingo), dia '2026-11-03'
+function periodo(per, t = Date.now()) {
+  const d = new Date(t - 5 * 3600000), iso = d.toISOString();
+  if (per === 'dia') return iso.slice(0, 10);
+  if (per === 'mes') return iso.slice(0, 7);
+  const lunes = new Date(d); lunes.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  const ene4 = new Date(Date.UTC(lunes.getUTCFullYear(), 0, 4)), l1 = new Date(ene4); l1.setUTCDate(ene4.getUTCDate() - ((ene4.getUTCDay() + 6) % 7));
+  return `${lunes.getUTCFullYear()}-S${String(1 + Math.round((lunes - l1) / 604800000)).padStart(2, '0')}`;
+}
+function limiteDe(plan, clave) {
+  const p = PLANES[plan] || PLANES.gratis;
+  if (clave === 'coach') return { lim: p.coach[0], per: p.coach[1] };
+  return { lim: p[clave], per: 'mes' };
+}
+const QUE = { video: 'análisis de video', ia: 'créditos IA', coach: 'análisis del entrenador IA' };
+const POR = { mes: 'este mes', semana: 'esta semana', dia: 'hoy' };
+function mensajeLimite(plan, clave) {
+  const { lim, per } = limiteDe(plan, clave), sig = { gratis: 'Plus', plus: 'Pro', pro: 'Pro Max' }[plan];
+  return `Ya usaste tus ${lim} ${QUE[clave]} de ${POR[per]} (plan ${(PLANES[plan] || PLANES.gratis).nombre}).${sig ? ` Con ${sig} tienes más.` : ''}`;
+}
+let tablasOk = null;
+async function tablasPlan(env) {
+  if (tablasOk) return true;
+  try { await env.DB.prepare("SELECT valor FROM ajustes_app WHERE clave = 'limites'").first(); tablasOk = true; } catch (e) { tablasOk = false; }
+  return tablasOk;
+}
+async function modoLimites(env) {
+  if (!(await tablasPlan(env))) return 'apagado';
+  const r = await env.DB.prepare("SELECT valor FROM ajustes_app WHERE clave = 'limites'").first();
+  return r ? r.valor : 'apagado';
+}
+async function planDe(env, u) {
+  const modo = await modoLimites(env);
+  if (modo === 'apagado') return { modo, aplica: false, plan: 'gratis' };
+  const p = await env.DB.prepare('SELECT plan, hasta FROM planes WHERE usuario = ?1').bind(u.id).first();
+  const vigente = p && PLANES[p.plan] && (p.hasta == null || p.hasta > Date.now());
+  return { modo, aplica: modo === 'activo' || (modo === 'prueba' && esAdmin(env, u)), plan: vigente ? p.plan : 'gratis', hasta: vigente ? p.hasta : null };
+}
+async function usoDe(env, uid, clave, per) {
+  const r = await env.DB.prepare('SELECT n FROM uso_plan WHERE usuario = ?1 AND periodo = ?2 AND tipo = ?3').bind(uid, periodo(per), clave).first();
+  return r ? r.n : 0;
+}
+const sumarUso = (env, uid, clave, per) => env.DB.prepare('INSERT INTO uso_plan (usuario, periodo, tipo, n) VALUES (?1, ?2, ?3, 1) ON CONFLICT(usuario, periodo, tipo) DO UPDATE SET n = n + 1')
+  .bind(uid, periodo(per), clave).run();
+async function estadoPlan(env, u) {
+  const pl = await planDe(env, u), p = PLANES[pl.plan];
+  const out = { modo: pl.modo, aplica: pl.aplica, plan: pl.plan, nombre: p.nombre, hasta: pl.hasta || null, precios: PRECIOS, planes: PLANES,
+    permisos: { pdf: !pl.aplica || p.pdf, videoComunidad: !pl.aplica || p.videoComunidad, excel: !pl.aplica || p.excel, historialDias: pl.aplica ? p.historialDias : null } };
+  if (pl.aplica) {
+    out.limites = {}; out.usos = {};
+    for (const k of ['video', 'ia', 'coach']) { const { lim, per } = limiteDe(pl.plan, k); out.limites[k] = { lim, por: per }; out.usos[k] = await usoDe(env, u.id, k, per); }
+  }
+  return out;
+}
+async function usarPlan(req, env, u) {
+  const tipo = (await leerJSON(req)).tipo;
+  if (tipo !== 'video') throw fallo('Tipo inválido.');
+  const pl = await planDe(env, u);
+  if (!pl.aplica) return json({ ok: true });
+  const { lim, per } = limiteDe(pl.plan, tipo), usado = await usoDe(env, u.id, tipo, per);
+  if (lim != null && usado >= lim) throw fallo(mensajeLimite(pl.plan, tipo), 429, { plan: pl.plan, limite: tipo });
+  await sumarUso(env, u.id, tipo, per);
+  return json({ ok: true, quedan: lim == null ? null : lim - usado - 1 });
 }
 async function llamarClaude(env, system, content, maxTokens = 900) {
   let r;

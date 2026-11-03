@@ -2,6 +2,7 @@
 // likes, comentarios, buscar, bloquear, reportar y moderacion. Publicar un entrenamiento es siempre una decision
 // del usuario (boton "Compartir"); nada se publica solo.
 import * as nube from './nube.js';
+import * as plan from './plan.js';
 import * as bienvenida from './bienvenida.js';
 
 const $ = (id) => document.getElementById(id);
@@ -454,7 +455,21 @@ async function pintarActividad() {
 async function moderar() {
   modal('<p class="hint co-cargando">Cargando…</p>');
   try {
-    const [r, f, ia] = await Promise.all([nube.api('GET', '/api/mod/reportes'), nube.api('GET', '/api/mod/fallos').catch(() => ({ fallos: [] })), nube.api('GET', '/api/mod/ia').catch(() => null)]);
+    const [r, f, ia, pl] = await Promise.all([nube.api('GET', '/api/mod/reportes'), nube.api('GET', '/api/mod/fallos').catch(() => ({ fallos: [] })), nube.api('GET', '/api/mod/ia').catch(() => null),
+      nube.api('GET', '/api/mod/planes').catch(() => null)]);
+    // suscripciones (v2.33.0): modo de los limites, tu plan para probar y planes regalados
+    const NOMP = { gratis: 'Gratis', plus: 'Plus', pro: 'Pro', promax: 'Pro Max' }, MODOS = { apagado: 'Apagado', prueba: 'Prueba (solo tú)', activo: 'Activo (todos)' };
+    const mio = pl && pl.usuarios ? (pl.usuarios.find((x) => x.usuario === pl.yo) || { plan: 'gratis' }).plan : 'gratis';
+    const planesHtml = !pl ? '' : pl.sinTablas ? '<h4>💳 Suscripciones</h4><p class="hint">⚠️ Falta crear las tablas de planes en D1.</p>'
+      : `<h4>💳 Suscripciones</h4><p class="hint">Límites de los planes: <b>${MODOS[pl.modo] || pl.modo}</b>. ${pl.modo === 'apagado' ? 'Nadie tiene límites (como siempre).' : pl.modo === 'prueba' ? 'Solo tu cuenta tiene límites: prueba cada plan.' : 'Todos los usuarios con cuenta tienen límites.'}</p>
+        <div class="chips">${Object.entries(MODOS).map(([k, n]) => `<button type="button" class="chip${k === pl.modo ? ' active' : ''}" data-modo="${k}">${n}</button>`).join('')}</div>
+        <p class="hint" style="margin-top:8px">Tu plan para probar (reinicia tus contadores):</p>
+        <div class="chips">${Object.entries(NOMP).map(([k, n]) => `<button type="button" class="chip${k === mio ? ' active' : ''}" data-yo="${k}">${n}</button>`).join('')}</div>
+        <p class="hint" style="margin-top:8px">Regalar un plan (escribe su @alias de la comunidad o su correo):</p>
+        <div class="co-regalo"><input id="co-reg-quien" placeholder="@alias o correo"><select id="co-reg-plan">${Object.entries(NOMP).map(([k, n]) => `<option value="${k}"${k === 'plus' ? ' selected' : ''}>${n}</option>`).join('')}</select>
+          <input id="co-reg-dias" type="number" inputmode="numeric" placeholder="días (vacío = sin fin)"><button type="button" class="btn-sec" id="co-reg-ok">Regalar</button></div>
+        ${pl.usuarios.length ? `<p class="hint">${pl.usuarios.map((x) => `${esc(x.alias ? '@' + x.alias : x.email || 'usuario')}: <b>${NOMP[x.plan] || x.plan}</b>${x.hasta ? ` hasta ${new Date(x.hasta).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}` : ''}`).join(' · ')}</p>` : ''}
+        <p class="hint">${pl.totalUsuarios} cuentas en total. El cobro con Google Play llega después; por ahora los planes pagados se regalan desde aquí.</p>`;
     // uso de la foto del plato (IA): fotos por dia de los ultimos 7 dias
     const iaHtml = ia ? `<h4>🤖 Funciones con IA</h4><p class="hint">${ia.configurada ? `Activa · límite ${ia.limite} fotos por persona al día.` : '⚠️ Falta la clave ANTHROPIC_API_KEY en Cloudflare.'}
       ${ia.dias.length ? ia.dias.map((d) => `${d.dia.slice(5)}: <b>${d.fotos}</b> fotos${d.textos ? ` · ${d.textos} escritas` : ''}${d.etiquetas ? ` · ${d.etiquetas} etiquetas` : ''}${d.entrenador ? ` · ${d.entrenador} entrenador` : ''} (${d.usuarios} persona${d.usuarios > 1 ? 's' : ''})`).join(' · ') : 'Sin uso todavía.'}</p>` : '';
@@ -465,11 +480,23 @@ async function moderar() {
         <small class="hint"> · ${hace(x.creado)} · v${esc(x.version || '?')} · ${esc(x.estado)}${x.pose_bytes ? '' : ' · sin puntos'}</small>${x.comentario ? `<p class="co-texto">${esc(x.comentario)}</p>` : ''}
         <div class="co-perfil-botones">${x.pose_bytes ? `<button type="button" class="btn-sec" data-bajar="${esc(x.id)}">⬇️ Descargar para Claude</button>` : ''}${x.estado !== 'corregido' ? `<button type="button" class="btn-sec" data-corregido="${esc(x.id)}">✓ Corregido</button>` : ''}</div></div>`).join('')
       : '<p class="hint">Sin fallos reportados.</p>'}<p class="hint">Descarga el fallo y adjunta el archivo en el chat con Claude: trae solo los puntos del cuerpo (sin video) y lo que corrigió la persona.</p>`;
-    modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${iaHtml}${fallosHtml}<h4>Reportes de la comunidad</h4>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
+    modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${planesHtml}${iaHtml}${fallosHtml}<h4>Reportes de la comunidad</h4>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
         <b>${nombre[x.tipo]}${x.alias ? ' de @' + esc(x.alias) : ''}</b> · ${x.n} reporte${x.n > 1 ? 's' : ''}${x.oculto ? ' · <span class="pf-nube-error">oculto</span>' : ''}
         <p class="co-texto">${esc(x.contenido || '(ya no existe)')}</p><p class="hint">${esc(x.motivos)}</p>
         <div class="co-perfil-botones">${x.tipo !== 'usuario' ? `<button type="button" class="btn-sec" data-a="${x.oculto ? 'mostrar' : 'ocultar'}">${x.oculto ? 'Mostrar' : 'Ocultar'}</button>` : ''}
           <button type="button" class="btn-sec peligro" data-a="borrar">${x.tipo === 'usuario' ? 'Sacar de la comunidad' : 'Borrar'}</button><button type="button" class="btn-sec" data-a="descartar">Descartar</button></div></div>`).join('') : '<p class="hint">No hay reportes pendientes. 🎉</p>'}`);
+    const cuerpo = $('co-modal-cuerpo'), recargar = () => { plan.actualizar(); moderar(); };
+    cuerpo.querySelectorAll('[data-modo]').forEach((b) => (b.onclick = async () => {
+      if (b.dataset.modo === 'activo' && !confirm('¿Activar los límites para TODOS los usuarios? Quienes no tengan un plan regalado pasan a Gratis (3 análisis de video al mes, 9 créditos IA...).')) return;
+      try { await nube.api('POST', '/api/mod/planes', { modo: b.dataset.modo }); recargar(); } catch (e) { error(e); }
+    }));
+    cuerpo.querySelectorAll('[data-yo]').forEach((b) => (b.onclick = async () => {
+      try { await nube.api('POST', '/api/mod/plan_usuario', { quien: 'yo', plan: b.dataset.yo, reiniciarUso: true }); recargar(); } catch (e) { error(e); }
+    }));
+    if ($('co-reg-ok')) $('co-reg-ok').onclick = async () => {
+      const quien = $('co-reg-quien').value.trim(); if (!quien) return alert('Escribe el @alias o el correo.');
+      try { await nube.api('POST', '/api/mod/plan_usuario', { quien, plan: $('co-reg-plan').value, dias: +$('co-reg-dias').value || null, nota: 'regalo' }); alert('Listo.'); recargar(); } catch (e) { error(e); }
+    };
     // descargar un fallo (puntos del cuerpo + correccion) como archivo .json.gz con el formato del banco de pruebas
     $('co-modal-cuerpo').querySelectorAll('[data-bajar]').forEach((b) => (b.onclick = async () => {
       b.disabled = true;
@@ -607,6 +634,7 @@ async function subirVideo(id, blob, alAvanzar) {
 }
 const mb = (b) => (b / 1048576).toLocaleString('es-EC', { maximumFractionDigits: 1 });
 export async function compartirAnalisis({ ref, datos, video }) {
+  if (nube.conectado() && (await plan.actualizar(), !plan.permiso('videoComunidad'))) return plan.mostrarMejora('Publicar videos en la comunidad es parte de Plus. Puedes publicar tu entreno con texto e imagen.');
   if (!nube.conectado()) { if (confirm('Para publicar en la comunidad necesitas iniciar sesión. ¿Ir a la Comunidad?')) deps.vista('v-comunidad'); return; }
   const uid = nube.sesion().usuario.id;
   try { if (!yo || yo.uid !== uid) yo = { ...(await api('GET', 'yo')), uid }; } catch (e) { return error(e); }

@@ -2,6 +2,7 @@
 // rutinas, records personales, progreso por ejercicio, cargas sugeridas por RPE y calculadora de discos,
 // con enlace opcional al analisis por video de cada serie e importacion desde Hevy, Strong o Excel.
 import * as tarjetas from './tarjetas.js';
+import * as plan from './plan.js';
 import { icono as figIcono, animacion } from './figura.js';
 import * as almacen from './almacen.js';
 import { leerArchivo, convertir } from './importar.js';
@@ -137,7 +138,7 @@ export async function iniciar(d) {
   $('en-importar').onclick = () => $('en-archivo').click();
   $('en-archivo').onchange = importarArchivo;
   $('en-plantilla').onclick = () => compartir(plantilla(), 'plantilla-entrenamientos.xlsx');
-  $('en-exportar').onclick = () => { if (!lista.length) return alert('Todavía no hay entrenamientos.'); compartir(exportar(), `entrenamientos-${new Date().toISOString().slice(0, 10)}.xlsx`); };
+  $('en-exportar').onclick = () => { if (!plan.permiso('excel')) return plan.mostrarMejora('Exportar a Excel es parte de Plus.'); if (!lista.length) return alert('Todavía no hay entrenamientos.'); compartir(exportar(), `entrenamientos-${new Date().toISOString().slice(0, 10)}.xlsx`); };
   $('en-terminar').onclick = terminar;
   $('en-descartar').onclick = () => {
     if (activo.editando) { // editar un entreno guardado: se sale sin cambiar nada y vuelve a su detalle

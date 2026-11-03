@@ -8,6 +8,23 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 11:13 · v2.33.0 — Suscripciones programadas (límites apagados)
+- **Pidió:** programar los planes con el cobro apagado; no ponerlo a él en Pro Max (quiere probar cada plan).
+- **Luis corre en D1:** tablas `planes`, `uso_plan`, `ajustes_app` (+ `limites = apagado`). Están en sql/esquema.sql.
+- **Hecho:**
+  - Servidor: `PLANES` (Gratis/Plus/Pro/Pro Max con video 3/20/40/∞ al mes, créditos IA 9/27/81/243 al mes, entrenador
+    1/mes, 1/semana, 3/semana, 1/día; PDF, video en comunidad y Excel desde Plus; historial de velocidad 30 días en
+    Gratis). Modo `ajustes_app.limites`: **apagado** (nadie, como antes), **prueba** (solo administradores) o **activo**
+    (todos con cuenta). `GET /api/plan`, `POST /api/plan/usar` (análisis de video). La IA usa la bolsa mensual cuando el
+    plan aplica (si no, los límites diarios de antes). Video en la comunidad bloqueado en Gratis. Periodos en hora de
+    Ecuador. Moderación: `GET/POST /api/mod/planes` (modo) y `POST /api/mod/plan_usuario` (regalar por @alias o correo,
+    con días; «yo» para probar, reinicia contadores). Borrar la cuenta borra su plan y su uso. Prueba `planes_test` (18).
+  - App: `js/plan.js` (estado en `af_plan`, revisar antes de analizar y descontar al terminar, ventana «⭐ Mejora tu plan»
+    con la tabla de planes; cualquier 429/403 de límite la abre). Tarjeta «⭐ Plan …» en Perfil con el uso. PDF con marca
+    de agua «MUESTRA» en Gratis. Excel bloqueado en Gratis (el respaldo sigue libre: son los datos de la persona).
+    Historial de velocidad de 30 días en Gratis. Moderación: sección «💳 Suscripciones».
+- **Pendiente:** cobro con Google Play (Play Store); qué hacer con quienes usan la app sin cuenta cuando se active.
+
 ### 10:40 · v2.32.0 — Figuras animadas propias para los 198 ejercicios
 - **Pidió:** reemplazar los emojis por una imagen de cada ejercicio (opción 1: animaciones propias; después, poco a
   poco, videos suyos).

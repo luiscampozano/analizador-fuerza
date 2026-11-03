@@ -5,6 +5,7 @@ import * as P from './progreso.js';
 import * as nube from './nube.js';
 import * as bienvenida from './bienvenida.js';
 import * as hist from './historial.js';
+import * as plan from './plan.js';
 import { icono as figIcono } from './figura.js';
 
 const $ = (id) => document.getElementById(id);
@@ -113,6 +114,16 @@ export async function pintar() {
       <small>${[pf.categoria, pf.gimnasio].filter(Boolean).map(esc).join(' · ') || 'Toca Editar para completar tu perfil'}</small>
       ${pf.bio ? `<p>${esc(pf.bio)}</p>` : ''}</div>`;
   pintarSocial();
+  // plan de suscripcion (solo cuando los limites aplican a esta cuenta)
+  const rp = plan.resumen(), cp = $('pf-plan');
+  if (cp) {
+    cp.style.display = rp ? '' : 'none';
+    if (rp) {
+      cp.innerHTML = `<div class="pf-plan-cab"><b>⭐ Plan ${esc(rp.plan)}</b>${rp.hasta ? `<small> · hasta ${new Date(rp.hasta).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}</small>` : ''}<button type="button" class="btn-sec" id="pf-plan-ver">Ver planes</button></div>
+        <small>${rp.lineas.map(esc).join(' · ')}</small>`;
+      $('pf-plan-ver').onclick = () => plan.mostrarMejora();
+    }
+  }
 
   const lista = (await almacen.leerEntrenos()).sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
   // marcas: 1RM real si lo guardaste, si no el mejor 1RM estimado del registro
@@ -420,7 +431,8 @@ function dibujarSemanas(c, sem, vals, linea, dec) {
 // (la velocidad depende del peso): si con el mismo peso subes mas rapido, estas mas fuerte.
 function pintarVideo() {
   const cont = $('pf-video'); if (!cont) return;
-  const h = hist.leer().filter((r) => r.vMejor > 0 && r.ejercicio).sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+  const dias = plan.permiso('historialDias'); // plan Gratis: solo el ultimo mes
+  const h = hist.leer().filter((r) => r.vMejor > 0 && r.ejercicio && (!dias || Date.now() - new Date(r.fecha) < dias * 86400000)).sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
   if (!h.length) {
     cont.innerHTML = `<p class="hint" style="margin:0 0 10px">Graba una serie y la IA mide tus reps, tu velocidad, el RIR y tu 1RM. Con el tiempo verás aquí si subes el mismo peso más rápido (= más fuerza).</p>
       <button type="button" class="btn-primary" id="pf-video-ir">⚡ Analizar mi primera serie</button>`;

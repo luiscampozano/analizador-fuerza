@@ -1255,3 +1255,18 @@ input.nu-ia { border-color: var(--accent-cyan, #22D3EE) !important; box-shadow: 
 .fig-demo { background: #16161f; border-radius: var(--radius-md); margin: 8px 0 12px; display: flex; justify-content: center; }
 .fig-demo svg { width: min(100%, 260px); height: 260px; }
 .fig-demo-chica svg { height: 170px; }
+.pf-plan { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.pf-plan-cab { display: flex; align-items: center; gap: 8px; }
+.pf-plan-cab .btn-sec { margin-left: auto; }
+.pf-plan small { color: var(--text-muted); }
+.plan-modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 400; display: none; align-items: flex-end; justify-content: center; }
+.plan-caja { background: var(--bg-card); border-radius: 18px 18px 0 0; padding: 16px; width: 100%; max-width: 560px; max-height: 88vh; overflow: auto; }
+.plan-motivo { background: rgba(124,92,255,.15); border: 1px solid var(--accent-purple, #7C5CFF); border-radius: var(--radius-md); padding: 10px; font-size: .92rem; }
+.plan-tabla-wrap { overflow-x: auto; margin: 10px 0; }
+.plan-tabla { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.plan-tabla th, .plan-tabla td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--border-color); }
+.plan-tabla td:first-child { text-align: left; color: var(--text-muted); }
+.plan-tabla th small { display: block; font-weight: 400; color: var(--text-muted); }
+.plan-tabla .actual { background: rgba(124,92,255,.18); }
+.co-regalo { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.co-regalo input, .co-regalo select { background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 8px; }

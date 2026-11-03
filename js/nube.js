@@ -39,6 +39,8 @@ export async function api(metodo, ruta, cuerpo) {
     try { localStorage.removeItem(SES); } catch (e) { /* nada */ }
     ponerEstado({ fase: 'quieto', error: 'Tu sesión expiró. Vuelve a iniciar sesión.' });
   }
+  // limite del plan (v2.33.0): se avisa para abrir la ventana «Mejora tu plan» (js/plan.js)
+  if (!r.ok && datos && datos.limite && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('af-limite', { detail: datos }));
   if (!r.ok) throw new Error((datos && datos.error) || `Error ${r.status} del servidor.`);
   return datos;
 }

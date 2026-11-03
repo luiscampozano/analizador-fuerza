@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.32.0
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.33.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -274,6 +274,7 @@ bloqueos, reportes, fallos.
 | v2.30.0 | Búlgara: piso y escala suavizados y umbral típico; velocidad pareja entre piernas (0,60 vs 0,55 m/s en el video real de Luis). |
 | v2.31.0 | Calculadora de calentamiento en el menú de cada ejercicio (barra × 10, 40/60/80 %). |
 | v2.32.0 | Figuras animadas propias (SVG, `js/figura.js`) para los 198 ejercicios en lugar de emojis. |
+| v2.33.0 | Suscripciones programadas con los límites apagados (modo prueba para el administrador, regalar planes desde Moderación). |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

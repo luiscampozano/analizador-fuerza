@@ -49,7 +49,19 @@ function grafica(dibujar, ancho, alto) {
 // pareja (v2.29.0): la otra mitad de un video con los dos lados (búlgara, remo a un brazo...): { inf, notas,
 // textoTrayectoria, textoCarga }. El PDF sale con una pagina de comparacion entre lados y el detalle de cada lado.
 const ladoDe = (inf) => (inf.datos && (inf.datos.lado || (inf.datos.pierna ? 'pierna ' + inf.datos.pierna : ''))) || '';
-export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, textoCarga, version, pareja = null }) {
+// plan Gratis (v2.33.0): el PDF sale completo pero con una marca de agua de muestra en cada pagina
+function marcaAgua(doc) {
+  const n = doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++) {
+    doc.setPage(i);
+    const gs = typeof doc.GState === 'function'; if (gs) { doc.saveGraphicsState(); doc.setGState(new doc.GState({ opacity: 0.18 })); }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(46); doc.setTextColor(124, 92, 255);
+    doc.text('MUESTRA', 105, 150, { align: 'center', angle: 35 });
+    doc.setFontSize(15); doc.text('Informe completo con FuerzaPro Plus', 105, 172, { align: 'center', angle: 35 });
+    if (gs) doc.restoreGraphicsState();
+  }
+}
+export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, textoCarga, version, pareja = null, muestra = false }) {
   const jsPDF = await cargarLibreria();
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const W = 210, M = 14, ancho = W - 2 * M;
@@ -260,6 +272,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
     'Son estimaciones a partir de video (margen aproximado de 15-20 % en velocidad y potencia); no sustituyen un encoder lineal ni una plataforma de fuerza.'), ancho);
   doc.text(metodo, M, y);
 
+  if (muestra) marcaAgua(doc);
   const paginas = doc.getNumberOfPages();
   for (let i = 1; i <= paginas; i++) {
     doc.setPage(i);
@@ -273,7 +286,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
 }
 
 // Informe PDF de un analisis de cardio, boxeo o HIIT (mismo estilo que el de series de fuerza)
-export async function crearPDFActividad(a, { video, version } = {}) {
+export async function crearPDFActividad(a, { video, version, muestra = false } = {}) {
   const jsPDF = await cargarLibreria();
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const W = 210, M = 14, ancho = W - 2 * M;
@@ -365,6 +378,7 @@ export async function crearPDFActividad(a, { video, version } = {}) {
   doc.text(doc.splitTextToSize(limpio('La IA de pose (MediaPipe) ubica 33 puntos del cuerpo en cada cuadro del video. Los pasos, pedaladas, remadas, saltos o golpes se cuentan con el movimiento de las articulaciones ' +
     '(ángulos y distancias medidas en "torsos", que no cambian con el zoom). Las distancias en cm se estiman con tu estatura. En boxeo solo se usan las manos que la IA ve con claridad y no se cuentan los brazos colgando. ' +
     'Son medidas aproximadas: dependen del ángulo de cámara, la luz y los cuadros por segundo del video.'), ancho), M, y);
+  if (muestra) marcaAgua(doc);
   const paginas = doc.getNumberOfPages();
   for (let i = 1; i <= paginas; i++) {
     doc.setPage(i); doc.setDrawColor(...C.linea); doc.setLineWidth(0.2); doc.line(M, 287, W - M, 287);

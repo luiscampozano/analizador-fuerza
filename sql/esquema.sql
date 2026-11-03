@@ -36,3 +36,8 @@ CREATE INDEX IF NOT EXISTS alimentos_usuario ON alimentos(usuario, creado);
 -- Uso de la IA (foto del plato) por usuario y dia: limite diario y contador para Moderacion. (v2.22.0)
 CREATE TABLE IF NOT EXISTS uso_ia (usuario TEXT NOT NULL, dia TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (usuario, dia));
 CREATE INDEX IF NOT EXISTS uso_ia_dia ON uso_ia(dia);
+-- v2.33.0: planes de suscripcion (modo de los limites, plan de cada usuario y uso por periodo)
+CREATE TABLE IF NOT EXISTS planes (usuario TEXT PRIMARY KEY, plan TEXT NOT NULL, hasta INTEGER, origen TEXT, nota TEXT, actualizado INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS uso_plan (usuario TEXT NOT NULL, periodo TEXT NOT NULL, tipo TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (usuario, periodo, tipo));
+CREATE TABLE IF NOT EXISTS ajustes_app (clave TEXT PRIMARY KEY, valor TEXT NOT NULL);
+INSERT OR IGNORE INTO ajustes_app (clave, valor) VALUES ('limites', 'apagado');

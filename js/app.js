@@ -10,6 +10,7 @@ import { agruparSesiones, tonelajeSemanal, exportarExcel } from './sesiones.js';
 import * as vivo from './vivo.js';
 import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
+import * as plan from './plan.js';
 import { icono as figIcono, animacion } from './figura.js';
 import { DE_UNA_PIERNA, cambioDePierna } from './piernas.js';
 import { abrirVideo } from './lector.js';
@@ -22,7 +23,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO } from './actividad.js';
 
-const VERSION = '2.32.0';
+const VERSION = '2.33.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -246,6 +247,7 @@ $('btn-analizar').onclick = () => analizarArchivo();
 async function analizarArchivo() {
   if (!archivo) return alert('Primero graba o elige el video de la serie.');
   const d = leerDatos(); if (!d) return;
+  if (!(await plan.puedeAnalizar())) return; // cupo de analisis del plan (v2.33.0)
   const { peso, pc, altura, alfa, relacion, carga, masa } = d;
   cancelar = false; pasoActual = -1; vista('v-progreso');
   try {
@@ -277,7 +279,7 @@ async function analizarArchivo() {
         throw e;
       }
     }
-    if (ej.cardio) { await analizarActividadVideo(frames, video, d); return; }
+    if (ej.cardio) { await analizarActividadVideo(frames, video, d); plan.contarAnalisis(); return; }
     progreso(2, 0.2, 'Calculando la física…');
     const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
     d.ini = ini > 0 ? ini : null; d.fin = fin > 0 ? fin : null;
@@ -318,6 +320,7 @@ async function analizarArchivo() {
       for (const x of infs) await almacen.guardarVideo(x.id, salida);
     }
     mostrarInforme(inf, { video: salida, nuevo: true });
+    plan.contarAnalisis();
     if (infs.length === 2) aviso(`↔️ Detecté los dos lados en el video: se guardaron como 2 series (${infs[0].datos.lado} y ${infs[1].datos.lado}). Arriba puedes cambiar de lado; el PDF trae la comparación.`, true);
     if (serie.calidadBaja) aviso('⚠️ La IA no vio bien el movimiento en este video: revisa que el conteo de reps sea correcto (detalles en Interpretación).');
   } catch (e) {
@@ -405,7 +408,8 @@ $('act-pdf').onclick = async () => {
   b.disabled = true; b.textContent = 'Generando PDF…';
   try {
     const { crearPDFActividad } = await import('./pdf.js');
-    const { blob, nombre } = await crearPDFActividad(actActual, { video: actVideo, version: VERSION });
+    const { blob, nombre } = await crearPDFActividad(actActual, { video: actVideo, version: VERSION, muestra: !plan.permiso('pdf') });
+    if (!plan.permiso('pdf')) setTimeout(() => plan.mostrarMejora('Con tu plan el PDF sale como muestra (con marca de agua). Desde Plus sale completo.'), 600);
     const f = new File([blob], nombre, { type: 'application/pdf' });
     if (navigator.canShare && navigator.canShare({ files: [f] })) {
       try { await navigator.share({ files: [f], title: nombre }); return; } catch (e) { if (e.name === 'AbortError') return; }
@@ -845,7 +849,8 @@ $('btn-pdf').onclick = async () => {
       pareja = { inf: B, notas: notasInforme(B), textoTrayectoria: textoTrayectoria(B), textoCarga: textoCarga(B) };
     }
     const { blob, nombre } = await crearPDF(A, { video: videoActual, pareja, graficas: { barras: graficaBarras, trayectoria: graficaTrayectoria }, notas: notasInforme(A),
-      textoTrayectoria: textoTrayectoria(A), textoCarga: textoCarga(A), version: VERSION });
+      textoTrayectoria: textoTrayectoria(A), textoCarga: textoCarga(A), version: VERSION, muestra: !plan.permiso('pdf') });
+    if (!plan.permiso('pdf')) setTimeout(() => plan.mostrarMejora('Con tu plan el PDF sale como muestra (con marca de agua). Desde Plus sale completo.'), 600);
     const f = new File([blob], nombre, { type: 'application/pdf' });
     if (navigator.canShare && navigator.canShare({ files: [f] })) {
       try { await navigator.share({ files: [f], title: nombre }); return; } catch (e) { if (e.name === 'AbortError') return; }
@@ -1047,6 +1052,7 @@ function descargarBlob(blob, nombre) {
 }
 $('h-exportar').onclick = () => descargarBlob(hist.exportar(), `analizador-fuerza-respaldo-${new Date().toISOString().slice(0, 10)}.json`);
 $('h-excel').onclick = async () => {
+  if (!plan.permiso('excel')) return plan.mostrarMejora('Exportar a Excel es parte de Plus.');
   const lista = hist.leer();
   if (!lista.length) return alert('Todavía no hay series para exportar.');
   const nombre = `analizador-fuerza-${new Date().toISOString().slice(0, 10)}.xlsx`, blob = exportarExcel(lista, POR_ID);
@@ -1118,7 +1124,8 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
     });
     // primera vez sin cuenta: pantalla de bienvenida (Google, correo o explorar sin cuenta)
     const repintar = () => { perfil.pintar(); if ($('v-comunidad').classList.contains('active')) comunidad.pintar(); };
-    window.addEventListener('af-sesion', repintar);
+    window.addEventListener('af-sesion', () => { repintar(); plan.actualizar().then(() => perfil.pintar()); });
+    plan.actualizar().then(() => perfil.pintar()); // plan de suscripcion (v2.33.0)
     bienvenida.iniciar({ alTerminar: repintar });
   });
   // la app se mudo a Cloudflare: en la direccion vieja se indica como llevarse los datos
