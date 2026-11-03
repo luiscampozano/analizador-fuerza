@@ -298,11 +298,13 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       while (i < x.length) { if (Number.isFinite(x[i])) { i++; continue; } let j = i; while (j < x.length && !Number.isFinite(x[j])) j++; if (j - i > corto || i === 0 || j === x.length) for (let q = i; q < j; q++) y[q] = NaN; i = j; }
       return y;
     };
-    const velDe = (k) => { // m/s; vy + = hacia abajo
+    const velDe = (k, crudo = false) => { // m/s; vy + = hacia abajo
       const x = serieVis(k, (p) => p[k][0]), y = serieVis(k, (p) => p[k][1]);
       const v = x.map(() => NaN), vx = v.slice(), vy = v.slice();
       for (let i = 1; i < x.length; i++) { const dt = t[i] - t[i - 1] || 1 / fr; vx[i] = (x[i] - x[i - 1]) / dt * mPorPx; vy[i] = (y[i] - y[i - 1]) / dt * mPorPx; v[i] = Math.hypot(vx[i], vy[i]); }
-      return { v, vx, vy, x, y };
+      // v2.35.4: mediana de 3 cuadros: un salto de un solo cuadro (la IA tiembla o confunde la mano) no es un golpe
+      const m3 = (a) => a.map((_, i) => { const w = [a[i - 1], a[i], a[i + 1]].filter(Number.isFinite); return w.length === 3 ? w.sort((p, q) => p - q)[1] : NaN; });
+      return crudo ? { v, vx, vy, x, y } : { v: m3(v), vx: m3(vx), vy: m3(vy), x, y };
     };
     // maximos locales de v por encima de vmin, separados al menos sep segundos (se queda el mas alto)
     const picos = (v, vmin, sep, ok = () => true) => {
@@ -345,6 +347,9 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       return vb > 1 && vb < 60 ? vb : null;
     };
     const coma = (x, d = 1) => String(r1(x, d)).replace('.', ',');
+    // v2.35.4: un mismo golpe puede salir en las dos manos (o pies): de lado la IA confunde izquierda y derecha. Se deja
+    // uno por movimiento (el mas rapido) si estan a menos de sep segundos.
+    const unir = (lista, sep) => { const out = []; for (const g of lista.sort((a, b) => a.t - b.t)) { const u = out[out.length - 1]; if (u && g.t - u.t < sep) { if (g.v > u.v) out[out.length - 1] = g; } else out.push(g); } return out; };
     const resumenGolpes = (golpes, nombre, unidad, mB, tc, quePega) => {
       // velocidad medida del balon (si la IA lo vio) reemplaza a la estimada; la fuerza se recalcula con ella
       let medidos = 0;
@@ -381,7 +386,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
           golpes.push({ i, t: t[i], lado: pg.nom, k: pg.s.pie, v: pg.v[i], ...c, kmh: c.kmh });
         }
       }
-      golpes.sort((a, b) => a.t - b.t);
+      golpes.splice(0, golpes.length, ...unir(golpes, 1.0));
       resumenGolpes(golpes, 'Patadas', 'Velocidad del balón', 0.43, 0.009, 'Pie más rápido');
       if (!golpes.length) aviso('No encontré patadas. Graba de lado, con el pie y el balón a la vista y el celular fijo.');
       else bien('Velocidad del balón: con el pie a esa velocidad, un balón sale ~1,25 veces más rápido (choque pie-balón).');
@@ -403,7 +408,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
           golpes.push({ i, t: t[i], lado: m.nom, k: m.s.mun, v: m.v[i], arriba, salto: saltoCm(i), ...c });
         }
       }
-      golpes.sort((a, b) => a.t - b.t);
+      golpes.splice(0, golpes.length, ...unir(golpes, tipo === 'voley' ? 1.2 : 0.9));
       if (tipo === 'voley') {
         resumenGolpes(golpes, 'Remates', 'Velocidad del balón', 0.27, 0.012, 'Mano más rápida');
         const s = med(golpes.map((g) => g.salto));
@@ -420,8 +425,9 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     }
 
     if (tipo === 'basquet') {
-      // tiro: la mano sube rapido por encima de los hombros y el codo se estira al soltar el balon
-      const manos = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.mun) }));
+      // tiro: la mano sube rapido por encima de los hombros y el codo se estira al soltar el balon (sin mediana: al
+      // soltar el balon la mano frena de golpe y la mediana borraria el pico)
+      const manos = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.mun, true) }));
       const tiros = [];
       for (const m of manos) {
         const sube = m.vy.map((x) => -x), top = pct(sube, 0.995);
@@ -548,8 +554,11 @@ export function dibujoActividad(fuente, full, fps, a, balon = null) {
     const r = curva[Math.min(curva.length - 1, Math.round(t / 0.5))];
     ctx.fillStyle = COL.blanco; ctx.font = `800 64px ${FUENTE}`; ctx.textAlign = 'left';
     ctx.fillText(`${a.contador}: ${hechos.length}`, 40, VH + 90);
+    // v2.35.4 deportes con balon: el ritmo (golpes por minuto) no tiene sentido; se muestra la velocidad del pie o la mano
+    const esDep = ['futbol', 'basquet', 'voley', 'raqueta'].includes(a.tipo), ultD = esDep ? hechos[hechos.length - 1] : null;
+    const queMide = a.tipo === 'futbol' ? 'Pie' : 'Mano', queVuela = a.tipo === 'raqueta' ? 'Pelota' : a.tipo === 'basquet' ? 'Salida' : 'Balón';
     ctx.font = `700 44px ${FUENTE}`; ctx.fillStyle = COL.cian; ctx.textAlign = 'right';
-    ctx.fillText(r && r.v ? `${Math.round(r.v)} ${a.unidad}` : '', OW - 40, VH + 88);
+    ctx.fillText(esDep ? (ultD && ultD.v != null && a.tipo !== 'basquet' ? `${queMide} ${String(ultD.v).replace('.', ',')} m/s` : '') : r && r.v ? `${Math.round(r.v)} ${a.unidad}` : '', OW - 40, VH + 88);
     if (a.tipo === 'boxeo') {
       const iz = hechos.filter((e) => e.lado === 'izq').length;
       ctx.font = `600 36px ${FUENTE}`; ctx.fillStyle = COL.gris; ctx.textAlign = 'left';
@@ -569,19 +578,25 @@ export function dibujoActividad(fuente, full, fps, a, balon = null) {
       const ult = hechos[hechos.length - 1];
       if (ult && ult.kmh != null) {
         ctx.textAlign = 'right'; ctx.fillStyle = COL.amarillo; ctx.font = `700 38px ${FUENTE}`;
-        ctx.fillText(`${a.tipo === 'basquet' ? 'Salida' : 'Balón'} ~${ult.kmh} km/h${ult.medido ? ' ✓' : ''} · ${ult.fuerza} kg`, OW - 40, VH + 150);
+        ctx.fillText(`${queVuela} ~${ult.kmh} km/h${ult.medido ? ' ✓' : ''} · ${ult.fuerza} kg`, OW - 40, VH + 150);
         const mx = Math.max(...hechos.map((e) => e.kmh ?? -1));
         ctx.fillStyle = COL.gris; ctx.font = `600 30px ${FUENTE}`; ctx.fillText(`Máx. ~${mx} km/h`, OW - 40, VH + 205);
       }
     }
     ctx.font = `600 32px ${FUENTE}`; ctx.fillStyle = COL.gris; ctx.textAlign = 'left';
     ctx.fillText(a.nombre, 40, VH + 210);
-    ctx.textAlign = 'center'; ctx.fillText(`Ritmo (${a.unidad})`, OW / 2, GY0 - 24);
-    // grafica del ritmo con eventos
+    ctx.textAlign = 'center'; ctx.fillText(esDep ? ({ futbol: 'Velocidad del balón en cada patada', voley: 'Velocidad del balón en cada remate', raqueta: 'Velocidad de la pelota en cada golpe', basquet: 'Velocidad de salida en cada tiro' })[a.tipo] + ' (km/h)' : `Ritmo (${a.unidad})`, OW / 2, GY0 - 24);
     ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(GX0, GY1); ctx.lineTo(GX1, GY1); ctx.stroke();
+    if (esDep) { // una barra por golpe con su velocidad
+      const kmax = Math.max(20, ...(a.eventos || []).map((e) => e.kmh || 0)) * 1.15;
+      ctx.font = `700 26px ${FUENTE}`;
+      for (const e of hechos) { if (!(e.kmh > 0)) continue; const X = gx(e.t), Y = GY1 - (GY1 - GY0) * Math.min(1, e.kmh / kmax); ctx.fillStyle = e.medido ? COL.cian : COL.violeta; ctx.fillRect(X - 12, Y, 24, GY1 - Y); ctx.fillStyle = COL.blanco; ctx.fillText(String(Math.round(e.kmh)), X, Y - 10); }
+    } else {
+    // grafica del ritmo con eventos
     ctx.strokeStyle = COL.violeta; ctx.lineWidth = 5; ctx.beginPath(); let empezo = false;
     for (const c of curva) { if (c.t > t || c.v == null) { empezo = c.t > t ? empezo : false; continue; } const X = gx(c.t), Y = gy(c.v); if (!empezo) { ctx.moveTo(X, Y); empezo = true; } else ctx.lineTo(X, Y); }
     ctx.stroke();
+    }
     ctx.fillStyle = COL.verde; for (const e of hechos) { ctx.beginPath(); ctx.arc(gx(e.t), GY1 + 18, 5, 0, 7); ctx.fill(); }
     ctx.strokeStyle = COL.blanco; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(gx(t), GY0); ctx.lineTo(gx(t), GY1 + 30); ctx.stroke();
     // alertas (las dos primeras)

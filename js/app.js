@@ -23,7 +23,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.35.3';
+const VERSION = '2.35.4';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -395,7 +395,8 @@ function mostrarActividad(a, { video = null, desde = 'v-form' } = {}) {
   $('act-sub').textContent = `${new Date(a.fecha).toLocaleString('es-EC', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${fmt(a.dur, 0)} s de video`;
   $('act-kpis').innerHTML = a.kpis.map((k) => `<div class="kpi-card"><span class="kpi-label">${esc(k.label)}</span><span class="kpi-value">${k.valor ?? '--'}</span><span class="kpi-sub">${esc(k.sub)}</span></div>`).join('');
   $('act-alertas').innerHTML = a.alertas.length ? a.alertas.map((x) => `<p class="act-alerta ${x.nivel}">${x.nivel === 'ok' ? '✓' : '⚠️'} ${esc(x.texto)}</p>`).join('') : '<p class="hint" style="margin:0">Sin observaciones.</p>';
-  $('act-graf-tit').textContent = `Ritmo durante el video (${a.unidad})`;
+  const barras = (a.eventos || []).some((e) => e.kmh > 0); // v2.35.4 deportes con balón: velocidad de cada golpe
+  $('act-graf-tit').textContent = barras ? ({ futbol: 'Velocidad del balón en cada patada', voley: 'Velocidad del balón en cada remate', raqueta: 'Velocidad de la pelota en cada golpe', basquet: 'Velocidad de salida en cada tiro' }[a.tipo] || 'Velocidad en cada golpe') + ' (km/h)' : `Ritmo durante el video (${a.unidad})`;
   vista('v-actividad');
   graficaRitmo($('act-graf'), a);
   if (video) {
@@ -414,6 +415,14 @@ function graficaRitmo(c, a) {
   const dpr = window.devicePixelRatio || 1, W = c.clientWidth || 340, H = 170;
   c.width = W * dpr; c.height = H * dpr; c.style.height = H + 'px';
   const g = c.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+  const ev = (a.eventos || []).filter((e) => e.kmh > 0);
+  if (ev.length) { // v2.35.4 deportes: una barra por golpe con su km/h
+    const mx = Math.max(...ev.map((e) => e.kmh)) * 1.2, L = 12, B = 20, x = (t) => L + (W - 2 * L) * t / (a.dur || 1), y = (v) => 14 + (H - 14 - B) * (1 - v / mx);
+    g.font = 'bold 11px system-ui, sans-serif'; g.textAlign = 'center';
+    for (const e of ev) { g.fillStyle = e.medido ? '#22d3ee' : '#7c5cff'; g.fillRect(x(e.t) - 6, y(e.kmh), 12, H - B - y(e.kmh)); g.fillStyle = '#f0f0f0'; g.fillText(Math.round(e.kmh), x(e.t), y(e.kmh) - 4); }
+    g.fillStyle = '#8e95a5'; g.font = '10px system-ui, sans-serif'; g.textAlign = 'left'; g.fillText('0 s', L, H - 5); g.textAlign = 'right'; g.fillText(`${Math.round(a.dur)} s`, W - L, H - 5);
+    return;
+  }
   const pts = (a.curva || []).filter((p) => p.v != null); if (!pts.length) return;
   const mx = Math.max(...pts.map((p) => p.v)) * 1.15, L = 34, B = 20, x = (t) => L + (W - L - 8) * t / (a.dur || 1), y = (v) => 8 + (H - 8 - B) * (1 - v / mx);
   g.font = '10px system-ui, sans-serif'; g.fillStyle = '#8e95a5'; g.strokeStyle = 'rgba(255,255,255,.07)';

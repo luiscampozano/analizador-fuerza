@@ -139,4 +139,16 @@ for (const [id, f, dur, esperado] of casos) {
   if (!ok) fallos++;
   console.log(`${ok ? 'OK  ' : 'FAIL'} balón IA  medida ${val} km/h (real ${vB * 3.6}) · ${k && k.sub}`);
 }
+
+// --- video REAL de tenis de Luis (3/11/2026, 30 fps): 2 golpes de derecha. Antes contaba 4 (cada golpe salía en las
+// dos manos porque de lado la IA confunde izquierda y derecha).
+{
+  const fs = await import('fs'), zlib = await import('zlib');
+  const d = JSON.parse(zlib.gunzipSync(fs.readFileSync(new URL('./tenis_real.json.gz', import.meta.url))));
+  const fr = d.frames.map(([t, p]) => ({ t, puntos: p && p.length ? p : null }));
+  const a = analizarActividad(fr, d.dur, POR_ID.tenis, { altura: 1.68, peso: 77.8 });
+  const n = a.kpis.find((k) => k.label === 'Golpes').valor, ok = n === 2;
+  if (!ok) fallos++;
+  console.log(`${ok ? 'OK  ' : 'FAIL'} tenis real  golpes ${n} (real 2)`);
+}
 console.log(fallos ? `\n${fallos} caso(s) fuera de lo esperado` : '\nTodos los deportes dentro de lo esperado');

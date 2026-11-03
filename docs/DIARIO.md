@@ -8,6 +8,17 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 16:28 · v2.35.4 — Tenis: contaba el doble; video de deportes más claro
+- **Pidió:** en su video de tenis (2 golpes de derecha, 5 s a 30 fps) contó 4 y el video no mostraba lo esperado
+  («1800 por minuto», «Balón» en vez de pelota).
+- **Causa:** de lado la IA confunde la mano izquierda con la derecha: el mismo golpe salía en las dos manos (0,03 s
+  aparte). Además saltos de un solo cuadro inflaban la velocidad.
+- **Hecho (js/actividad.js):** `unir()` deja un golpe por movimiento entre las dos manos/pies (0,9 s tenis, 1,2 s vóley,
+  1 s fútbol); velocidad con mediana de 3 cuadros (básquet sin mediana: la mano frena al soltar). Video: arriba a la
+  derecha la velocidad del pie/mano (no el ritmo), «Pelota» en tenis/pádel y gráfica de barras con los km/h de cada
+  golpe (celeste si la midió la IA del balón). Informe (app.js): la misma gráfica de barras.
+- **Prueba nueva:** `tenis_real.json.gz` (puntos del video de Luis) → 2 golpes, dentro de deportes.mjs.
+
 ### 16:19 · v2.35.3 — Arreglo del formulario al elegir Tenis/pádel
 - **Pidió:** en Tenis salían «Peso de discos», «Peso de la barra» e «Inclinación del riel» (del ejercicio anterior) y no
   salían los botones «Solo cuerpo / Completo».
