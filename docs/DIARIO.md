@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 16:19 · v2.35.3 — Arreglo del formulario al elegir Tenis/pádel
+- **Pidió:** en Tenis salían «Peso de discos», «Peso de la barra» e «Inclinación del riel» (del ejercicio anterior) y no
+  salían los botones «Solo cuerpo / Completo».
+- **Causa probable:** la página (index.html) vieja en el celular con el código nuevo: al no encontrar los botones nuevos
+  fallaba y ya no se ajustaban los campos. En Chromium con la versión actual funciona bien.
+- **Hecho:** `pintarModoDep` no falla si faltan los botones y `elegir`/inicio ajustan los campos aunque falle el dibujo
+  de la ficha.
+
 ### 16:01 · v2.35.2 — Preparación para Google Play (cuenta personal, app gratis)
 - **Pidió:** publicar con cuenta personal (la SAS queda para cuando se cobre; Google permite transferir la app).
   Su verificación de identidad está en revisión; el teléfono se verifica después.

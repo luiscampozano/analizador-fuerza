@@ -23,7 +23,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.35.2';
+const VERSION = '2.35.3';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -83,6 +83,7 @@ function pintarElegido() {
 const modoDep = () => (CON_BALON.includes(tipoActividad(ej)) && leer('af_modo_dep') === 'completo' ? 'completo' : 'cuerpo');
 function pintarModoDep() {
   const con = CON_BALON.includes(tipoActividad(ej));
+  if (!$('g-modo-dep') || !$('modo-dep')) return; // pagina vieja en cache (v2.35.3): no romper el resto del formulario
   $('g-modo-dep').style.display = con ? '' : 'none';
   if (!con) return;
   const m = modoDep();
@@ -111,7 +112,9 @@ function pintarLista() {
 function elegir(e) {
   ej = e; guardar('af_ej', e.id);
   $('selector-ej').style.display = 'none';
-  pintarElegido(); pintarLista(); ajustarCampos(); actualizarMarca();
+  // v2.35.3: si algo falla al dibujar la ficha, los campos del formulario igual se ajustan al ejercicio nuevo
+  try { pintarElegido(); } catch (e) { console.error(e); }
+  pintarLista(); ajustarCampos(); actualizarMarca();
 }
 // ---- crear ejercicio propio
 $('p-musculo').innerHTML = GRUPOS_MUSCULO.map((g) => `<option>${g}</option>`).join('');
@@ -1119,7 +1122,8 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   if (leer('af_pc')) $('in-pc').value = leer('af_pc');
   if (leer('af_calidad')) $('in-calidad').value = leer('af_calidad');
   $('buscar-ej').oninput = pintarLista;
-  pintarElegido(); pintarLista(); ajustarCampos();
+  try { pintarElegido(); } catch (e) { console.error(e); }
+  pintarLista(); ajustarCampos();
   $('version').textContent = `Versión ${VERSION}`;
   nutricion.iniciar();
   atras.iniciar();
