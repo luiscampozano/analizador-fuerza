@@ -23,7 +23,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.36.3';
+const VERSION = '2.36.4';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -168,7 +168,9 @@ const inGrabar = $('input-grabar');
 $('btn-grabar').onclick = (e) => { e.stopPropagation(); inGrabar.value = ''; inGrabar.click(); };
 inGrabar.onchange = () => { if (inGrabar.files && inGrabar.files[0]) ponerArchivo(inGrabar.files[0]); };
 $('btn-galeria').onclick = (e) => { e.stopPropagation(); inVideo.value = ''; inVideo.click(); };
-$('dropzone').onclick = () => { if (!archivo) { inVideo.removeAttribute('capture'); inVideo.click(); } };
+// v2.36.4 el clic que la app hace sobre los campos de archivo (que están dentro del recuadro) subía hasta el recuadro
+// y abría la galería encima de la cámara: ese era el error de «Grabar». Se ignoran los clics que vienen de los campos.
+$('dropzone').onclick = (e) => { if (e.target && e.target.tagName === 'INPUT') return; if (!archivo) inVideo.click(); };
 function ponerArchivo(f) {
   archivo = f; marca = null;
   $('file-name').textContent = `${archivo.name || 'video'} · ${fmt(archivo.size / 1048576)} MB`;

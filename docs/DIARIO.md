@@ -8,6 +8,15 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 18:39 · v2.36.4 — «Grabar» abría la galería; el modo en vivo no giraba
+- **Pidió:** con 2.36.3 seguía igual: «Grabar» abría la galería y el modo en vivo no giraba.
+- **Causa real de Grabar:** los campos de archivo están dentro del recuadro del video; el clic que la app hace en el
+  campo de la cámara «subía» al recuadro, cuyo clic abre la galería, y esa ventana tapaba a la cámara.
+  **Arreglo:** el recuadro ignora los clics que vienen de los campos (probado en Chromium: Grabar → solo
+  `input-grabar`, Galería → solo `input-video`).
+- **Giro:** Android solo deja cambiar la orientación en pantalla completa: el modo en vivo pide pantalla completa al
+  abrir y luego `orientation.lock('any')`; al salir sale de pantalla completa y desbloquea.
+
 ### 17:50 · v2.36.3 — Tenis cámara en mano (original 4K 60 fps), botón Grabar y giro en vivo
 - **Pidió:** con 2.36.2 su video sin trípode dio 1 golpe a 145 km/h (fueron 4); «Grabar» y «Galería» abren lo mismo
   (la galería); en el modo en vivo la imagen debe girar al rotar el celular.

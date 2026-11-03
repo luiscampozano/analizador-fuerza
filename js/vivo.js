@@ -19,7 +19,7 @@ export function detener() {
   clearInterval(est.reloj); clearInterval(est.cuentaId);
   const v = $('vivo-video'); v.srcObject = null;
   est = null;
-  try { screen.orientation.lock('portrait').catch(() => {}); } catch (e) { /* nada */ }
+  try { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); screen.orientation.unlock && screen.orientation.unlock(); } catch (e) { /* nada */ }
 }
 
 function hablar(texto, forzar = false) {
@@ -75,7 +75,11 @@ export async function abrir({ ej, datos, calidad, alTerminar }) {
   $('vivo-accion').textContent = cardio ? '▶ Empezar' : '▶ Empezar serie'; $('vivo-accion').disabled = true;
   $('vivo-estado').textContent = 'Abriendo la cámara…';
   // v2.36.3 en el modo en vivo la pantalla gira con el celular (la app instalada está fija en vertical)
-  try { screen.orientation.lock('any').catch(() => {}); } catch (e) { /* el navegador no lo permite */ }
+  // v2.36.4 Android solo deja girar la pantalla en pantalla completa: el modo en vivo se abre a pantalla completa
+  try {
+    const pc = document.documentElement.requestFullscreen ? document.documentElement.requestFullscreen({ navigationUI: 'hide' }) : null;
+    Promise.resolve(pc).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('any')).catch(() => {});
+  } catch (e) { /* el navegador no lo permite */ }
   try { const r = localStorage.getItem('af_vivo_res'); if (r && RES[r]) $('vivo-res').value = r; } catch (e) { /* nada */ }
   const video = $('vivo-video'), lienzo = $('vivo-canvas'), ctx = lienzo.getContext('2d');
 
