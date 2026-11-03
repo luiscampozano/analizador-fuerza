@@ -291,6 +291,24 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
   // balon y de la fuerza media del impacto. Con «Análisis completo» (cfg.balon) la velocidad del balon se MIDE con la
   // IA que lo detecta en cada cuadro. Todo es aproximado: video 2D, la escala sale de la estatura.
   if (['futbol', 'basquet', 'voley', 'raqueta', 'natacion'].includes(tipo)) {
+    // v2.36.2 la IA a veces intercambia izquierda y derecha de un cuadro a otro (de lado se ve un brazo encima del
+    // otro): la mano "salta" al otro lado del cuerpo y parece un golpe a 300 km/h. Si cruzar los lados hace que todo se
+    // mueva mucho menos respecto al cuadro anterior, se cruzan (en una copia: el video usa los puntos originales).
+    if (tipo !== 'natacion') {
+      let prev = null;
+      for (let i = 0; i < P.length; i++) {
+        const p = P[i]; if (!p) continue;
+        if (prev) for (const grupo of [[[13, 14], [15, 16], [17, 18], [19, 20], [21, 22]], [[25, 26], [27, 28], [29, 30], [31, 32]]]) {
+          let igual = 0, cruz = 0;
+          for (const [a, b] of grupo) { igual += dist(p[a], prev[a]) + dist(p[b], prev[b]); cruz += dist(p[a], prev[b]) + dist(p[b], prev[a]); }
+          if (cruz < 0.5 * igual) { const q = p.slice(); for (const [a, b] of grupo) { q[a] = p[b]; q[b] = p[a]; } P[i] = q; }
+        }
+        prev = P[i];
+      }
+    }
+    // escala de cada cuadro (si la persona se acerca o se aleja, o hay zoom): torso = 30 % de la estatura
+    const torsoI = rellenar(P.map((p) => (p ? (dist(p[11], p[23]) + dist(p[12], p[24])) / 2 : NaN)));
+    const escI = (() => { const w = Math.round(0.5 * fr), o = []; for (let i = 0; i < torsoI.length; i++) o.push((cfg.altura || 1.7) * 0.30 / (med(torsoI.slice(Math.max(0, i - w), i + w + 1)) || torsoPx)); return o; })();
     const corto = Math.round(0.15 * fr), nn = Math.max(1, Math.round(0.02 * fr));
     const serieVis = (k, f) => { // solo con el punto bien visible; rellena huecos cortos
       const x = suave(P.map((p) => { if (!p || !((p[k][2] ?? 1) >= 0.4)) return NaN; const v = f(p); return Number.isFinite(v) ? v : NaN; }), nn);
@@ -298,10 +316,20 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       while (i < x.length) { if (Number.isFinite(x[i])) { i++; continue; } let j = i; while (j < x.length && !Number.isFinite(x[j])) j++; if (j - i > corto || i === 0 || j === x.length) for (let q = i; q < j; q++) y[q] = NaN; i = j; }
       return y;
     };
+    const malo = (() => { // la escala cambia >20 % en 0,2 s o la cadera cruza la imagen a mas de 15 torsos por segundo
+      const w = Math.max(1, Math.round(0.2 * fr)), cx = rellenar(P.map((p) => (p ? (p[23][0] + p[24][0]) / 2 : NaN))), cy = rellenar(P.map((p) => (p ? (p[23][1] + p[24][1]) / 2 : NaN)));
+      return P.map((_, i) => { const j = Math.max(0, i - w); const dt = (t[i] - t[j]) || 1; return Math.abs(torsoI[i] / torsoI[j] - 1) > 0.2 || Math.hypot(cx[i] - cx[j], cy[i] - cy[j]) / torsoI[i] / dt > 15; });
+    })();
     const velDe = (k, crudo = false) => { // m/s; vy + = hacia abajo
-      const x = serieVis(k, (p) => p[k][0]), y = serieVis(k, (p) => p[k][1]);
+      // v2.36.2 posicion RESPECTO A LA CADERA y en metros con la
+      // escala de cada cuadro: si la camara se mueve o sigue a la persona, no se suma su movimiento a la mano
+      const [a, b] = [23, 24]; // la cadera: asi cuenta el giro del tronco (parte del golpe) pero no el movimiento de la camara
+      const x = serieVis(k, (p) => p[k][0] - (p[a][0] + p[b][0]) / 2), y = serieVis(k, (p) => p[k][1] - (p[a][1] + p[b][1]) / 2);
       const v = x.map(() => NaN), vx = v.slice(), vy = v.slice();
-      for (let i = 1; i < x.length; i++) { const dt = t[i] - t[i - 1] || 1 / fr; vx[i] = (x[i] - x[i - 1]) / dt * mPorPx; vy[i] = (y[i] - y[i - 1]) / dt * mPorPx; v[i] = Math.hypot(vx[i], vy[i]); }
+      for (let i = 1; i < x.length; i++) { const dt = t[i] - t[i - 1] || 1 / fr, e = escI[i]; vx[i] = (x[i] - x[i - 1]) / dt * e; vy[i] = (y[i] - y[i - 1]) / dt * e; v[i] = Math.hypot(vx[i], vy[i]); }
+      // imposible para una persona (la IA perdio el punto): mano > 25 m/s, pie > 32 m/s; y cuadros con la camara
+      // moviendose o haciendo zoom de golpe (la IA ve borroso y los puntos saltan)
+      const tope = k <= 22 ? 25 : 32; for (let i = 0; i < v.length; i++) if (v[i] > tope || malo[i]) { v[i] = vx[i] = vy[i] = NaN; }
       // v2.35.4: mediana de 3 cuadros: un salto de un solo cuadro (la IA tiembla o confunde la mano) no es un golpe
       const m3 = (a) => a.map((_, i) => { const w = [a[i - 1], a[i], a[i + 1]].filter(Number.isFinite); return w.length === 3 ? w.sort((p, q) => p - q)[1] : NaN; });
       return crudo ? { v, vx, vy, x, y } : { v: m3(v), vx: m3(vx), vy: m3(vy), x, y };
@@ -373,7 +401,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
 
     if (tipo === 'futbol') {
       const pies = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.pie) }));
-      const vtop = pct(pies.flatMap((q) => q.v), 0.995);
+      const vtop = pct(pies.flatMap((q) => q.v), 0.98);
       const golpes = [];
       for (const pg of pies) {
         const otro = pies.find((q) => q !== pg);
@@ -396,7 +424,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
 
     if (tipo === 'voley' || tipo === 'raqueta') {
       const manos = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.mun) }));
-      const vtop = pct(manos.flatMap((q) => q.v), 0.995), golpes = [];
+      const vtop = pct(manos.flatMap((q) => q.v), 0.98), golpes = [];
       for (const m of manos) {
         const ok = (i) => { const p = P[i]; if (!p) return false;
           return tipo === 'raqueta' || p[m.s.mun][1] < Math.min(p[11][1], p[12][1]); }; // voley: remate o saque, mano arriba
@@ -408,7 +436,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
           golpes.push({ i, t: t[i], lado: m.nom, k: m.s.mun, v: m.v[i], arriba, salto: saltoCm(i), ...c });
         }
       }
-      golpes.splice(0, golpes.length, ...unir(golpes, tipo === 'voley' ? 1.2 : 0.9));
+      golpes.splice(0, golpes.length, ...unir(golpes, tipo === 'voley' ? 1.2 : 1.5)); // tenis: el impulso hacia atras y el golpe son un solo golpe
       if (tipo === 'voley') {
         resumenGolpes(golpes, 'Remates', 'Velocidad del balón', 0.27, 0.012, 'Mano más rápida');
         const s = med(golpes.map((g) => g.salto));
@@ -525,7 +553,9 @@ export function dibujoActividad(fuente, full, fps, a, balon = null) {
   const W = fuente.videoWidth, H = fuente.videoHeight, esc = OW / W, Hs = H * esc;
   const off = Hs < VH ? (VH - Hs) / 2 : 0;
   const cy = full.map((f) => { const ys = [11, 12, 23, 24].map((k) => f[k][1]).filter(Number.isFinite); return ys.length ? ys.reduce((x, y) => x + y) / ys.length * esc : Hs / 2; });
-  const sup = cy.map((c) => Math.max(0, Math.min(Math.max(0, Hs - VH), c - VH * 0.48)));
+  // v2.36.2 el encuadre sigue a la persona SUAVEMENTE (promedio de 1,5 s): antes seguia cada cuadro y el video temblaba
+  const wS = Math.round(0.75 * fps), cyS = cy.map((_, i) => { let sm = 0, n = 0; for (let j = Math.max(0, i - wS); j <= Math.min(cy.length - 1, i + wS); j++) { sm += cy[j]; n++; } return sm / n; });
+  const sup = cyS.map((c) => Math.max(0, Math.min(Math.max(0, Hs - VH), c - VH * 0.48)));
   const curva = a.curva || [], vmax = Math.max(10, ...curva.map((c) => c.v || 0)) * 1.15;
   const GX0 = 90, GX1 = 1000, GY0 = VH + 330, GY1 = VH + 560;
   const gx = (t) => GX0 + (GX1 - GX0) * t / (a.dur || 1), gy = (v) => GY1 - (GY1 - GY0) * Math.min(1, v / vmax);

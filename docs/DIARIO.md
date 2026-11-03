@@ -8,6 +8,21 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 17:28 · v2.36.2 — Tenis con cámara en mano: velocidades irreales (323 km/h) y golpes de más
+- **Pidió:** video de una jugadora semi-pro (50 kg, 1,52 m), cámara en mano: 4 golpes, contó más y la pelota salió a
+  323 km/h. Con trípode, velocidades razonables pero también contó de más.
+- **Causas:** (1) la velocidad de la mano se medía en la imagen: al mover la cámara se sumaba su movimiento; (2) la IA
+  intercambia izquierda/derecha y la mano «salta» al otro lado del cuerpo; (3) en tenis el impulso hacia atrás se
+  contaba como otro golpe; (4) el video con telemetría de cardio/deportes seguía a la persona cuadro a cuadro sin
+  suavizar (temblaba).
+- **Hecho (js/actividad.js):** en deportes, copia de los puntos con izquierda/derecha corregidas cuando cruzarlas
+  mueve todo mucho menos; velocidad del pie/mano respecto al centro de la cadera, en metros con la escala de cada
+  cuadro (torso = 30 % de la estatura, mediana de 1 s); se descartan cuadros con cambio de escala >20 % en 0,2 s o
+  movimiento brusco de cámara, y velocidades imposibles (mano >25 m/s, pie >32 m/s); umbral de golpe con el
+  percentil 98; en tenis un golpe por cada 1,5 s. Video: encuadre suavizado (1,5 s).
+- **Pendiente:** los videos ORIGINALES (no los de telemetría) de la jugadora, con trípode y en mano, para calibrar.
+  No se guardan sus datos en el repositorio (es menor de edad).
+
 ### 17:00 · v2.36.1 — Modo en vivo: 120 fps y fps reales
 - **Pidió:** eligió 1080p · 60 fps y la cámara seguía en 30 fps; agregar 120 fps. (El zoom ya le funciona.)
 - **Hecho:** opciones 720p/1080p · 120 fps; si la cámara abre con menos fps de los pedidos y su máximo lo permite se
