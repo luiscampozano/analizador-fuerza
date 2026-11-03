@@ -254,7 +254,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       for (let i = 0; i < P.length; i++) { if (!Number.isFinite(alt[i]) || !(extTodo[i] < 0.6)) continue; nGuardia++; if (alt[i] > 0.35) guardiaBaja++; }
     }
     golpes.sort((a, b) => a.t - b.t);
-    res.eventos = golpes.map((g) => ({ t: g.t, lado: g.lado, clase: g.clase }));
+    res.eventos = golpes.map((g) => ({ t: g.t, lado: g.lado, clase: g.clase, v: r1(g.v, 1) }));
     const ev = golpes.map((g) => g.t), iz = golpes.filter((g) => g.lado === 'izq').length, de = golpes.length - iz;
     const vel = pct(golpes.map((g) => g.v), 0.9), cl = (c) => golpes.filter((g) => g.clase === c).length;
     kpi('Golpes', golpes.length, `izq. ${iz} · der. ${de}`); kpi('Ritmo', r1(ritmo(ev)), 'golpes por minuto');
@@ -267,7 +267,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       for (const g of golpes) g.fuerza = fuerza(g.v, g.clase);
       const fMax = pct(golpes.map((g) => g.fuerza), 0.9), fMed = med(golpes.map((g) => g.fuerza));
       res.fuerzaGolpe = { max: r1(fMax), media: r1(fMed), newton: r1(fMax * 9.81) };
-      res.eventos = golpes.map((g) => ({ t: g.t, lado: g.lado, clase: g.clase, fuerza: r1(g.fuerza) }));
+      res.eventos = golpes.map((g) => ({ t: g.t, lado: g.lado, clase: g.clase, v: r1(g.v, 1), fuerza: r1(g.fuerza) }));
       kpi('Golpe más fuerte', r1(fMax), `kg aprox. (±35 %) · ${r1(fMax * 9.81 / 10) * 10} N · típico ${r1(fMed)} kg`);
       bien(`Fuerza estimada con la velocidad de tu mano y tu peso: tu golpe más fuerte equivale a ~${r1(fMax)} kg (±35 %). Es la fuerza si impacta un saco; al aire es solo referencia.`);
     }
@@ -350,6 +350,15 @@ export function dibujoActividad(fuente, full, fps, a) {
       const iz = hechos.filter((e) => e.lado === 'izq').length;
       ctx.font = `600 36px ${FUENTE}`; ctx.fillStyle = COL.gris; ctx.textAlign = 'left';
       ctx.fillText(`Izquierda ${iz} · Derecha ${hechos.length - iz}`, 40, VH + 150);
+      // v2.34.1: velocidad y fuerza del ultimo golpe (y la maxima hasta ahora), debajo del ritmo
+      const ult = hechos[hechos.length - 1];
+      if (ult && ult.v != null) {
+        const coma = (x) => String(x).replace('.', ',');
+        ctx.textAlign = 'right'; ctx.fillStyle = COL.amarillo; ctx.font = `700 38px ${FUENTE}`;
+        ctx.fillText(ult.fuerza != null ? `Golpe ~${ult.fuerza} kg · ${coma(ult.v)} m/s` : `Golpe ${coma(ult.v)} m/s`, OW - 40, VH + 150);
+        const fMax = Math.max(...hechos.map((e) => e.fuerza ?? -1));
+        if (fMax > 0) { ctx.fillStyle = COL.gris; ctx.font = `600 30px ${FUENTE}`; ctx.fillText(`Máx. ~${fMax} kg`, OW - 40, VH + 205); }
+      }
     }
     ctx.font = `600 32px ${FUENTE}`; ctx.fillStyle = COL.gris; ctx.textAlign = 'left';
     ctx.fillText(a.nombre, 40, VH + 210);

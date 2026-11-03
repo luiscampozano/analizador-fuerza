@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 13:24 · v2.34.1 — Fuerza del golpe en el video con telemetría
+- **Pidió:** la fuerza salía en el informe pero no en el video; ponerla debajo de la velocidad (ritmo).
+- **Hecho:** cada golpe guarda su velocidad (`v`). En el video, debajo de «golpes/min»: «Golpe ~X kg · Y m/s» del último
+  golpe (amarillo) y «Máx. ~Z kg» hasta ese momento. Sin peso corporal solo muestra la velocidad.
+- **Idea de Luis (pendiente, por fases):** en deportes con balón y natación, dos opciones: «Solo cuerpo» (modelo actual)
+  y «Análisis completo» con la IA del balón, con etiqueta «Experimental».
+
 ### 13:13 · v2.34.0 — Boxeo: fuerza aproximada del golpe
 - **Pidió:** que el boxeo calcule la fuerza del golpe con la velocidad, el peso y la altura. La IA que sigue el balón
   queda solo para deportes con pelota (fútbol, básquet, pádel, vóley) y con aviso de que tarda más; pesas no la necesitan.
