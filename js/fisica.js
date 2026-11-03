@@ -123,6 +123,13 @@ export function zigzag(y, h) {
 // del video hay movimientos grandes (acomodarse, caminar, mover la camara) ese rango se infla y una repeticion
 // real con poco recorrido (p. ej. al tocar y subir) queda fuera. Por eso el umbral se baja hasta el 60 % de la
 // prominencia tipica de las repeticiones claras.
+function umbralTipico(s, fps) {
+  const rango = percentil(s, 98) - percentil(s, 2);
+  const piv = zigzag(s, Math.max(0.05, 0.15 * rango)), sw = [];
+  for (let i = 1; i < piv.length; i++) sw.push(Math.abs(s[piv[i].i] - s[piv[i - 1].i]));
+  if (sw.length < 4) return umbralReps(s, fps);
+  return Math.max(0.05, Math.min(umbralReps(s, fps), 0.5 * mediana(sw)));
+}
 export function umbralReps(s, fps) {
   const rango = percentil(s, 98) - percentil(s, 2);
   const base = Math.max(0.05, 0.35 * rango);
@@ -331,6 +338,18 @@ function congelarAcercamiento(full, fps, rel) {
 }
 
 // cfg: {masa (kg en el eje), alfa (grados), relacion, altura (m), inicio, fin}
+// mediana movil (ventana de w cuadros) de puntos [x, y], calculada cada 1/10 de la ventana e interpolada en escalones
+function medianaMovil(pts, w) {
+  const n = pts.length, h = Math.max(1, Math.round(w / 2)), paso = Math.max(1, Math.round(w / 10)), out = new Array(n);
+  let ult = [NaN, NaN];
+  for (let i = 0; i < n; i += paso) {
+    const xs = [], ys = [];
+    for (let j = Math.max(0, i - h); j < Math.min(n, i + h); j++) { const p = pts[j]; if (Number.isFinite(p[0]) && Number.isFinite(p[1])) { xs.push(p[0]); ys.push(p[1]); } }
+    if (xs.length) ult = [mediana(xs), mediana(ys)];
+    for (let k = i; k < Math.min(n, i + paso); k++) out[k] = ult;
+  }
+  return out;
+}
 export function analizar(full, fps, ej, cfg) {
   if (ej.alterno) return analizarAlterno(full, fps, ej, cfg);
   if (ej.unilateral) return analizarUnilateral(full, fps, ej, cfg);
@@ -341,10 +360,15 @@ export function analizar(full, fps, ej, cfg) {
   const anclaPar = ANCLAS[ej.ancla];
   // v2.28.0 'piso': el tobillo mas bajo (el pie apoyado en el suelo). En búlgara y zancadas un pie sube al banco o da un
   // paso al cambiar de pierna; con el promedio de los dos tobillos eso parecia una rep
-  const ancla = ej.ancla === 'piso' ? full.map((f) => [(f[27][0] + f[28][0]) / 2, Math.max(f[27][1], f[28][1])])
+  // v2.30.0: el piso no se mueve durante la serie, pero la IA confunde a ratos los tobillos (la mancuerna tapa el pie) y
+  // con las piernas abiertas la escala por cuadro cambia con la postura: se usa la mediana de 2 s del piso y una escala
+  // fija para cada tramo de 4 s. Sin esto una pierna salia con el doble de recorrido y velocidad que la otra.
+  const piso = ej.ancla === 'piso';
+  const ancla = piso ? medianaMovil(full.map((f) => [(f[27][0] + f[28][0]) / 2, Math.max(f[27][1], f[28][1])]), fps * 2)
     : anclaPar ? medio(full, anclaPar) : null;
+  const mUsar = piso ? medianaMovil(mPx.map((x) => [x, 0]), fps * 4).map((p) => p[0]) : mPx;
   const relPx = punto.map((p, i) => (ancla ? [p[0] - ancla[i][0], p[1] - ancla[i][1]] : [p[0], p[1]]));
-  const rel = relPx.map((p, i) => [Number.isFinite(p[0]) ? p[0] * mPx[i] : 0, Number.isFinite(p[1]) ? p[1] * mPx[i] : 0]);
+  const rel = relPx.map((p, i) => [Number.isFinite(p[0]) ? p[0] * mUsar[i] : 0, Number.isFinite(p[1]) ? p[1] * mUsar[i] : 0]);
 
   // v2.18.1: caminar hacia la camara (o alejarse) al inicio o al final del video: la persona se ve cada vez mas grande o
   // mas chica. Ese tramo se "congela" para que no parezca una rep gigante que tapa a las reales (muñecos 3D)
@@ -406,7 +430,10 @@ export function analizar(full, fps, ej, cfg) {
     pares = [];
     for (const [a0, b0] of tramos) {
       const ss = corte ? s.slice(a0, b0) : s;
-      const prom = umbralReps(corte ? ss : cfg.inicio || cfg.fin ? s.slice(i0, i1) : s, fps);
+      const base = corte ? ss : cfg.inicio || cfg.fin ? s.slice(i0, i1) : s;
+      // v2.30.0 búlgara (ancla piso): acomodarse antes de la serie o bajarse del banco son movimientos mas grandes que
+      // las reps y subian el umbral; se usa el recorrido tipico de las oscilaciones (las reps son la mayoria)
+      const prom = ej.ancla === 'piso' ? umbralTipico(base, fps) : umbralReps(base, fps);
       const piv = zigzag(ss, prom).map((p) => ({ ...p, i: p.i + a0 }));
       const pz = [];
       for (let q = 0; q < piv.length - 1; q++) if (piv[q].tipo === 'bajo' && piv[q + 1].tipo === 'alto') pz.push([piv[q].i, piv[q + 1].i, piv[q + 2] ? piv[q + 2].i : b0 - 1]);

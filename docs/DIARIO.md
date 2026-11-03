@@ -6,6 +6,23 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-03
+
+### 10:04 · v2.30.0 — Búlgara: velocidad pareja entre piernas; reporte de sentadilla revisado
+- **Pidió:** arreglar la velocidad distinta entre piernas de la búlgara y revisar su reporte de sentadilla (11 vs 12).
+- **Causa (búlgara):** la IA confundía a ratos los tobillos (la mancuerna tapa el pie de adelante), así que el «piso»
+  saltaba con cada rep; y con las piernas abiertas la escala por cuadro cambiaba ±15 % con la postura. Una pierna
+  salía con ~60 cm de recorrido y la otra con ~30.
+- **Hecho (solo ancla `piso`, búlgara):** el piso es la mediana de 2 s del tobillo más bajo; la escala, la mediana de
+  4 s; el umbral del conteo usa el recorrido típico de las oscilaciones (`umbralTipico`), así acomodarse en el banco no
+  tapa las reps.
+- **Resultado:** su búlgara 0,60 vs 0,55 m/s por pierna (antes ~0,8 vs ~0,35), 16 reps, 8 + 8. Banco real 44/62 (+ el
+  otro video de búlgara de 18 reps ahora exacto; el de 8 da 7; + su sentadilla). Muñecos 3374 → 3364 (búlgara con
+  zoom/caminar y «acomodarse» pierde 10 tomas; se prefirió acertar los videos reales). Mínimo de verificar.sh: 3350.
+  La prueba `bulgara_real.mjs` exige además que las dos piernas no difieran más de 30 % en velocidad.
+- **Sentadilla (fallo df8ff1a8):** la versión actual ya cuenta 12 (la 2.25 contaba 11); agregada al banco.
+- **Pendientes:** definir con Luis qué incluye cada plan de suscripción.
+
 ## 2026-11-02
 
 ### 15:08 · v2.29.0 — Dos lados en un video para todos los ejercicios unilaterales + PDF con comparación
