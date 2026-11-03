@@ -23,7 +23,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.36.2';
+const VERSION = '2.36.3';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -162,8 +162,12 @@ function ajustarCampos() {
 
 // ------------------------------------------------------------------ video
 const inVideo = $('input-video');
-$('btn-grabar').onclick = (e) => { e.stopPropagation(); inVideo.setAttribute('capture', 'environment'); inVideo.click(); };
-$('btn-galeria').onclick = (e) => { e.stopPropagation(); inVideo.removeAttribute('capture'); inVideo.click(); };
+// v2.36.3 «Grabar» usa su propio campo con capture fijo desde el inicio: algunos Android (Xiaomi) ignoraban el
+// capture puesto al momento y abrían la galería igual que el otro botón
+const inGrabar = $('input-grabar');
+$('btn-grabar').onclick = (e) => { e.stopPropagation(); inGrabar.value = ''; inGrabar.click(); };
+inGrabar.onchange = () => { if (inGrabar.files && inGrabar.files[0]) ponerArchivo(inGrabar.files[0]); };
+$('btn-galeria').onclick = (e) => { e.stopPropagation(); inVideo.value = ''; inVideo.click(); };
 $('dropzone').onclick = () => { if (!archivo) { inVideo.removeAttribute('capture'); inVideo.click(); } };
 function ponerArchivo(f) {
   archivo = f; marca = null;

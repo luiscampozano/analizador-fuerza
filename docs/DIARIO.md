@@ -8,6 +8,22 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 17:50 · v2.36.3 — Tenis cámara en mano (original 4K 60 fps), botón Grabar y giro en vivo
+- **Pidió:** con 2.36.2 su video sin trípode dio 1 golpe a 145 km/h (fueron 4); «Grabar» y «Galería» abren lo mismo
+  (la galería); en el modo en vivo la imagen debe girar al rotar el celular.
+- **Diagnóstico (video original):** jugadora lejos y pequeña en 4K vertical; la IA salta por momentos a OTRA persona
+  (torso de otro tamaño, cadera 200 px más abajo) y pone la muñeca en la raqueta: velocidades de 30-40 m/s falsas.
+  Solo ~35 % de los cuadros son confiables.
+- **Hecho (js/actividad.js, deportes):** seguimiento de la persona principal (se descartan cuadros donde el torso
+  cambia >35 % o la cadera salta >0,6 torsos por 1/30 s; se re-engancha tras 0,4 s); muñeca/tobillo descartados si el
+  antebrazo/pierna mide fuera de 0,45-1,35 veces lo normal; picos de un cuadro corregidos (2 pasadas); velocidad medida
+  sobre ~1/30 s también a 60/120 fps; aviso si menos del 60 % del video es usable. Resultado en el original: 2 golpes
+  claros detectados (3,6 s y 8,0 s), los otros con la persona perdida.
+- **Grabar:** campo propio `input-grabar` con `capture="environment"` fijo en el HTML (Xiaomi ignoraba el capture
+  puesto al momento). **Vivo:** `screen.orientation.lock('any')` al abrir y vuelve a vertical al salir; pantalla
+  más alta en horizontal.
+- **Recomendación a Luis:** trípode, más cerca (la persona que ocupe al menos 1/3 del alto) y sin gente detrás.
+
 ### 17:28 · v2.36.2 — Tenis con cámara en mano: velocidades irreales (323 km/h) y golpes de más
 - **Pidió:** video de una jugadora semi-pro (50 kg, 1,52 m), cámara en mano: 4 golpes, contó más y la pelota salió a
   323 km/h. Con trípode, velocidades razonables pero también contó de más.

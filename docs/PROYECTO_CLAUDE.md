@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.36.2
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.36.3
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -286,6 +286,7 @@ bloqueos, reportes, fallos.
 | v2.36.0 | Modo en vivo: calidad de cámara (720p–4K, 30/60 fps) y zoom (barra y pellizco). Boxeo/deportes: videos de 60 fps se analizan a 60 Hz siempre. |
 | v2.36.1 | Vivo: opciones de 120 fps, se insiste en los fps pedidos y se muestra el máximo real del navegador. Deportes: videos de 120 fps se analizan a 120 Hz. |
 | v2.36.2 | Deportes: velocidad respecto a la cadera con escala por cuadro (cámara en mano), corrección de manos/pies intercambiados, topes físicos; video de cardio/deportes sin temblor. |
+| v2.36.3 | Deportes: se descartan cuadros de otra persona, muñeca fuera del antebrazo y picos de un cuadro; velocidad sobre 1/30 s; aviso si la IA pierde a la persona. «Grabar» abre la cámara. Modo en vivo gira con el celular. |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

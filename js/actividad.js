@@ -306,6 +306,24 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
         prev = P[i];
       }
     }
+    // v2.36.3 la IA a veces salta a OTRA persona (alguien sentado atras, el rival) por unos cuadros: esos cuadros se
+    // descartan. Se sigue a la persona principal: la cadera no puede saltar mas de ~0,6 torsos por cada 1/30 s y el
+    // torso no puede cambiar de tamaño mas de 35 % de un cuadro a otro.
+    {
+      const tam = (p) => (dist(p[11], p[23]) + dist(p[12], p[24])) / 2, cen = (p) => [(p[23][0] + p[24][0]) / 2, (p[23][1] + p[24][1]) / 2];
+      const tMed = med(P.map((p) => (p ? tam(p) : NaN)));
+      let ref = null, tRef = 0;
+      for (let i = 0; i < P.length; i++) {
+        const p = P[i]; if (!p) continue;
+        const s0 = tam(p), c = cen(p);
+        if (!ref) { if (Math.abs(s0 / tMed - 1) < 0.25) { ref = { s: s0, c }; tRef = t[i]; } else P[i] = null; continue; }
+        const salto = dist(c, ref.c) / ref.s, pasos = Math.max(1, (t[i] - tRef) * 30);
+        const perdido = t[i] - tRef > 0.4 && Math.abs(s0 / tMed - 1) < 0.3; // mucho rato sin verla: se vuelve a enganchar
+        if (!perdido && (Math.abs(s0 / ref.s - 1) > 0.35 || salto > 0.6 * pasos + 0.3)) { P[i] = null; continue; }
+        ref = { s: 0.7 * ref.s + 0.3 * s0, c }; tRef = t[i];
+      }
+      res.usables = P.filter(Boolean).length / Math.max(1, P.length);
+    }
     // escala de cada cuadro (si la persona se acerca o se aleja, o hay zoom): torso = 30 % de la estatura
     const torsoI = rellenar(P.map((p) => (p ? (dist(p[11], p[23]) + dist(p[12], p[24])) / 2 : NaN)));
     const escI = (() => { const w = Math.round(0.5 * fr), o = []; for (let i = 0; i < torsoI.length; i++) o.push((cfg.altura || 1.7) * 0.30 / (med(torsoI.slice(Math.max(0, i - w), i + w + 1)) || torsoPx)); return o; })();
@@ -324,9 +342,27 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       // v2.36.2 posicion RESPECTO A LA CADERA y en metros con la
       // escala de cada cuadro: si la camara se mueve o sigue a la persona, no se suma su movimiento a la mano
       const [a, b] = [23, 24]; // la cadera: asi cuenta el giro del tronco (parte del golpe) pero no el movimiento de la camara
-      const x = serieVis(k, (p) => p[k][0] - (p[a][0] + p[b][0]) / 2), y = serieVis(k, (p) => p[k][1] - (p[a][1] + p[b][1]) / 2);
+      // v2.36.3 el antebrazo (o la pierna) mide siempre lo mismo: si la muñeca aparece mucho mas lejos o cerca del codo
+      // de lo normal, la IA la puso en otro lado (en la raqueta, en otra persona) y ese cuadro no se usa
+      const padre = { 15: 13, 16: 14, 27: 25, 28: 26, 31: 27, 32: 28 }[k];
+      const largoMed = padre != null ? med(P.map((p) => (p ? dist(p[k], p[padre]) / ((dist(p[11], p[23]) + dist(p[12], p[24])) / 2) : NaN))) : NaN;
+      const bienLargo = (p) => { if (crudo || !(largoMed > 0)) return true; const r = dist(p[k], p[padre]) / ((dist(p[11], p[23]) + dist(p[12], p[24])) / 2); return r < 1.35 * largoMed && r > 0.45 * largoMed; };
+      let x = serieVis(k, (p) => (bienLargo(p) ? p[k][0] - (p[a][0] + p[b][0]) / 2 : NaN)), y = serieVis(k, (p) => (bienLargo(p) ? p[k][1] - (p[a][1] + p[b][1]) / 2 : NaN));
+      // v2.36.3 limpieza de picos de un cuadro: si el punto se aparta mucho de la linea entre su cuadro anterior y el
+      // siguiente (mas de lo que permite la aceleracion de una mano real), es un error de la IA (persona lejos, borrosa
+      // o lados cruzados) y se reemplaza por el promedio de los vecinos. Dos pasadas (errores de 2 cuadros).
+      if (!crudo) {
+        const umbral = (i) => torsoI[i] * Math.max(0.35, 0.6 * (30 / fr) ** 2);
+        for (let pasada = 0; pasada < 2; pasada++) for (const z of [x, y]) {
+          const o = z.slice();
+          for (let i = 1; i < z.length - 1; i++) { const m = (o[i - 1] + o[i + 1]) / 2; if (Number.isFinite(m) && Math.hypot(x[i] - (x[i - 1] + x[i + 1]) / 2, y[i] - (y[i - 1] + y[i + 1]) / 2) > umbral(i)) z[i] = m; }
+        }
+      }
       const v = x.map(() => NaN), vx = v.slice(), vy = v.slice();
-      for (let i = 1; i < x.length; i++) { const dt = t[i] - t[i - 1] || 1 / fr, e = escI[i]; vx[i] = (x[i] - x[i - 1]) / dt * e; vy[i] = (y[i] - y[i - 1]) / dt * e; v[i] = Math.hypot(vx[i], vy[i]); }
+      // v2.36.3 velocidad sobre ~1/30 s aunque el video sea de 60 o 120 fps: con mas cuadros el temblor de la IA se
+      // dividia por un tiempo mas corto y la velocidad salia inflada
+      const kk = crudo ? 1 : Math.max(1, Math.round(fr / 30)), h2 = Math.floor(kk / 2);
+      for (let i = 1; i < x.length; i++) { const i0 = Math.max(0, i - h2 - (kk % 2)), i1 = Math.min(x.length - 1, i0 + kk); const dt = t[i1] - t[i0] || kk / fr, e = escI[i]; vx[i] = (x[i1] - x[i0]) / dt * e; vy[i] = (y[i1] - y[i0]) / dt * e; v[i] = Math.hypot(vx[i], vy[i]); }
       // imposible para una persona (la IA perdio el punto): mano > 25 m/s, pie > 32 m/s; y cuadros con la camara
       // moviendose o haciendo zoom de golpe (la IA ve borroso y los puntos saltan)
       const tope = k <= 22 ? 25 : 32; for (let i = 0; i < v.length; i++) if (v[i] > tope || malo[i]) { v[i] = vx[i] = vy[i] = NaN; }
@@ -396,6 +432,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       res.fuerzaGolpe = { max: r1(mejor.kg), media: r1(med(golpes.map((g) => g.kg))), newton: r1(mejor.kg * 9.81) };
       if (B) { if (medidos) bien(`La IA del balón lo siguió en ${medidos} de ${golpes.length}: esas velocidades son medidas, no estimadas.`); else aviso('La IA del balón no lo pudo seguir después del contacto (muy lejos, borroso o tapado). Se muestran valores estimados.'); }
     };
+    if (res.usables < 0.6) aviso(`La IA perdió a la persona en el ${Math.round(100 - res.usables * 100)} % del video (estaba lejos, se confundió con otra persona o la cámara se movió). Graba más cerca, con trípode y sin gente detrás: los números serán más confiables.`);
     const avisoFps = () => { if (fr < 45) aviso('Video a menos de 60 fps: en movimientos tan rápidos la IA pierde parte del recorrido y la velocidad sale más baja. Graba a 60 fps (la app lo analiza a 60 automáticamente).'); };
     if (!cfg.peso) aviso('Pon tu peso corporal para que la estimación de fuerza sea tuya (se usó 75 kg).');
 
