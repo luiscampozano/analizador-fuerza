@@ -43,7 +43,7 @@ function pitar(veces = 1, frec = 880) {
 }
 
 // v2.36.0 calidad elegida por la persona ('1080-60' = 1080p a 60 fps) y zoom (si la cámara lo permite)
-const RES = { '720-30': [1280, 720, 30], '1080-30': [1920, 1080, 30], '1080-60': [1920, 1080, 60], '2160-30': [3840, 2160, 30], '2160-60': [3840, 2160, 60] };
+const RES = { '720-30': [1280, 720, 30], '1080-30': [1920, 1080, 30], '1080-60': [1920, 1080, 60], '720-120': [1280, 720, 120], '1080-120': [1920, 1080, 120], '2160-30': [3840, 2160, 30], '2160-60': [3840, 2160, 60] };
 const BITS = { 720: 6e6, 1080: 12e6, 2160: 35e6 }; // grabacion: mas resolucion, mas bits
 async function abrirCamara(frente, res = '1080-30') {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Este navegador no permite usar la cámara. Usa Chrome actualizado.');
@@ -79,6 +79,12 @@ export async function abrir({ ej, datos, calidad, alTerminar }) {
   const conectar = async () => {
     if (yo.stream) yo.stream.getTracks().forEach((t) => t.stop());
     yo.stream = await abrirCamara(yo.frente, $('vivo-res').value);
+    // v2.36.1 si la camara abrio a menos fps de los pedidos, se insiste (algunos celulares solo dan 60 si se exige)
+    const pista = yo.stream.getVideoTracks()[0], quiero = (RES[$('vivo-res').value] || [0, 0, 30])[2];
+    try {
+      const max = pista.getCapabilities?.().frameRate?.max || 0, hay = pista.getSettings?.().frameRate || 0;
+      if (hay < quiero - 5 && max >= quiero - 5) await pista.applyConstraints({ frameRate: { min: quiero - 5, ideal: quiero } });
+    } catch (e) { /* se queda con lo que dio */ }
     video.srcObject = yo.stream;
     prepararZoom(yo);
     video.style.transform = lienzo.style.transform = yo.frente ? 'scaleX(-1)' : '';
@@ -232,7 +238,10 @@ function prepararZoom(yo) {
   const pista = yo.stream && yo.stream.getVideoTracks()[0];
   const cap = pista && pista.getCapabilities ? pista.getCapabilities() : {}, aj = pista && pista.getSettings ? pista.getSettings() : {};
   yo.cam = aj;
-  $('vivo-cam-info').textContent = aj.width ? `Cámara: ${Math.max(aj.width, aj.height)}×${Math.min(aj.width, aj.height)} · ${Math.round(aj.frameRate || 30)} fps${cap.zoom ? '' : ' · este celular no permite zoom desde el navegador'}` : '';
+  const quiero = (RES[$('vivo-res').value] || [0, 0, 30])[2], maxFps = Math.round(cap.frameRate?.max || 0), hay = Math.round(aj.frameRate || 30);
+  $('vivo-cam-info').textContent = aj.width ? `Cámara: ${Math.max(aj.width, aj.height)}×${Math.min(aj.width, aj.height)} · ${hay} fps`
+    + (hay < quiero - 5 ? ` · desde el navegador este celular da como máximo ${maxFps || hay} fps. Para ${quiero} fps graba con la cámara del celular y analiza el video.` : '')
+    + (cap.zoom ? '' : ' · este celular no permite zoom desde el navegador') : '';
   const g = $('g-vivo-zoom'), r = $('vivo-zoom');
   if (!cap.zoom || !(cap.zoom.max > cap.zoom.min)) { g.style.display = 'none'; return; }
   g.style.display = '';

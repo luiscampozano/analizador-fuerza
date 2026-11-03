@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 17:00 · v2.36.1 — Modo en vivo: 120 fps y fps reales
+- **Pidió:** eligió 1080p · 60 fps y la cámara seguía en 30 fps; agregar 120 fps. (El zoom ya le funciona.)
+- **Hecho:** opciones 720p/1080p · 120 fps; si la cámara abre con menos fps de los pedidos y su máximo lo permite se
+  exige con `applyConstraints`; si no, la línea dice el máximo que da el navegador y sugiere grabar con la cámara del
+  celular. En boxeo/deportes, archivos de 100 fps o más se analizan a 120 Hz.
+- **Nota:** Chrome en Android muchas veces limita la cámara web a 30 fps; la cámara nativa sí graba 60/120.
+
 ### 16:48 · v2.36.0 — 60 fps automático en deportes + cámara del modo en vivo
 - **Pidió:** graba en 4K a 60 fps pero el análisis decía «menos de 60 fps»; en el modo en vivo quiere zoom y elegir
   calidad y fps.

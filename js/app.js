@@ -23,7 +23,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.36.0';
+const VERSION = '2.36.1';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -275,7 +275,7 @@ async function analizarArchivo() {
     let hz = { rapida: 15, normal: 30, maxima: 60 }[calidad] || 30;
     // v2.36.0 boxeo y deportes son muy rápidos: si el video es de 60 fps (o más) se analiza a 60 Hz aunque la
     // precisión sea Normal; así no se pierde el golpe (antes se tomaba solo 1 de cada 2 cuadros)
-    if (ej.cardio && ['boxeo', 'futbol', 'basquet', 'voley', 'raqueta'].includes(tipoActividad(ej)) && video.fps >= 50) hz = 60;
+    if (ej.cardio && ['boxeo', 'futbol', 'basquet', 'voley', 'raqueta'].includes(tipoActividad(ej)) && video.fps >= 50) hz = video.fps >= 100 ? 120 : 60; // 120 fps: cámara lenta real (tarda el doble)
     const seguidor = marca && CON_DISCO.includes(ej.equipo) ? crearSeguidor(video.videoWidth, video.videoHeight, marca) : null;
     // Si la IA casi no ve a la persona puede ser el celular (la GPU o el decodificador de video entregan cuadros vacios),
     // no el video: se reintenta con la CPU y despues con el reproductor de video antes de rendirse.
