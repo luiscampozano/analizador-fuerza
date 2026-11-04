@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 19:27 · v2.36.6 — Básquet: el video no mostraba estadísticas
+- **Pidió:** ya detecta los tiros (incluso el 3.º) pero abajo en el video no salía ninguna estadística.
+- **Causa:** desde 2.36.5 la velocidad del balón solo sale con la IA del balón; con «Solo cuerpo» el panel quedaba vacío.
+- **Hecho:** cada tiro guarda `salto` y `brazo`. Video: arriba a la derecha «Salto X cm», debajo «Brazo al soltar Y°» y
+  «Mejor salto»; gráfica «Altura del salto en cada tiro (cm)» (si la IA del balón mide, sigue la de km/h). Informe:
+  la misma gráfica de barras.
+
 ### 19:07 · v2.36.5 — Básquet: no contaba tiros y la IA del balón no lo veía
 - **Pidió:** en básquet (video de noche, cámara en mano siguiéndolo, 3 tiros) contó 0 y en «Completo con balón» no
   reconoció el balón.

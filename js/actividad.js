@@ -535,7 +535,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
         const p = P[g.i], vm = balonTras(g.i, p ? [p[g.k][0], p[g.k][1]] : null);
         if (vm) { medidos++; g.vb = vm; g.kmh = vm * 3.6; g.angB = balonTras.ang; g.kg = 0.62 * (vm / (g.tEmp || 0.3) + 9.81) / 9.81; g.medido = true; }
       }
-      res.eventos = tiros.map((g) => ({ t: g.t, lado: g.lado, ...(g.medido ? { v: r1(g.vb, 1), kmh: r1(g.kmh), fuerza: r1(g.kg, 1), medido: true } : {}) }));
+      res.eventos = tiros.map((g) => ({ t: g.t, lado: g.lado, salto: Number.isFinite(g.salto) && g.salto > 3 ? r1(g.salto) : null, brazo: r1(g.brazo), ...(g.medido ? { v: r1(g.vb, 1), kmh: r1(g.kmh), fuerza: r1(g.kg, 1), medido: true } : {}) }));
       const iz = tiros.filter((g) => g.lado === 'izq').length;
       kpi('Tiros', tiros.length, `mano izq. ${iz} · der. ${tiros.length - iz}`);
       if (tiros.length) {
@@ -659,7 +659,7 @@ export function dibujoActividad(fuente, full, fps, a, balon = null) {
     const esDep = ['futbol', 'basquet', 'voley', 'raqueta'].includes(a.tipo), ultD = esDep ? hechos[hechos.length - 1] : null;
     const queMide = a.tipo === 'futbol' ? 'Pie' : 'Mano', queVuela = a.tipo === 'raqueta' ? 'Pelota' : a.tipo === 'basquet' ? 'Salida' : 'Balón';
     ctx.font = `700 44px ${FUENTE}`; ctx.fillStyle = COL.cian; ctx.textAlign = 'right';
-    ctx.fillText(esDep ? (ultD && ultD.v != null && a.tipo !== 'basquet' ? `${queMide} ${String(ultD.v).replace('.', ',')} m/s` : '') : r && r.v ? `${Math.round(r.v)} ${a.unidad}` : '', OW - 40, VH + 88);
+    ctx.fillText(esDep ? (a.tipo === 'basquet' ? (ultD && ultD.salto != null ? `Salto ${ultD.salto} cm` : '') : ultD && ultD.v != null ? `${queMide} ${String(ultD.v).replace('.', ',')} m/s` : '') : r && r.v ? `${Math.round(r.v)} ${a.unidad}` : '', OW - 40, VH + 88);
     if (a.tipo === 'boxeo') {
       const iz = hechos.filter((e) => e.lado === 'izq').length;
       ctx.font = `600 36px ${FUENTE}`; ctx.fillStyle = COL.gris; ctx.textAlign = 'left';
@@ -682,16 +682,23 @@ export function dibujoActividad(fuente, full, fps, a, balon = null) {
         ctx.fillText(`${queVuela} ~${ult.kmh} km/h${ult.medido ? ' ✓' : ''} · ${ult.fuerza} kg`, OW - 40, VH + 150);
         const mx = Math.max(...hechos.map((e) => e.kmh ?? -1));
         ctx.fillStyle = COL.gris; ctx.font = `600 30px ${FUENTE}`; ctx.fillText(`Máx. ~${mx} km/h`, OW - 40, VH + 205);
+      } else if (a.tipo === 'basquet' && ult && ult.brazo != null) { // v2.36.6 solo cuerpo: brazo y mejor salto
+        ctx.textAlign = 'right'; ctx.fillStyle = COL.amarillo; ctx.font = `700 38px ${FUENTE}`;
+        ctx.fillText(`Brazo al soltar ${ult.brazo}°`, OW - 40, VH + 150);
+        const sx = Math.max(...hechos.map((e) => e.salto ?? -1));
+        if (sx > 0) { ctx.fillStyle = COL.gris; ctx.font = `600 30px ${FUENTE}`; ctx.fillText(`Mejor salto ${sx} cm`, OW - 40, VH + 205); }
       }
     }
     ctx.font = `600 32px ${FUENTE}`; ctx.fillStyle = COL.gris; ctx.textAlign = 'left';
     ctx.fillText(a.nombre, 40, VH + 210);
-    ctx.textAlign = 'center'; ctx.fillText(esDep ? ({ futbol: 'Velocidad del balón en cada patada', voley: 'Velocidad del balón en cada remate', raqueta: 'Velocidad de la pelota en cada golpe', basquet: 'Velocidad de salida en cada tiro' })[a.tipo] + ' (km/h)' : `Ritmo (${a.unidad})`, OW / 2, GY0 - 24);
+    // v2.36.6 basquet sin la IA del balon: barras con la altura del salto de cada tiro
+    const porSalto = a.tipo === 'basquet' && !(a.eventos || []).some((e) => e.kmh > 0), valor = (e) => (porSalto ? e.salto : e.kmh);
+    ctx.textAlign = 'center'; ctx.fillText(porSalto ? 'Altura del salto en cada tiro (cm)' : esDep ? ({ futbol: 'Velocidad del balón en cada patada', voley: 'Velocidad del balón en cada remate', raqueta: 'Velocidad de la pelota en cada golpe', basquet: 'Velocidad de salida en cada tiro' })[a.tipo] + ' (km/h)' : `Ritmo (${a.unidad})`, OW / 2, GY0 - 24);
     ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(GX0, GY1); ctx.lineTo(GX1, GY1); ctx.stroke();
     if (esDep) { // una barra por golpe con su velocidad
-      const kmax = Math.max(20, ...(a.eventos || []).map((e) => e.kmh || 0)) * 1.15;
+      const kmax = Math.max(20, ...(a.eventos || []).map((e) => valor(e) || 0)) * 1.15;
       ctx.font = `700 26px ${FUENTE}`;
-      for (const e of hechos) { if (!(e.kmh > 0)) continue; const X = gx(e.t), Y = GY1 - (GY1 - GY0) * Math.min(1, e.kmh / kmax); ctx.fillStyle = e.medido ? COL.cian : COL.violeta; ctx.fillRect(X - 12, Y, 24, GY1 - Y); ctx.fillStyle = COL.blanco; ctx.fillText(String(Math.round(e.kmh)), X, Y - 10); }
+      for (const e of hechos) { const val = valor(e); if (!(val > 0)) continue; const X = gx(e.t), Y = GY1 - (GY1 - GY0) * Math.min(1, val / kmax); ctx.fillStyle = e.medido ? COL.cian : COL.violeta; ctx.fillRect(X - 12, Y, 24, GY1 - Y); ctx.fillStyle = COL.blanco; ctx.fillText(String(Math.round(val)), X, Y - 10); }
     } else {
     // grafica del ritmo con eventos
     ctx.strokeStyle = COL.violeta; ctx.lineWidth = 5; ctx.beginPath(); let empezo = false;
