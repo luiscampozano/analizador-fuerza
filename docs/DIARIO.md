@@ -6,6 +6,17 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-04
+
+### 12:08 · (sin cambio de versión) — assetlinks.json para la app de Android
+- **Contexto:** Luis verificó identidad y teléfono en Play Console (cuenta personal, declarada «trader»), creó la app
+  `com.fuerzapro.app` y generó el paquete con PWABuilder (Standalone, notificaciones y Google Play Billing activados,
+  llave nueva: la guarda él, nunca en el chat).
+- **Hecho:** `.well-known/assetlinks.json` con la huella SHA-256 de la llave de subida (relación handle_all_urls para
+  `com.fuerzapro.app`). Así la app abre la web a pantalla completa sin barra de Chrome.
+- **Pendiente:** después de subir el .aab, copiar la huella SHA-256 de la «llave de firma de apps» de Google (Play
+  Console → Prueba y lanzamiento → Configuración → Integridad de la app) y agregarla al mismo archivo.
+
 ## 2026-11-03
 
 ### 21:00 · v2.36.10 — Pesas (parte 2) y salto de básquet imposible

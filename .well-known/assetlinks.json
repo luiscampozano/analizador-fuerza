@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.fuerzapro.app",
+        "sha256_cert_fingerprints": ["1C:A4:F5:43:7A:D6:AC:E5:8D:3A:7F:32:01:54:AF:19:F7:CA:C9:19:BE:94:5C:A0:AC:85:F7:B8:B1:36:AF:D5"]
+      }
+    }]
