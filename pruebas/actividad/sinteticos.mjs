@@ -20,7 +20,8 @@ const torso = 0.30 * 1.7 * px; // 153 px
 function carrera(t) {
   const f = 170 / 60 / 2, w = 2 * Math.PI * f, cx = 500, hipY = 500 + 0.04 * px * Math.cos(2 * w * t);
   const lean = 8 * Math.PI / 180, sh = [cx + torso * Math.sin(lean), hipY - torso * Math.cos(lean)];
-  const sw = 0.25 * px, a1 = [cx + sw * Math.sin(w * t), hipY + 0.5 * px], a2 = [cx - sw * Math.sin(w * t), hipY + 0.5 * px];
+  // el pie de apoyo esta en el piso (y fijo); la cadera sube y baja sobre el (v2.36.8: el rebote se mide asi)
+  const sw = 0.25 * px, piso = 500 + 0.5 * px, a1 = [cx + sw * Math.sin(w * t), piso], a2 = [cx - sw * Math.sin(w * t), piso];
   const j = { 0: [sh[0] + 20, sh[1] - 60], 11: sh, 12: sh, 13: [sh[0], sh[1] + 70], 14: [sh[0], sh[1] + 70], 15: [sh[0] + 30, sh[1] + 120], 16: [sh[0] + 30, sh[1] + 120],
     23: [cx, hipY], 24: [cx, hipY], 25: [(cx + a1[0]) / 2 + 20, hipY + 0.25 * px], 26: [(cx + a2[0]) / 2 + 20, hipY + 0.25 * px], 27: a1, 28: a2,
     29: [a1[0] - 15, a1[1]], 30: [a2[0] - 15, a2[1]], 31: [a1[0] + 25, a1[1] + 5], 32: [a2[0] + 25, a2[1] + 5] };

@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.36.7
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.36.8
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -291,6 +291,7 @@ bloqueos, reportes, fallos.
 | v2.36.5 | Básquet: nueva detección del tiro (punto más alto con codo estirado); velocidad y ángulo de salida solo medidos con la IA del balón; IA del balón más sensible (umbral 0,08) con filtro de tamaño por deporte. |
 | v2.36.6 | Básquet «Solo cuerpo»: el video y el informe muestran salto, ángulo del brazo y barras con el salto de cada tiro. |
 | v2.36.7 | Salto (básquet y vóley) medido por cuánto se despegan los pies del piso, no por la cadera desde la sentadilla. |
+| v2.36.8 | Revisión independiente de cardio y deportes: ski erg, ondas alternas, amplitud mínima (no inventa conteos), salto con talón/punta, cuerda, boxeo (velocidad real y fuerza recalibrada), fútbol, tenis, básquet, rebote y textos. |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

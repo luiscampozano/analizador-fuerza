@@ -8,6 +8,30 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 20:32 · v2.36.8 — Revisión independiente de cardio y deportes (js/actividad.js)
+- **Pidió:** revisar todos los ejercicios con un Claude independiente, uno por uno, para no tener más errores como el
+  del salto. (El de pesas sigue en revisión.)
+- **Hallazgos y arreglos:**
+  1. **Ski erg se caía** (no tenía análisis): ahora cuenta tirones con los brazos.
+  2. **Salto (vóley/básquet):** el tobillo sube 8-9 cm de más con el pie en punta → punto más bajo de talón/punta
+     (pruebas: 10/30/50 cm reales → 10/30/50).
+  3. **Boxeo:** la velocidad estaba tan suavizada que todos los golpes salían iguales (medía el largo del brazo):
+     suavizado 0,02 s, relativa a la cadera con escala por cuadro; masa efectiva recalibrada a aficionado (2,2 % del
+     peso en rectos, 1,9 % otros). Video real: mano 4,8 m/s, golpe fuerte 94 kg (antes 149 por errores compensados).
+     El video usa el mismo criterio que la tarjeta («Más fuerte»).
+  4. **Cuerdas de batalla alternas:** las dos manos se cancelaban (154/min en vez de 120): señal por brazo.
+  5. **Persona quieta:** el temblor de la IA se contaba como 40-130 repeticiones con elogios: `pivotes()` exige
+     amplitud mínima (0,08 torsos, 10° en ángulos, 0,03 en cuerda) y avisa «No detecté el movimiento».
+  6. **Cuerda:** altura con el punto más bajo del pie (6,2 → 2,9 cm reales 3); conteo sigue con tobillos.
+  7. **Fútbol:** pie respecto al tobillo de apoyo (antes la cadera restaba la carrera, −18 %).
+  8. **Tenis/pádel:** cabeza 2× la mano, masa 0,3 kg; ×1,2 a 30 fps (vóley también); mano dominante única.
+  9. **Básquet:** sin «Fuerza de empuje» (inestable); ángulo de salida del balón corrigiendo la gravedad; escala
+     local en el seguimiento del balón.
+  10. **Carrera:** rebote respecto al pie de apoyo (cámara en mano daba falso «rebotas mucho»).
+  11. Textos con «null»/«0» y elogios sin movimiento; natación con índices por tiempo.
+- **Pruebas:** sintéticos de carrera con el pie de apoyo en el piso; todas las pruebas del revisor pasan (en el
+  scratchpad, no en el repositorio).
+
 ### 19:48 · v2.36.7 — El salto de básquet salía el doble
 - **Pidió:** ¿de verdad saltó 32 cm?
 - **Revisión:** no. Se medía la subida de la cadera desde la flexión previa al salto (sentadilla): 28-32 cm. Los pies

@@ -73,12 +73,15 @@ function zigzag(x, h) {
   return piv;
 }
 // pivotes con umbral adaptado a la amplitud tipica del movimiento (asi sirve para cualquier escala)
-function pivotes(x, k = 0.45) {
-  const lo = pct(x, 0.05), hi = pct(x, 0.95), r = hi - lo; if (!(r > 0)) return [];
+// v2.36.8 minA: amplitud minima real (0,08 torsos en señales normalizadas, 10° en angulos). Sin ella, con la persona
+// quieta el temblor de la IA se contaba como decenas de saltos, pasos o burpees.
+function pivotes(x, k = 0.45, minA = 0.08) {
+  const lo = pct(x, 0.05), hi = pct(x, 0.95), r = hi - lo; if (!(r > 0) || r < minA) return [];
   const p0 = zigzag(x, 0.2 * r), sw = [];
   for (let i = 1; i < p0.length; i++) sw.push(Math.abs(p0[i].v - p0[i - 1].v));
   if (!sw.length) return [];
   sw.sort((a, b) => b - a); const A = sw[Math.floor(sw.length * 0.3)] || sw[0];
+  if (A < minA) return [];
   return zigzag(x, k * A);
 }
 // tramo activo: entre el primer y el ultimo evento (los segundos antes de empezar no bajan el ritmo)
@@ -121,6 +124,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
   const bien = (texto) => res.alertas.push({ nivel: 'ok', texto });
   const fin = (contador, unidad, evT, factor = 1) => {
     res.contador = contador; res.total = evT.length; res.unidad = unidad;
+    if (!evT.length && !res.alertas.some((x) => /No encontré|No detecté/.test(x.texto))) aviso('No detecté el movimiento: revisa que se vea el cuerpo completo, de lado, y que el ejercicio sea el correcto.');
     const rt = ritmo(evT); res.ritmo = rt == null ? null : r1(rt * factor);
     res.curva = curvaRitmo(evT, dur, factor);
     res.activo = evT.length ? [evT[0], evT[evT.length - 1]] : [0, dur];
@@ -142,7 +146,8 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     const adel = piv.map((q) => { const p = P[q.i]; if (!p) return NaN; const c = mid(p, 23, 24); return Math.max((p[27][0] - c[0]) * avance, (p[28][0] - c[0]) * avance) * mPorPx * 100; });
     const sobre = med(adel);
     // rebote: oscilacion vertical de la cadera (sin la tendencia lenta)
-    const cy = rellenar(suave(P.map((p) => (p ? mid(p, 23, 24)[1] : NaN)), 1)), base = suave(cy, Math.round(0.6 * fr)); // poco suavizado: el rebote es rapido
+    // v2.36.8 cadera respecto al pie de apoyo (el mas bajo): asi no cuenta si la camara sube y baja (camara en mano)
+    const cy = rellenar(suave(P.map((p) => (p ? mid(p, 23, 24)[1] - Math.max(p[27][1], p[28][1]) : NaN)), 1)), base = suave(cy, Math.round(0.6 * fr)); // poco suavizado: el rebote es rapido
     const osc = cy.map((v, i) => v - base[i]), rebote = (pct(osc, 0.97) - pct(osc, 0.03)) * mPorPx * 100;
     // inclinacion del tronco (+ = hacia adelante)
     const incl = med(P.map((p) => { if (!p) return NaN; const h = mid(p, 11, 12), c = mid(p, 23, 24); return Math.atan2((h[0] - c[0]) * avance, c[1] - h[1]) * 180 / Math.PI; }));
@@ -152,8 +157,8 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     kpi('Rebote', r1(rebote), 'cm (aprox.)'); kpi('Pie al pisar', r1(sobre), 'cm delante de la cadera (aprox.)');
     kpi('Tronco', r1(incl), '° de inclinación adelante'); if (asim != null) kpi('Asimetría', r1(asim, 1), '% entre piernas');
     if (tipo === 'carrera') {
-      if (cad < 155) aviso(`Cadencia baja (${r1(cad)} pasos/min). Dar pasos más cortos y rápidos (subir 5-10 %) reduce el impacto en rodillas y caderas.`); else bien(`Buena cadencia (${r1(cad)} pasos/min).`);
-      if (rebote > 10) aviso(`Rebotas mucho (~${r1(rebote)} cm). Piensa en avanzar, no en saltar: más cadencia y menos impulso hacia arriba.`); else if (Number.isFinite(rebote)) bien(`Rebote controlado (~${r1(rebote)} cm).`);
+      if (Number.isFinite(cad) && cad < 155) aviso(`Cadencia baja (${r1(cad)} pasos/min). Dar pasos más cortos y rápidos (subir 5-10 %) reduce el impacto en rodillas y caderas.`); else if (Number.isFinite(cad)) bien(`Buena cadencia (${r1(cad)} pasos/min).`);
+      if (rebote > 10) aviso(`Rebotas mucho (~${r1(rebote)} cm). Piensa en avanzar, no en saltar: más cadencia y menos impulso hacia arriba.`); else if (Number.isFinite(rebote) && ev.length) bien(`Rebote controlado (~${r1(rebote)} cm).`);
       if (sobre > 35) aviso(`Posible sobrezancada: el pie cae ~${r1(sobre)} cm delante de la cadera. Intenta apoyar más debajo del cuerpo.`);
     }
     if (incl > 20) aviso(`Tronco muy inclinado hacia adelante (${r1(incl)}°). Corre «alto», con una inclinación leve desde los tobillos.`);
@@ -164,7 +169,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
 
   if (tipo === 'bici' || tipo === 'eliptica' || tipo === 'escaladora') {
     const rod = serie((p) => ang(p[lado.cad], p[lado.rod], p[lado.tob]));
-    const piv = pivotes(rod, 0.5), altos = piv.filter((q) => q.tipo === 'alto'), ev = tiempos(altos);
+    const piv = pivotes(rod, 0.5, 10), altos = piv.filter((q) => q.tipo === 'alto'), ev = tiempos(altos);
     if (tipo === 'bici') {
       const rpm = ritmo(ev), abajo = med(altos.map((q) => q.v));
       const caderaMin = med(piv.filter((q) => q.tipo === 'bajo').map((q) => { const p = P[q.i]; return p ? ang(p[lado.hom], p[lado.cad], p[lado.rod]) : NaN; }));
@@ -174,23 +179,23 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       else if (abajo > 155) aviso(`La rodilla casi se estira abajo (${r1(abajo)}°): el sillín parece ALTO. Bájalo 1 cm y vuelve a medir.`);
       else if (Number.isFinite(abajo)) bien(`Altura de sillín correcta (rodilla a ${r1(abajo)}° abajo).`);
       if (caderaMin < 40) aviso(`La cadera se cierra mucho arriba (${r1(caderaMin)}°): revisa la distancia al manillar o la altura del sillín.`);
-      if (rpm < 60) aviso(`Cadencia baja (${r1(rpm)} RPM): con menos resistencia y más RPM (80-100) cuidas las rodillas.`); else bien(`Cadencia de ${r1(rpm)} RPM.`);
+      if (Number.isFinite(rpm) && rpm < 60) aviso(`Cadencia baja (${r1(rpm)} RPM): con menos resistencia y más RPM (80-100) cuidas las rodillas.`); else if (Number.isFinite(rpm)) bien(`Cadencia de ${r1(rpm)} RPM.`);
       return fin('Pedaladas', 'RPM', ev);
     }
     // eliptica: vueltas por minuto · escaladora: pasos por minuto (cada vuelta de una pierna = 2 pasos)
     const pasos = tipo === 'escaladora';
-    kpi(pasos ? 'Ritmo' : 'Cadencia', r1(ritmo(ev) * (pasos ? 2 : 1)), pasos ? 'pasos por minuto' : 'vueltas por minuto');
+    kpi(pasos ? 'Ritmo' : 'Cadencia', ritmo(ev) == null ? null : r1(ritmo(ev) * (pasos ? 2 : 1)), pasos ? 'pasos por minuto' : 'vueltas por minuto');
     kpi(pasos ? 'Pasos' : 'Vueltas', ev.length * (pasos ? 2 : 1), 'en el video');
     const incl = med(P.map((p) => { if (!p) return NaN; const h = mid(p, 11, 12), c = mid(p, 23, 24); return Math.abs(Math.atan2(h[0] - c[0], c[1] - h[1]) * 180 / Math.PI); }));
     kpi('Tronco', r1(incl), '° respecto a la vertical');
-    if (incl > 25) aviso(`Te apoyas mucho hacia adelante (${r1(incl)}°): suelta un poco el peso de los brazos y endereza el tronco.`); else bien('Postura del tronco erguida.');
+    if (incl > 25) aviso(`Te apoyas mucho hacia adelante (${r1(incl)}°): suelta un poco el peso de los brazos y endereza el tronco.`); else if (ev.length) bien('Postura del tronco erguida.');
     return fin(pasos ? 'Pasos' : 'Vueltas', pasos ? 'pasos/min' : 'vueltas/min', ev, pasos ? 2 : 1);
   }
 
   if (tipo === 'remo') {
     const rod = serie((p) => ang(p[lado.cad], p[lado.rod], p[lado.tob]));
     const cod = serie((p) => ang(p[lado.hom], p[lado.cod], p[lado.mun]));
-    const piv = pivotes(rod, 0.5), ataques = piv.filter((q) => q.tipo === 'bajo'), ev = tiempos(ataques);
+    const piv = pivotes(rod, 0.5, 10), ataques = piv.filter((q) => q.tipo === 'bajo'), ev = tiempos(ataques);
     const empuje = [], recup = [], brazos = [], atras = [];
     for (let k = 0; k < ataques.length - 1; k++) {
       const a = ataques[k].i, b = ataques[k + 1].i;
@@ -213,8 +218,10 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
 
   if (tipo === 'cuerda') {
     const pies = rellenar(suave(P.map((p) => (p ? -mid(p, 27, 28)[1] / torsoPx : NaN)), 1)); // sube al saltar (poco suavizado: el salto es corto)
-    const piv = pivotes(pies, 0.5), altos = piv.filter((q) => q.tipo === 'alto'), ev = tiempos(altos);
-    const alt = []; for (let k = 1; k < piv.length; k++) if (piv[k].tipo === 'alto') alt.push((piv[k].v - piv[k - 1].v) * torsoPx * mPorPx * 100);
+    const piv = pivotes(pies, 0.5, 0.03), altos = piv.filter((q) => q.tipo === 'alto'), ev = tiempos(altos); // saltos de 2-5 cm: minimo 0,03 torsos
+    // v2.36.8 la altura con el punto MAS BAJO del pie (talon o punta): el tobillo sube al ponerse de puntas sin despegar
+    const suela = rellenar(suave(P.map((p) => (p ? -Math.max(p[29][1], p[30][1], p[31][1], p[32][1]) / torsoPx : NaN)), 1));
+    const alt = []; for (let k = 1; k < piv.length; k++) if (piv[k].tipo === 'alto') { const a0 = piv[k - 1].i, a1 = piv[k].i; const lo = Math.min(...suela.slice(Math.max(0, a0 - 2), a0 + 3)), hi = Math.max(...suela.slice(Math.max(0, a1 - 2), a1 + 3)); alt.push((hi - lo) * torsoPx * mPorPx * 100); }
     const h = med(alt);
     kpi('Ritmo', r1(ritmo(ev)), 'saltos por minuto'); kpi('Saltos', ev.length, 'en el video'); kpi('Altura de salto', r1(h, 1), 'cm (aprox.)');
     if (h > 8) aviso(`Saltas más alto de lo necesario (~${r1(h, 1)} cm): con 2-5 cm basta y gastas menos energía.`); else if (Number.isFinite(h)) bien(`Saltos bajos y eficientes (~${r1(h, 1)} cm).`);
@@ -230,8 +237,8 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     let guardiaBaja = 0, nGuardia = 0;
     const visible = (p, s) => p && (p[s.mun][2] ?? 1) >= 0.5 && (p[s.cod][2] ?? 1) >= 0.3;
     const corto = Math.round(0.15 * fr);
-    const serieV = (s, f) => { // como serie(), pero sin puntos poco visibles y rellenando solo huecos cortos
-      const x = suave(P.map((p) => { if (!visible(p, s)) return NaN; const v = f(p); return Number.isFinite(v) ? v : NaN; }), n);
+    const serieV = (s, f, nn = n) => { // como serie(), pero sin puntos poco visibles y rellenando solo huecos cortos
+      const x = suave(P.map((p) => { if (!visible(p, s)) return NaN; const v = f(p); return Number.isFinite(v) ? v : NaN; }), nn);
       const y = rellenar(x); let i = 0;
       while (i < x.length) { if (Number.isFinite(x[i])) { i++; continue; } let j = i; while (j < x.length && !Number.isFinite(x[j])) j++; if (j - i > corto || i === 0 || j === x.length) for (let k = i; k < j; k++) y[k] = NaN; i = j; }
       return y;
@@ -245,7 +252,11 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       const alt = serieV(s, altura);
       const extTodo = serieV(s, (p) => dist(p[s.hom], p[s.mun]) / largo);
       const ext = extTodo.map((v, i) => (alt[i] <= 0.6 ? v : NaN)); // brazo colgando (caminar, acomodarse): no es golpe
-      const mx = serieV(s, (p) => p[s.mun][0]), my = serieV(s, (p) => p[s.mun][1]);
+      // v2.36.8 velocidad: poco suavizado (0,02 s; con 0,07 s todos los golpes salian iguales: medía el largo del brazo)
+      // y respecto a la cadera, en metros con la escala de cada cuadro (la camara o el cuerpo que se mueven no suman)
+      const nV = Math.max(1, Math.round(0.02 * fr));
+      const escB = (p) => (cfg.altura || 1.7) * 0.30 / ((dist(p[11], p[23]) + dist(p[12], p[24])) / 2 || torsoPx);
+      const mx = serieV(s, (p) => (p[s.mun][0] - (p[23][0] + p[24][0]) / 2) * escB(p), nV), my = serieV(s, (p) => (p[s.mun][1] - (p[23][1] + p[24][1]) / 2) * escB(p), nV);
       const piv = zigzag(ext, 0.10);
       for (let k = 0; k < piv.length; k++) {
         const q = piv[k]; if (q.tipo !== 'alto' || q.v < 0.62) continue;
@@ -256,7 +267,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
         const p = P[b], codo = p ? ang(p[s.hom], p[s.cod], p[s.mun]) : NaN;
         const subida = my[a] - my[b], lateral = Math.abs(mx[b] - mx[a]);
         const clase = codo >= 150 ? 'recto' : subida > lateral * 0.8 ? 'uppercut' : 'gancho';
-        golpes.push({ i: b, t: t[b], lado: nomLado, v: vmax * mPorPx, clase });
+        golpes.push({ i: b, t: t[b], lado: nomLado, v: Math.min(vmax, 20), clase }); // mx/my ya estan en metros
       }
       // guardia: con el brazo recogido (sin golpear), la mano deberia estar cerca de la cara, no a la altura del pecho
       for (let i = 0; i < P.length; i++) { if (!Number.isFinite(alt[i]) || !(extTodo[i] < 0.6)) continue; nGuardia++; if (alt[i] > 0.35) guardiaBaja++; }
@@ -267,11 +278,12 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     const vel = pct(golpes.map((g) => g.v), 0.9), cl = (c) => golpes.filter((g) => g.clase === c).length;
     kpi('Golpes', golpes.length, `izq. ${iz} · der. ${de}`); kpi('Ritmo', r1(ritmo(ev)), 'golpes por minuto');
     kpi('Mano más rápida', r1(vel, 1), 'm/s (aprox.)'); kpi('Tipos', `${cl('recto')} · ${cl('gancho')} · ${cl('uppercut')}`, 'rectos · ganchos · uppercuts (aprox.)');
-    // v2.34.0 fuerza aproximada del golpe (impulso): F = k · m_ef · v. Masa efectiva ~4 % del peso corporal (puño + brazo
-    // + parte del cuerpo que acompaña); k = 129 /s calibrado con boxeadores olímpicos (Walilko 2005: 2,9 kg, 9,1 m/s,
-    // 3427 N). Margen amplio (±35 %): depende de la técnica, el guante y lo duro del saco. La altura entra en la escala.
+    // v2.34.0 fuerza aproximada del golpe (impulso): F = k · m_ef · v; k = 129 /s calibrado con boxeadores olímpicos
+    // (Walilko 2005: 2,9 kg, 9,1 m/s, 3427 N). v2.36.8: masa efectiva de aficionado ~2,2 % del peso en rectos y 1,9 % en
+    // ganchos/uppercuts (los olímpicos ~4 %, pero un aficionado mete menos cuerpo en el golpe), ahora que la velocidad
+    // de la mano se mide bien. Margen amplio (±35 %): técnica, guante y saco. La altura entra en la escala.
     if (cfg.peso > 0 && golpes.length) {
-      const fuerza = (v, clase) => 129 * cfg.peso * (clase === 'recto' ? 0.04 : 0.035) * v / 9.81; // kg
+      const fuerza = (v, clase) => 129 * cfg.peso * (clase === 'recto' ? 0.022 : 0.019) * v / 9.81; // kg
       for (const g of golpes) g.fuerza = fuerza(g.v, g.clase);
       const fMax = pct(golpes.map((g) => g.fuerza), 0.9), fMed = med(golpes.map((g) => g.fuerza));
       res.fuerzaGolpe = { max: r1(fMax), media: r1(fMed), newton: r1(fMax * 9.81) };
@@ -338,10 +350,10 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       const w = Math.max(1, Math.round(0.2 * fr)), cx = rellenar(P.map((p) => (p ? (p[23][0] + p[24][0]) / 2 : NaN))), cy = rellenar(P.map((p) => (p ? (p[23][1] + p[24][1]) / 2 : NaN)));
       return P.map((_, i) => { const j = Math.max(0, i - w); const dt = (t[i] - t[j]) || 1; return Math.abs(torsoI[i] / torsoI[j] - 1) > 0.2 || Math.hypot(cx[i] - cx[j], cy[i] - cy[j]) / torsoI[i] / dt > 15; });
     })();
-    const velDe = (k, crudo = false, absoluto = false) => { // m/s; vy + = hacia abajo
+    const velDe = (k, crudo = false, absoluto = false, refK = null) => { // m/s; vy + = hacia abajo
       // v2.36.2 posicion RESPECTO A LA CADERA y en metros con la
       // escala de cada cuadro: si la camara se mueve o sigue a la persona, no se suma su movimiento a la mano
-      const [a, b] = absoluto ? [null, null] : [23, 24]; // la cadera: asi cuenta el giro del tronco (parte del golpe) pero no el movimiento de la camara
+      const [a, b] = refK != null ? [refK, refK] : absoluto ? [null, null] : [23, 24]; // la cadera: asi cuenta el giro del tronco (parte del golpe) pero no el movimiento de la camara
       // v2.36.3 el antebrazo (o la pierna) mide siempre lo mismo: si la muñeca aparece mucho mas lejos o cerca del codo
       // de lo normal, la IA la puso en otro lado (en la raqueta, en otra persona) y ese cuadro no se usa
       const padre = { 15: 13, 16: 14, 27: 25, 28: 26, 31: 27, 32: 28 }[k];
@@ -388,7 +400,8 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     const choque = (v, M, m, e, tc) => { const vb = v * (1 + e) * M / (M + m); return { vb, kmh: vb * 3.6, kg: m * vb / tc / 9.81 }; };
     // v2.36.7 altura del salto = cuanto se despegan los PIES del piso (el pie mas bajo respecto a donde estaba antes y
     // despues del salto). Antes se media la cadera desde la sentadilla previa y salia el doble (32 cm en un salto de 10).
-    const pieY = P.map((p) => (p ? Math.max(p[27][1], p[28][1]) : NaN));
+    // v2.36.8 el punto mas bajo de talones y puntas (en el aire el pie va en punta: el tobillo subia 8-9 cm de mas)
+    const pieY = P.map((p) => (p ? Math.max(p[29][1], p[30][1], p[31][1], p[32][1]) : NaN));
     const saltoCm = (i) => {
       const r = (a, b) => pieY.slice(Math.max(0, i + Math.round(a * fr)), Math.max(0, i + Math.round(b * fr)) + 1).filter(Number.isFinite);
       const piso = med([...r(-1.0, -0.4), ...r(0.4, 1.0)]), vuelo = r(-0.35, 0.35);
@@ -415,8 +428,10 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       }
       const tras = pts.filter((q) => q[0] > t[i]);
       if (tras.length < 2) return null;
+      // v2.36.8 se quita la caida por gravedad antes del ajuste recto (si no, el angulo de salida salia unos 4° bajo)
+      const eB = escI[i] || mPorPx, t0 = tras[0][0]; for (const q of tras) q[2] -= 0.5 * 9.81 * (q[0] - t0) ** 2 / eB;
       const ajuste = (k) => { const mt = media(tras.map((q) => q[0])), mk = media(tras.map((q) => q[k])); let a = 0, b = 0; for (const q of tras) { a += (q[0] - mt) * (q[k] - mk); b += (q[0] - mt) ** 2; } return b ? a / b : NaN; };
-      const vb = Math.hypot(ajuste(1), ajuste(2)) * mPorPx;
+      const vb = Math.hypot(ajuste(1), ajuste(2)) * eB;
       balonTras.ang = Math.atan2(-ajuste(2), Math.abs(ajuste(1))) * 180 / Math.PI; // + = hacia arriba
       return vb > 1 && vb < 60 ? vb : null;
     };
@@ -447,13 +462,15 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     if (!cfg.peso) aviso('Pon tu peso corporal para que la estimación de fuerza sea tuya (se usó 75 kg).');
 
     if (tipo === 'futbol') {
-      const pies = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.pie) }));
+      // v2.36.8 el pie que patea respecto al TOBILLO DE APOYO (quieto en el piso): se quita la camara pero no el avance
+      // del cuerpo, que tambien empuja el balon (respecto a la cadera salia ~18 % bajo con carrera de aproximacion)
+      const pies = [[L, 'izq', R], [R, 'der', L]].map(([s, nom, o]) => ({ s, nom, ...velDe(s.pie, false, false, o.tob), vCad: velDe(s.pie).v }));
       const vtop = pct(pies.flatMap((q) => q.v), 0.98);
       const golpes = [];
       for (const pg of pies) {
         const otro = pies.find((q) => q !== pg);
         const ok = (i) => { const p = P[i]; if (!p) return false;
-          if (otro.v[i] > 0.6 * pg.v[i]) return false; // el otro pie apoyado (no es correr)
+          if (otro.vCad[i] > 0.6 * pg.vCad[i]) return false; // el otro pie apoyado (no es correr)
           if (!(p[pg.s.pie][1] > (p[23][1] + p[24][1]) / 2)) return false; // el pie por debajo de la cadera
           return !(ang(p[pg.s.cad], p[pg.s.rod], p[pg.s.tob]) < 120); }; // rodilla casi estirada al pegarle
         for (const i of picos(pg.v, Math.max(5, 0.55 * vtop), 1.0, ok)) {
@@ -477,13 +494,18 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
           return tipo === 'raqueta' || p[m.s.mun][1] < Math.min(p[11][1], p[12][1]); }; // voley: remate o saque, mano arriba
         for (const i of picos(m.v, Math.max(4, 0.5 * vtop), 0.8, ok)) {
           const p = P[i], arriba = p && p[m.s.mun][1] < Math.min(p[11][1], p[12][1]);
-          // voley: la mano (masa efectiva ~4 % del peso) contra un balon de 270 g; raqueta: la cabeza va ~1,5 veces
-          // mas rapido que la mano y pega con ~0,6 kg efectivos a una pelota de 58 g
-          const c = tipo === 'voley' ? choque(m.v[i], 0.04 * peso, 0.27, 0.5, 0.012) : choque(1.5 * m.v[i], 0.6, 0.058, 0.75, 0.005);
-          golpes.push({ i, t: t[i], lado: m.nom, k: m.s.mun, v: m.v[i], arriba, salto: saltoCm(i), ...c });
+          // voley: la mano (masa efectiva ~4 % del peso) contra un balon de 270 g; raqueta (v2.36.8): la cabeza va ~2 veces
+          // mas rapido que la mano y pega con ~0,3 kg efectivos a una pelota de 58 g (como un saque: no suma la pelota que
+          // llega). A 30 fps la IA pierde el pico del golpe (-20 a -27 % medido): se corrige ×1,2
+          const vm = m.v[i] * (fr < 45 ? 1.2 : 1);
+          const c = tipo === 'voley' ? choque(vm, 0.04 * peso, 0.27, 0.5, 0.012) : choque(2 * vm, 0.3, 0.058, 0.75, 0.005);
+          golpes.push({ i, t: t[i], lado: m.nom, k: m.s.mun, v: vm, arriba, salto: saltoCm(i), ...c });
         }
       }
       golpes.splice(0, golpes.length, ...unir(golpes, tipo === 'voley' ? 1.2 : 1.5)); // tenis: el impulso hacia atras y el golpe son un solo golpe
+      if (tipo === 'raqueta' && golpes.length) { // la raqueta va en una sola mano: la que mas golpes tiene (la IA confunde los lados)
+        const iz = golpes.filter((g) => g.lado === 'izq').length, dom = iz > golpes.length - iz ? 'izq' : 'der'; for (const g of golpes) g.lado = dom;
+      }
       if (tipo === 'voley') {
         resumenGolpes(golpes, 'Remates', 'Velocidad del balón', 0.27, 0.012, 'Mano más rápida');
         const s = med(golpes.map((g) => g.salto));
@@ -539,7 +561,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
         const p = P[g.i], vm = balonTras(g.i, p ? [p[g.k][0], p[g.k][1]] : null);
         if (vm) { medidos++; g.vb = vm; g.kmh = vm * 3.6; g.angB = balonTras.ang; g.kg = 0.62 * (vm / (g.tEmp || 0.3) + 9.81) / 9.81; g.medido = true; }
       }
-      res.eventos = tiros.map((g) => ({ t: g.t, lado: g.lado, salto: Number.isFinite(g.salto) && g.salto > 3 ? r1(g.salto) : null, brazo: r1(g.brazo), ...(g.medido ? { v: r1(g.vb, 1), kmh: r1(g.kmh), fuerza: r1(g.kg, 1), medido: true } : {}) }));
+      res.eventos = tiros.map((g) => ({ t: g.t, lado: g.lado, salto: Number.isFinite(g.salto) && g.salto > 3 ? r1(g.salto) : null, brazo: r1(g.brazo), ...(g.medido ? { v: r1(g.vb, 1), kmh: r1(g.kmh), medido: true } : {}) }));
       const iz = tiros.filter((g) => g.lado === 'izq').length;
       kpi('Tiros', tiros.length, `mano izq. ${iz} · der. ${tiros.length - iz}`);
       if (tiros.length) {
@@ -553,8 +575,6 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
             kpi('Ángulo de salida', r1(an), '° del balón (medido)');
             if (an < 40) aviso(`El balón sale muy plano (~${r1(an)}°): con 45-55° entra más fácil en el aro.`); else if (an > 62) aviso(`El balón sale muy alto (~${r1(an)}°): lo usual es 45-55°.`); else bien(`Buen ángulo de salida del balón (~${r1(an)}°).`);
           }
-          kpi('Fuerza de empuje', coma(med(med2.map((g) => g.kg))), 'kg sobre el balón (aprox.)');
-          res.fuerzaGolpe = { max: r1(Math.max(...med2.map((g) => g.kg)), 1), media: r1(med(med2.map((g) => g.kg)), 1) };
         }
         if (B) { if (medidos) bien(`La IA del balón lo siguió en ${medidos} de ${tiros.length} tiros.`); else aviso('La IA del balón no lo pudo seguir al salir de la mano (muy lejos, oscuro o tapado).'); }
         else bien('Con «Completo con balón» la app mide la velocidad y el ángulo reales del balón.');
@@ -571,7 +591,8 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     const piv = pivotes(sep, 0.5), ev = tiempos(piv.filter((q) => q.tipo === (haciaCabeza > 0 ? 'alto' : 'bajo')));
     const ciclos = ev.length, rt = ritmo(ev);
     const cx = serie((p) => (p[23][0] + p[24][0]) / 2);
-    const a0 = ev.length ? Math.max(0, Math.round(ev[0] * fr)) : 0, a1 = ev.length ? Math.min(P.length - 1, Math.round(ev[ev.length - 1] * fr)) : P.length - 1;
+    const idxT = (x) => { let k = 0; while (k < t.length - 1 && t[k] < x) k++; return k; }; // indice del cuadro de ese tiempo
+    const a0 = ev.length ? idxT(ev[0]) : 0, a1 = ev.length ? idxT(ev[ev.length - 1]) : P.length - 1;
     const vNado = a1 > a0 ? Math.abs(cx[a1] - cx[a0]) * mPorPx / (t[a1] - t[a0]) : NaN;
     kpi('Ciclos de brazada', ciclos, 'en el video'); kpi('Ritmo', r1(rt), 'ciclos por minuto');
     if (vNado > 0.2 && vNado < 3) {
@@ -589,7 +610,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     kpi('Ritmo', r1(ritmo(ev)), 'por minuto'); kpi('Repeticiones', ev.length, 'cada rodilla al pecho');
     const cad = serie((p) => mid(p, 23, 24)[1]), sube = (pct(cad, 0.9) - pct(cad, 0.1)) * mPorPx * 100;
     kpi('Movimiento de cadera', r1(sube), 'cm (aprox.)');
-    if (sube > 12) aviso(`La cadera sube y baja mucho (~${r1(sube)} cm): mantén la plancha firme.`); else bien('Cadera estable en plancha.');
+    if (sube > 12) aviso(`La cadera sube y baja mucho (~${r1(sube)} cm): mantén la plancha firme.`); else if (ev.length) bien('Cadera estable en plancha.');
     return fin('Reps', 'por minuto', ev);
   }
 
@@ -597,20 +618,21 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
   const cand = {
     cadera: serie((p) => (mid(p, 27, 28)[1] - mid(p, 23, 24)[1]) / torsoPx),
     brazos: serie((p) => (mid(p, 11, 12)[1] - mid(p, 15, 16)[1]) / torsoPx),
+    brazoI: serie((p) => (p[11][1] - p[15][1]) / torsoPx), brazoD: serie((p) => (p[12][1] - p[16][1]) / torsoPx), // v2.36.8 ondas alternas
     munecas: serie((p) => dist(p[15], p[16]) / torsoPx),
     pies: serie((p) => dist(p[27], p[28]) / torsoPx),
     rodilla: serie((p) => ang(p[lado.cad], p[lado.rod], p[lado.tob])),
   };
-  const usar = { burpees: ['cadera'], jacks: ['brazos', 'pies'], ondas: ['brazos'], generico: Object.keys(cand) }[tipo];
+  const usar = { burpees: ['cadera'], jacks: ['brazos', 'pies'], ondas: ['brazos', 'brazoI', 'brazoD'], ski: ['brazos'], generico: ['cadera', 'brazos', 'munecas', 'pies', 'rodilla'] }[tipo];
   let mejor = null;
   for (const k of usar) {
-    const piv = pivotes(cand[k], 0.5), altos = piv.filter((q) => q.tipo === (k === 'cadera' || k === 'rodilla' ? 'bajo' : 'alto'));
+    const piv = pivotes(cand[k], 0.5, k === 'rodilla' ? 10 : 0.08), altos = piv.filter((q) => q.tipo === (k === 'cadera' || k === 'rodilla' ? 'bajo' : 'alto'));
     const ev = tiempos(altos), dif = []; for (let j = 1; j < ev.length; j++) dif.push(ev[j] - ev[j - 1]);
     const cv = dif.length > 1 ? Math.sqrt(media(dif.map((d) => (d - media(dif)) ** 2))) / media(dif) : 9;
     if (!mejor || (ev.length >= 2 && cv < mejor.cv)) mejor = { ev, cv };
   }
   const ev = mejor ? mejor.ev : [];
-  const nombre = { burpees: 'Burpees', jacks: 'Jumping jacks', ondas: 'Ondas', generico: 'Movimientos' }[tipo];
+  const nombre = { burpees: 'Burpees', jacks: 'Jumping jacks', ondas: 'Ondas', ski: 'Tirones', generico: 'Movimientos' }[tipo];
   kpi('Ritmo', r1(ritmo(ev)), 'por minuto'); kpi(nombre, ev.length, 'en el video');
   if (mejor && mejor.cv < 0.25 && ev.length >= 4) bien('Ritmo constante.'); else if (ev.length >= 4) aviso('El ritmo cambia bastante a lo largo del video (cansancio o pausas).');
   return fin(nombre, 'por minuto', ev);
@@ -674,8 +696,9 @@ export function dibujoActividad(fuente, full, fps, a, balon = null) {
         const coma = (x) => String(x).replace('.', ',');
         ctx.textAlign = 'right'; ctx.fillStyle = COL.amarillo; ctx.font = `700 38px ${FUENTE}`;
         ctx.fillText(ult.fuerza != null ? `Golpe ~${ult.fuerza} kg · ${coma(ult.v)} m/s` : `Golpe ${coma(ult.v)} m/s`, OW - 40, VH + 150);
-        const fMax = Math.max(...hechos.map((e) => e.fuerza ?? -1));
-        if (fMax > 0) { ctx.fillStyle = COL.gris; ctx.font = `600 30px ${FUENTE}`; ctx.fillText(`Máx. ~${fMax} kg`, OW - 40, VH + 205); }
+        // v2.36.8 el mismo criterio que la tarjeta «Golpe más fuerte» del informe (sin pasarse de ese valor)
+        const fMax = Math.min(Math.max(...hechos.map((e) => e.fuerza ?? -1)), a.fuerzaGolpe?.max ?? Infinity);
+        if (fMax > 0) { ctx.fillStyle = COL.gris; ctx.font = `600 30px ${FUENTE}`; ctx.fillText(`Más fuerte ~${fMax} kg`, OW - 40, VH + 205); }
       }
     }
     // v2.35.0 deportes: velocidad del balón y fuerza del último contacto, debajo del ritmo
@@ -683,7 +706,7 @@ export function dibujoActividad(fuente, full, fps, a, balon = null) {
       const ult = hechos[hechos.length - 1];
       if (ult && ult.kmh != null) {
         ctx.textAlign = 'right'; ctx.fillStyle = COL.amarillo; ctx.font = `700 38px ${FUENTE}`;
-        ctx.fillText(`${queVuela} ~${ult.kmh} km/h${ult.medido ? ' ✓' : ''} · ${ult.fuerza} kg`, OW - 40, VH + 150);
+        ctx.fillText(`${queVuela} ~${ult.kmh} km/h${ult.medido ? ' ✓' : ''}${ult.fuerza != null ? ` · ${ult.fuerza} kg` : ''}`, OW - 40, VH + 150);
         const mx = Math.max(...hechos.map((e) => e.kmh ?? -1));
         ctx.fillStyle = COL.gris; ctx.font = `600 30px ${FUENTE}`; ctx.fillText(`Máx. ~${mx} km/h`, OW - 40, VH + 205);
       } else if (a.tipo === 'basquet' && ult && ult.brazo != null) { // v2.36.6 solo cuerpo: brazo y mejor salto
