@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 19:48 · v2.36.7 — El salto de básquet salía el doble
+- **Pidió:** ¿de verdad saltó 32 cm?
+- **Revisión:** no. Se medía la subida de la cadera desde la flexión previa al salto (sentadilla): 28-32 cm. Los pies
+  solo se despegaron ~10 cm (tobillo de 715 a 693 px con ~0,0043 m/px).
+- **Hecho:** `saltoCm` = pie más bajo en el vuelo (±0,35 s) respecto al piso antes y después (mediana de 0,4-1 s
+  antes y después), con la escala de ese cuadro. Su tiro: 11 cm. Vóley sintético sigue en 39-40 cm.
+
 ### 19:27 · v2.36.6 — Básquet: el video no mostraba estadísticas
 - **Pidió:** ya detecta los tiros (incluso el 3.º) pero abajo en el video no salía ninguna estadística.
 - **Causa:** desde 2.36.5 la velocidad del balón solo sale con la IA del balón; con «Solo cuerpo» el panel quedaba vacío.

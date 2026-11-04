@@ -386,11 +386,15 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     // choque: el pie/mano (masa efectiva M, a velocidad v) golpea un balon quieto (masa m); e = rebote. Fuerza media
     // del impacto = cantidad de movimiento del balon / tiempo de contacto. Devuelve km/h y kg.
     const choque = (v, M, m, e, tc) => { const vb = v * (1 + e) * M / (M + m); return { vb, kmh: vb * 3.6, kg: m * vb / tc / 9.81 }; };
-    const caderaY = serie((p) => (p[23][1] + p[24][1]) / 2);
-    const saltoCm = (i) => { // cuanto sube la cadera respecto a estar de pie (ventana de 2 s alrededor)
-      const a = Math.max(0, i - Math.round(1.2 * fr)), b = Math.min(P.length - 1, i + Math.round(0.8 * fr));
-      const tramo = caderaY.slice(a, b + 1), base = pct(tramo, 0.8), alto = Math.min(...tramo.filter(Number.isFinite));
-      return Number.isFinite(base - alto) ? (base - alto) * mPorPx * 100 : NaN;
+    // v2.36.7 altura del salto = cuanto se despegan los PIES del piso (el pie mas bajo respecto a donde estaba antes y
+    // despues del salto). Antes se media la cadera desde la sentadilla previa y salia el doble (32 cm en un salto de 10).
+    const pieY = P.map((p) => (p ? Math.max(p[27][1], p[28][1]) : NaN));
+    const saltoCm = (i) => {
+      const r = (a, b) => pieY.slice(Math.max(0, i + Math.round(a * fr)), Math.max(0, i + Math.round(b * fr)) + 1).filter(Number.isFinite);
+      const piso = med([...r(-1.0, -0.4), ...r(0.4, 1.0)]), vuelo = r(-0.35, 0.35);
+      if (!Number.isFinite(piso) || !vuelo.length) return NaN;
+      const alto = Math.min(...vuelo), e = escI[i] || mPorPx;
+      return Math.max(0, (piso - alto) * e * 100);
     };
     // IA del balon (analisis completo): velocidad medida justo despues del contacto, siguiendo al balon cuadro a cuadro
     const B = Array.isArray(cfg.balon) && cfg.balon.length === P.length ? cfg.balon : null;
