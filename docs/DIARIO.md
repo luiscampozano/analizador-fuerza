@@ -8,6 +8,21 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 21:00 · v2.36.10 — Pesas (parte 2) y salto de básquet imposible
+- **Pidió:** seguir con la parte 2; en su último video de básquet el último salto salió 231 cm.
+- **Básquet:** el tercer tiro, lejos y con la cámara moviéndose: la IA perdió los pies. `saltoCm` usa solo puntos del
+  pie con visibilidad ≥ 0,5 y descarta más de 80 cm.
+- **Pesas (banco 44/62 igual; muñecos 3366; PIERNAS 551/551):**
+  - Hack/péndulo (riel con detector del cuerpo): altura vertical ÷ sen α = recorrido por el riel (antes −21 %).
+  - Cámara en diagonal: `anchoHombros` (ancho de hombros / torso) y `acostado` en fisica.js; aviso «📐 grabaste en
+    diagonal» con 0,38-0,6 de pie o 0,38-1,3 acostado, salvo ejercicios que se graban de frente (muñecos: 90° 0,1;
+    60° 0,4; 45° 0,5-0,7; 0° 0,77). En el banco avisa en 20/62 (muchos videos de Luis son en diagonal).
+  - Trayectoria: desvío = percentil 85 (no el máximo).
+  - RIR por «zona pesada»/relación general solo con ecuación validada o MVT personal (6 curls iguales a 0,53 m/s
+    daban RIR 0,5; ahora ≥ 5).
+  - Tope del 1RM por peso corporal para todos los métodos (3,5× o el de la ecuación).
+- **No se tocó (riesgo para el conteo, probado antes):** zancada con cadera/piso (empeora muñecos alternos), step-up.
+
 ### 20:48 · v2.36.9 — Revisión independiente del analizador de pesas (parte 1)
 - **Pidió:** incluir pesas en la revisión independiente.
 - **Hecho (medido con el banco: 44/62 igual; muñecos 3364 → 3366; PIERNAS 551/551):**

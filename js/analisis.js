@@ -38,6 +38,11 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
     out.notas.unshift(`⚠️ La IA vio con dificultad ${que} (se tapan o salen del cuadro), así que el conteo de reps y las velocidades pueden fallar. Graba de lado, con el celular fijo, buena luz y sin que la máquina o la otra pierna tapen.`);
     out.calidadBaja = true;
   }
+  // v2.36.10 camara en diagonal: aviso (solo en ejercicios que se graban de lado)
+  if (Number.isFinite(res.anchoHombros) && res.anchoHombros > 0.38 && res.anchoHombros < (res.acostado ? 1.3 : 0.6) && !/de frente/i.test(ej.hint || '')) {
+    out.notas.unshift('📐 Parece que grabaste en diagonal: así el recorrido y la velocidad pueden equivocarse 15-40 %. Para medir bien, graba exactamente de lado.');
+    out.diagonal = true;
+  }
   if (!reps.length) return out;
   const vel = reps.map((r) => r.v_media);
   const iMejor = vel.indexOf(Math.max(...vel));
@@ -105,7 +110,8 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
   // o con tu MVT personal; en maquinas y jalones la MVT es demasiado incierta.
   // v2.36.9 recorrido corto (pantorrillas, encogimientos, muñeca: 5-10 cm a ~0,1 m/s): la velocidad minima de la tabla
   // es mayor que la real y toda serie salía RIR 0 / RPE 10. Ahí solo cuenta cuánto baja la velocidad dentro de la serie.
-  const mvtFiable = !ej.rcorto && mvt > 0 && (mvt <= 0.32 || !!(pcv && pcv.mvtPersonal));
+  // v2.36.10 solo con ecuacion validada o MVT personal (con la general, 6 curls iguales a 0,53 m/s salian RIR 0,5)
+  const mvtFiable = !ej.rcorto && mvt > 0 && (!!ej.ecuacion || !!(pcv && pcv.mvtPersonal));
   const pesada = mvtFiable && (out.vMejor <= mvt + 0.3 || out.vUltima <= mvt + 0.12);
   if (mvt > 0 && !ej.rcorto && (pocasReps || pesada)) {
     if (pct === null && !usaPerfil && masaReal > 0 && (pocasReps || out.vMejor <= mvt + 0.3)) {
@@ -183,6 +189,9 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
     const vals = est.map((e) => e.valor), pesos = est.map((e) => e.peso || 1);
     out.rm = vals.reduce((a, v, i) => a + v * pesos[i], 0) / pesos.reduce((a, b) => a + b);
     out.rm = Math.min(out.rm, epley1RM(masaRM, nReps + 25)); // tope fisico
+    // v2.36.10 tope por peso corporal para TODOS los metodos (antes solo para el de velocidad): un single rapido daba
+    // 1RM de 3,6 veces el peso corporal
+    if (pesoCorporal > 0 && perfil !== 'corporal') out.rm = Math.min(out.rm, pesoCorporal * (TOPE_BW[ej.ecuacion] || 3.5));
     out.rmMin = Math.min(...vals); out.rmMax = Math.max(...vals);
     out.metodos = est;
     out.pct = 100 * masaRM / out.rm;

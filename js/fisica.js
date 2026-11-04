@@ -405,6 +405,9 @@ export function analizar(full, fps, ej, cfg) {
   const mMed = mediana(mPx);
   let s = cuerpo ? savgol(cuerpo.h.map((x) => x * cuerpo.T0 * mMed), fps / 2, 3)
     : savgol(rel.map((p, i) => p[0] * dirs[i][0] + p[1] * dirs[i][1]), fps / 2, 3);
+  // v2.36.10 maquina de riel (hack, pendulo) con el detector del cuerpo: la altura vertical se pasa a recorrido por el
+  // riel (vertical / sen α). Antes la velocidad y la aceleracion salian ~21 % bajas a 45-55°
+  { const senR = Math.sin((cfg.alfa || 90) * Math.PI / 180); if (cuerpo && ej.perfil === 'riel' && senR > 0.3 && senR < 0.99) s = s.map((x) => x / senR); }
   const s0 = percentil(s, 2); s = s.map((x) => x - s0);
   const v = savgol(s, fps / 2, 3, 1).map((x) => x * fps);
   const a = savgol(s, fps * 0.75, 3, 2).map((x) => x * fps * fps);
@@ -591,7 +594,11 @@ export function analizar(full, fps, ej, cfg) {
   const desde = reps.length ? Math.max(0, reps[0].inicio - fps) : 0, hasta = reps.length ? Math.min(n - 1, reps[reps.length - 1].fin) : n - 1;
   for (let i = desde; i <= hasta; i++) for (const k of MP[ej.punto] || []) { sv += full[i][k][2] || 0; nv++; }
   const visPunto = nv ? sv / nv : 1;
-  return { n, fps, s, v, a, fuerza, potencia, dirs, estatico, reps, valido, visPunto, conteo };
+  // v2.36.10 angulo de la camara: ancho de hombros visto / largo del torso. De lado ~0,1-0,3; de frente ~0,7-0,8; en
+  // diagonal (~45°) ~0,4-0,6, y ahi recorrido y velocidad se equivocan 15-40 % (muñecos 3D)
+  const anchoHombros = mediana(full.slice(desde, hasta + 1).map((f) => Math.hypot(f[11][0] - f[12][0], f[11][1] - f[12][1]) / (Math.hypot((f[11][0] + f[12][0]) / 2 - (f[23][0] + f[24][0]) / 2, (f[11][1] + f[12][1]) / 2 - (f[23][1] + f[24][1]) / 2) || 1)).filter(Number.isFinite));
+  const acostado = mediana(full.slice(desde, hasta + 1).map((f) => Math.abs(Math.atan2((f[11][0] + f[12][0] - f[23][0] - f[24][0]) / 2, (f[23][1] + f[24][1] - f[11][1] - f[12][1]) / 2)) * 180 / Math.PI)) > 50;
+  return { n, fps, s, v, a, fuerza, potencia, dirs, estatico, reps, valido, visPunto, conteo, anchoHombros, acostado };
 }
 
 // Movimientos de preparacion contados como rep (acomodarse en la banca, acostarse, desenganchar, pararse al final):

@@ -117,12 +117,14 @@ export function calcularTrayectoria(full, fps, res, ej, seguido, mPx) {
   const porRep = res.reps.map((r) => {
     const ini = r.inicio, tope = r.tope;
     if (!vertical || !Number.isFinite(sx[ini]) || !Number.isFinite(sx[tope])) return { desvio: null };
-    let maxDx = 0, minX = Infinity, maxX = -Infinity;
+    let minX = Infinity, maxX = -Infinity; const dxs = [];
     for (let i = ini; i <= tope; i++) {
       if (!Number.isFinite(sx[i])) continue;
-      maxDx = Math.max(maxDx, Math.abs(sx[i] - sx[ini]) * mPx[i]);
+      dxs.push(Math.abs(sx[i] - sx[ini]) * mPx[i]);
       minX = Math.min(minX, sx[i]); maxX = Math.max(maxX, sx[i]);
     }
+    // v2.36.10 percentil 85 en vez del maximo: el temblor de un instante (camara en mano) no es desvio de la barra
+    const maxDx = dxs.length ? dxs.sort((p, q) => p - q)[Math.floor(0.85 * (dxs.length - 1))] : 0;
     const vert = Math.abs(sy[tope] - sy[ini]) * mPx[tope];
     return { desvio: maxDx * 100, ancho: (maxX - minX) * mPx[tope] * 100, vertical: vert * 100 };
   });

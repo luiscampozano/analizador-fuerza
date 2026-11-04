@@ -401,13 +401,14 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     // v2.36.7 altura del salto = cuanto se despegan los PIES del piso (el pie mas bajo respecto a donde estaba antes y
     // despues del salto). Antes se media la cadera desde la sentadilla previa y salia el doble (32 cm en un salto de 10).
     // v2.36.8 el punto mas bajo de talones y puntas (en el aire el pie va en punta: el tobillo subia 8-9 cm de mas)
-    const pieY = P.map((p) => (p ? Math.max(p[29][1], p[30][1], p[31][1], p[32][1]) : NaN));
+    const pieY = P.map((p) => { if (!p) return NaN; const ys = [29, 30, 31, 32].filter((k) => (p[k][2] ?? 1) >= 0.5).map((k) => p[k][1]); return ys.length >= 2 ? Math.max(...ys) : NaN; }); // solo puntos del pie bien vistos
     const saltoCm = (i) => {
       const r = (a, b) => pieY.slice(Math.max(0, i + Math.round(a * fr)), Math.max(0, i + Math.round(b * fr)) + 1).filter(Number.isFinite);
       const piso = med([...r(-1.0, -0.4), ...r(0.4, 1.0)]), vuelo = r(-0.35, 0.35);
       if (!Number.isFinite(piso) || !vuelo.length) return NaN;
       const alto = Math.min(...vuelo), e = escI[i] || mPorPx;
-      return Math.max(0, (piso - alto) * e * 100);
+      const cm = Math.max(0, (piso - alto) * e * 100);
+      return cm > 80 ? NaN : cm; // v2.36.10 mas de 80 cm en un tiro o remate no es creible: la IA perdio los pies (persona lejos, camara moviendose)
     };
     // IA del balon (analisis completo): velocidad medida justo despues del contacto, siguiendo al balon cuadro a cuadro
     const B = Array.isArray(cfg.balon) && cfg.balon.length === P.length ? cfg.balon : null;
