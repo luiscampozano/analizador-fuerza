@@ -23,7 +23,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.36.8';
+const VERSION = '2.36.9';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -674,7 +674,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   pintarPierna(inf, desde);
   if (s.rm) {
     if (corporal) {
-      $('r-rm').innerHTML = `${s.rmLastre >= 0 ? '+' : ''}${fmt(s.rmLastre, 1)} <small>kg de lastre</small>`;
+      $('r-rm').innerHTML = s.rmLastre >= 0 ? `+${fmt(s.rmLastre, 1)} <small>kg de lastre</small>` : `${fmt(-s.rmLastre, 1)} <small>kg de asistencia</small>`;
       $('r-rm-sub').textContent = `para 1 repetición · masa total que moverías ≈ ${fmt(s.rm)} kg`;
     } else {
       $('r-rm').innerHTML = `${fmt(s.rm, 1)} <small>kg</small>`;
@@ -688,7 +688,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   $('r-vel').textContent = fmt(s.vMejor, 2);
   $('r-perd').textContent = fmt(s.perdida) + ' %'; $('r-fatiga').textContent = 'fatiga ' + (s.fatiga || '').toLowerCase();
   $('r-est').innerHTML = Number.isFinite(inf.estatico) ? `${fmt(inf.estatico)} <small>kg</small>` : '--';
-  $('r-est-sub').textContent = e.perfil === 'riel' ? `en el riel a ${d.alfa}°` : corporal ? 'de tu cuerpo + lastre' : 'carga vertical';
+  $('r-est-sub').textContent = e.perfil === 'riel' ? `en el riel a ${d.alfa}°` : corporal ? (e.asistido ? 'de tu cuerpo − asistencia' : 'de tu cuerpo + lastre') : 'carga vertical';
   $('r-fpico').textContent = fmt(s.fPico); $('r-ppico').textContent = fmt(s.pPico);
 
   // video
@@ -734,7 +734,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   // cargas sugeridas
   const paso = e.perfil === 'polea' ? 2.5 : e.carro === 0 && e.perfil === 'libre' ? 1 : 2.5;
   $('r-cargas').innerHTML = (s.tablaCargas || []).map((c) => `<tr><td>${c.reps} ${c.reps === 1 ? 'rep' : 'reps'}</td>
-    <td><b>${corporal ? '+' : ''}${fmt(redondear(c.carga, paso), paso < 1 ? 1 : paso % 1 ? 1 : 0)} kg</b>${corporal ? ' lastre' : ''}</td>
+    <td><b>${corporal && c.carga >= 0 ? '+' : ''}${fmt(redondear(Math.abs(c.carga), paso), paso < 1 ? 1 : paso % 1 ? 1 : 0)} kg</b>${corporal ? (c.carga >= 0 ? ' lastre' : ' asistencia') : ''}</td>
     <td>${fmt(100 / (1 + (c.reps === 1 ? 0 : c.reps) / 30))} %</td></tr>`).join('') || '<tr><td colspan="3">—</td></tr>';
   $('r-metodos').textContent = s.metodos && s.metodos.length ? 'Estimado con: ' + s.metodos.map((m) => `${m.metodo} → ${fmt(m.valor, 1)} kg`).join(' · ') + '.' : '';
 

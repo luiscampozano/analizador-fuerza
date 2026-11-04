@@ -58,19 +58,27 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
   let rirVel = null;
   if (desde.length >= 3) {
     const reg = regresion(desde.map((_, i) => i), desde.map((r) => r.v_media));
-    if (reg && reg.b < -0.005) rirVel = lim((out.vUltima - mvt) / -reg.b, 0, 12);
+    // recorrido corto: el fallo llega a ~45 % de la mejor velocidad (no a la velocidad minima de la tabla)
+    const mvtT = ej.rcorto ? 0.45 * out.vMejor : mvt;
+    if (reg && reg.b < -0.005) rirVel = lim((out.vUltima - mvtT) / -reg.b, 0, 12);
     else out.notas.push('La velocidad casi no bajó durante la serie: te quedaron bastantes repeticiones en reserva.');
   }
-  if (rirVel === null && desde.length >= 3 && out.vUltima <= mvt * 1.15) rirVel = 0;
+  if (rirVel === null && !ej.rcorto && desde.length >= 3 && out.vUltima <= mvt * 1.15) rirVel = 0;
 
   // 2) %1RM por ecuacion carga-velocidad de referencia (solo ejercicios con ecuacion validada)
   let pct = null;
   const masaReal = perfil === 'corporal' ? masaTotal : carga;
+  // v2.36.9 la parte del cuerpo que se mueve (peso corporal × fracción). En asistidos «carga» es la asistencia: antes
+  // se calculaba masaTotal − carga y la asistencia se restaba dos veces (salía «+45 kg de lastre» con 30 kg de ayuda)
+  const cuerpoKg = perfil === 'corporal' ? (pesoCorporal > 0 ? pesoCorporal * (ej.fraccion || 1) : ej.asistido ? masaTotal + carga : masaTotal - carga) : 0;
+  // el 1RM real que guardas en Entrenar en ejercicios de peso corporal es el LASTRE: se pasa a masa total
+  if (rmReal > 0 && perfil === 'corporal') rmReal = rmReal + cuerpoKg;
   if (rmReal > 0 && masaReal > 0) {
     // 1RM real registrado por el usuario: manda sobre las ecuaciones de velocidad (que son del promedio de la gente)
     pct = lim(100 * masaReal / rmReal, 30, 100);
     out.ecuacion = 'tu 1RM real'; out.rmReal = rmReal;
-    out.notas.push(`Se usó tu 1RM real (${r1(rmReal, 1)} kg): esta carga es el ${Math.round(100 * masaReal / rmReal)} % de tu máximo.`);
+    out.notas.push(perfil === 'corporal' ? `Se usó tu 1RM real (${r1(rmReal - cuerpoKg, 1) >= 0 ? '+' : ''}${r1(rmReal - cuerpoKg, 1)} kg de lastre): esta serie es el ${Math.round(100 * masaReal / rmReal)} % de tu máximo.`
+      : `Se usó tu 1RM real (${r1(rmReal, 1)} kg): esta carga es el ${Math.round(100 * masaReal / rmReal)} % de tu máximo.`);
   } else if (ej.ecuacion && ECUACIONES[ej.ecuacion]) {
     pct = lim(ECUACIONES[ej.ecuacion].f(out.vMejor), 30, 100);
     out.ecuacion = ECUACIONES[ej.ecuacion].ref;
@@ -95,9 +103,11 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
   // maximo aunque la velocidad no haya caido entre reps (p. ej. todas las reps lentas). Vale para cualquier numero de reps.
   // Solo en ejercicios con velocidad minima bien estudiada (sentadilla, banca, peso muerto y similares, MVT <= 0,32)
   // o con tu MVT personal; en maquinas y jalones la MVT es demasiado incierta.
-  const mvtFiable = mvt > 0 && (mvt <= 0.32 || !!(pcv && pcv.mvtPersonal));
+  // v2.36.9 recorrido corto (pantorrillas, encogimientos, muñeca: 5-10 cm a ~0,1 m/s): la velocidad minima de la tabla
+  // es mayor que la real y toda serie salía RIR 0 / RPE 10. Ahí solo cuenta cuánto baja la velocidad dentro de la serie.
+  const mvtFiable = !ej.rcorto && mvt > 0 && (mvt <= 0.32 || !!(pcv && pcv.mvtPersonal));
   const pesada = mvtFiable && (out.vMejor <= mvt + 0.3 || out.vUltima <= mvt + 0.12);
-  if (mvt > 0 && (pocasReps || pesada)) {
+  if (mvt > 0 && !ej.rcorto && (pocasReps || pesada)) {
     if (pct === null && !usaPerfil && masaReal > 0 && (pocasReps || out.vMejor <= mvt + 0.3)) {
       const pg = lim(100 - PENDIENTE_GEN * (out.vMejor - mvt), 30, 100);
       const rmVel = masaReal / (pg / 100);
@@ -153,16 +163,22 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
     out.rpe = pocas ? null : 5;
   }
   out.rpeTexto = out.rpe === null ? '—' : out.rpe <= 5 ? '≤ 5' : String(out.rpe).replace('.', ',');
+  // v2.36.9 saltos, olímpicos, swing y lanzamientos: se hacen rápido a propósito y lejos del fallo; la velocidad no dice
+  // cuántas reps quedan ni el 1RM (salía «+48 kg de lastre para 1 rep» en sentadilla con salto)
+  if (ej.balistico) {
+    out.rir = null; out.rirTexto = '—'; out.rpe = null; out.rpeTexto = '—';
+    out.notas.push('Ejercicio explosivo: aquí lo que importa es la velocidad y la potencia de cada rep. El RIR y el 1RM no se estiman.');
+  }
 
   // 3) 1RM estimado (en las mismas unidades que la carga), combinando metodos
   const est = [];
   const rirParaRM = out.rir ?? 5;
   const masaRM = perfil === 'corporal' ? masaTotal : carga;
-  if (masaRM > 0 && !pocas) {
+  if (masaRM > 0 && !pocas && !ej.balistico) {
     est.push({ metodo: 'Repeticiones + RIR (Epley)', valor: rmDesde(masaRM, nReps + rirParaRM) });
     if (pct !== null) est.push(out.rmReal ? { metodo: 'Tu 1RM real', valor: out.rmReal, peso: 2 } : { metodo: 'Velocidad (' + out.ecuacion + ')', valor: masaRM / (pct / 100) });
   }
-  if (rmPerfil) est.push({ metodo: `Tu perfil carga-velocidad (confianza ${pcv.confianza})`, valor: rmPerfil, peso: pcv.confianza === 'alta' ? 2 : 1 });
+  if (rmPerfil && !ej.balistico) est.push({ metodo: `Tu perfil carga-velocidad (confianza ${pcv.confianza})`, valor: rmPerfil, peso: pcv.confianza === 'alta' ? 2 : 1 });
   if (est.length) {
     const vals = est.map((e) => e.valor), pesos = est.map((e) => e.peso || 1);
     out.rm = vals.reduce((a, v, i) => a + v * pesos[i], 0) / pesos.reduce((a, b) => a + b);
@@ -171,11 +187,11 @@ export function analizarSerie(res, ej, { carga, masaTotal, pesoCorporal, perfil,
     out.metodos = est;
     out.pct = 100 * masaRM / out.rm;
     if (perfil === 'corporal') {
-      out.rmLastre = out.rm - (masaTotal - carga); // lo que podrias colgarte como lastre en 1 rep
+      out.rmLastre = out.rm - cuerpoKg; // lo que podrias colgarte como lastre en 1 rep (negativo = asistencia que necesitas)
     }
     out.tablaCargas = [1, 2, 3, 5, 6, 8, 10, 12, 15].map((rp) => {
       let w = rp === 1 ? out.rm : cargaParaReps(out.rm, rp);
-      if (perfil === 'corporal') w -= (masaTotal - carga);
+      if (perfil === 'corporal') return { reps: rp, carga: w - cuerpoKg }; // negativo = asistencia
       return { reps: rp, carga: Math.max(0, w) };
     });
   }

@@ -8,6 +8,27 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 20:48 · v2.36.9 — Revisión independiente del analizador de pesas (parte 1)
+- **Pidió:** incluir pesas en la revisión independiente.
+- **Hecho (medido con el banco: 44/62 igual; muñecos 3364 → 3366; PIERNAS 551/551):**
+  - **fisica.js:** contador por ángulos: primero el tope y luego el despegue (antes reps de 0 cm y velocidad
+    negativa); `marcarReps` marca parcial toda rep que no sube; `v_media` = velocidad entre el 5 y el 95 % del
+    recorrido (con quietud o deriva antes/después daba pérdidas de 20-60 % falsas; en muñecos de reps idénticas,
+    series con pérdida ≥ 20 %: 39 → 15) con respaldo a la media completa si el recorrido ocurre «de golpe»;
+    `v_total` (media completa) para el filtro de 2 m/s; picos de fuerza y potencia = percentil 90 (videos reales con
+    picos imposibles 15 → 8); bajada de la última rep acotada; `MP.puntas`.
+  - **analisis.js:** asistidas: lastre/asistencia con peso corporal × fracción (antes «+45 kg de lastre» con 30 kg de
+    ayuda; ahora «14,7 kg de asistencia»), también en la tabla de cargas y el PDF; 1RM real de Entrenar en peso corporal
+    = lastre + cuerpo (antes «287 % de tu máximo»); recorrido corto (`rcorto`: pantorrillas, encogimientos, curl de
+    muñeca) sin zona pesada ni MVT de tabla (antes RIR 0/RPE 10 siempre); explosivos (`balistico`: saltos,
+    olímpicos, swing, lanzamiento) sin RIR ni 1RM.
+  - **ejercicios.js:** pantorrilla sentado (ancla puntas), en prensa y en máquina (punto puntas, ancla tobillos): antes 0
+    reps; crunch máquina/declinado sentido «arriba»; fondos, fondos en banco y muscle up con ancla manos; pistol y
+    rumano a una pierna con ancla piso; abdominales, elevaciones de piernas, hiperextensión, superman y crunch como
+    aproximados (fuerza/potencia).
+- **Pendiente (parte 2):** hack medido en vertical (−21 %), aviso de cámara en diagonal, trayectoria relativa al ancla,
+  step-up y zancada, velocidad propulsiva y relación general en ejercicios sin ecuación, tope de 1RM en singles.
+
 ### 20:32 · v2.36.8 — Revisión independiente de cardio y deportes (js/actividad.js)
 - **Pidió:** revisar todos los ejercicios con un Claude independiente, uno por uno, para no tener más errores como el
   del salto. (El de pesas sigue en revisión.)

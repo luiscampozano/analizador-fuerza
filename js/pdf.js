@@ -155,7 +155,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
     doc.text('Rep más rápida, del video con telemetría', W - M - anchoImg / 2, y + altoImg + 4, { align: 'center' });
   }
   const kpis = [
-    ['1RM ESTIMADO', s.rm ? (corporal ? `${s.rmLastre >= 0 ? '+' : ''}${fmt(s.rmLastre, 1)} kg lastre` : `${fmt(s.rm, 1)} kg`) : '--', s.pct ? `serie al ${fmt(s.pct)} % del 1RM` : ''],
+    ['1RM ESTIMADO', s.rm ? (corporal ? (s.rmLastre >= 0 ? `+${fmt(s.rmLastre, 1)} kg lastre` : `${fmt(-s.rmLastre, 1)} kg asistencia`) : `${fmt(s.rm, 1)} kg`) : '--', s.pct ? `serie al ${fmt(s.pct)} % del 1RM` : ''],
     ['RPE', limpio(s.rpeTexto ?? '--'), 'esfuerzo (1-10)'],
     ['RIR', limpio(s.rirTexto ?? '--'), 'reps en reserva'],
     ['REPS', String(inf.reps.length), s.validas < inf.reps.length ? `${inf.reps.length - s.validas} parcial(es)` : 'completas'],
@@ -248,7 +248,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   if ((s.tablaCargas || []).length) {
     const paso = e.perfil === 'polea' ? 2.5 : e.carro === 0 && e.perfil === 'libre' ? 1 : 2.5;
     tabla('Cargas sugeridas según el 1RM estimado', ['Reps objetivo', 'Carga', '% 1RM'],
-      s.tablaCargas.map((c) => [`${c.reps} ${c.reps === 1 ? 'rep' : 'reps'}`, `${corporal ? '+' : ''}${fmt(Math.round(c.carga / paso) * paso, paso % 1 ? 1 : 0)} kg${corporal ? ' lastre' : ''}`,
+      s.tablaCargas.map((c) => [`${c.reps} ${c.reps === 1 ? 'rep' : 'reps'}`, `${corporal && c.carga >= 0 ? '+' : ''}${fmt(Math.round(Math.abs(c.carga) / paso) * paso, paso % 1 ? 1 : 0)} kg${corporal ? (c.carga >= 0 ? ' lastre' : ' asistencia') : ''}`,
         `${fmt(100 / (1 + (c.reps === 1 ? 0 : c.reps) / 30))} %`]), { tableWidth: 110 });
     if (s.metodos && s.metodos.length) {
       doc.setFontSize(8); doc.setTextColor(...C.gris);

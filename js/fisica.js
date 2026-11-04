@@ -10,6 +10,7 @@ export const MP = {
   hombros: [11, 12], codos: [13, 14], manos: [15, 16], cadera: [23, 24], rodillas: [25, 26], pies: [27, 28],
   mano_i: [15, 15], mano_d: [16, 16], hombro_i: [11, 11], hombro_d: [12, 12],
   pie_i: [27, 27], pie_d: [28, 28], rodilla_i: [25, 25], rodilla_d: [26, 26],
+  puntas: [31, 32], // v2.36.9 puntas de los pies (pantorrilla en prensa y en máquina)
 };
 const ANCLAS = { cadera: MP.cadera, hombros: MP.hombros, tobillos: MP.pies, rodillas: MP.rodillas, codos: MP.codos, ninguna: null, manos: MP.manos, puntas: [31, 32],
   hombro_i: MP.hombro_i, hombro_d: MP.hombro_d, piso: MP.pies };
@@ -188,7 +189,8 @@ export function anguloArticular(full, cual, fps) {
 // movimiento de camara o un tiron). Ninguna de las dos cuenta como referencia de velocidad.
 export function marcarReps(reps) {
   const medRec = mediana(reps.map((x) => x.recorrido_cm));
-  reps.forEach((x) => { x.parcial = x.recorrido_cm < 0.5 * medRec; x.atipica = false; });
+  // v2.36.9 una rep que no sube (velocidad media <= 0 o recorrido < 1 cm) no se puede medir: cuenta como parcial
+  reps.forEach((x) => { x.parcial = x.recorrido_cm < 0.5 * medRec || !(x.v_media > 0) || x.recorrido_cm < 1; x.atipica = false; });
   const normales = reps.filter((x) => !x.parcial);
   if (normales.length >= 4) {
     const mv = mediana(normales.map((x) => x.v_media)), mr = mediana(normales.map((x) => x.recorrido_cm));
@@ -455,6 +457,7 @@ export function analizar(full, fps, ej, cfg) {
   }
   // metricas de una rep a partir de su despegue (ini), su tope (pk) y su final (fin)
   const media = (arr) => arr.reduce((x, y) => x + y, 0) / (arr.length || 1);
+  const p90 = (arr) => { const b = arr.filter(Number.isFinite).sort((x, y) => x - y); return b.length ? b[Math.floor(0.9 * (b.length - 1))] : 0; };
   const medir = (ini, pk, fin) => {
     const seg = (arr) => arr.slice(ini, pk + 1);
     let trabajo = 0;
@@ -463,9 +466,19 @@ export function analizar(full, fps, ej, cfg) {
       inicio: ini, tope: pk, fin,
       recorrido_cm: (s[pk] - s[ini]) * 100,
       t_subida: (pk - ini) / fps, t_bajada: (fin - pk) / fps,
-      v_media: media(seg(v)), v_pico: Math.max(...seg(v)),
-      f_media: media(seg(fuerza)), f_pico: Math.max(...seg(fuerza)),
-      p_media: media(seg(potencia).map((x) => Math.max(0, x))), p_pico: Math.max(...seg(potencia)),
+      // v2.36.9 velocidad media entre el 5 % y el 95 % del recorrido: si la persona se queda casi quieta antes del
+      // despegue o al llegar arriba (o la camara deriva), ese tiempo ya no baja la velocidad (daba perdidas de 20-60 %
+      // falsas en series parejas). Es tambien mas cercana a la velocidad propulsiva de las tablas de %1RM.
+      v_media: (() => { const d = s[pk] - s[ini]; if (!(d > 0.005) || pk - ini < 3) return media(seg(v));
+        let i5 = pk; while (i5 > ini && s[i5 - 1] > s[ini] + 0.05 * d) i5--; let i95 = i5; while (i95 < pk && s[i95] < s[ini] + 0.95 * d) i95++;
+        // si casi todo el recorrido ocurre en un instante (salto de la IA, no movimiento real) se usa la media completa
+        return i95 > i5 && (i95 - i5) >= 0.4 * (pk - ini) ? 0.9 * d / ((i95 - i5) / fps) : media(seg(v)); })(),
+      v_total: media(seg(v)), // media de toda la subida (para filtros calibrados con ella)
+      v_pico: Math.max(...seg(v)),
+      // v2.36.9 picos = percentil 90 de la subida: el maximo de la 2.a derivada daba picos imposibles (4000 W en una
+      // sentadilla de 40 kg) por un solo cuadro con temblor
+      f_media: media(seg(fuerza)), f_pico: p90(seg(fuerza)),
+      p_media: media(seg(potencia).map((x) => Math.max(0, x))), p_pico: p90(seg(potencia)),
       trabajo_j: trabajo,
       // subida contada desde el 10 % del recorrido (no depende del temblor en reposo): para reconocer sacar la barra
       ts10: (() => { const u = s[ini] + 0.1 * (s[pk] - s[ini]); let k = pk; while (k > ini && s[k - 1] > u) k--; return (pk - k) / fps; })(),
@@ -488,12 +501,14 @@ export function analizar(full, fps, ej, cfg) {
     // tope = primer instante en que llega arriba (no el final del bloqueo)
     let pk = pk0; for (let i = ini; i <= pk0; i++) if (s[i] >= s[pk0] - tol) { pk = i; break; }
     const sig = pares[q][2] ?? (pares[q + 1] ? pares[q + 1][0] : n - 1);
-    const fin = Math.min(sig, i1 - 1);
+    let fin = Math.min(sig, i1 - 1);
+    // v2.36.9 la ultima rep: su bajada no puede durar hasta el final del video (tiempo bajo tension inflado)
+    if (!pares[q + 1]) fin = Math.min(fin, pk + Math.round(Math.max(1.5, 2 * (pk - ini) / fps) * fps));
     reps.push(medir(ini, pk, fin));
   }
   // al soltar o agarrar la carga las manos se mueven en otra direccion: fuera reps de borde atipicas
   // con carga nadie sube a mas de ~2 m/s de media: eso es la IA perdiendo el cuerpo un instante
-  if (cuerpo) reps = reps.filter((x) => x.v_media <= 2);
+  if (cuerpo) reps = reps.filter((x) => x.v_total <= 2);
   // con cambio de pierna, los bordes (soltar, acomodarse, cambiar de pie) se revisan en cada pierna por separado
   const limpiar = (reps) => {
   if (reps.length >= 3 && !cuerpo) {
@@ -545,13 +560,23 @@ export function analizar(full, fps, ej, cfg) {
           for (let i = a0; i <= b0; i++) if (s[i] > s[pk]) pk = i;
           for (let i = a0; i <= pk; i++) if (s[i] < s[ini]) ini = i;
         } else {
-          for (let i = a0; i <= b0; i++) if (s[i] < s[ini]) ini = i;
-          pk = ini; for (let i = ini; i <= b0; i++) if (s[i] > s[pk]) pk = i;
+          // v2.36.9 primero el tope (lo mas alto de la ventana) y luego el despegue (lo mas bajo ANTES del tope, buscando
+          // hasta 1 s atras o hasta la ventana anterior): la ventana de los angulos empieza pasado el fondo y, si se
+          // buscaba primero el minimo, a veces quedaba al final y la rep salia con 0 cm y velocidad negativa
+          // (si en la ventana la carga solo baja, el tope estuvo justo antes: tambien se busca desde 1 s antes)
+          const desde = Math.max(k ? c.reps[k - 1][1] : 0, a0 - Math.round(fps));
+          pk = a0; for (let i = a0; i <= b0; i++) if (s[i] > s[pk]) pk = i;
+          ini = pk; for (let i = desde; i <= pk; i++) if (s[i] < s[ini]) ini = i;
+          if (s[pk] - s[ini] < 0.01) { // casi sin subida: el tope se busca desde el inicio de la busqueda
+            pk = desde; for (let i = desde; i <= b0; i++) if (s[i] > s[pk]) pk = i;
+            ini = pk; for (let i = desde; i <= pk; i++) if (s[i] < s[ini]) ini = i;
+          }
         }
         if (pk - ini < 2) pk = Math.min(b0, ini + 2);
         const fin = c.reps[k + 1] ? c.reps[k + 1][0] : Math.min(n - 1, b0 + Math.round(0.5 * fps));
         return medir(ini, pk, Math.max(pk, fin));
       });
+      // v2.36.9 fuera las "reps" sin recorrido real o que bajan (velocidad <= 0): no son reps medibles
       marcarReps(reps);
       conteo.usado = 'angulos';
     }
