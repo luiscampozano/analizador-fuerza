@@ -8,6 +8,21 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-03
 
+### 19:07 · v2.36.5 — Básquet: no contaba tiros y la IA del balón no lo veía
+- **Pidió:** en básquet (video de noche, cámara en mano siguiéndolo, 3 tiros) contó 0 y en «Completo con balón» no
+  reconoció el balón.
+- **Causas:** (1) se exigía el codo estirado justo en el instante de mayor velocidad de la mano (en un tiro real ahí
+  todavía está doblado); (2) la velocidad de salida viene del golpe de muñeca final y la IA del cuerpo no la ve (salía
+  2-3 m/s); (3) el detector de balón con umbral 0,2 lo encontraba en 1 de cada 6 cuadros.
+- **Hecho (js/actividad.js):** tiro = muñeca en su punto más alto (±0,3 s) sobre la cabeza con el codo ≥135°, cabeza
+  sobre los hombros, que subió ≥0,5 torsos en los 0,8 s anteriores (con la mano que mejor se vea) y la otra mano
+  también arriba (el balón va con las dos). «Solo cuerpo»: tiros, salto y ángulo del brazo; velocidad, ángulo de
+  salida y fuerza solo cuando la IA del balón lo sigue (ajuste de su vuelo; ángulo medido). js/pose.js: umbral del
+  detector 0,08; filtro de tamaño de balón por deporte (fútbol 11 cm, básquet 12, vóley 10,5, tenis 3,3 de radio) en
+  el seguimiento y en el círculo del video.
+- **Resultado con su video:** 2 de 3 tiros (el tercero, muy lejos, no); con la IA del balón (probada en Chromium sobre
+  sus cuadros): 6 m/s y 53° de salida.
+
 ### 18:39 · v2.36.4 — «Grabar» abría la galería; el modo en vivo no giraba
 - **Pidió:** con 2.36.3 seguía igual: «Grabar» abría la galería y el modo en vivo no giraba.
 - **Causa real de Grabar:** los campos de archivo están dentro del recuadro del video; el clic que la app hace en el

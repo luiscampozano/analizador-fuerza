@@ -338,16 +338,17 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       const w = Math.max(1, Math.round(0.2 * fr)), cx = rellenar(P.map((p) => (p ? (p[23][0] + p[24][0]) / 2 : NaN))), cy = rellenar(P.map((p) => (p ? (p[23][1] + p[24][1]) / 2 : NaN)));
       return P.map((_, i) => { const j = Math.max(0, i - w); const dt = (t[i] - t[j]) || 1; return Math.abs(torsoI[i] / torsoI[j] - 1) > 0.2 || Math.hypot(cx[i] - cx[j], cy[i] - cy[j]) / torsoI[i] / dt > 15; });
     })();
-    const velDe = (k, crudo = false) => { // m/s; vy + = hacia abajo
+    const velDe = (k, crudo = false, absoluto = false) => { // m/s; vy + = hacia abajo
       // v2.36.2 posicion RESPECTO A LA CADERA y en metros con la
       // escala de cada cuadro: si la camara se mueve o sigue a la persona, no se suma su movimiento a la mano
-      const [a, b] = [23, 24]; // la cadera: asi cuenta el giro del tronco (parte del golpe) pero no el movimiento de la camara
+      const [a, b] = absoluto ? [null, null] : [23, 24]; // la cadera: asi cuenta el giro del tronco (parte del golpe) pero no el movimiento de la camara
       // v2.36.3 el antebrazo (o la pierna) mide siempre lo mismo: si la muñeca aparece mucho mas lejos o cerca del codo
       // de lo normal, la IA la puso en otro lado (en la raqueta, en otra persona) y ese cuadro no se usa
       const padre = { 15: 13, 16: 14, 27: 25, 28: 26, 31: 27, 32: 28 }[k];
       const largoMed = padre != null ? med(P.map((p) => (p ? dist(p[k], p[padre]) / ((dist(p[11], p[23]) + dist(p[12], p[24])) / 2) : NaN))) : NaN;
       const bienLargo = (p) => { if (crudo || !(largoMed > 0)) return true; const r = dist(p[k], p[padre]) / ((dist(p[11], p[23]) + dist(p[12], p[24])) / 2); return r < 1.35 * largoMed && r > 0.45 * largoMed; };
-      let x = serieVis(k, (p) => (bienLargo(p) ? p[k][0] - (p[a][0] + p[b][0]) / 2 : NaN)), y = serieVis(k, (p) => (bienLargo(p) ? p[k][1] - (p[a][1] + p[b][1]) / 2 : NaN));
+      const rx = (p) => (a == null ? 0 : (p[a][0] + p[b][0]) / 2), ry = (p) => (a == null ? 0 : (p[a][1] + p[b][1]) / 2);
+      let x = serieVis(k, (p) => (bienLargo(p) ? p[k][0] - rx(p) : NaN)), y = serieVis(k, (p) => (bienLargo(p) ? p[k][1] - ry(p) : NaN));
       // v2.36.3 limpieza de picos de un cuadro: si el punto se aparta mucho de la linea entre su cuadro anterior y el
       // siguiente (mas de lo que permite la aceleracion de una mano real), es un error de la IA (persona lejos, borrosa
       // o lados cruzados) y se reemplaza por el promedio de los vecinos. Dos pasadas (errores de 2 cuadros).
@@ -393,13 +394,17 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     };
     // IA del balon (analisis completo): velocidad medida justo despues del contacto, siguiendo al balon cuadro a cuadro
     const B = Array.isArray(cfg.balon) && cfg.balon.length === P.length ? cfg.balon : null;
+    // v2.36.5 el detector ve muchas cosas redondas: solo cuenta lo que tiene el tamaño de un balon de ese deporte
+    const RADIO = { futbol: 0.11, basquet: 0.12, voley: 0.105, raqueta: 0.033 }[tipo] || 0.11;
+    const tamBalon = (c, j) => { const r = c[2] * (escI[j] || mPorPx); return r > RADIO * 0.4 && r < RADIO * (tipo === 'raqueta' ? 4 : 2.5); };
     const balonTras = (i, punto) => {
       if (!B) return null;
-      const fin = Math.min(P.length - 1, i + Math.round(0.4 * fr)); let prev = punto, pts = [];
+      const fin = Math.min(P.length - 1, i + Math.round(0.5 * fr)); let prev = punto, pts = [];
       for (let j = Math.max(0, i - 1); j <= fin; j++) {
         const cand = B[j]; if (!cand || !cand.length) continue;
         let mejor = null, dm = Infinity;
-        for (const c of cand) { const d = prev ? Math.hypot(c[0] - prev[0], c[1] - prev[1]) : 0; if (d < dm) { dm = d; mejor = c; } }
+        for (const c of cand) { if (!tamBalon(c, j)) continue; const d = prev ? Math.hypot(c[0] - prev[0], c[1] - prev[1]) : 0; if (d < dm) { dm = d; mejor = c; } }
+        if (!mejor) continue;
         if (prev && dm > Math.max(4 * (mejor[2] || 20), 60 / mPorPx * (t[j] - t[Math.max(0, i - 1)] + 0.05))) continue; // salto imposible: otra cosa
         pts.push([t[j], mejor[0], mejor[1]]); prev = mejor;
         if (pts.length >= 7) break;
@@ -408,6 +413,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       if (tras.length < 2) return null;
       const ajuste = (k) => { const mt = media(tras.map((q) => q[0])), mk = media(tras.map((q) => q[k])); let a = 0, b = 0; for (const q of tras) { a += (q[0] - mt) * (q[k] - mk); b += (q[0] - mt) ** 2; } return b ? a / b : NaN; };
       const vb = Math.hypot(ajuste(1), ajuste(2)) * mPorPx;
+      balonTras.ang = Math.atan2(-ajuste(2), Math.abs(ajuste(1))) * 180 / Math.PI; // + = hacia arriba
       return vb > 1 && vb < 60 ? vb : null;
     };
     const coma = (x, d = 1) => String(r1(x, d)).replace('.', ',');
@@ -490,38 +496,64 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     }
 
     if (tipo === 'basquet') {
-      // tiro: la mano sube rapido por encima de los hombros y el codo se estira al soltar el balon (sin mediana: al
-      // soltar el balon la mano frena de golpe y la mediana borraria el pico)
-      const manos = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.mun, true) }));
-      const tiros = [];
+      // v2.36.5 tiro = la muñeca llega a su punto MAS ALTO sobre la cabeza con el codo estirado, despues de subir (al
+      // menos 0,5 torsos en los 0,8 s anteriores). La velocidad de salida es la mayor velocidad hacia arriba en
+      // los 0,6 s antes de ese punto (con el salto incluido: es lo que lleva el balon). Antes se exigia el codo estirado
+      // justo en el instante mas rapido y en un tiro real el codo todavia esta doblado ahi.
+      const manos = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.mun, true, true) }));
+      const tiros = [], w3 = Math.round(0.3 * fr), w5 = Math.round(0.8 * fr), w35 = Math.round(0.6 * fr);
+      // altura de las manos (la que se vea) para saber si subieron: la mano lejana a veces la IA casi no la ve
+      const altoAmbas = P.map((p, i) => { if (!p) return NaN; const hs = [15, 16].filter((k) => (p[k][2] ?? 1) >= 0.3).map((k) => (Math.min(p[11][1], p[12][1]) - p[k][1]) / torsoI[i]); return hs.length ? Math.max(...hs) : NaN; });
       for (const m of manos) {
-        const sube = m.vy.map((x) => -x), top = pct(sube, 0.995);
-        const ok = (i) => { const p = P[i]; return p && p[m.s.mun][1] < Math.min(p[11][1], p[12][1]) && !(ang(p[m.s.hom], p[m.s.cod], p[m.s.mun]) < 130); };
-        for (const i of picos(sube, Math.max(2.5, 0.5 * top), 1.5, ok)) {
-          if (tiros.some((x) => Math.abs(x.t - t[i]) < 0.5)) { const x = tiros.find((y) => Math.abs(y.t - t[i]) < 0.5); if (m.v[i] > x.v) Object.assign(x, { i, t: t[i], lado: m.nom, k: m.s.mun, v: m.v[i], ang: Math.atan2(-m.vy[i], Math.abs(m.vx[i])) * 180 / Math.PI }); continue; }
-          // empuje: desde que la mano empieza a subir hasta soltar el balon
-          let a = i; while (a > 0 && t[i] - t[a] < 0.7 && sube[a - 1] > 0.2 * sube[i]) a--;
-          const tEmp = Math.max(0.15, Math.min(0.7, t[i] - t[a]));
-          tiros.push({ i, t: t[i], lado: m.nom, k: m.s.mun, v: m.v[i], ang: Math.atan2(-m.vy[i], Math.abs(m.vx[i])) * 180 / Math.PI, tEmp, salto: saltoCm(i) });
+        const alto = P.map((p, i) => (p && (p[m.s.mun][2] ?? 1) >= 0.3 ? (Math.min(p[11][1], p[12][1]) - p[m.s.mun][1]) / torsoI[i] : NaN));
+        for (let i = 1; i < P.length - 1; i++) {
+          const h = alto[i], p = P[i]; if (!(h > 0.45) || !p || ang(p[m.s.hom], p[m.s.cod], p[m.s.mun]) < 135) continue;
+          // postura creible: la cabeza sobre los hombros y la muñeca sobre la cabeza (descarta cuadros donde la IA se confundio)
+          const hom = Math.min(p[11][1], p[12][1]); if (!(hom - p[0][1] > 0.05 * torsoI[i]) || !(p[m.s.mun][1] < p[0][1])) continue;
+          let cima = true; for (let j = Math.max(0, i - w3); j <= Math.min(P.length - 1, i + w3); j++) if (alto[j] > h) { cima = false; break; }
+          if (!cima) continue;
+          // al tirar se sube el balon con las dos manos: la otra mano (si se ve) tambien pasa sobre los hombros cerca de ese momento
+          const otra = m.s === L ? 16 : 15, vOtra = [];
+          for (let j = Math.max(0, i - w5); j <= Math.min(P.length - 1, i + w3); j++) { const q = P[j]; if (q && (q[otra][2] ?? 1) >= 0.5) vOtra.push((Math.min(q[11][1], q[12][1]) - q[otra][1]) / torsoI[j]); }
+          if (vOtra.length >= 3 && !(Math.max(...vOtra) > 0.2)) continue;
+          const previos = altoAmbas.slice(Math.max(0, i - w5), i).filter(Number.isFinite); // con la mano que mejor se vea
+          if (!previos.length || !(h - Math.min(...previos) > 0.5)) continue;
+          let b = -1, vb = 0; for (let j = Math.max(1, i - w35); j <= i; j++) { const up = -m.vy[j]; if (up > vb) { vb = up; b = j; } }
+          if (b < 0) b = i; // la IA no vio bien la mano subiendo: el tiro cuenta igual
+          let a = b; while (a > 0 && t[b] - t[a] < 0.7 && -m.vy[a - 1] > 0.2 * vb) a--;
+          const g = { i: b, cima: i, brazo: Math.atan2(p[m.s.cod][1] - p[m.s.mun][1], Math.abs(p[m.s.mun][0] - p[m.s.cod][0])) * 180 / Math.PI, t: t[b], lado: m.nom, k: m.s.mun, v: m.v[b], ang: Math.atan2(-m.vy[b], Math.abs(m.vx[b])) * 180 / Math.PI, tEmp: Math.max(0.15, Math.min(0.7, t[b] - t[a])), salto: saltoCm(i) };
+          const otro = tiros.find((x) => Math.abs(x.t - g.t) < 1.5); // la otra mano en el mismo tiro: queda la mas rapida
+          if (otro) { if (g.v > otro.v) Object.assign(otro, g); } else tiros.push(g);
         }
       }
       tiros.sort((a, b) => a.t - b.t);
-      for (const g of tiros) { g.kmh = g.v * 3.6; g.vb = g.v; g.kg = 0.62 * (g.v / (g.tEmp || 0.3) + 9.81) / 9.81; } // balon 620 g
-      // con la IA del balon: velocidad medida al salir de la mano (el empuje dura tEmp)
+      // v2.36.5 la velocidad de salida del balon viene sobre todo del golpe de muñeca final (centesimas de segundo): la
+      // IA del cuerpo no la puede medir bien. Solo se muestra cuando la IA del balon lo sigue (velocidad y angulo reales
+      // de su vuelo); con «Solo cuerpo» se dan tiros, salto y angulo del brazo.
       let medidos = 0;
-      for (const g of tiros) { const p = P[g.i], vm = balonTras(g.i, p ? [p[g.k][0], p[g.k][1]] : null); if (vm) { medidos++; g.vb = vm; g.kmh = vm * 3.6; g.kg = 0.62 * (vm / (g.tEmp || 0.3) + 9.81) / 9.81; g.medido = true; } }
-      res.eventos = tiros.map((g) => ({ t: g.t, lado: g.lado, v: r1(g.vb, 1), kmh: r1(g.kmh), fuerza: r1(g.kg, 1), medido: !!g.medido }));
+      for (const g of tiros) {
+        const p = P[g.i], vm = balonTras(g.i, p ? [p[g.k][0], p[g.k][1]] : null);
+        if (vm) { medidos++; g.vb = vm; g.kmh = vm * 3.6; g.angB = balonTras.ang; g.kg = 0.62 * (vm / (g.tEmp || 0.3) + 9.81) / 9.81; g.medido = true; }
+      }
+      res.eventos = tiros.map((g) => ({ t: g.t, lado: g.lado, ...(g.medido ? { v: r1(g.vb, 1), kmh: r1(g.kmh), fuerza: r1(g.kg, 1), medido: true } : {}) }));
       const iz = tiros.filter((g) => g.lado === 'izq').length;
       kpi('Tiros', tiros.length, `mano izq. ${iz} · der. ${tiros.length - iz}`);
       if (tiros.length) {
-        const vs = med(tiros.map((g) => g.vb)), an = med(tiros.map((g) => g.ang)), s = med(tiros.map((g) => g.salto));
-        kpi('Velocidad de salida', coma(vs), medidos ? 'm/s · medida con la IA del balón' : 'm/s de la mano al soltar (aprox.)');
-        kpi('Ángulo de salida', r1(an), '° (aprox.)');
+        const s = med(tiros.map((g) => g.salto)), br = med(tiros.map((g) => g.brazo)), med2 = tiros.filter((g) => g.medido);
         if (s > 5) kpi('Salto', r1(s), 'cm (aprox.)');
-        kpi('Fuerza de empuje', coma(med(tiros.map((g) => g.kg))), 'kg sobre el balón (aprox.)');
-        res.fuerzaGolpe = { max: r1(Math.max(...tiros.map((g) => g.kg)), 1), media: r1(med(tiros.map((g) => g.kg)), 1) };
-        if (an < 40) aviso(`Sueltas el balón muy plano (~${r1(an)}°): con 45-55° entra más fácil en el aro.`); else if (an > 62) aviso(`Sueltas el balón muy alto (~${r1(an)}°): lo usual es 45-55°.`); else bien(`Buen ángulo de salida (~${r1(an)}°).`);
-        if (B) { if (medidos) bien(`La IA del balón lo siguió en ${medidos} de ${tiros.length} tiros.`); else aviso('La IA del balón no lo pudo seguir al salir de la mano. Se usó la velocidad de la mano.'); }
+        kpi('Ángulo del brazo', r1(br), '° al soltar (respecto al piso)');
+        if (med2.length) {
+          const vs = med(med2.map((g) => g.vb)), an = med(med2.map((g) => g.angB));
+          kpi('Velocidad de salida', coma(vs), 'm/s · medida con la IA del balón');
+          if (Number.isFinite(an)) {
+            kpi('Ángulo de salida', r1(an), '° del balón (medido)');
+            if (an < 40) aviso(`El balón sale muy plano (~${r1(an)}°): con 45-55° entra más fácil en el aro.`); else if (an > 62) aviso(`El balón sale muy alto (~${r1(an)}°): lo usual es 45-55°.`); else bien(`Buen ángulo de salida del balón (~${r1(an)}°).`);
+          }
+          kpi('Fuerza de empuje', coma(med(med2.map((g) => g.kg))), 'kg sobre el balón (aprox.)');
+          res.fuerzaGolpe = { max: r1(Math.max(...med2.map((g) => g.kg)), 1), media: r1(med(med2.map((g) => g.kg)), 1) };
+        }
+        if (B) { if (medidos) bien(`La IA del balón lo siguió en ${medidos} de ${tiros.length} tiros.`); else aviso('La IA del balón no lo pudo seguir al salir de la mano (muy lejos, oscuro o tapado).'); }
+        else bien('Con «Completo con balón» la app mide la velocidad y el ángulo reales del balón.');
       } else aviso('No encontré tiros: la mano debe subir por encima de la cabeza al soltar el balón y verse completa.');
       avisoFps();
       return fin('Tiros', 'por minuto', tiros.map((g) => g.t));
@@ -613,7 +645,9 @@ export function dibujoActividad(fuente, full, fps, a, balon = null) {
     if (balon && balon.length) {
       const dtB = balon.length > 1 ? (balon[balon.length - 1].t - balon[0].t) / (balon.length - 1) : 1;
       const q = balon[Math.max(0, Math.min(balon.length - 1, Math.round((t - balon[0].t) / dtB)))];
-      if (q && q.b && q.b[0]) { const [bx, by, br] = q.b[0]; ctx.beginPath(); ctx.arc(bx * esc, by * esc - s0 + off, Math.max(18, br * esc * 1.3), 0, 7); ctx.strokeStyle = COL.cian; ctx.lineWidth = 6; ctx.stroke(); }
+      const R0 = { futbol: 0.11, basquet: 0.12, voley: 0.105, raqueta: 0.033 }[a.tipo] || 0.11; // solo lo que tiene tamaño de balon
+      const bq = q && q.b && q.b.find((c) => { const r = c[2] * (a.mPorPx || 0); return r > R0 * 0.4 && r < R0 * (a.tipo === 'raqueta' ? 4 : 2.5); });
+      if (bq) { const [bx, by, br] = bq; ctx.beginPath(); ctx.arc(bx * esc, by * esc - s0 + off, Math.max(18, br * esc * 1.3), 0, 7); ctx.strokeStyle = COL.cian; ctx.lineWidth = 6; ctx.stroke(); }
     }
     ctx.restore();
     // panel

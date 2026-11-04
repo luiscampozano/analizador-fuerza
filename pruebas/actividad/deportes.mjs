@@ -88,7 +88,9 @@ function basquet(t) {
     if (u > 1 && u < 2.5) { mun = rel; cod = [(hom[0] + rel[0]) / 2, (hom[1] + rel[1]) / 2]; }
     if (u >= 2.5 && u < 10) { const k = (u - 2.5) / 7.5, baja = [hom[0] + 20, hom[1] + 0.55 * px]; mun = [rel[0] + (baja[0] - rel[0]) * k, rel[1] + (baja[1] - rel[1]) * k]; cod = [hom[0] + 15, hom[1] + 0.3 * px]; }
   }
-  return persona({ munD: mun, codD: cod });
+  const j = persona({ munD: mun, codD: cod });
+  j[15] = [mun[0] - 12, mun[1] + 15]; j[13] = [cod[0] - 10, cod[1] + 10]; // la otra mano acompaña al balón
+  return j;
 }
 // --- natacion: nadador horizontal que avanza a 1,0 m/s hacia la derecha, 40 ciclos/min (el brazo izquierdo gira)
 const V_N = 1.0, CPM = 40;
@@ -104,7 +106,7 @@ const casos = [
   ['futbol', futbol, 16, { Patadas: tPatadas.length, 'Pie más rápido': vPie, 'Velocidad del balón': null }],
   ['voley', voley, 16, { Remates: tRemates.length, 'Mano más rápida': vMano, Salto: 40 }],
   ['tenis', raqueta, 16, { Golpes: tGolpes.length, 'Mano más rápida': vRaq }],
-  ['basquet', basquet, 16, { Tiros: tTiros.length, 'Velocidad de salida': vTiro, 'Ángulo de salida': ANG }],
+  ['basquet', basquet, 16, { Tiros: tTiros.length }],
   ['natacion', natacion, 8, { 'Ciclos de brazada': CPM / 60 * 8, Velocidad: V_N }],
 ];
 let fallos = 0;
@@ -130,8 +132,8 @@ for (const [id, f, dur, esperado] of casos) {
   const balon = fr.map((f) => {
     const t = f.t, tc = tPatadas[0]; // contacto en el pico de velocidad del pie
     const pie0 = futbol(tc)[32];
-    if (t < tc) return [[pie0[0] + 15, pie0[1] - 5, 22]];
-    const d = (t - tc) * vB * px; return t - tc < 0.5 ? [[pie0[0] + 15 + d * Math.cos(10 * rad), pie0[1] - 5 - d * Math.sin(10 * rad), 22], [100, 100, 20]] : [];
+    if (t < tc) return [[pie0[0] + 15, pie0[1] - 5, 0.11 * px]];
+    const d = (t - tc) * vB * px; return t - tc < 0.5 ? [[pie0[0] + 15 + d * Math.cos(10 * rad), pie0[1] - 5 - d * Math.sin(10 * rad), 0.11 * px], [100, 100, 20]] : [];
   });
   const a = analizarActividad(fr, dur, POR_ID.futbol, { altura: 1.7, peso: 75, balon });
   const k = a.kpis.find((x) => x.label === 'Velocidad del balón'), val = k ? num(k.valor) : NaN;

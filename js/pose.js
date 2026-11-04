@@ -155,7 +155,7 @@ export async function cargarDetectorBalon() {
     const local = new URL('../vendor/mediapipe/wasm', import.meta.url).href;
     fileset = await FilesetResolver.forVisionTasks(await existe(local + '/vision_wasm_internal.js') ? local : `${CDN}/wasm`);
   }
-  const opciones = (delegate) => ({ baseOptions: { modelAssetPath: DETECTOR, delegate }, runningMode: 'IMAGE', scoreThreshold: 0.2, maxResults: 3, categoryAllowlist: ['sports ball'] });
+  const opciones = (delegate) => ({ baseOptions: { modelAssetPath: DETECTOR, delegate }, runningMode: 'IMAGE', scoreThreshold: 0.08, maxResults: 3, categoryAllowlist: ['sports ball'] });
   let od;
   try { od = await ObjectDetector.createFromOptions(fileset, opciones('GPU')); } catch (e) {
     try { od = await ObjectDetector.createFromOptions(fileset, opciones('CPU')); } catch (e2) { throw new Error('No pude cargar la IA del balón. Revisa tu conexión a internet y vuelve a intentarlo.'); }
