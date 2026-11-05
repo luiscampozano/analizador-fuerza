@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-05
 
+### 14:42 · v2.37.1 — Precio de Pro: 8,99
+- **Decidió Luis:** precios finales de Google Play: Plus 3,99 / 39,99 al año; Pro 8,99 / 89,99; Pro Max 19,99 / 199,99
+  (anual ≈ 2 meses gratis). Se cambió Pro a 8,99 en la tabla de planes del servidor.
+- **Avance en Play Console:** tabla `compras` creada en D1; perfil de pagos y cuenta bancaria listos; prueba cerrada
+  aprobada (enlace para testers habilitado); creando las suscripciones (`pro_mensual` hecha).
+
 ### 13:24 · v2.37.0 — Cobro de suscripciones con Google Play
 - **Pidió:** dejar listas las suscripciones para el lanzamiento («Si dale ya»).
 - **Hecho:** en «Mejora tu plan», dentro de la app instalada desde Play, botones Mensual y Anual de Plus, Pro y Pro Max

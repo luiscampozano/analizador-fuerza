@@ -948,7 +948,7 @@ const PLANES = {
   pro: { nombre: 'Pro', video: 40, ia: 90, coach: [3, 'semana'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
   promax: { nombre: 'Pro Max', video: null, ia: 300, coach: [1, 'dia'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
 };
-const PRECIOS = { plus: 3.99, pro: 9.99, promax: 19.99 };
+const PRECIOS = { plus: 3.99, pro: 8.99, promax: 19.99 };
 // periodo en hora de Ecuador: mes '2026-11', semana '2026-S45' (lunes a domingo), dia '2026-11-03'
 function periodo(per, t = Date.now()) {
   const d = new Date(t - 5 * 3600000), iso = d.toISOString();

@@ -257,7 +257,7 @@ En español sencillo: qué cambió, en qué versión, y **qué debe probar él**
 |---|---|
 | Gratis | $0 |
 | Plus | $3.99/mes |
-| Pro | $9.99/mes |
+| Pro | $8.99/mes (anual $89.99) |
 | Pro Max | $19.99/mes |
 
 - Precio anual = 2 meses gratis. **7 días de prueba de Pro**.
