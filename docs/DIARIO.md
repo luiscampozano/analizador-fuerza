@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-05
 
+### 11:46 · v2.36.11 — Términos de servicio
+- **Contexto:** Play Console (estado de comerciante de la app: «sí aplica», porque habrá suscripciones) pide un enlace a
+  los términos de servicio.
+- **Hecho:** `terminos.html` (servicio, cuenta 16+, salud: estimaciones orientativas, comunidad, suscripciones con
+  Google Play: renovación automática, cancelación, prueba gratis, reembolsos; uso aceptable; ley de Ecuador). Enlazada
+  desde la política de privacidad y en la lista del service worker.
+
 ### 10:51 · (sin cambio de versión) — borrar-cuenta.html: borrar solo algunos datos
 - **Contexto:** Play Console (Seguridad de datos) pide un enlace para borrar datos sin eliminar la cuenta. Luis decidió
   declarar desde ya las compras dentro de la app (suscripciones) para no repetir formularios.
