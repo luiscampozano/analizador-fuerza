@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-05
 
+### 18:15 · Configuración de pagos lista (sin cambio de versión)
+- **Hecho por Luis:** 6 suscripciones activas en Play (`plus_mensual`, `plus_anual`, `pro_mensual` con oferta `prueba7`
+  de 7 días, `pro_anual`, `promax_mensual`, `promax_anual`); API de Google Play habilitada en Google Cloud; cuenta de
+  servicio `fuerzapro-pagos@fuerzapro-512814.iam.gserviceaccount.com` invitada en Play Console (ver datos financieros,
+  administrar pedidos y suscripciones); secreto `PLAY_CUENTA_SERVICIO` en Cloudflare. Este commit vuelve a publicar
+  para que el servidor tome el secreto.
+- **Pendiente:** probadores con licencia (Settings → License testing) y compra de prueba desde la app de Play.
+
 ### 14:42 · v2.37.1 — Precio de Pro: 8,99
 - **Decidió Luis:** precios finales de Google Play: Plus 3,99 / 39,99 al año; Pro 8,99 / 89,99; Pro Max 19,99 / 199,99
   (anual ≈ 2 meses gratis). Se cambió Pro a 8,99 en la tabla de planes del servidor.
