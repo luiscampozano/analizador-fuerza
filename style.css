@@ -1284,3 +1284,6 @@ input.nu-ia { border-color: var(--accent-cyan, #22D3EE) !important; box-shadow: 
 .plan-compra-msg.mal { color: #ff6b6b; }
 .plan-compra-pie { display: flex; gap: 8px; flex-wrap: wrap; }
 .plan-compra-pie .btn-sec { flex: 1; text-align: center; text-decoration: none; }
+/* v2.37.2: mientras se escribe en el buscador de ejercicios, el botón «Analizar serie» no tapa la lista */
+body.buscando .action-footer { display: none; }
+#buscar-ej { scroll-margin-top: 8px; }

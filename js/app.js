@@ -23,7 +23,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.37.1';
+const VERSION = '2.37.2';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -74,7 +74,9 @@ function pintarElegido() {
   $('btn-cambiar').onclick = () => {
     const abierto = $('selector-ej').style.display !== 'none';
     $('selector-ej').style.display = abierto ? 'none' : 'block';
-    if (!abierto) $('buscar-ej').focus({ preventScroll: true });
+    // v2.37.2: al buscar, la figura se esconde y el buscador sube arriba para que el teclado no tape la lista
+    if (demo) $('ej-demo').style.display = abierto ? '' : 'none';
+    if (!abierto) { $('buscar-ej').focus({ preventScroll: true }); subirBuscador(); }
   };
   $('hint-ej').textContent = ej.cardio ? '🎥 ' + (CONSEJO[tipoActividad(ej)] || '') : ej.hint;
   pintarModoDep();
@@ -108,6 +110,9 @@ function pintarLista() {
     <span class="preset-icon">${figIcono(e.id, e.icono)}</span><span class="preset-name">${esc(e.corto)}</span><span class="preset-sub">${esc(e.equipo || e.grupo)}</span></button>`).join('')
     || '<p class="vacio">No encontré ese ejercicio. Puedes crearlo con el botón de abajo.</p>';
   $('lista-ej').querySelectorAll('.preset-card').forEach((b) => (b.onclick = () => elegir(POR_ID[b.dataset.id])));
+}
+function subirBuscador() {
+  setTimeout(() => { const b = $('buscar-ej'); if (b && b.offsetParent) b.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 350); // espera al teclado
 }
 function elegir(e) {
   ej = e; guardar('af_ej', e.id);
@@ -1142,6 +1147,8 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   if (leer('af_pc')) $('in-pc').value = leer('af_pc');
   if (leer('af_calidad')) $('in-calidad').value = leer('af_calidad');
   $('buscar-ej').oninput = pintarLista;
+  $('buscar-ej').onfocus = () => { document.body.classList.add('buscando'); subirBuscador(); };
+  $('buscar-ej').onblur = () => document.body.classList.remove('buscando');
   try { pintarElegido(); } catch (e) { console.error(e); }
   pintarLista(); ajustarCampos();
   $('version').textContent = `Versión ${VERSION}`;

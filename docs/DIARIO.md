@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-05
 
+### 18:40 · v2.37.2 — Buscador de ejercicios visible con el teclado
+- **Pidió:** al tocar «Cambiar» el teclado tapaba la lista de ejercicios. **Primera compra de prueba con Google Play OK**
+  (Pro mensual con tarjeta de prueba: el plan se activó en la app).
+- **Hecho:** al abrir el buscador se esconde la figura del ejercicio, el buscador sube arriba de la pantalla y el botón
+  «Analizar serie» se oculta mientras se escribe. Al elegir un ejercicio todo vuelve a la normalidad.
+- **Pendiente:** 12 testers con Android por 14 días → acceso a producción → límites «activo» y regalo de Pro.
+
 ### 18:15 · Configuración de pagos lista (sin cambio de versión)
 - **Hecho por Luis:** 6 suscripciones activas en Play (`plus_mensual`, `plus_anual`, `pro_mensual` con oferta `prueba7`
   de 7 días, `pro_anual`, `promax_mensual`, `promax_anual`); API de Google Play habilitada en Google Cloud; cuenta de
