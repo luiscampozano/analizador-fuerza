@@ -71,6 +71,7 @@ async function api(req, env, url) {
   if (ruta === '/api/yo' && m === 'GET') return json({ usuario: publico(u) });
   if (ruta === '/api/plan' && m === 'GET') return json(await estadoPlan(env, u));
   if (ruta === '/api/plan/usar' && m === 'POST') return usarPlan(req, env, u);
+  if (ruta === '/api/plan/compra' && m === 'POST') return compraPlay(req, env, u);
   if (ruta === '/api/auth/clave' && m === 'POST') return cambiarClave(req, env, u);
   if (ruta === '/api/sync' && m === 'POST') return sincronizar(req, env, u);
   if (ruta === '/api/cuenta' && m === 'DELETE') return borrarCuenta(env, u);
@@ -317,6 +318,7 @@ async function borrarCuenta(env, u) {
     env.DB.prepare('DELETE FROM fallos WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM uso_ia WHERE usuario = ?1').bind(u.id),
     ...(await tablasPlan(env) ? [env.DB.prepare('DELETE FROM uso_plan WHERE usuario = ?1').bind(u.id), env.DB.prepare('DELETE FROM planes WHERE usuario = ?1').bind(u.id)] : []),
+    ...(await tablaCompras(env) ? [env.DB.prepare('DELETE FROM compras WHERE usuario = ?1').bind(u.id)] : []), // la suscripcion de Play queda libre para otra cuenta
     env.DB.prepare('UPDATE alimentos SET usuario = NULL WHERE usuario = ?1').bind(u.id), // el producto queda para todos, sin autor
     env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM credenciales WHERE usuario = ?1').bind(u.id),
@@ -981,7 +983,11 @@ async function modoLimites(env) {
 async function planDe(env, u) {
   const modo = await modoLimites(env);
   if (modo === 'apagado') return { modo, aplica: false, plan: 'gratis' };
-  const p = await env.DB.prepare('SELECT plan, hasta FROM planes WHERE usuario = ?1').bind(u.id).first();
+  let p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(u.id).first();
+  // plan de Google Play vencido: ¿se renovo? (v2.37.0)
+  if (p && p.origen === 'play' && p.hasta != null && p.hasta <= Date.now()) {
+    try { if (await renovarPlay(env, u.id)) p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(u.id).first(); } catch (e) { /* sin tabla compras aun */ }
+  }
   const vigente = p && PLANES[p.plan] && (p.hasta == null || p.hasta > Date.now());
   return { modo, aplica: modo === 'activo' || (modo === 'prueba' && esAdmin(env, u)), plan: vigente ? p.plan : 'gratis', hasta: vigente ? p.hasta : null };
 }
@@ -1010,6 +1016,104 @@ async function usarPlan(req, env, u) {
   if (lim != null && usado >= lim) throw fallo(mensajeLimite(pl.plan, tipo), 429, { plan: pl.plan, limite: tipo });
   await sumarUso(env, u.id, tipo, per);
   return json({ ok: true, quedan: lim == null ? null : lim - usado - 1 });
+}
+
+// ================================================================== COBRO CON GOOGLE PLAY (v2.37.0)
+// La app de Android (TWA) compra con la Digital Goods API y manda aqui el purchaseToken. El servidor lo verifica con la
+// Google Play Developer API (cuenta de servicio en el secreto PLAY_CUENTA_SERVICIO, JSON que Luis pega en Cloudflare),
+// lo confirma (acknowledge: si no, Google devuelve el dinero a los 3 dias) y activa el plan hasta la fecha de vencimiento.
+// Al vencer, planDe vuelve a preguntar a Google (renovacion automatica). Un token pertenece a una sola cuenta.
+const PAQUETE = 'com.fuerzapro.app';
+const PRODUCTOS = { plus_mensual: 'plus', plus_anual: 'plus', pro_mensual: 'pro', pro_anual: 'pro', promax_mensual: 'promax', promax_anual: 'promax' };
+const RANGO = { gratis: 0, plus: 1, pro: 2, promax: 3 };
+const aB64url = (b) => btoa(typeof b === 'string' ? b : String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+let tokenPlay = null, tokenPlayHasta = 0;
+async function accesoPlay(env) {
+  if (tokenPlay && Date.now() < tokenPlayHasta) return tokenPlay;
+  let cta;
+  try { cta = JSON.parse(env.PLAY_CUENTA_SERVICIO || ''); } catch (e) { cta = null; }
+  if (!cta || !cta.client_email || !cta.private_key) throw fallo('Los pagos todavía no están configurados en el servidor.', 503);
+  const ahora = Math.floor(Date.now() / 1000);
+  const cab = aB64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const cuerpo = aB64url(JSON.stringify({ iss: cta.client_email, scope: 'https://www.googleapis.com/auth/androidpublisher', aud: 'https://oauth2.googleapis.com/token', iat: ahora, exp: ahora + 3600 }));
+  const der = Uint8Array.from(atob(cta.private_key.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '')), (c) => c.charCodeAt(0));
+  const llave = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const firma = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', llave, new TextEncoder().encode(cab + '.' + cuerpo));
+  const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + cab + '.' + cuerpo + '.' + aB64url(firma) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.access_token) { console.error('play oauth', r.status, JSON.stringify(d).slice(0, 200)); throw fallo('No pude conectar con Google Play. Inténtalo en un momento.', 502); }
+  tokenPlay = d.access_token; tokenPlayHasta = Date.now() + ((d.expires_in || 3600) - 120) * 1000;
+  return tokenPlay;
+}
+// consulta la suscripcion en Google: { producto, plan, estado, hasta, renueva, confirmada, vinculado }
+async function consultarPlay(env, token) {
+  const r = await fetch(`https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PAQUETE}/purchases/subscriptionsv2/tokens/${encodeURIComponent(token)}`,
+    { headers: { authorization: 'Bearer ' + await accesoPlay(env) } });
+  if (r.status === 400 || r.status === 404 || r.status === 410) return null; // token invalido o muy antiguo
+  if (!r.ok) { console.error('play get', r.status, (await r.text()).slice(0, 200)); throw fallo('No pude verificar la compra con Google Play. Inténtalo en un momento.', 502); }
+  const s = await r.json(), li = (s.lineItems || []).find((x) => PRODUCTOS[x.productId]) || null;
+  if (!li) return null;
+  return { producto: li.productId, plan: PRODUCTOS[li.productId], estado: s.subscriptionState || '', hasta: Date.parse(li.expiryTime) || 0,
+    renueva: li.autoRenewingPlan && li.autoRenewingPlan.autoRenewEnabled ? 1 : 0, confirmada: s.acknowledgementState === 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED', vinculado: s.linkedPurchaseToken || null };
+}
+const VALIDOS = new Set(['SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD', 'SUBSCRIPTION_STATE_CANCELED']); // cancelada = vale hasta vencer
+let comprasOk = null;
+async function tablaCompras(env) {
+  if (comprasOk) return true;
+  try { await env.DB.prepare('SELECT token FROM compras LIMIT 1').first(); comprasOk = true; } catch (e) { comprasOk = false; }
+  return comprasOk;
+}
+const daDerecho = (c) => c && VALIDOS.has(c.estado) && c.hasta > Date.now();
+async function confirmarPlay(env, producto, token) {
+  const r = await fetch(`https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PAQUETE}/purchases/subscriptions/${producto}/tokens/${encodeURIComponent(token)}:acknowledge`,
+    { method: 'POST', headers: { authorization: 'Bearer ' + await accesoPlay(env), 'content-type': 'application/json' }, body: '{}' });
+  if (!r.ok) console.error('play ack', r.status, (await r.text()).slice(0, 200));
+}
+// guarda la compra y pone el plan (sin bajar un regalo mejor que siga vigente)
+async function aplicarCompra(env, uid, token, c) {
+  const ahora = Date.now();
+  await env.DB.prepare(`INSERT INTO compras (token, usuario, producto, plan, estado, hasta, renueva, creado, actualizado) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)
+    ON CONFLICT(token) DO UPDATE SET producto = excluded.producto, plan = excluded.plan, estado = excluded.estado, hasta = excluded.hasta, renueva = excluded.renueva, actualizado = excluded.actualizado`)
+    .bind(token, uid, c.producto, c.plan, c.estado, c.hasta, c.renueva, ahora).run();
+  if (c.vinculado) await env.DB.prepare("UPDATE compras SET estado = 'REEMPLAZADA', actualizado = ?3 WHERE token = ?1 AND usuario = ?2").bind(c.vinculado, uid, ahora).run();
+  if (!daDerecho(c)) return;
+  const p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(uid).first();
+  const vigente = p && PLANES[p.plan] && (p.hasta == null || p.hasta > ahora);
+  if (vigente && p.origen !== 'play' && (RANGO[p.plan] > RANGO[c.plan] || (RANGO[p.plan] === RANGO[c.plan] && (p.hasta == null || p.hasta >= c.hasta)))) return;
+  await env.DB.prepare(`INSERT INTO planes (usuario, plan, hasta, origen, nota, actualizado) VALUES (?1, ?2, ?3, 'play', ?4, ?5)
+    ON CONFLICT(usuario) DO UPDATE SET plan = excluded.plan, hasta = excluded.hasta, origen = excluded.origen, nota = excluded.nota, actualizado = excluded.actualizado`)
+    .bind(uid, c.plan, c.hasta, c.producto, ahora).run();
+}
+// POST /api/plan/compra {token} (compra nueva o restaurar compras): verifica, confirma y activa
+async function compraPlay(req, env, u) {
+  const token = (await leerJSON(req)).token;
+  if (!env.PLAY_CUENTA_SERVICIO || !(await tablaCompras(env))) throw fallo('Los pagos todavía no están listos en el servidor.', 503);
+  if (typeof token !== 'string' || token.length < 10 || token.length > 600) throw fallo('Compra no válida.');
+  const dueno = await env.DB.prepare('SELECT usuario FROM compras WHERE token = ?1').bind(token).first();
+  if (dueno && dueno.usuario !== u.id) throw fallo('Esta suscripción de Google Play ya está asociada a otra cuenta de FuerzaPro. Inicia sesión con esa cuenta.', 409);
+  const c = await consultarPlay(env, token);
+  if (!c) throw fallo('Google Play no reconoce esta compra.', 400);
+  if (c.estado === 'SUBSCRIPTION_STATE_PENDING') return json({ ok: false, pendiente: true, error: 'El pago está pendiente. Cuando Google Play lo apruebe se activará tu plan.' });
+  if (!c.confirmada && daDerecho(c)) await confirmarPlay(env, c.producto, token);
+  await aplicarCompra(env, u.id, token, c);
+  return json({ ...(await estadoPlan(env, u)), ok: daDerecho(c), comprado: c.plan, vence: c.hasta, estadoPlay: c.estado });
+}
+// al vencer un plan pagado con Play: pregunta a Google si se renovo (como mucho una vez cada 6 h por compra)
+async function renovarPlay(env, uid) {
+  if (!env.PLAY_CUENTA_SERVICIO) return false;
+  const ahora = Date.now(), lista = (await env.DB.prepare(`SELECT token FROM compras WHERE usuario = ?1 AND estado IN ('SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD', 'SUBSCRIPTION_STATE_CANCELED', 'SUBSCRIPTION_STATE_ON_HOLD', 'SUBSCRIPTION_STATE_PAUSED')
+    AND hasta < ?2 AND hasta > ?3 AND actualizado < ?4 ORDER BY hasta DESC LIMIT 2`).bind(uid, ahora, ahora - 400 * DIA, ahora - 6 * 3600000).all()).results || [];
+  let renovo = false;
+  for (const { token } of lista) {
+    try {
+      const c = await consultarPlay(env, token);
+      if (!c) { await env.DB.prepare("UPDATE compras SET estado = 'INVALIDA', actualizado = ?2 WHERE token = ?1").bind(token, ahora).run(); continue; }
+      await aplicarCompra(env, uid, token, c);
+      if (daDerecho(c)) renovo = true;
+    } catch (e) { console.error('renovar play', e && e.message); }
+  }
+  return renovo;
 }
 async function llamarClaude(env, system, content, maxTokens = 900) {
   let r;

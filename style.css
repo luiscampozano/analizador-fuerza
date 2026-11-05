@@ -1274,3 +1274,13 @@ input.nu-ia { border-color: var(--accent-cyan, #22D3EE) !important; box-shadow: 
 .plan-tabla .actual { background: rgba(124,92,255,.18); }
 .co-regalo { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .co-regalo input, .co-regalo select { background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 8px; }
+/* v2.37.0: comprar con Google Play */
+.plan-compra { margin: 8px 0; }
+.plan-fila { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+.plan-fila.actual { background: rgba(124,92,255,.12); border-radius: var(--radius-md); padding: 8px; }
+.plan-fila > div { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.plan-comprar { font-size: .82rem; padding: 6px 10px; }
+.plan-compra-msg { font-size: .88rem; color: var(--text-muted); margin: 8px 0; }
+.plan-compra-msg.mal { color: #ff6b6b; }
+.plan-compra-pie { display: flex; gap: 8px; flex-wrap: wrap; }
+.plan-compra-pie .btn-sec { flex: 1; text-align: center; text-decoration: none; }

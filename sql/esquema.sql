@@ -41,3 +41,6 @@ CREATE TABLE IF NOT EXISTS planes (usuario TEXT PRIMARY KEY, plan TEXT NOT NULL,
 CREATE TABLE IF NOT EXISTS uso_plan (usuario TEXT NOT NULL, periodo TEXT NOT NULL, tipo TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (usuario, periodo, tipo));
 CREATE TABLE IF NOT EXISTS ajustes_app (clave TEXT PRIMARY KEY, valor TEXT NOT NULL);
 INSERT OR IGNORE INTO ajustes_app (clave, valor) VALUES ('limites', 'apagado');
+-- v2.37.0: suscripciones compradas con Google Play (un token de compra = una sola cuenta). hasta = vencimiento (ms).
+CREATE TABLE IF NOT EXISTS compras (token TEXT PRIMARY KEY, usuario TEXT NOT NULL, producto TEXT NOT NULL, plan TEXT NOT NULL, estado TEXT, hasta INTEGER, renueva INTEGER, creado INTEGER NOT NULL, actualizado INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS compras_usuario ON compras(usuario, hasta);

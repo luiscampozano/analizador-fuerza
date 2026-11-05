@@ -10,7 +10,8 @@ let estado = leer();
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export async function actualizar() {
-  if (!nube.conectado()) { estado = null; guardar(null); return null; }
+  if (!nube.conectado()) { estado = null; guardar(null); restaurado = false; return null; }
+  if (!restaurado) { restaurado = true; await restaurar(true); } // app de Play: vincula compras hechas antes o en otro telefono
   try { estado = await nube.api('GET', '/api/plan'); guardar(estado); } catch (e) { /* sin internet: el ultimo conocido */ }
   return estado;
 }
@@ -59,11 +60,92 @@ export function mostrarMejora(motivo = '') {
     ${motivo ? `<p class="plan-motivo">${esc(motivo)}</p>` : ''}
     ${planes ? `<div class="plan-tabla-wrap"><table class="plan-tabla"><thead><tr><th></th>${ids.map((k) => `<th class="${k === e.plan ? 'actual' : ''}">${esc(planes[k].nombre)}<small>${precios[k] ? `$${precios[k]}/mes` : 'Gratis'}</small></th>`).join('')}</tr></thead>
       <tbody>${FILAS.map(([n, f]) => `<tr><td>${n}</td>${ids.map((k) => `<td class="${k === e.plan ? 'actual' : ''}">${esc(f(planes[k]))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : ''}
-    <p class="hint">Registrar entrenamientos y comidas es gratis y sin límite. Los pagos con Google Play llegan muy pronto; plan anual = 2 meses gratis.</p>
-    <button type="button" class="btn-primary" id="plan-cerrar" style="width:100%">Entendido</button></div>`;
+    <div id="plan-compra" class="plan-compra"></div>
+    <p class="hint">Registrar entrenamientos y comidas es gratis y sin límite. Plan anual = 2 meses gratis. Se cobra con Google Play y se renueva solo; cancelas cuando quieras en Play Store → Pagos y suscripciones.</p>
+    <button type="button" class="btn-primary" id="plan-cerrar" style="width:100%">Cerrar</button></div>`;
   caja.style.display = 'flex';
   caja.onclick = (ev) => { if (ev.target === caja) caja.style.display = 'none'; };
   document.getElementById('plan-cerrar').onclick = () => { caja.style.display = 'none'; };
+  pintarCompra();
+}
+
+// ================================================================== COBRO CON GOOGLE PLAY (v2.37.0)
+// Solo funciona dentro de la app instalada desde Google Play (Digital Goods API). Cada plan es una suscripcion de Play
+// con su id (plus_mensual, pro_anual...). El servidor verifica cada compra con Google antes de activar el plan.
+const PLAY = 'https://play.google.com/billing';
+const SKUS = ['plus_mensual', 'plus_anual', 'pro_mensual', 'pro_anual', 'promax_mensual', 'promax_anual'];
+let servicio, detalles = null, restaurado = false;
+async function play() {
+  if (servicio !== undefined) return servicio;
+  servicio = null;
+  if (typeof window !== 'undefined' && 'getDigitalGoodsService' in window) { try { servicio = (await window.getDigitalGoodsService(PLAY)) || null; } catch (e) { servicio = null; } }
+  return servicio;
+}
+async function leerPrecios() {
+  if (detalles) return detalles;
+  const s = await play(); if (!s) return null;
+  try { const l = await s.getDetails(SKUS); detalles = {}; for (const d of l) detalles[d.itemId] = d; } catch (e) { detalles = null; }
+  return detalles;
+}
+const precioTxt = (d) => { try { return new Intl.NumberFormat('es-EC', { style: 'currency', currency: d.price.currency }).format(+d.price.value); } catch (e) { return `$${d.price.value}`; } };
+function mensaje(t, error) { const m = document.getElementById('plan-compra-msg'); if (m) { m.textContent = t || ''; m.className = 'plan-compra-msg' + (error ? ' mal' : ''); } }
+const usar = (r) => { if (r && r.planes) { estado = r; guardar(r); } };
+
+export async function comprar(sku) {
+  const s = await play(); if (!s) return;
+  let resp;
+  try {
+    const pedido = new PaymentRequest([{ supportedMethods: PLAY, data: { sku } }], { total: { label: 'Total', amount: { currency: 'USD', value: '0' } } }); // Play usa su propio precio
+    resp = await pedido.show();
+  } catch (e) { return; } // cancelo la compra
+  mensaje('Verificando tu compra…');
+  try {
+    const r = await nube.api('POST', '/api/plan/compra', { token: resp.details.purchaseToken });
+    await resp.complete(r.ok || r.pendiente ? 'success' : 'fail');
+    usar(r);
+    mensaje(r.pendiente ? r.error : r.ok ? `¡Listo! Ya tienes el plan ${r.nombre}. Gracias por apoyar FuerzaPro.` : 'Google Play no aprobó la compra.', !r.ok && !r.pendiente);
+    window.dispatchEvent(new CustomEvent('af-plan'));
+    if (r.ok) setTimeout(() => mostrarMejora(), 1500);
+  } catch (e) {
+    try { await resp.complete('fail'); } catch (x) { /* nada */ }
+    mensaje(e.message + ' Si te cobraron, toca «Restaurar compras».', true);
+  }
+}
+// manda a verificar las suscripciones activas de esta cuenta de Google Play (compra nueva en otro telefono, reinstalar…)
+export async function restaurar(silencioso = false) {
+  const s = await play();
+  if (!s || !nube.conectado()) return 0;
+  let lista = [], n = 0;
+  try { lista = await s.listPurchases(); } catch (e) { return 0; }
+  for (const p of lista) {
+    if (!SKUS.includes(p.itemId)) continue;
+    try { const r = await nube.api('POST', '/api/plan/compra', { token: p.purchaseToken }); usar(r); if (r.ok) n++; } catch (e) { if (!silencioso) mensaje(e.message, true); }
+  }
+  return n;
+}
+async function pintarCompra() {
+  const caja = document.getElementById('plan-compra');
+  if (!caja) return;
+  if (!nube.conectado()) { caja.innerHTML = '<p class="plan-compra-msg">Inicia sesión en Perfil para suscribirte (tu plan queda en tu cuenta).</p>'; return; }
+  const precios = await leerPrecios();
+  if (!precios || !Object.keys(precios).length) {
+    caja.innerHTML = '<p class="plan-compra-msg">Para suscribirte usa la app de FuerzaPro instalada desde Google Play.</p>'; return;
+  }
+  const e = estado || {}, nombres = { plus: 'Plus', pro: 'Pro', promax: 'Pro Max' };
+  const boton = (sku, txt) => { const d = precios[sku]; if (!d) return '';
+    const prueba = d.freeTrialPeriod ? ' · 7 días gratis' : '';
+    return `<button type="button" class="btn-sec plan-comprar" data-sku="${sku}">${txt} ${esc(precioTxt(d))}${prueba}</button>`; };
+  caja.innerHTML = ['plus', 'pro', 'promax'].map((k) => `<div class="plan-fila${k === e.plan ? ' actual' : ''}"><b>${nombres[k]}${k === e.plan ? ' ✓' : ''}</b>
+      <div>${boton(k + '_mensual', 'Mensual')}${boton(k + '_anual', 'Anual')}</div></div>`).join('')
+    + `<p id="plan-compra-msg" class="plan-compra-msg"></p>
+    <div class="plan-compra-pie"><button type="button" class="btn-sec" id="plan-restaurar">Restaurar compras</button>
+      <a class="btn-sec" href="https://play.google.com/store/account/subscriptions?package=com.fuerzapro.app" target="_blank" rel="noopener">Administrar suscripción</a></div>`;
+  caja.querySelectorAll('.plan-comprar').forEach((b) => { b.onclick = () => comprar(b.dataset.sku); });
+  document.getElementById('plan-restaurar').onclick = async () => {
+    mensaje('Buscando tus compras en Google Play…');
+    const n = await restaurar();
+    if (n) { mensaje(`Compra restaurada: plan ${estado.nombre}.`); window.dispatchEvent(new CustomEvent('af-plan')); } else if (!document.querySelector('#plan-compra-msg.mal')) mensaje('No encontré suscripciones activas en esta cuenta de Google Play.');
+  };
 }
 
 // cualquier respuesta 429/403 del servidor por limite de plan abre la ventana (lo avisa nube.js)

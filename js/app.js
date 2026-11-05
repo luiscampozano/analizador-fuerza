@@ -23,7 +23,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.36.12';
+const VERSION = '2.37.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -1167,6 +1167,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
     // primera vez sin cuenta: pantalla de bienvenida (Google, correo o explorar sin cuenta)
     const repintar = () => { perfil.pintar(); if ($('v-comunidad').classList.contains('active')) comunidad.pintar(); };
     window.addEventListener('af-sesion', () => { repintar(); plan.actualizar().then(() => perfil.pintar()); });
+    window.addEventListener('af-plan', () => perfil.pintar()); // compra con Google Play (v2.37.0)
     plan.actualizar().then(() => perfil.pintar()); // plan de suscripcion (v2.33.0)
     bienvenida.iniciar({ alTerminar: repintar });
   });

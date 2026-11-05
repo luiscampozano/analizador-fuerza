@@ -8,6 +8,20 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-05
 
+### 13:24 · v2.37.0 — Cobro de suscripciones con Google Play
+- **Pidió:** dejar listas las suscripciones para el lanzamiento («Si dale ya»).
+- **Hecho:** en «Mejora tu plan», dentro de la app instalada desde Play, botones Mensual y Anual de Plus, Pro y Pro Max
+  con el precio de Google Play, «Restaurar compras» y «Administrar suscripción». Al abrir la app con sesión se vinculan
+  solas las compras activas. El servidor (`POST /api/plan/compra`) verifica cada compra con Google (subscriptionsv2),
+  la confirma (si no, Google la reembolsa a los 3 días), activa el plan hasta el vencimiento y, al vencer, pregunta a
+  Google si se renovó. Una compra pertenece a una sola cuenta; borrar la cuenta la libera. No pisa un regalo mejor.
+  Productos de Play: `plus_mensual`, `plus_anual`, `pro_mensual`, `pro_anual`, `promax_mensual`, `promax_anual` (un
+  solo plan base cada uno; prueba de 7 días como oferta en `pro_mensual`). Pruebas: `pruebas/servidor/compras_test.mjs`.
+- **Pendiente (Luis):** correr en D1 la tabla `compras` (sql/esquema.sql); crear los 6 productos en Play Console;
+  cuenta de servicio de Google Cloud con acceso en Play Console y su JSON como secreto `PLAY_CUENTA_SERVICIO` en
+  Cloudflare (lo pega él, nunca en el chat); probadores con licencia. Después: modo de límites «activo» y regalo de Pro.
+  Más adelante: notificaciones en tiempo real de Play (reembolsos y cancelaciones al instante).
+
 ### 12:57 · (sin cambio de versión) — Huella de la firma de Google en assetlinks.json
 - **Hecho:** se agregó la huella SHA-256 del «App signing key certificate» de Play (la que firma lo que se instala desde
   Google Play) junto a la de la llave de subida. Prueba cerrada enviada a revisión por Luis.

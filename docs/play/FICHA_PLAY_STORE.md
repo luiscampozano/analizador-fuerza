@@ -95,7 +95,7 @@ Las estimaciones de la app son orientativas y no reemplazan el consejo de un mé
 - Violencia: **No** · Contenido sexual: **No** · Lenguaje soez: **No** · Sustancias controladas: **No** · Apuestas: **No**
 - ¿Los usuarios pueden interactuar o intercambiar contenido? **Sí** (comunidad: publicaciones y comentarios; hay moderación, reportes y bloqueo)
 - ¿Comparte la ubicación del usuario? **No**
-- ¿Compras digitales? **No** (por ahora)
+- ¿Compras digitales? **Sí** (suscripciones Plus, Pro y Pro Max con Google Play)
 - ¿Es un navegador web o buscador? **No**
 
 ## 6. Seguridad de los datos (Data safety)
