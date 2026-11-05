@@ -1,8 +1,15 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "com.fuerzapro.app",
-        "sha256_cert_fingerprints": ["1C:A4:F5:43:7A:D6:AC:E5:8D:3A:7F:32:01:54:AF:19:F7:CA:C9:19:BE:94:5C:A0:AC:85:F7:B8:B1:36:AF:D5"]
-      }
-    }]
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.fuerzapro.app",
+      "sha256_cert_fingerprints": [
+        "1C:A4:F5:43:7A:D6:AC:E5:8D:3A:7F:32:01:54:AF:19:F7:CA:C9:19:BE:94:5C:A0:AC:85:F7:B8:B1:36:AF:D5",
+        "7F:8A:79:0D:BC:02:B9:61:23:35:C4:2F:9F:93:D9:0C:DF:61:07:6A:8A:70:E7:21:2C:EE:4F:92:E9:28:C4:DA"
+      ]
+    }
+  }
+]

@@ -8,6 +8,10 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-05
 
+### 12:57 · (sin cambio de versión) — Huella de la firma de Google en assetlinks.json
+- **Hecho:** se agregó la huella SHA-256 del «App signing key certificate» de Play (la que firma lo que se instala desde
+  Google Play) junto a la de la llave de subida. Prueba cerrada enviada a revisión por Luis.
+
 ### 12:47 · v2.36.12 — Cabecera sin el nombre del autor
 - **Pidió:** quitar «Ing. Luis Campozano, MBA» debajo de «FuerzaPro» en la cabecera de la app (ya aparece en el
   historial de versiones / créditos). Se mantiene en Perfil → Créditos, en los PDF y en la marca de los videos.
