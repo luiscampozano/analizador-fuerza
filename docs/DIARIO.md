@@ -6,6 +6,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-05
+
+### 10:51 · (sin cambio de versión) — borrar-cuenta.html: borrar solo algunos datos
+- **Contexto:** Play Console (Seguridad de datos) pide un enlace para borrar datos sin eliminar la cuenta. Luis decidió
+  declarar desde ya las compras dentro de la app (suscripciones) para no repetir formularios.
+- **Hecho:** sección `#datos` en borrar-cuenta.html (entrenamientos, series, análisis, comidas, publicaciones, dejar la
+  comunidad y pedido por correo). URL para Play: https://fuerzapro.pages.dev/borrar-cuenta.html#datos
+
 ## 2026-11-04
 
 ### 12:08 · (sin cambio de versión) — assetlinks.json para la app de Android
