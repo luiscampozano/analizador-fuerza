@@ -8,6 +8,11 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-05
 
+### 12:47 · v2.36.12 — Cabecera sin el nombre del autor
+- **Pidió:** quitar «Ing. Luis Campozano, MBA» debajo de «FuerzaPro» en la cabecera de la app (ya aparece en el
+  historial de versiones / créditos). Se mantiene en Perfil → Créditos, en los PDF y en la marca de los videos.
+- **Play Console:** Luis enviando la prueba cerrada a revisión (4 probadores por ahora, Ecuador).
+
 ### 11:46 · v2.36.11 — Términos de servicio
 - **Contexto:** Play Console (estado de comerciante de la app: «sí aplica», porque habrá suscripciones) pide un enlace a
   los términos de servicio.

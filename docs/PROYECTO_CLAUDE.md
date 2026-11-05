@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.36.11
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.36.12
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -295,6 +295,7 @@ bloqueos, reportes, fallos.
 | v2.36.9 | Revisión independiente de pesas (parte 1): reps con velocidad negativa, velocidad media 5-95 %, asistidas, 1RM real en peso corporal, recorrido corto, pantorrillas con 0 reps, picos p90, explosivos sin 1RM/RIR, anclas y sentidos, TUT. |
 | v2.36.10 | Pesas parte 2: hack por el riel, aviso de cámara en diagonal, trayectoria sin temblor, relación general solo con ecuación, tope de 1RM por peso corporal. Básquet: salto imposible descartado. |
 | v2.36.11 | terminos.html (términos de servicio con suscripciones de Google Play) para la ficha de Play. |
+| v2.36.12 | Cabecera de la app sin el subtítulo con el nombre del autor (sigue en Créditos, PDF y videos). |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |
