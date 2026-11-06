@@ -76,6 +76,7 @@ async function api(req, env, url) {
   if (ruta === '/api/sync' && m === 'POST') return sincronizar(req, env, u);
   if (ruta === '/api/cuenta' && m === 'DELETE') return borrarCuenta(env, u);
   if (ruta === '/api/fallos' && m === 'POST') return reportarFallo(req, env, u);
+  if (ruta === '/api/opiniones' && m === 'POST') return enviarOpinion(req, env, u);
   throw fallo('No encontrado.', 404);
 }
 
@@ -319,6 +320,7 @@ async function borrarCuenta(env, u) {
     env.DB.prepare('DELETE FROM uso_ia WHERE usuario = ?1').bind(u.id),
     ...(await tablasPlan(env) ? [env.DB.prepare('DELETE FROM uso_plan WHERE usuario = ?1').bind(u.id), env.DB.prepare('DELETE FROM planes WHERE usuario = ?1').bind(u.id)] : []),
     ...(await tablaCompras(env) ? [env.DB.prepare('DELETE FROM compras WHERE usuario = ?1').bind(u.id)] : []), // la suscripcion de Play queda libre para otra cuenta
+    ...(await tablaOpiniones(env) ? [env.DB.prepare('DELETE FROM opiniones WHERE usuario = ?1').bind(u.id)] : []),
     env.DB.prepare('UPDATE alimentos SET usuario = NULL WHERE usuario = ?1').bind(u.id), // el producto queda para todos, sin autor
     env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM credenciales WHERE usuario = ?1').bind(u.id),
@@ -794,6 +796,24 @@ async function moderacion(req, env, u, r, m) {
       FROM uso_ia GROUP BY substr(dia, 1, 10) ORDER BY 1 DESC LIMIT 7`).all();
     return json({ dias: res.results || [], limite: LIMITE_IA_USUARIO, configurada: !!env.ANTHROPIC_API_KEY });
   }
+  // ---- comentarios de los usuarios (v2.38.0); la captura se pide aparte para no cargar la lista
+  if (r === 'opiniones' && m === 'GET') {
+    if (!(await tablaOpiniones(env))) return json({ sinTabla: true, opiniones: [] });
+    const res = await DB.prepare(`SELECT o.id, o.creado, o.tipo, o.texto, o.version, o.plataforma, o.estado, length(o.captura) AS cap, us.email, pf.alias
+      FROM opiniones o LEFT JOIN usuarios us ON us.id = o.usuario LEFT JOIN perfiles pf ON pf.usuario = o.usuario ORDER BY o.creado DESC LIMIT 100`).all();
+    return json({ opiniones: res.results || [] });
+  }
+  if (r.startsWith('opiniones/') && m === 'GET') {
+    const o = await DB.prepare('SELECT captura FROM opiniones WHERE id = ?1').bind(r.slice(10)).first();
+    if (!o) throw fallo('No encontrado.', 404);
+    return json({ captura: o.captura || null });
+  }
+  if (r.startsWith('opiniones/') && m === 'POST') {
+    const { estado } = await leerJSON(req);
+    if (!['nuevo', 'leido', 'resuelto'].includes(estado)) throw fallo('Estado no válido.');
+    await DB.prepare('UPDATE opiniones SET estado = ?2 WHERE id = ?1').bind(r.slice(10), estado).run();
+    return json({ ok: true });
+  }
   if (r === 'reportes' && m === 'GET') {
     const res = await DB.prepare(`SELECT r.objeto_tipo AS tipo, r.objeto_id AS id, count(*) AS n, group_concat(r.motivo, ' · ') AS motivos, max(r.creado) AS ultimo,
         CASE r.objeto_tipo
@@ -853,6 +873,34 @@ async function reportarFallo(req, env, u) {
     id, u.id, Date.now(), txt(b.ejercicio, 80), txt(b.nombre, 120), ent(b.repsApp), ent(b.repsReal), JSON.stringify(excl),
     txt(b.comentario, 500), txt(b.version, 20), txt(JSON.stringify(b.datos || {}), 20000), b.pose || null).run();
   return json({ ok: true, id });
+}
+
+// ================================================================== COMENTARIOS DE LOS USUARIOS (v2.38.0)
+// Boton «Enviar comentario» de Perfil: sugerencia, error u otro, con una captura opcional (JPEG reducida en el
+// telefono, guardada en D1). Los ve el administrador en Moderacion.
+const TIPOS_OPI = ['sugerencia', 'error', 'otro'];
+const MAX_CAPT = 700_000; // caracteres base64 (~520 KB)
+let opinionesOk = null;
+async function tablaOpiniones(env) {
+  if (opinionesOk) return true;
+  try { await env.DB.prepare('SELECT id FROM opiniones LIMIT 1').first(); opinionesOk = true; } catch (e) { opinionesOk = false; }
+  return opinionesOk;
+}
+async function enviarOpinion(req, env, u) {
+  if (!(await tablaOpiniones(env))) throw fallo('Esta función todavía no está lista. Escríbenos a fuerzapro2026@gmail.com', 503);
+  const b = await leerJSON(req);
+  const txt = texto(b.texto, 2000);
+  if (txt.length < 3) throw fallo('Escribe tu comentario.');
+  let cap = null;
+  if (b.captura) {
+    if (typeof b.captura !== 'string' || !b.captura.startsWith('/9j/') || b.captura.length > MAX_CAPT || !/^[A-Za-z0-9+/=]+$/.test(b.captura)) throw fallo('La captura no es válida o es muy grande.');
+    cap = b.captura;
+  }
+  const n = await env.DB.prepare('SELECT count(*) AS n FROM opiniones WHERE usuario = ?1 AND creado > ?2').bind(u.id, Date.now() - 86_400_000).first();
+  if (n && n.n >= 20) throw fallo('Ya enviaste muchos comentarios hoy. ¡Gracias! Inténtalo mañana.', 429);
+  await env.DB.prepare(`INSERT INTO opiniones (id, usuario, creado, tipo, texto, captura, version, plataforma, estado) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'nuevo')`)
+    .bind(crypto.randomUUID(), u.id, Date.now(), TIPOS_OPI.includes(b.tipo) ? b.tipo : 'otro', txt, cap, texto(b.version, 20), b.plataforma === 'play' ? 'play' : 'web').run();
+  return json({ ok: true });
 }
 
 // ================================================================== ALIMENTOS (codigos de barras de la comunidad)

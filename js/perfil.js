@@ -39,6 +39,7 @@ export function iniciar(d) {
   $('pf-peso-ok').onclick = registrarPeso;
   $('pf-ir-historial').onclick = () => deps.vista('v-historial');
   $('pf-ir-guia').onclick = () => deps.vista('v-guia');
+  $('pf-opinar').onclick = opinar;
   $('pf-respaldo').onclick = exportarRespaldo;
   $('pf-restaurar').onclick = () => $('pf-archivo').click();
   $('pf-archivo').onchange = restaurar;
@@ -270,6 +271,55 @@ function registrarPeso() {
   guardarJ('af_nutri_perfil', { ...perfilCuerpo(), peso: kg });
   $('pf-peso-in').value = '';
   pintar();
+}
+
+// ------------------------------------------------------------------ enviar comentario (v2.38.0)
+// Sugerencia, error u otro, con una captura opcional. Llega al administrador en Moderacion. Requiere sesion.
+function opinar() {
+  const cuerpo = $('pf-modal-cuerpo');
+  if (!nube.conectado()) {
+    cuerpo.innerHTML = `<h3 class="en-det-titulo">💬 Enviar comentario</h3><p class="hint">Inicia sesión arriba en Perfil para enviarnos tu comentario desde la app, o escríbenos a <a href="mailto:fuerzapro2026@gmail.com">fuerzapro2026@gmail.com</a>.</p>
+      <div class="en-det-botones"><button type="button" class="btn-sec" id="pf-op-cerrar">Cerrar</button></div>`;
+    $('pf-modal').style.display = 'flex'; $('pf-op-cerrar').onclick = () => { $('pf-modal').style.display = 'none'; };
+    return;
+  }
+  let tipo = 'sugerencia', captura = null;
+  const TIPOS = { sugerencia: '💡 Sugerencia', error: '🐞 Algo falla', otro: '💬 Otro' };
+  cuerpo.innerHTML = `<h3 class="en-det-titulo">💬 Enviar comentario</h3>
+    <p class="hint">¿Qué te gustó, qué falla o qué te gustaría que tenga FuerzaPro? Lo leemos todo.</p>
+    <div class="chips" id="pf-op-tipos">${Object.entries(TIPOS).map(([k, n]) => `<button type="button" class="chip${k === tipo ? ' active' : ''}" data-t="${k}">${n}</button>`).join('')}</div>
+    <textarea id="pf-op-texto" class="pf-op-texto" maxlength="2000" rows="5" placeholder="Escribe aquí…"></textarea>
+    <div class="pf-op-cap"><button type="button" class="btn-sec" id="pf-op-cap-btn">📷 Adjuntar captura (opcional)</button><span id="pf-op-cap-prev"></span></div>
+    <input type="file" id="pf-op-cap-in" accept="image/*" style="display:none">
+    <p class="hint" id="pf-op-msg"></p>
+    <div class="en-det-botones"><button type="button" class="btn-sec" id="pf-op-cancelar">Cancelar</button><button type="button" class="btn-sec en-terminar" id="pf-op-enviar">Enviar</button></div>`;
+  $('pf-modal').style.display = 'flex';
+  cuerpo.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { tipo = b.dataset.t; cuerpo.querySelectorAll('[data-t]').forEach((x) => x.classList.toggle('active', x === b)); }));
+  $('pf-op-cap-btn').onclick = () => $('pf-op-cap-in').click();
+  $('pf-op-cap-in').onchange = async () => {
+    const f = $('pf-op-cap-in').files[0]; if (!f) return;
+    try {
+      const bmp = await createImageBitmap(f), k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      for (const q of [0.8, 0.65, 0.5]) { captura = c.toDataURL('image/jpeg', q).split(',')[1]; if (captura.length <= 690000) break; }
+      $('pf-op-cap-prev').innerHTML = `<img src="data:image/jpeg;base64,${captura}" alt="captura"> <button type="button" class="btn-sec" id="pf-op-cap-quitar">Quitar</button>`;
+      $('pf-op-cap-quitar').onclick = () => { captura = null; $('pf-op-cap-prev').innerHTML = ''; $('pf-op-cap-in').value = ''; };
+    } catch (e) { alert('No pude abrir esa imagen.'); }
+  };
+  $('pf-op-cancelar').onclick = () => { $('pf-modal').style.display = 'none'; };
+  $('pf-op-enviar').onclick = async () => {
+    const texto = $('pf-op-texto').value.trim();
+    if (texto.length < 3) { $('pf-op-msg').textContent = 'Escribe tu comentario.'; return; }
+    const b = $('pf-op-enviar'); b.disabled = true; $('pf-op-msg').textContent = 'Enviando…';
+    try {
+      const plataforma = document.referrer.startsWith('android-app://') || 'getDigitalGoodsService' in window ? 'play' : 'web';
+      await nube.api('POST', '/api/opiniones', { tipo, texto, captura, version: deps.version, plataforma });
+      cuerpo.innerHTML = `<h3 class="en-det-titulo">¡Gracias! 💪</h3><p class="hint">Recibimos tu comentario. Con lo que nos cuentas mejoramos FuerzaPro.</p>
+        <div class="en-det-botones"><button type="button" class="btn-sec en-terminar" id="pf-op-cerrar">Cerrar</button></div>`;
+      $('pf-op-cerrar').onclick = () => { $('pf-modal').style.display = 'none'; };
+    } catch (e) { $('pf-op-msg').textContent = e.message; b.disabled = false; }
+  };
 }
 
 // ------------------------------------------------------------------ editar perfil

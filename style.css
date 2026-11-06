@@ -1287,3 +1287,8 @@ input.nu-ia { border-color: var(--accent-cyan, #22D3EE) !important; box-shadow: 
 /* v2.37.2: mientras se escribe en el buscador de ejercicios, el botón «Analizar serie» no tapa la lista */
 body.buscando .action-footer { display: none; }
 #buscar-ej { scroll-margin-top: 8px; }
+/* v2.38.0: enviar comentario */
+.pf-op-texto { width: 100%; box-sizing: border-box; margin: 10px 0; padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-input, #12121a); color: inherit; font: inherit; resize: vertical; }
+.pf-op-cap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pf-op-cap img { height: 64px; border-radius: 8px; vertical-align: middle; }
+.co-op-cap { max-width: 100%; border-radius: 8px; margin-top: 6px; }

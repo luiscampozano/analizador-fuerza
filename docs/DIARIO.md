@@ -6,6 +6,18 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-06
+
+### 11:40 · v2.38.0 — Botón «Enviar comentario»
+- **Pidió:** una forma de que los testers manden comentarios y recolectarlos.
+- **Hecho:** Perfil → Más → «💬 Enviar comentario o sugerencia»: tipo (sugerencia / algo falla / otro), texto y captura
+  opcional (JPEG reducida en el teléfono). Requiere sesión (sin sesión muestra el correo fuerzapro2026@gmail.com).
+  Servidor: `POST /api/opiniones` (máx. 20 al día por persona), tabla nueva `opiniones`; en Moderación, sección
+  «💬 Comentarios de usuarios» con ver captura, Leído y Resuelto. Borrar la cuenta borra sus comentarios.
+  Pruebas: `pruebas/servidor/opiniones_test.mjs`. También: video promocional para testers (fuera del repo), Grupo de
+  Google `testers-fuerzapro` como lista de testers de la prueba cerrada y formulario de inscripción.
+- **Pendiente (Luis):** correr en D1 la tabla `opiniones` (sql/esquema.sql). Hasta entonces el botón avisa que no está listo.
+
 ## 2026-11-05
 
 ### 18:40 · v2.37.2 — Buscador de ejercicios visible con el teclado

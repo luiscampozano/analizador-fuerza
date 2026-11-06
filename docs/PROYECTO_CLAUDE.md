@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.37.2
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.38.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -299,6 +299,7 @@ bloqueos, reportes, fallos.
 | v2.37.0 | Cobro con Google Play: botones Mensual/Anual por plan (Digital Goods API, solo en la app de Play), restaurar compras, verificación y confirmación en el servidor (`POST /api/plan/compra`, subscriptionsv2 con la cuenta de servicio `PLAY_CUENTA_SERVICIO`), renovación al vencer y tabla `compras`. |
 | v2.37.1 | Precio de Pro a $8.99 (anuales: 39,99 / 89,99 / 199,99 en Google Play). |
 | v2.37.2 | Buscador de ejercicios: la figura se esconde y el buscador sube para que el teclado no tape la lista; «Analizar serie» se oculta al escribir. |
+| v2.38.0 | Botón «Enviar comentario» en Perfil (sugerencia/error/otro + captura), tabla `opiniones`, sección en Moderación. |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

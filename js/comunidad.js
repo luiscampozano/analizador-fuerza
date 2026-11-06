@@ -457,6 +457,7 @@ async function moderar() {
   try {
     const [r, f, ia, pl] = await Promise.all([nube.api('GET', '/api/mod/reportes'), nube.api('GET', '/api/mod/fallos').catch(() => ({ fallos: [] })), nube.api('GET', '/api/mod/ia').catch(() => null),
       nube.api('GET', '/api/mod/planes').catch(() => null)]);
+    const op = await nube.api('GET', '/api/mod/opiniones').catch(() => null);
     // suscripciones (v2.33.0): modo de los limites, tu plan para probar y planes regalados
     const NOMP = { gratis: 'Gratis', plus: 'Plus', pro: 'Pro', promax: 'Pro Max' }, MODOS = { apagado: 'Apagado', prueba: 'Prueba (solo tú)', activo: 'Activo (todos)' };
     const mio = pl && pl.usuarios ? (pl.usuarios.find((x) => x.usuario === pl.yo) || { plan: 'gratis' }).plan : 'gratis';
@@ -469,7 +470,7 @@ async function moderar() {
         <div class="co-regalo"><input id="co-reg-quien" placeholder="@alias o correo"><select id="co-reg-plan">${Object.entries(NOMP).map(([k, n]) => `<option value="${k}"${k === 'plus' ? ' selected' : ''}>${n}</option>`).join('')}</select>
           <input id="co-reg-dias" type="number" inputmode="numeric" placeholder="días (vacío = sin fin)"><button type="button" class="btn-sec" id="co-reg-ok">Regalar</button></div>
         ${pl.usuarios.length ? `<p class="hint">${pl.usuarios.map((x) => `${esc(x.alias ? '@' + x.alias : x.email || 'usuario')}: <b>${NOMP[x.plan] || x.plan}</b>${x.hasta ? ` hasta ${new Date(x.hasta).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}` : ''}`).join(' · ')}</p>` : ''}
-        <p class="hint">${pl.totalUsuarios} cuentas en total. El cobro con Google Play llega después; por ahora los planes pagados se regalan desde aquí.</p>`;
+        <p class="hint">${pl.totalUsuarios} cuentas en total. Las compras con Google Play se activan solas; aquí puedes regalar planes.</p>`;
     // uso de la foto del plato (IA): fotos por dia de los ultimos 7 dias
     const iaHtml = ia ? `<h4>🤖 Funciones con IA</h4><p class="hint">${ia.configurada ? `Activa · límite ${ia.limite} fotos por persona al día.` : '⚠️ Falta la clave ANTHROPIC_API_KEY en Cloudflare.'}
       ${ia.dias.length ? ia.dias.map((d) => `${d.dia.slice(5)}: <b>${d.fotos}</b> fotos${d.textos ? ` · ${d.textos} escritas` : ''}${d.etiquetas ? ` · ${d.etiquetas} etiquetas` : ''}${d.entrenador ? ` · ${d.entrenador} entrenador` : ''} (${d.usuarios} persona${d.usuarios > 1 ? 's' : ''})`).join(' · ') : 'Sin uso todavía.'}</p>` : '';
@@ -480,7 +481,16 @@ async function moderar() {
         <small class="hint"> · ${hace(x.creado)} · v${esc(x.version || '?')} · ${esc(x.estado)}${x.pose_bytes ? '' : ' · sin puntos'}</small>${x.comentario ? `<p class="co-texto">${esc(x.comentario)}</p>` : ''}
         <div class="co-perfil-botones">${x.pose_bytes ? `<button type="button" class="btn-sec" data-bajar="${esc(x.id)}">⬇️ Descargar para Claude</button>` : ''}${x.estado !== 'corregido' ? `<button type="button" class="btn-sec" data-corregido="${esc(x.id)}">✓ Corregido</button>` : ''}</div></div>`).join('')
       : '<p class="hint">Sin fallos reportados.</p>'}<p class="hint">Descarga el fallo y adjunta el archivo en el chat con Claude: trae solo los puntos del cuerpo (sin video) y lo que corrigió la persona.</p>`;
-    modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${planesHtml}${iaHtml}${fallosHtml}<h4>Reportes de la comunidad</h4>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
+    // comentarios de los usuarios (v2.38.0)
+    const TOP = { sugerencia: '💡', error: '🐞', otro: '💬' };
+    const nuevos = op && op.opiniones ? op.opiniones.filter((x) => x.estado === 'nuevo').length : 0;
+    const opHtml = !op ? '' : op.sinTabla ? '<h4>💬 Comentarios de usuarios</h4><p class="hint">⚠️ Falta crear la tabla opiniones en D1.</p>'
+      : `<h4>💬 Comentarios de usuarios${nuevos ? ` · ${nuevos} nuevo${nuevos > 1 ? 's' : ''}` : ''}</h4>${op.opiniones.length ? op.opiniones.slice(0, 50).map((x) => `<div class="card co-rep">
+        <b>${TOP[x.tipo] || '💬'} ${esc(x.alias ? '@' + x.alias : x.email || 'usuario')}</b><small class="hint"> · ${hace(x.creado)} · v${esc(x.version || '?')} · ${x.plataforma === 'play' ? 'app de Play' : 'web'} · ${esc(x.estado)}</small>
+        <p class="co-texto">${esc(x.texto)}</p><div data-cap-de="${esc(x.id)}"></div>
+        <div class="co-perfil-botones">${x.cap ? `<button type="button" class="btn-sec" data-vercap="${esc(x.id)}">🖼️ Ver captura</button>` : ''}${x.estado === 'nuevo' ? `<button type="button" class="btn-sec" data-opest="${esc(x.id)}" data-e="leido">✓ Leído</button>` : ''}${x.estado !== 'resuelto' ? `<button type="button" class="btn-sec" data-opest="${esc(x.id)}" data-e="resuelto">✅ Resuelto</button>` : ''}</div></div>`).join('')
+      : '<p class="hint">Todavía no hay comentarios.</p>'}`;
+    modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${planesHtml}${opHtml}${iaHtml}${fallosHtml}<h4>Reportes de la comunidad</h4>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
         <b>${nombre[x.tipo]}${x.alias ? ' de @' + esc(x.alias) : ''}</b> · ${x.n} reporte${x.n > 1 ? 's' : ''}${x.oculto ? ' · <span class="pf-nube-error">oculto</span>' : ''}
         <p class="co-texto">${esc(x.contenido || '(ya no existe)')}</p><p class="hint">${esc(x.motivos)}</p>
         <div class="co-perfil-botones">${x.tipo !== 'usuario' ? `<button type="button" class="btn-sec" data-a="${x.oculto ? 'mostrar' : 'ocultar'}">${x.oculto ? 'Mostrar' : 'Ocultar'}</button>` : ''}
@@ -510,6 +520,17 @@ async function moderar() {
         a.download = `fallo_${x.ejercicio}_real${x.reps_real ?? 'x'}_app${x.reps_app ?? 'x'}_${String(x.id).slice(0, 8)}.json.gz`;
         document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
       } catch (e) { error(e); } finally { b.disabled = false; }
+    }));
+    cuerpo.querySelectorAll('[data-vercap]').forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      try {
+        const { captura } = await nube.api('GET', '/api/mod/opiniones/' + encodeURIComponent(b.dataset.vercap));
+        if (captura) cuerpo.querySelector(`[data-cap-de="${b.dataset.vercap}"]`).innerHTML = `<img class="co-op-cap" src="data:image/jpeg;base64,${captura}" alt="captura">`;
+        b.remove();
+      } catch (e) { error(e); b.disabled = false; }
+    }));
+    cuerpo.querySelectorAll('[data-opest]').forEach((b) => (b.onclick = async () => {
+      try { await nube.api('POST', '/api/mod/opiniones/' + encodeURIComponent(b.dataset.opest), { estado: b.dataset.e }); moderar(); } catch (e) { error(e); }
     }));
     $('co-modal-cuerpo').querySelectorAll('[data-corregido]').forEach((b) => (b.onclick = async () => {
       try { await nube.api('POST', '/api/mod/fallos/' + encodeURIComponent(b.dataset.corregido), { estado: 'corregido' }); moderar(); } catch (e) { error(e); }

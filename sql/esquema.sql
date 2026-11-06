@@ -44,3 +44,7 @@ INSERT OR IGNORE INTO ajustes_app (clave, valor) VALUES ('limites', 'apagado');
 -- v2.37.0: suscripciones compradas con Google Play (un token de compra = una sola cuenta). hasta = vencimiento (ms).
 CREATE TABLE IF NOT EXISTS compras (token TEXT PRIMARY KEY, usuario TEXT NOT NULL, producto TEXT NOT NULL, plan TEXT NOT NULL, estado TEXT, hasta INTEGER, renueva INTEGER, creado INTEGER NOT NULL, actualizado INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS compras_usuario ON compras(usuario, hasta);
+-- v2.38.0: comentarios de los usuarios (boton «Enviar comentario» de Perfil). captura = JPEG en base64 (opcional).
+CREATE TABLE IF NOT EXISTS opiniones (id TEXT PRIMARY KEY, usuario TEXT NOT NULL, creado INTEGER NOT NULL, tipo TEXT, texto TEXT NOT NULL, captura TEXT, version TEXT, plataforma TEXT, estado TEXT NOT NULL DEFAULT 'nuevo');
+CREATE INDEX IF NOT EXISTS opiniones_creado ON opiniones(creado);
+CREATE INDEX IF NOT EXISTS opiniones_usuario ON opiniones(usuario, creado);
