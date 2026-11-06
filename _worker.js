@@ -1175,7 +1175,9 @@ async function llamarClaude(env, system, content, maxTokens = 900) {
   } catch (e) { throw fallo('No pude conectar con la IA. Inténtalo en un momento.', 502); }
   if (!r.ok) { console.error('anthropic', r.status, (await r.text()).slice(0, 300)); throw fallo(r.status === 429 || r.status === 529 ? 'La IA está ocupada. Inténtalo en un momento.' : 'La IA no pudo responder. Inténtalo de nuevo.', 502); }
   const datos = await r.json();
-  return ((datos.content || []).find((c) => c.type === 'text') || {}).text || '';
+  const txt = (datos.content || []).filter((c) => c.type === 'text').map((c) => c.text || '').join('\n').trim();
+  if (!txt) console.error('anthropic sin texto', datos.stop_reason, JSON.stringify((datos.content || []).map((c) => c.type)));
+  return txt;
 }
 const jsonDe = (texto) => { try { return JSON.parse(texto.slice(texto.indexOf('{'), texto.lastIndexOf('}') + 1)); } catch (e) { throw fallo('La IA respondió algo que no entendí. Inténtalo de nuevo.', 502); } };
 const fotoValida = (img) => { if (typeof img !== 'string' || !img || img.length > MAX_FOTO || !/^[A-Za-z0-9+/=]+$/.test(img)) throw fallo('Foto no válida. Vuelve a tomarla.'); return img; };
@@ -1252,8 +1254,11 @@ async function explicarSerie(req, env, u) {
   for (const img of fotos) if (typeof img !== 'string' || !img.startsWith('/9j/') || img.length > MAX_FOTO_SERIE || !/^[A-Za-z0-9+/=]+$/.test(img)) throw fallo('Las fotos del video no son válidas.');
   const cupo = await cupoIA(env, u, 's', 'explicaciones con IA');
   const contenido = [...fotos.map((d) => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: d } })), { type: 'text', text: 'Datos medidos por la app:\n' + datos }];
-  const crudo = await llamarClaude(env, PROMPT_SERIE, contenido, 900);
-  const texto = String(crudo || '').replace(/[\u0000-\u0009\u000b-\u001f\u007f<>]/g, '').trim().slice(0, 3000); // conserva los saltos de linea
+  const limpiar = (x) => String(x || '').replace(/[\u0000-\u0009\u000b-\u001f\u007f<>]/g, '').trim().slice(0, 3000); // conserva los saltos de linea
+  let texto = limpiar(await llamarClaude(env, PROMPT_SERIE, contenido, 1200));
+  // v2.39.1 si la IA respondio vacio (paso con fotos), se reintenta solo con los numeros; sin texto no se cobra
+  if (!texto && fotos.length) { console.error('ia/serie: respuesta vacia con fotos, reintento sin fotos'); texto = limpiar(await llamarClaude(env, PROMPT_SERIE, [contenido[contenido.length - 1]], 1200)); }
+  if (!texto) throw fallo('La IA no pudo escribir la explicación. Inténtalo de nuevo en un momento (no se gastó tu crédito).', 502);
   await cupo.contar();
   return json({ texto, quedan: cupo.quedan });
 }

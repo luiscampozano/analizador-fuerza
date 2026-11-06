@@ -1,4 +1,5 @@
 // Informe PDF de una serie, generado en el telefono con jsPDF (sin internet ni servidores).
+import { resumenPesas, resumenActividad } from './sencillo.js';
 const BASE = new URL('../vendor/jspdf/', import.meta.url).href;
 let cargado = null;
 function script(src) {
@@ -17,7 +18,36 @@ const fmt = (x, d = 0) => (Number.isFinite(x) ? x.toLocaleString('es-EC', { mini
 // Las fuentes estandar del PDF no tienen algunos simbolos: se reemplazan por equivalentes
 const limpio = (t) => String(t ?? '').replace(/<[^>]+>/g, '')
   .replace(/→/g, '->').replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/≈/g, '~').replace(/−/g, '-').replace(/±/g, '+/-')
-  .replace(/✓/g, 'OK').replace(/⚠️?/g, '!').replace(/[«»]/g, '"').replace(/R²/g, 'R2').replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, '').trim();
+  .replace(/✓/g, 'OK').replace(/⚠️?/g, '!').replace(/[«»]/g, '"').replace(/R²/g, 'R2').replace(/[\u{1F300}-\u{1FAFF}☀-➿\uFE0F\u200D]/gu, '').trim();
+
+// v2.39.1 explicacion en palabras simples (y la de la IA si se pidio) al inicio del informe
+function bloqueSencillo(doc, lineas, ia, y, M, ancho) {
+  const lin = lineas.map((l) => limpio(l)).filter(Boolean), parrafos = String(ia || '').split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  doc.setFontSize(9.5);
+  const alto = (txt, w) => doc.splitTextToSize(txt, w).length * 4.4 + 1.4;
+  let h = 10 + lin.reduce((a, l) => a + alto(l, ancho - 12), 0);
+  if (parrafos.length) h += 9 + parrafos.reduce((a, p) => a + alto(limpio(p.replace(/\*\*/g, '')), ancho - 12), 0);
+  if (y + h > 285) { doc.addPage(); y = 18; }
+  doc.setFillColor(243, 240, 255); doc.setDrawColor(...C.verdeClaro); doc.roundedRect(M, y, ancho, h, 2.5, 2.5, 'FD');
+  let yy = y + 6.5;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text('EN PALABRAS SIMPLES', M + 5, yy); yy += 5.5;
+  doc.setFontSize(9.5); doc.setTextColor(...C.texto);
+  for (const l of lin) {
+    const partes = doc.splitTextToSize(l, ancho - 12);
+    doc.setFont('helvetica', 'bold'); doc.text('•', M + 5, yy); doc.setFont('helvetica', 'normal'); doc.text(partes, M + 9, yy);
+    yy += partes.length * 4.4 + 1.4;
+  }
+  if (parrafos.length) {
+    yy += 2; doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text('EXPLICACIÓN DEL ENTRENADOR IA', M + 5, yy); yy += 5.5;
+    doc.setFontSize(9.5); doc.setTextColor(...C.texto);
+    for (const p of parrafos) {
+      const titulo = /^\*\*.+\*\*:?$/.test(p), partes = doc.splitTextToSize(limpio(p.replace(/\*\*/g, '')), ancho - 12);
+      doc.setFont('helvetica', titulo ? 'bold' : 'normal'); doc.text(partes, M + 5, yy);
+      yy += partes.length * 4.4 + 1.4;
+    }
+  }
+  return y + h + 6;
+}
 
 const C = { oscuro: [11, 11, 18], verde: [91, 63, 224], verdeClaro: [124, 92, 255], naranja: [8, 145, 178], gris: [110, 116, 128], linea: [222, 226, 232], caja: [243, 245, 248], texto: [24, 26, 32] };
 
@@ -140,6 +170,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
     corporal && d.pc ? `peso corporal ${fmt(d.pc, 1)} kg` : null, e.perfil === 'riel' ? `riel a ${fmt(d.alfa)}°` : null].filter(Boolean).join('  ·  ');
   doc.text(limpio(det), M, y + 6);
   y += 12;
+  y = bloqueSencillo(doc, resumenPesas(inf, textoCarga), inf.ia, y, M, ancho);
 
   // ---- imagen del video (a la derecha) y KPIs (a la izquierda)
   let img = null;
@@ -305,6 +336,7 @@ export async function crearPDFActividad(a, { video, version, muestra = false } =
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.gris);
   doc.text(limpio(`${fmt(a.dur, 0)} s de video  ·  ${(a.eventos || []).length} ${limpio(a.contador || 'eventos').toLowerCase()} detectados`), M, y + 6);
   y += 12;
+  y = bloqueSencillo(doc, resumenActividad(a), a.ia, y, M, ancho);
 
   // ---- imagen (a la derecha) y KPIs (a la izquierda)
   let img = null;

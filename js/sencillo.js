@@ -12,7 +12,8 @@ export function resumenPesas(inf, cargaTexto = '') {
   out.push(`🏋️ Hiciste <b>${reps} ${reps === 1 ? 'repetición' : 'repeticiones'}</b>${cargaTexto ? ` con ${cargaTexto}` : ''}.`);
 
   // esfuerzo: cuantas reps le quedaban
-  const rir = s.rir;
+  // en las series del historial solo se guarda el texto («2», «1,5», «≥ 5»): se recupera el numero (v2.39.1)
+  const rir = Number.isFinite(s.rir) ? s.rir : /^\d/.test(String(s.rirTexto || '')) ? parseFloat(String(s.rirTexto).replace(',', '.')) : NaN;
   if (e.balistico) out.push('⚡ Es un ejercicio explosivo: lo importante es moverte rápido en cada rep, no llegar al cansancio.');
   else if (s.rirTexto === '≥ 5' || (Number.isFinite(rir) && rir >= 5)) out.push('😌 Te quedaban <b>5 o más repeticiones</b> en el tanque: fue una serie suave, de calentamiento o técnica.');
   else if (Number.isFinite(rir) && rir <= 1) out.push(`🔥 Llegaste <b>casi al límite</b> (te quedaban ${rir <= 0 ? 'cero' : 'una'} o casi ninguna). Está bien para la última serie, pero no lo hagas en todas: cansa mucho.`);

@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-06
 
+### 12:35 · v2.39.1 — PDF en palabras simples y arreglos de la explicación
+- **Pidió:** la explicación con IA no mostraba nada (solo «Te quedan 9 créditos») y el PDF seguía muy técnico.
+- **Hecho:** el PDF de series y de cardio/deportes empieza con un recuadro «EN PALABRAS SIMPLES» y, si se pidió, la
+  «EXPLICACIÓN DEL ENTRENADOR IA». Las series del historial no traían el RIR como número: se recupera del texto (faltaban
+  las líneas de esfuerzo y «Próxima vez»). Servidor: si la IA responde vacío se reintenta sin fotos y, si sigue vacío,
+  avisa y no cobra el crédito; se registra el motivo en los logs. Emojis quitados bien del PDF.
+- **Pendiente:** que Luis vuelva a probar «Explícame con IA»; si falla, revisar los logs del Worker en Cloudflare.
+
 ### 12:30 · v2.39.0 — Informes en palabras simples + «Explícame con IA»
 - **Pidió:** que los informes (pesas, cardio y deportes) se entiendan por la persona común, como el análisis que le dio
   Meta AI de su video de natación, manteniendo las gráficas. Eligió las dos opciones y enviar números + fotos a la IA.
