@@ -24,7 +24,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.39.1';
+const VERSION = '2.39.2';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -414,7 +414,7 @@ function mostrarActividad(a, { video = null, desde = 'v-form' } = {}) {
   const barras = porSalto || (a.eventos || []).some((e) => e.kmh > 0); // v2.35.4 deportes con balón: velocidad de cada golpe
   $('act-graf-tit').textContent = porSalto ? 'Altura del salto en cada tiro (cm)' : barras ? ({ futbol: 'Velocidad del balón en cada patada', voley: 'Velocidad del balón en cada remate', raqueta: 'Velocidad de la pelota en cada golpe', basquet: 'Velocidad de salida en cada tiro' }[a.tipo] || 'Velocidad en cada golpe') + ' (km/h)' : `Ritmo durante el video (${a.unidad})`;
   $('act-sencillo').innerHTML = resumenActividad(a).map((t) => `<li>${t}</li>`).join('');
-  prepararIA('act', () => datosIAActividad(a), video && video.blob, a.ia);
+  $('act-pdf-op').style.display = 'none';
   vista('v-actividad');
   graficaRitmo($('act-graf'), a);
   if (video) {
@@ -451,22 +451,22 @@ function graficaRitmo(c, a) {
   g.fillStyle = '#5adc78'; for (const e of a.eventos || []) { g.beginPath(); g.arc(x(e.t), H - B + 4, 2.2, 0, 7); g.fill(); }
 }
 $('act-volver').onclick = () => vista(actDesde);
-$('act-pdf').onclick = async () => {
+$('act-pdf').onclick = () => { const o = $('act-pdf-op'); o.style.display = o.style.display === 'none' ? '' : 'none'; };
+$('act-pdf-simple').onclick = () => pdfActividad(false);
+$('act-pdf-ia').onclick = () => pdfActividad(true);
+async function pdfActividad(conIA) {
   if (!actActual) return;
-  const b = $('act-pdf'), txt = b.textContent;
-  b.disabled = true; b.textContent = 'Generando PDF…';
+  const b = $(conIA ? 'act-pdf-ia' : 'act-pdf-simple'), txt = b.textContent;
+  b.disabled = true; b.textContent = conIA ? 'Analizando con IA…' : 'Generando PDF…';
   try {
+    if (conIA) { if (!(await pedirIA(actActual, datosIAActividad(actActual), actVideo && actVideo.blob))) return; b.textContent = 'Generando PDF…'; }
     const { crearPDFActividad } = await import('./pdf.js');
-    const { blob, nombre } = await crearPDFActividad(actActual, { video: actVideo, version: VERSION, muestra: !plan.permiso('pdf') });
+    const { blob, nombre } = await crearPDFActividad(conIA ? actActual : { ...actActual, ia: null }, { video: actVideo, version: VERSION, muestra: !plan.permiso('pdf') });
     if (!plan.permiso('pdf')) setTimeout(() => plan.mostrarMejora('Con tu plan el PDF sale como muestra (con marca de agua). Desde Plus sale completo.'), 600);
-    const f = new File([blob], nombre, { type: 'application/pdf' });
-    if (navigator.canShare && navigator.canShare({ files: [f] })) {
-      try { await navigator.share({ files: [f], title: nombre }); return; } catch (e) { if (e.name === 'AbortError') return; }
-    }
-    descargarBlob(blob, nombre);
-  } catch (e) { console.error(e); alert('No pude crear el PDF: ' + (e.message || e)); }
+    await entregarPDF(blob, nombre);
+  } catch (e) { console.error(e); alert((conIA ? 'No pude crear el PDF con IA: ' : 'No pude crear el PDF: ') + (e.message || e)); }
   finally { b.disabled = false; b.textContent = txt; }
-};
+}
 $('act-nueva').onclick = () => { $('btn-quitar').click(); vista('v-form'); };
 $('act-borrar').onclick = async () => {
   if (!actActual || !confirm('¿Borrar este análisis?')) return;
@@ -676,26 +676,24 @@ async function fotosDeVideo(blob, n = 4) {
     return fotos;
   } finally { URL.revokeObjectURL(url); }
 }
-const textoIA = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n+/).filter((x) => x.trim()).map((x) => `<p>${x}</p>`).join('');
-function prepararIA(pre, datos, videoBlob, guardado) {
-  const btn = $(pre + '-ia-btn'), caja = $(pre + '-ia');
-  caja.innerHTML = guardado ? textoIA(guardado) : '';
-  btn.style.display = guardado ? 'none' : '';
-  btn.disabled = false; btn.textContent = '🤖 Explícame con IA (más detalle)';
-  btn.onclick = async () => {
-    if (!nube.conectado()) return alert('La explicación con IA se hace en el servidor: inicia sesión en Perfil para usarla.');
-    if (!confirm(videoBlob ? 'Para explicarte la serie se envían a la IA (Anthropic) tus números y 4 fotos sacadas del video. No se guardan ni se publican. Gasta 1 crédito IA. ¿Continuar?' : 'Se envían a la IA (Anthropic) los números de esta serie (este análisis ya no tiene video). Gasta 1 crédito IA. ¿Continuar?')) return;
-    btn.disabled = true; btn.textContent = '🤖 Analizando…';
-    try {
-      let fotos = [];
-      if (videoBlob) try { fotos = await fotosDeVideo(videoBlob); } catch (e) { fotos = []; }
-      const r = await nube.api('POST', '/api/ia/serie', { datos: datos(), fotos });
-      caja.innerHTML = textoIA(r.texto) + (r.quedan != null ? `<p class="hint">Te quedan ${r.quedan} créditos IA este mes.</p>` : '');
-      btn.style.display = 'none';
-      const inf = pre === 'r' ? informeActual : actActual;
-      if (inf) { inf.ia = r.texto; try { await almacen.guardarInforme(inf); } catch (e) { /* nada */ } }
-    } catch (e) { btn.disabled = false; btn.textContent = '🤖 Explícame con IA (más detalle)'; alert(e.message); }
-  };
+// pide la explicacion a la IA (con aviso) y la guarda en el informe; devuelve el texto o null si cancela (v2.39.2)
+async function pedirIA(inf, datos, videoBlob) {
+  if (inf.ia) return inf.ia;
+  if (!nube.conectado()) { alert('El análisis con IA se hace en el servidor: inicia sesión en Perfil para usarlo.'); return null; }
+  if (!confirm(videoBlob ? 'Para el PDF completo se envían a la IA (Anthropic) los números y 4 fotos sacadas del video. No se guardan ni se publican. Gasta 1 crédito IA. ¿Continuar?' : 'Para el PDF completo se envían a la IA (Anthropic) los números de esta serie (este análisis ya no tiene video). Gasta 1 crédito IA. ¿Continuar?')) return null;
+  let fotos = [];
+  if (videoBlob) try { fotos = await fotosDeVideo(videoBlob); } catch (e) { fotos = []; }
+  const r = await nube.api('POST', '/api/ia/serie', { datos, fotos });
+  inf.ia = r.texto;
+  try { await almacen.guardarInforme(inf); } catch (e) { /* nada */ }
+  return r.texto;
+}
+async function entregarPDF(blob, nombre) {
+  const f = new File([blob], nombre, { type: 'application/pdf' });
+  if (navigator.canShare && navigator.canShare({ files: [f] })) {
+    try { await navigator.share({ files: [f], title: nombre }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  descargarBlob(blob, nombre);
 }
 function textoTrayectoria(inf) {
   const t = inf.tray;
@@ -787,7 +785,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   $('r-recom').innerHTML = notasInforme(inf).map((t) => `<li>${t}</li>`).join('');
   // v2.39.0 explicacion sencilla (sin internet) y boton de IA
   $('r-sencillo').innerHTML = resumenPesas(inf, textoCarga(inf)).map((t) => `<li>${t}</li>`).join('');
-  prepararIA('r', () => datosIASerie(inf), video && video.blob, inf.ia);
+  $('r-pdf-op').style.display = 'none';
 
   // tecnica
   $('r-tecnica').innerHTML = inf.tec.resumen.length
@@ -942,31 +940,34 @@ async function guardarCorreccion(inf, base, excluidas, real, enviar, comentario)
 $('btn-corregir').onclick = abrirCorreccion;
 $('corregir').addEventListener('click', (ev) => { if (ev.target.id === 'corregir') $('corregir').style.display = 'none'; });
 
-$('btn-pdf').onclick = async () => {
+// v2.39.2 el boton del PDF ofrece «simple» (sin IA) o «completo con análisis de IA»
+$('btn-pdf').onclick = () => { const o = $('r-pdf-op'); o.style.display = o.style.display === 'none' ? '' : 'none'; };
+$('r-pdf-simple').onclick = () => pdfSerie(false);
+$('r-pdf-ia').onclick = () => pdfSerie(true);
+async function pdfSerie(conIA) {
   if (!informeActual) return;
-  const b = $('btn-pdf'), txt = b.textContent;
-  b.disabled = true; b.textContent = 'Generando PDF…';
+  const b = $(conIA ? 'r-pdf-ia' : 'r-pdf-simple'), txt = b.textContent;
+  b.disabled = true; b.textContent = conIA ? 'Analizando con IA…' : 'Generando PDF…';
   try {
+    let ia = null;
+    if (conIA) { ia = await pedirIA(informeActual, datosIASerie(informeActual), videoActual && videoActual.blob); if (!ia) return; b.textContent = 'Generando PDF…'; }
     const { crearPDF } = await import('./pdf.js');
     // serie partida en dos lados: un solo PDF con los dos (primero el lado que se hizo primero) y su comparacion
-    let A = informeActual, pareja = null;
-    const o = A.pareja ? await almacen.leerInforme(A.pareja) : null;
+    const sinIA = (x) => (conIA ? x : { ...x, ia: null });
+    let A = sinIA(informeActual), pareja = null;
+    const o = informeActual.pareja ? await almacen.leerInforme(informeActual.pareja) : null;
     if (o && o.reps && o.reps.length) {
       const t0 = (x) => (x.reps[0] ? x.reps[0].tope : 0);
-      const B = t0(o) < t0(A) ? A : o; if (B === A) A = o;
+      let B = sinIA(o); if (t0(o) < t0(informeActual)) { const x = A; A = B; B = x; }
       pareja = { inf: B, notas: notasInforme(B), textoTrayectoria: textoTrayectoria(B), textoCarga: textoCarga(B) };
     }
     const { blob, nombre } = await crearPDF(A, { video: videoActual, pareja, graficas: { barras: graficaBarras, trayectoria: graficaTrayectoria }, notas: notasInforme(A),
       textoTrayectoria: textoTrayectoria(A), textoCarga: textoCarga(A), version: VERSION, muestra: !plan.permiso('pdf') });
     if (!plan.permiso('pdf')) setTimeout(() => plan.mostrarMejora('Con tu plan el PDF sale como muestra (con marca de agua). Desde Plus sale completo.'), 600);
-    const f = new File([blob], nombre, { type: 'application/pdf' });
-    if (navigator.canShare && navigator.canShare({ files: [f] })) {
-      try { await navigator.share({ files: [f], title: nombre }); return; } catch (e) { if (e.name === 'AbortError') return; }
-    }
-    descargarBlob(blob, nombre);
-  } catch (e) { console.error(e); alert('No pude crear el PDF: ' + (e.message || e)); }
+    await entregarPDF(blob, nombre);
+  } catch (e) { console.error(e); alert((conIA ? 'No pude crear el PDF con IA: ' : 'No pude crear el PDF: ') + (e.message || e)); }
   finally { b.disabled = false; b.textContent = txt; }
-};
+}
 
 // ------------------------------------------------------------------ graficas (canvas)
 function lienzo(c) {

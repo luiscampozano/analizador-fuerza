@@ -1300,3 +1300,5 @@ body.buscando .action-footer { display: none; }
 .btn-ia-serie { width: 100%; margin-top: 12px; }
 .ia-serie p { margin: 8px 0 0; line-height: 1.5; font-size: .95rem; }
 .ia-serie:not(:empty) { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); }
+.pdf-opciones { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 12px; }
+.pdf-opciones .btn-sec { width: 100%; }

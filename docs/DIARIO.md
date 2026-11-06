@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-06
 
+### 12:45 · v2.39.2 — La IA vive en el PDF: «PDF simple» o «PDF completo con análisis de IA»
+- **Pidió:** centralizar la explicación en el informe PDF con dos opciones; dejar en pantalla solo «En palabras simples».
+- **Hecho:** el botón del PDF (series y cardio/deportes) despliega «📄 PDF simple» (sin IA) y «🤖 PDF completo con
+  análisis de IA» (aviso, números + 4 fotos, 1 crédito; si ya se pidió antes, no vuelve a cobrar). Se quitó el botón
+  «Explícame con IA» de la pantalla. Costo estimado: ~0,1 centavo de dólar por análisis (Claude Haiku 5.5).
+
 ### 12:35 · v2.39.1 — PDF en palabras simples y arreglos de la explicación
 - **Pidió:** la explicación con IA no mostraba nada (solo «Te quedan 9 créditos») y el PDF seguía muy técnico.
 - **Hecho:** el PDF de series y de cardio/deportes empieza con un recuadro «EN PALABRAS SIMPLES» y, si se pidió, la
