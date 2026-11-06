@@ -33,7 +33,7 @@
 
   <h2>2. Qué datos se usan y para qué</h2>
   <ul>
-    <li><b>Videos de tus series:</b> se analizan con inteligencia artificial dentro de tu teléfono. Los videos no se suben a ningún servidor, salvo que tú decidas publicar uno en la comunidad (ver abajo).</li>
+    <li><b>Videos de tus series:</b> se analizan con inteligencia artificial dentro de tu teléfono. Los videos no se suben a ningún servidor, salvo que tú decidas publicar uno en la comunidad o pidas la explicación con IA (ver abajo).</li>
     <li><b>Entrenamientos, rutinas, récords, análisis y comidas:</b> se guardan en tu teléfono. Si inicias sesión, se copian a la nube para sincronizarlos entre tus dispositivos y tener un respaldo.</li>
     <li><b>Datos corporales y de perfil</b> (peso, estatura, edad, sexo, foto y nombre que escribas): se usan para calcular tus métricas (por ejemplo, puntos DOTS y metas de nutrición) y se tratan igual que el resto de tus datos.</li>
     <li><b>Comunidad (opcional):</b> si creas un perfil público, son públicos para los usuarios de FuerzaPro tu nombre de usuario, nombre visible, foto, gimnasio, categoría y descripción, y los entrenamientos, análisis, fotos y videos que decidas compartir (con sus likes y comentarios). Las fotos y videos de la comunidad se guardan en Cloudflare R2; los videos se eliminan automáticamente al cumplir 1 año. Guardamos también a quién sigues, a quién bloqueas y los reportes que envías (los reportes son anónimos para la persona reportada).</li>
@@ -42,6 +42,7 @@
     <li><b>Búsqueda de alimentos:</b> cuando buscas un producto o escaneas un código de barras, el texto o el código se envían a Open Food Facts (base de datos abierta) para obtener su información nutricional.</li>
     <li><b>Funciones con IA de nutrición y entrenador (opcional):</b> si usas «foto del plato», «escribir lo que comí», «leer la etiqueta con IA» o el entrenador IA, la foto o el texto (y, para el entrenador, un resumen de tus entrenamientos y datos de perfil) se envían a Anthropic (Claude) para obtener la estimación o los consejos. FuerzaPro no guarda esas fotos; solo cuenta cuántas veces usas cada función para aplicar los límites. Según sus condiciones comerciales, Anthropic no usa estos datos para entrenar sus modelos.</li>
     <li><b>Plan y uso:</b> guardamos tu plan y cuántos análisis y créditos de IA usas cada mes, para aplicar los límites de cada plan.</li>
+    <li><b>Explicación de una serie con IA (opcional):</b> si tocas «Explícame con IA» en un análisis, se envían a Anthropic (Claude) los números medidos de esa serie y hasta 4 fotos sacadas del video con telemetría, solo para escribir la explicación. Antes de enviarlas te pedimos confirmación. FuerzaPro no guarda esas fotos; la explicación queda guardada solo en tu teléfono, junto al análisis.</li>
     <li><b>Reportes de fallos (opcional):</b> si corriges el conteo de reps de una serie y aceptas enviar el caso, recibimos el ejercicio, tu corrección, tu comentario y los puntos del cuerpo que detectó la IA cuadro por cuadro (coordenadas, sin imagen ni video). Los usamos solo para mejorar la detección y se borran si borras tu cuenta.</li>
     <li><b>Cámara:</b> se usa solo para grabar tus series, el modo en vivo y leer códigos de barras. Las imágenes se procesan en el teléfono.</li>
   </ul>
@@ -50,7 +51,7 @@
   <p>Los datos sincronizados se almacenan en la infraestructura de Cloudflare (base de datos D1 y, para fotos y videos de la comunidad, R2), con conexión cifrada (HTTPS). Los datos que solo están en tu teléfono permanecen en el almacenamiento del navegador o de la app.</p>
 
   <h2>4. Con quién se comparten</h2>
-  <p>No vendemos ni compartimos tus datos con anunciantes. Solo intervienen los proveedores necesarios para que la app funcione: Google (inicio de sesión), Cloudflare (alojamiento, base de datos y archivos), Anthropic (funciones de IA de nutrición y entrenador, solo cuando las usas) y Open Food Facts (búsquedas de alimentos). En la comunidad solo es público lo que tú eliges publicar, y lo ven únicamente las personas con sesión iniciada en FuerzaPro. Consulta las <a href="normas.html">normas de la comunidad</a>.</p>
+  <p>No vendemos ni compartimos tus datos con anunciantes. Solo intervienen los proveedores necesarios para que la app funcione: Google (inicio de sesión), Cloudflare (alojamiento, base de datos y archivos), Anthropic (funciones de IA de nutrición, entrenador y explicación de series, solo cuando las usas) y Open Food Facts (búsquedas de alimentos). En la comunidad solo es público lo que tú eliges publicar, y lo ven únicamente las personas con sesión iniciada en FuerzaPro. Consulta las <a href="normas.html">normas de la comunidad</a>.</p>
 
   <h2>5. Tus derechos y cómo borrar tus datos</h2>
   <ul>

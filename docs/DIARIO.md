@@ -8,6 +8,17 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-06
 
+### 12:30 · v2.39.0 — Informes en palabras simples + «Explícame con IA»
+- **Pidió:** que los informes (pesas, cardio y deportes) se entiendan por la persona común, como el análisis que le dio
+  Meta AI de su video de natación, manteniendo las gráficas. Eligió las dos opciones y enviar números + fotos a la IA.
+- **Hecho:** tarjeta «🗣️ En palabras simples» arriba de cada informe (js/sencillo.js, sin internet): reps, cuántas le
+  quedaban, cansancio, peso máximo, técnica y qué hacer la próxima vez; en cardio/deportes ritmo de inicio vs final,
+  golpe más fuerte, lo que hace bien y qué mejorar. Botón «🤖 Explícame con IA»: con aviso, envía los números y 4 fotos
+  del video con telemetría a `POST /api/ia/serie` (Claude Haiku, 1 crédito IA; sin planes 10 al día). La respuesta se
+  guarda en el informe. Privacidad y ficha de Play actualizadas (las fotos no se guardan). Créditos IA ahora «nutrición
+  y explicaciones». Pruebas: `pruebas/servidor/ia_serie_test.mjs`.
+- **Pendiente:** probar en el celular una explicación real con IA (natación y una serie de pesas).
+
 ### 11:40 · v2.38.0 — Botón «Enviar comentario»
 - **Pidió:** una forma de que los testers manden comentarios y recolectarlos.
 - **Hecho:** Perfil → Más → «💬 Enviar comentario o sugerencia»: tipo (sugerencia / algo falla / otro), texto y captura

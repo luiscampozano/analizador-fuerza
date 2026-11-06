@@ -1,4 +1,5 @@
 // FuerzaPro — interfaz principal. Todo el procesamiento ocurre en el dispositivo.
+import { resumenPesas, resumenActividad } from './sencillo.js';
 import { EJERCICIOS, POR_ID, GRUPOS, GRUPOS_MUSCULO, GRUPO_PROPIOS, agregarPropio, quitarPropio } from './ejercicios.js';
 import { detectarPose, cargarModelo, cargarDetectorBalon } from './pose.js';
 import { interpolar, analizar, anguloArticular, MP, escala, marcarReps } from './fisica.js';
@@ -23,7 +24,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.38.0';
+const VERSION = '2.39.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -412,6 +413,8 @@ function mostrarActividad(a, { video = null, desde = 'v-form' } = {}) {
   const porSalto = a.tipo === 'basquet' && !(a.eventos || []).some((e) => e.kmh > 0) && (a.eventos || []).some((e) => e.salto > 0);
   const barras = porSalto || (a.eventos || []).some((e) => e.kmh > 0); // v2.35.4 deportes con balón: velocidad de cada golpe
   $('act-graf-tit').textContent = porSalto ? 'Altura del salto en cada tiro (cm)' : barras ? ({ futbol: 'Velocidad del balón en cada patada', voley: 'Velocidad del balón en cada remate', raqueta: 'Velocidad de la pelota en cada golpe', basquet: 'Velocidad de salida en cada tiro' }[a.tipo] || 'Velocidad en cada golpe') + ' (km/h)' : `Ritmo durante el video (${a.unidad})`;
+  $('act-sencillo').innerHTML = resumenActividad(a).map((t) => `<li>${t}</li>`).join('');
+  prepararIA('act', () => datosIAActividad(a), video && video.blob, a.ia);
   vista('v-actividad');
   graficaRitmo($('act-graf'), a);
   if (video) {
@@ -638,6 +641,62 @@ function notasInforme(inf) {
     : 'Aún no había perfil carga-velocidad personal para este ejercicio: se usaron valores promedio. Mira «Historial → Progreso» para calibrarlo.');
   return n;
 }
+// ------------------------------------------------------------------ explicacion con IA (v2.39.0)
+// Se envian los numeros de la serie y 4 fotos sacadas del video con telemetria (con aviso). La respuesta se guarda en
+// el informe para no gastar otro credito al volver a abrirlo.
+const r2 = (x, d = 2) => (Number.isFinite(x) ? Math.round(x * 10 ** d) / 10 ** d : null);
+function datosIASerie(inf) {
+  const { s = {}, ej: e = {} } = inf;
+  return { tipo: 'pesas', ejercicio: e.nombre, maquina: e.perfil, lado: ladoDe(inf.datos) || null, carga: textoCarga(inf), reps: inf.corregida ? inf.corregida.real : inf.reps.length,
+    rir: s.rirTexto, rpe: s.rpeTexto, perdidaVelocidadPct: r2(s.perdida, 0), mejorVelocidad: r2(s.vMejor), velocidadMinimaUltimaRep: r2(s.mvt), pesoMaximo1Rep: e.perfil === 'corporal' ? null : r2(s.rm, 1),
+    seriePctDelMaximo: r2(s.pct, 0), fuerzaPicoKg: r2(s.fPico, 0), potenciaPicoW: r2(s.pPico, 0), explosivo: !!e.balistico,
+    avisosTecnica: (inf.tec && inf.tec.resumen) || [], trayectoria: textoTrayectoria(inf),
+    porRep: inf.reps.slice(0, 30).map((r) => ({ n: r.n, vel: r2(r.v), perdidaPct: r2(r.perd, 0), recorridoCm: r2(r.rec, 0), subidaS: r2(r.ts, 2), desvioCm: r2(r.desvio, 1), parcial: !!(r.parcial || r.atipica), alertas: r.alertas || [] })) };
+}
+function datosIAActividad(a) {
+  return { tipo: 'deporte/cardio', actividad: a.nombre, duracionS: r2(a.dur, 0), contador: a.contador, total: a.total, ritmo: a.ritmo, unidad: a.unidad,
+    indicadores: (a.kpis || []).map((k) => `${k.label}: ${k.valor ?? '--'} ${k.sub || ''}`), avisos: (a.alertas || []).map((x) => x.texto),
+    curvaRitmo: (a.curva || []).filter((x) => Number.isFinite(x.v)).slice(0, 60).map((x) => [r2(x.t, 1), r2(x.v, 0)]),
+    eventos: (a.eventos || []).slice(0, 60).map((x) => ({ t: r2(x.t, 1), ...(x.kmh ? { kmh: r2(x.kmh, 0) } : {}), ...(x.salto ? { saltoCm: x.salto } : {}), ...(x.lado ? { lado: x.lado } : {}) })) };
+}
+// 4 fotos del video (20, 40, 60 y 80 %), lado mayor 640 px, JPEG
+async function fotosDeVideo(blob, n = 4) {
+  const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto';
+  const url = URL.createObjectURL(blob); v.src = url;
+  try {
+    await new Promise((ok, mal) => { v.onloadeddata = ok; v.onerror = () => mal(new Error('video')); setTimeout(() => mal(new Error('tiempo')), 15000); });
+    const k = Math.min(1, 640 / Math.max(v.videoWidth, v.videoHeight)), c = document.createElement('canvas');
+    c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
+    const fotos = [];
+    for (let i = 1; i <= n; i++) {
+      await new Promise((ok) => { v.onseeked = ok; v.currentTime = (v.duration || 1) * i / (n + 1); setTimeout(ok, 4000); });
+      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+      fotos.push(c.toDataURL('image/jpeg', 0.72).split(',')[1]);
+    }
+    return fotos;
+  } finally { URL.revokeObjectURL(url); }
+}
+const textoIA = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n+/).filter((x) => x.trim()).map((x) => `<p>${x}</p>`).join('');
+function prepararIA(pre, datos, videoBlob, guardado) {
+  const btn = $(pre + '-ia-btn'), caja = $(pre + '-ia');
+  caja.innerHTML = guardado ? textoIA(guardado) : '';
+  btn.style.display = guardado ? 'none' : '';
+  btn.disabled = false; btn.textContent = '🤖 Explícame con IA (más detalle)';
+  btn.onclick = async () => {
+    if (!nube.conectado()) return alert('La explicación con IA se hace en el servidor: inicia sesión en Perfil para usarla.');
+    if (!confirm(videoBlob ? 'Para explicarte la serie se envían a la IA (Anthropic) tus números y 4 fotos sacadas del video. No se guardan ni se publican. Gasta 1 crédito IA. ¿Continuar?' : 'Se envían a la IA (Anthropic) los números de esta serie (este análisis ya no tiene video). Gasta 1 crédito IA. ¿Continuar?')) return;
+    btn.disabled = true; btn.textContent = '🤖 Analizando…';
+    try {
+      let fotos = [];
+      if (videoBlob) try { fotos = await fotosDeVideo(videoBlob); } catch (e) { fotos = []; }
+      const r = await nube.api('POST', '/api/ia/serie', { datos: datos(), fotos });
+      caja.innerHTML = textoIA(r.texto) + (r.quedan != null ? `<p class="hint">Te quedan ${r.quedan} créditos IA este mes.</p>` : '');
+      btn.style.display = 'none';
+      const inf = pre === 'r' ? informeActual : actActual;
+      if (inf) { inf.ia = r.texto; try { await almacen.guardarInforme(inf); } catch (e) { /* nada */ } }
+    } catch (e) { btn.disabled = false; btn.textContent = '🤖 Explícame con IA (más detalle)'; alert(e.message); }
+  };
+}
 function textoTrayectoria(inf) {
   const t = inf.tray;
   return Number.isFinite(t.desvioMedio)
@@ -726,6 +785,9 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
     s.recorridoCV <= 8 ? '<span class="etiqueta verde">Recorrido constante</span>' : '',
   ].filter(Boolean).join('');
   $('r-recom').innerHTML = notasInforme(inf).map((t) => `<li>${t}</li>`).join('');
+  // v2.39.0 explicacion sencilla (sin internet) y boton de IA
+  $('r-sencillo').innerHTML = resumenPesas(inf, textoCarga(inf)).map((t) => `<li>${t}</li>`).join('');
+  prepararIA('r', () => datosIASerie(inf), video && video.blob, inf.ia);
 
   // tecnica
   $('r-tecnica').innerHTML = inf.tec.resumen.length

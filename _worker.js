@@ -65,6 +65,7 @@ async function api(req, env, url) {
   if (ruta === '/api/ia/texto' && m === 'POST') return comidaTexto(req, env, u);
   if (ruta === '/api/ia/etiqueta' && m === 'POST') return etiquetaIA(req, env, u);
   if (ruta === '/api/ia/entrenador' && m === 'POST') return entrenadorIA(req, env, u);
+  if (ruta === '/api/ia/serie' && m === 'POST') return explicarSerie(req, env, u);
   if (/^\/api\/alimentos\/\d{6,14}\/reportar$/.test(ruta) && m === 'POST') return reportarAlimento(env, u, ruta.split('/')[3]);
   if (ruta.startsWith('/api/comunidad/')) return comunidad(req, env, u, ruta.slice(15), m, url);
   if (ruta.startsWith('/api/mod/')) return moderacion(req, env, u, ruta.slice(9), m);
@@ -792,7 +793,7 @@ async function moderacion(req, env, u, r, m) {
   }
   if (r === 'ia' && m === 'GET') { // uso de la foto del plato en los ultimos 7 dias
     const res = await DB.prepare(`SELECT substr(dia, 1, 10) AS dia, sum(CASE WHEN length(dia) = 10 THEN n ELSE 0 END) AS fotos, sum(CASE WHEN dia LIKE '%:t' THEN n ELSE 0 END) AS textos,
-        sum(CASE WHEN dia LIKE '%:e' THEN n ELSE 0 END) AS etiquetas, sum(CASE WHEN dia LIKE '%:c' THEN n ELSE 0 END) AS entrenador, count(DISTINCT usuario) AS usuarios
+        sum(CASE WHEN dia LIKE '%:e' THEN n ELSE 0 END) AS etiquetas, sum(CASE WHEN dia LIKE '%:c' THEN n ELSE 0 END) AS entrenador, sum(CASE WHEN dia LIKE '%:s' THEN n ELSE 0 END) AS series, count(DISTINCT usuario) AS usuarios
       FROM uso_ia GROUP BY substr(dia, 1, 10) ORDER BY 1 DESC LIMIT 7`).all();
     return json({ dias: res.results || [], limite: LIMITE_IA_USUARIO, configurada: !!env.ANTHROPIC_API_KEY });
   }
@@ -962,7 +963,7 @@ async function reportarAlimento(env, u, codigo) {
 // su limite por persona y por dia (tabla uso_ia; el "dia" lleva un sufijo por funcion: "2026-11-01" = foto del plato,
 // "2026-11-01:t" = texto, ":e" = etiqueta, ":c" = entrenador), y hay un tope general diario para todas. (v2.22-2.23)
 const LIMITE_IA_USUARIO = 10, LIMITE_IA_TOTAL = 600, MAX_FOTO = 400_000; // caracteres base64 (~300 KB)
-const LIMITES_IA = { '': 10, t: 20, e: 10, c: 3 }; // plato, texto, etiqueta, entrenador
+const LIMITES_IA = { '': 10, t: 20, e: 10, c: 3, s: 10 }; // plato, texto, etiqueta, entrenador, explicar una serie
 const MODELO_IA = 'claude-haiku-5-5';
 const texto_ = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, max) : '');
 const numIA = (x, max) => { const v = +String(x).replace(',', '.'); return Number.isFinite(v) && v >= 0 ? Math.min(max, Math.round(v * 10) / 10) : 0; };
@@ -1233,6 +1234,30 @@ async function etiquetaIA(req, env, u) {
 const PROMPT_COACH = `Eres un entrenador de fuerza y nutricionista deportivo, directo y motivador. Recibes en JSON los datos reales de las ultimas semanas de un atleta (entrenamientos, volumen, velocidad medida con video a la misma carga, cardio, nutricion y metas).
 Escribe en espanol de Ecuador, tuteando, un analisis de su semana: 4 a 6 vinetas cortas (empieza cada una con un emoji), con numeros concretos de sus datos: que mejoro, que se estanco, una recomendacion concreta de carga o volumen para la proxima semana (por ejemplo subir 2,5-5 kg si la velocidad con la misma carga subio) y una de nutricion si hay datos.
 No inventes datos que no esten en el JSON; si faltan datos, dilo en una vineta y sugiere registrarlos. No des consejos medicos. Maximo 170 palabras. Solo el texto de las vinetas.`;
+// ---------- explicar una serie o un deporte en palabras simples (v2.39.0): numeros medidos + hasta 4 fotos del video
+const PROMPT_SERIE = `Eres un entrenador personal que explica a una persona comun (no deportista profesional) el analisis de su video de ejercicio o deporte.
+Recibes en JSON los numeros que midio la app (repeticiones, velocidad, cansancio, ritmo, avisos de tecnica) y hasta 4 fotos del video con el esqueleto dibujado y las graficas.
+Escribe en espanol de Ecuador, tuteando, cercano y motivador, SIN jerga (no digas RIR, RPE, MVT ni CV: explica la idea con palabras simples).
+Estructura (usa estos titulos en negrita con **):
+**Lo que dicen tus numeros**: 2-3 frases que expliquen el resultado con 2 o 3 numeros concretos del JSON.
+**Tu tecnica**: 2-4 puntos cortos sobre lo que se ve en las fotos y en los avisos (empieza cada punto con un guion). Solo comenta lo que realmente se ve; si las fotos no permiten juzgar algo, no lo inventes.
+**Lo que haces bien**: 1-2 puntos.
+**Para la proxima**: 2-3 consejos practicos y concretos (por ejemplo cuanto peso subir, que ritmo llevar o un ejercicio para corregir).
+No inventes numeros que no esten en el JSON. No des consejos medicos; si hay dolor, sugiere ver a un profesional. Maximo 230 palabras.`;
+const MAX_FOTO_SERIE = 200_000;
+async function explicarSerie(req, env, u) {
+  const b = await leerJSON(req), datos = JSON.stringify(b.datos || {});
+  if (datos.length > 15000) throw fallo('Demasiados datos para el análisis.');
+  const fotos = (Array.isArray(b.fotos) ? b.fotos : []).slice(0, 4);
+  for (const img of fotos) if (typeof img !== 'string' || !img.startsWith('/9j/') || img.length > MAX_FOTO_SERIE || !/^[A-Za-z0-9+/=]+$/.test(img)) throw fallo('Las fotos del video no son válidas.');
+  const cupo = await cupoIA(env, u, 's', 'explicaciones con IA');
+  const contenido = [...fotos.map((d) => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: d } })), { type: 'text', text: 'Datos medidos por la app:\n' + datos }];
+  const crudo = await llamarClaude(env, PROMPT_SERIE, contenido, 900);
+  const texto = String(crudo || '').replace(/[\u0000-\u0009\u000b-\u001f\u007f<>]/g, '').trim().slice(0, 3000); // conserva los saltos de linea
+  await cupo.contar();
+  return json({ texto, quedan: cupo.quedan });
+}
+
 async function entrenadorIA(req, env, u) {
   const b = await leerJSON(req), datos = JSON.stringify(b.datos || {});
   if (datos.length > 12000) throw fallo('Demasiados datos para el análisis.');

@@ -38,13 +38,13 @@ export async function contarAnalisis() {
 export function resumen() {
   if (!aplica()) return null;
   const t = (k, n) => { const l = estado.limites[k]; return l.lim == null ? `${n} ilimitados` : `${estado.usos[k]} de ${l.lim} ${n}`; };
-  return { plan: estado.nombre, hasta: estado.hasta, lineas: [t('video', 'análisis de video'), t('ia', 'créditos IA de nutrición'), t('coach', 'entrenador IA')] };
+  return { plan: estado.nombre, hasta: estado.hasta, lineas: [t('video', 'análisis de video'), t('ia', 'créditos IA'), t('coach', 'entrenador IA')] };
 }
 
 // ventana con los planes. motivo: el texto de por que aparece (se acabo el cupo, funcion de Plus...)
 const FILAS = [
   ['Análisis de video al mes', (p) => (p.video == null ? 'Ilimitado' : p.video)],
-  ['Créditos IA para nutrición al mes', (p) => p.ia],
+  ['Créditos IA al mes (nutrición y explicaciones)', (p) => p.ia],
   ['Entrenador IA', (p) => `${p.coach[0]} ${({ mes: 'al mes', semana: 'por semana', dia: 'al día' })[p.coach[1]]}`],
   ['Informe PDF', (p) => (p.pdf ? '✅' : 'Muestra')],
   ['Video en la comunidad', (p) => (p.videoComunidad ? '✅' : '—')],

@@ -24,7 +24,7 @@ Analiza tus series con IA en tu celular: reps, velocidad, fuerza y progreso.
 
 **Descripción completa (máx. 4000):**
 ```
-FuerzaPro convierte tu celular en un laboratorio de entrenamiento. Graba tu serie y la inteligencia artificial cuenta tus repeticiones, mide la velocidad de cada una y estima la fuerza que aplicaste, todo dentro de tu teléfono: tus videos no se suben a ningún servidor.
+FuerzaPro convierte tu celular en un laboratorio de entrenamiento. Graba tu serie y la inteligencia artificial cuenta tus repeticiones, mide la velocidad de cada una y estima la fuerza que aplicaste, todo dentro de tu teléfono: tus videos no se suben a ningún servidor (salvo que tú pidas la explicación con IA, que usa 4 fotos del video).
 
 🎥 ANALIZADOR DE VIDEO CON IA
 • Cuenta las repeticiones automáticamente en más de 190 ejercicios.
