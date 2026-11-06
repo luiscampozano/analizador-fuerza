@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-06
 
+### 14:10 · v2.39.3 — Botón Atrás: volver a Entrenar y «Toca atrás de nuevo para salir»
+- **Pidió:** que Atrás no cierre la app de golpe: de una sub-pantalla a su pestaña, de otra pestaña a Entrenar y en
+  Entrenar avisar «Toca atrás de nuevo para salir».
+- **Hecho:** entradas «guardia» en el historial (app.js) conectadas a js/atras.js (que ya manejaba las ventanas). Resultados
+  y actividad usan su propio botón Volver; Historial/Guía su `data-volver`; mientras se analiza no se sale. Aviso flotante
+  (`.tostada`). La guardia se repone al primer toque porque Chrome se salta entradas creadas sin toque.
+- **Pendiente:** probarlo en la app de Play (gesto Atrás de Android).
+
 ### 12:45 · v2.39.2 — La IA vive en el PDF: «PDF simple» o «PDF completo con análisis de IA»
 - **Pidió:** centralizar la explicación en el informe PDF con dos opciones; dejar en pantalla solo «En palabras simples».
 - **Hecho:** el botón del PDF (series y cardio/deportes) despliega «📄 PDF simple» (sin IA) y «🤖 PDF completo con

@@ -24,7 +24,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.39.2';
+const VERSION = '2.39.3';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -54,6 +54,35 @@ document.querySelectorAll('.nav button').forEach((b) => b.addEventListener('clic
   if ($('v-progreso').classList.contains('active')) return;
   vista(b.dataset.vista);
 }));
+// v2.39.3 boton/gesto Atras de Android: una sub-pantalla vuelve a su pestaña, otra pestaña vuelve a Entrenar y en
+// Entrenar avisa «Toca atrás de nuevo para salir». Se deja una entrada «guardia» en el historial para que el primer Atras
+// no cierre la app. Chrome puede saltarse entradas creadas sin que la persona toque la pantalla: por eso se vuelve a
+// poner una al primer toque.
+let guardias = 0, sinGesto = false, ignorarBase = 0, salirListo = false;
+function guardia(conGesto) { try { history.pushState({ afBase: 1 }, ''); guardias++; sinGesto = !conGesto; } catch (e) { /* nada */ } }
+addEventListener('pointerdown', () => { if (!salirListo && (guardias === 0 || sinGesto)) guardia(true); }, true);
+function tostada(t) {
+  let el = $('tostada');
+  if (!el) { el = document.createElement('div'); el.id = 'tostada'; el.className = 'tostada'; el.setAttribute('role', 'status'); document.body.append(el); }
+  el.textContent = t; el.classList.add('ver'); clearTimeout(tostada.t); tostada.t = setTimeout(() => el.classList.remove('ver'), 2200);
+}
+function atrasBase() {
+  if (ignorarBase > 0) { ignorarBase--; return; }
+  guardias = Math.max(0, guardias - 1);
+  const act = document.querySelector('.view.active'), id = act ? act.id : 'v-entrenar';
+  if (id === 'v-entrenar') {
+    salirListo = true; tostada('Toca atrás de nuevo para salir');
+    if (guardias > 0) { ignorarBase++; const n = guardias; guardias = 0; history.go(-n); } // sin guardias: el próximo Atrás sale
+    setTimeout(() => { salirListo = false; guardia(false); }, 2500);
+    return;
+  }
+  if (id !== 'v-progreso') { // mientras se analiza un video no se sale de la pantalla
+    const volver = { 'v-resultados': 'btn-nueva', 'v-actividad': 'act-volver' }[id], dv = act.querySelector('[data-volver]');
+    if (volver) $(volver).click(); else if (dv) dv.click(); else vista(id === 'v-vivo' ? 'v-form' : 'v-entrenar');
+  }
+  if (!guardias) guardia(false);
+}
+atras.alAtrasSinVentana(atrasBase);
 // tocar el logo de arriba siempre lleva a la pestaña Entrenar (salvo mientras se analiza un video)
 const irInicio = () => { if (!$('v-progreso').classList.contains('active')) vista('v-entrenar'); };
 $('ir-inicio').addEventListener('click', irInicio);
@@ -1217,6 +1246,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   $('version').textContent = `Versión ${VERSION}`;
   nutricion.iniciar();
   atras.iniciar();
+  guardia(false);
   comunidad.iniciar({ vista, porId: POR_ID, guardarRutina: (n, ejs) => entrenar.guardarRutina(n, ejs) });
   perfil.iniciar({ vista, version: VERSION, porId: POR_ID, abrirProgreso: (e) => entrenar.abrirProgreso(e), abrirEstadisticas: () => entrenar.abrirEstadisticas(), abrirEjercicios: () => entrenar.abrirEjercicios(),
     abrirSerie: (id) => abrirSerie(id, 'v-perfil'), alias: () => comunidad.aliasPropio(), verPerfil: (a) => comunidad.verPerfil(a) });

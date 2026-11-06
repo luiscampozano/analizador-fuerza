@@ -56,6 +56,9 @@ function botonAtras(modal) {
   caja.prepend(fila);
 }
 
+let sinVentana = null;
+export function alAtrasSinVentana(fn) { sinVentana = fn; }
+
 export function iniciar() {
   const modales = [...document.querySelectorAll('.modal[id]')];
   for (const m of modales) {
@@ -70,7 +73,7 @@ export function iniciar() {
       return;
     }
     const id = abiertas[abiertas.length - 1];
-    if (!id) return;
+    if (!id) { if (sinVentana) sinVentana(); return; } // v2.39.3 sin ventanas abiertas: lo maneja la navegacion de la app
     porAtras = id;
     cerrar(document.getElementById(id));
   });
