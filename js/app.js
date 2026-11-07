@@ -24,7 +24,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.39.3';
+const VERSION = '2.40.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -1247,6 +1247,17 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   nutricion.iniciar();
   atras.iniciar();
   guardia(false);
+  // v2.40.0 conteo anonimo de uso: una vez al dia, un identificador al azar del telefono (no es la cuenta)
+  try {
+    const hoy = new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10);
+    if (localStorage.getItem('af_visita') !== hoy) {
+      let anon = localStorage.getItem('af_anon');
+      if (!anon) { anon = crypto.randomUUID(); localStorage.setItem('af_anon', anon); }
+      const plataforma = document.referrer.startsWith('android-app://') || 'getDigitalGoodsService' in window ? 'play' : /iPhone|iPad|iPod/.test(navigator.userAgent) ? 'ios' : 'web';
+      fetch('/api/visita', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ anon, plataforma, cuenta: nube.conectado() }) })
+        .then((r) => { if (r.ok) try { localStorage.setItem('af_visita', hoy); } catch (e) { /* nada */ } }).catch(() => {});
+    }
+  } catch (e) { /* sin almacenamiento: no se cuenta */ }
   comunidad.iniciar({ vista, porId: POR_ID, guardarRutina: (n, ejs) => entrenar.guardarRutina(n, ejs) });
   perfil.iniciar({ vista, version: VERSION, porId: POR_ID, abrirProgreso: (e) => entrenar.abrirProgreso(e), abrirEstadisticas: () => entrenar.abrirEstadisticas(), abrirEjercicios: () => entrenar.abrirEjercicios(),
     abrirSerie: (id) => abrirSerie(id, 'v-perfil'), alias: () => comunidad.aliasPropio(), verPerfil: (a) => comunidad.verPerfil(a) });

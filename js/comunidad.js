@@ -458,6 +458,7 @@ async function moderar() {
     const [r, f, ia, pl] = await Promise.all([nube.api('GET', '/api/mod/reportes'), nube.api('GET', '/api/mod/fallos').catch(() => ({ fallos: [] })), nube.api('GET', '/api/mod/ia').catch(() => null),
       nube.api('GET', '/api/mod/planes').catch(() => null)]);
     const op = await nube.api('GET', '/api/mod/opiniones').catch(() => null);
+    const uso = await nube.api('GET', '/api/mod/uso').catch(() => null);
     // suscripciones (v2.33.0): modo de los limites, tu plan para probar y planes regalados
     const NOMP = { gratis: 'Gratis', plus: 'Plus', pro: 'Pro', promax: 'Pro Max' }, MODOS = { apagado: 'Apagado', prueba: 'Prueba (solo tú)', activo: 'Activo (todos)' };
     const mio = pl && pl.usuarios ? (pl.usuarios.find((x) => x.usuario === pl.yo) || { plan: 'gratis' }).plan : 'gratis';
@@ -490,7 +491,23 @@ async function moderar() {
         <p class="co-texto">${esc(x.texto)}</p><div data-cap-de="${esc(x.id)}"></div>
         <div class="co-perfil-botones">${x.cap ? `<button type="button" class="btn-sec" data-vercap="${esc(x.id)}">🖼️ Ver captura</button>` : ''}${x.estado === 'nuevo' ? `<button type="button" class="btn-sec" data-opest="${esc(x.id)}" data-e="leido">✓ Leído</button>` : ''}${x.estado !== 'resuelto' ? `<button type="button" class="btn-sec" data-opest="${esc(x.id)}" data-e="resuelto">✅ Resuelto</button>` : ''}</div></div>`).join('')
       : '<p class="hint">Todavía no hay comentarios.</p>'}`;
-    modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${planesHtml}${opHtml}${iaHtml}${fallosHtml}<h4>Reportes de la comunidad</h4>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
+    // panel de uso de la app (v2.40.0)
+    const n = (x) => (x == null ? 0 : x).toLocaleString('es-EC');
+    const caja = (v, t) => `<div class="uso-caja"><b>${n(v)}</b><span>${t}</span></div>`;
+    let usoHtml = '';
+    if (uso) {
+      const c = uso.cuentas || {}, s7 = uso.semana || {}, v = uso.visitas, pl = (v && v.plataformas) || {};
+      const max = v && v.porDia && v.porDia.length ? Math.max(...v.porDia.map((x) => x.n)) : 0;
+      usoHtml = `<h4>📊 Uso de la app</h4>
+        ${v ? `<p class="hint">Personas que abrieron la app (con o sin cuenta):</p><div class="uso-grid">${caja(v.hoy, 'hoy')}${caja(v.d7, 'últimos 7 días')}${caja(v.d30, 'últimos 30 días')}</div>
+        <p class="hint">Últimos 30 días: ${n(pl.play)} en la app de Play · ${n(pl.web)} en la web · ${n(pl.ios)} en iPhone · ${n(v.sinCuenta30)} sin cuenta.</p>
+        ${max ? `<div class="uso-barras">${v.porDia.map((x) => `<div title="${esc(x.dia)}: ${x.n}"><i style="height:${Math.max(4, Math.round(x.n / max * 100))}%"></i><small>${esc(x.dia.slice(8))}</small></div>`).join('')}</div>` : ''}`
+        : '<p class="hint">⚠️ Falta crear la tabla visitas en D1 para contar a quienes usan la app sin cuenta.</p>'}
+        <p class="hint">Cuentas:</p><div class="uso-grid">${caja(c.total, 'en total')}${caja(c.nuevas7, 'nuevas en 7 días')}${caja(c.activas7, 'activas en 7 días')}</div>
+        <p class="hint">Activas hoy: ${n(c.activas1)} · en 30 días: ${n(c.activas30)} · nuevas en 30 días: ${n(c.nuevas30)}.<br>
+        Últimos 7 días (con cuenta): ${n(s7.analisis)} análisis · ${n(s7.entrenos)} entrenamientos · ${n(s7.comidas)} comidas · ${n(s7.comentarios)} comentarios.</p>`;
+    }
+    modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${usoHtml}${planesHtml}${opHtml}${iaHtml}${fallosHtml}<h4>Reportes de la comunidad</h4>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
         <b>${nombre[x.tipo]}${x.alias ? ' de @' + esc(x.alias) : ''}</b> · ${x.n} reporte${x.n > 1 ? 's' : ''}${x.oculto ? ' · <span class="pf-nube-error">oculto</span>' : ''}
         <p class="co-texto">${esc(x.contenido || '(ya no existe)')}</p><p class="hint">${esc(x.motivos)}</p>
         <div class="co-perfil-botones">${x.tipo !== 'usuario' ? `<button type="button" class="btn-sec" data-a="${x.oculto ? 'mostrar' : 'ocultar'}">${x.oculto ? 'Mostrar' : 'Ocultar'}</button>` : ''}

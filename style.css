@@ -1305,3 +1305,12 @@ body.buscando .action-footer { display: none; }
 /* v2.39.3 aviso «Toca atrás de nuevo para salir» */
 .tostada { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); background: rgba(30, 30, 44, .96); color: #fff; padding: 10px 18px; border-radius: 22px; font-size: .92rem; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 9999; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
 .tostada.ver { opacity: 1; transform: translate(-50%, 0); }
+/* v2.40.0 panel de uso en Moderación */
+.uso-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0; }
+.uso-caja { background: rgba(124, 92, 255, .12); border-radius: var(--radius-md); padding: 10px 6px; text-align: center; }
+.uso-caja b { display: block; font-size: 1.5rem; }
+.uso-caja span { font-size: .78rem; color: var(--text-muted); }
+.uso-barras { display: flex; align-items: flex-end; gap: 4px; height: 90px; margin: 8px 0 4px; }
+.uso-barras div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.uso-barras i { display: block; width: 100%; background: #7c5cff; border-radius: 4px 4px 0 0; }
+.uso-barras small { font-size: .62rem; color: var(--text-muted); }

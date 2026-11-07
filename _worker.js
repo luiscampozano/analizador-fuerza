@@ -59,6 +59,7 @@ async function api(req, env, url) {
   if (/^\/api\/img\/pub\/p[A-Za-z0-9_-]{6,40}$/.test(ruta) && m === 'GET') return imagenPub(env, ruta.slice(13));
   if (/^\/api\/vid\/pub\/p[A-Za-z0-9_-]{6,40}$/.test(ruta) && m === 'GET') return videoPub(req, env, ruta.slice(13));
   if (ruta.startsWith('/api/alimentos') && m === 'GET') return leerAlimentos(env, ruta.slice(14), url); // publico: sin sesion
+  if (ruta === '/api/visita' && m === 'POST') return registrarVisita(req, env); // publico: conteo anonimo (v2.40.0)
   const u = await sesion(req, env);
   if (ruta === '/api/alimentos' && m === 'POST') return crearAlimento(req, env, u);
   if (ruta === '/api/ia/plato' && m === 'POST') return fotoPlato(req, env, u);
@@ -762,6 +763,27 @@ async function moderacion(req, env, u, r, m) {
     return json({ ok: true });
   }
   // ---- suscripciones (v2.33.0): modo de los limites, planes regalados y uso
+  // ---- panel de uso de la app (v2.40.0)
+  if (r === 'uso' && m === 'GET') {
+    const ahora = Date.now(), D = 86_400_000, desde = (d) => ahora - d * D;
+    const uno = async (sql, ...a) => (await DB.prepare(sql).bind(...a).first()) || {};
+    const cu = await uno(`SELECT count(*) AS total, sum(CASE WHEN creado > ?1 THEN 1 ELSE 0 END) AS nuevas7, sum(CASE WHEN creado > ?2 THEN 1 ELSE 0 END) AS nuevas30,
+      sum(CASE WHEN visto > ?3 THEN 1 ELSE 0 END) AS activas1, sum(CASE WHEN visto > ?1 THEN 1 ELSE 0 END) AS activas7, sum(CASE WHEN visto > ?2 THEN 1 ELSE 0 END) AS activas30 FROM usuarios`,
+      desde(7), desde(30), desde(1));
+    const it = await uno(`SELECT sum(CASE WHEN tipo IN ('serie', 'informe') THEN 1 ELSE 0 END) AS analisis, sum(CASE WHEN tipo = 'entreno' THEN 1 ELSE 0 END) AS entrenos,
+      sum(CASE WHEN tipo = 'comida' THEN 1 ELSE 0 END) AS comidas FROM items WHERE borrado = 0 AND actualizado > ?1`, desde(7));
+    let visitas = null;
+    if (await tablaVisitas(env)) {
+      const dia = (d) => diaEc(ahora - d * D);
+      const v = await uno(`SELECT count(DISTINCT CASE WHEN dia = ?1 THEN anon END) AS hoy, count(DISTINCT CASE WHEN dia >= ?2 THEN anon END) AS d7, count(DISTINCT anon) AS d30,
+        count(DISTINCT CASE WHEN cuenta = 0 THEN anon END) AS sinCuenta30 FROM visitas WHERE dia >= ?3`, dia(0), dia(6), dia(29));
+      const pl = (await DB.prepare('SELECT plataforma, count(DISTINCT anon) AS n FROM visitas WHERE dia >= ?1 GROUP BY plataforma').bind(dia(29)).all()).results || [];
+      const serie = (await DB.prepare('SELECT dia, count(DISTINCT anon) AS n FROM visitas WHERE dia >= ?1 GROUP BY dia ORDER BY dia').bind(dia(13)).all()).results || [];
+      visitas = { ...v, plataformas: Object.fromEntries(pl.map((x) => [x.plataforma || 'web', x.n])), porDia: serie };
+    }
+    const op = (await tablaOpiniones(env)) ? await uno('SELECT count(*) AS n FROM opiniones WHERE creado > ?1', desde(7)) : {};
+    return json({ cuentas: cu, semana: { ...it, comentarios: op.n || 0 }, visitas });
+  }
   if (r === 'planes' && m === 'GET') {
     if (!(await tablasPlan(env))) return json({ sinTablas: true });
     const modo = await modoLimites(env), ahora = Date.now();
@@ -874,6 +896,28 @@ async function reportarFallo(req, env, u) {
     id, u.id, Date.now(), txt(b.ejercicio, 80), txt(b.nombre, 120), ent(b.repsApp), ent(b.repsReal), JSON.stringify(excl),
     txt(b.comentario, 500), txt(b.version, 20), txt(JSON.stringify(b.datos || {}), 20000), b.pose || null).run();
   return json({ ok: true, id });
+}
+
+// ================================================================== CONTEO ANONIMO DE USO (v2.40.0)
+// Una vez al dia, cada telefono manda un identificador al azar (no es el correo ni la cuenta), la plataforma
+// (app de Play, web o iPhone) y si tiene sesion. Sirve para saber cuantas personas usan la app, con o sin cuenta.
+const diaEc = (ms) => new Date(ms - 5 * 3600_000).toISOString().slice(0, 10); // dia en hora de Ecuador
+let visitasOk = null;
+async function tablaVisitas(env) {
+  if (visitasOk) return true;
+  try { await env.DB.prepare('SELECT dia FROM visitas LIMIT 1').first(); visitasOk = true; } catch (e) { visitasOk = false; }
+  return visitasOk;
+}
+async function registrarVisita(req, env) {
+  if (!(await tablaVisitas(env))) return json({ ok: false });
+  let b = {};
+  try { b = JSON.parse((await req.text()).slice(0, 300)); } catch (e) { /* nada */ }
+  if (typeof b.anon !== 'string' || !/^[a-z0-9-]{16,40}$/i.test(b.anon)) return json({ ok: false }, 400);
+  const plataforma = ['play', 'web', 'ios'].includes(b.plataforma) ? b.plataforma : 'web';
+  await env.DB.prepare(`INSERT INTO visitas (dia, anon, plataforma, cuenta) VALUES (?1, ?2, ?3, ?4)
+    ON CONFLICT(dia, anon) DO UPDATE SET plataforma = excluded.plataforma, cuenta = max(cuenta, excluded.cuenta)`)
+    .bind(diaEc(Date.now()), b.anon.toLowerCase(), plataforma, b.cuenta ? 1 : 0).run();
+  return json({ ok: true });
 }
 
 // ================================================================== COMENTARIOS DE LOS USUARIOS (v2.38.0)

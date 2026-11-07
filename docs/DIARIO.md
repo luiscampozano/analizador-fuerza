@@ -6,6 +6,17 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-07
+
+### 07:30 · v2.40.0 — Panel «📊 Uso de la app» en Moderación + conteo anónimo
+- **Pidió:** saber cuántas personas usan la app, con cuenta y sin cuenta, dentro de la app.
+- **Hecho:** cada teléfono manda una vez al día `POST /api/visita` (identificador al azar `af_anon`, plataforma
+  play/web/ios y si tiene sesión; sin correo ni cuenta) → tabla nueva `visitas`. `GET /api/mod/uso`: personas hoy / 7 /
+  30 días, por plataforma, sin cuenta, barras de 14 días; cuentas totales, nuevas y activas (`usuarios.visto`); análisis,
+  entrenamientos, comidas y comentarios de la semana. Privacidad actualizada. Pruebas: `pruebas/servidor/uso_test.mjs`.
+- **Pendiente (Luis):** correr la tabla `visitas` en D1; en Play Console → Seguridad de los datos agregar
+  «ID del dispositivo u otros IDs» (Análisis, no compartido, obligatorio).
+
 ## 2026-11-06
 
 ### 19:10 · Hoja de ruta de iPhone (sin cambio de versión)

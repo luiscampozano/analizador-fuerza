@@ -48,3 +48,5 @@ CREATE INDEX IF NOT EXISTS compras_usuario ON compras(usuario, hasta);
 CREATE TABLE IF NOT EXISTS opiniones (id TEXT PRIMARY KEY, usuario TEXT NOT NULL, creado INTEGER NOT NULL, tipo TEXT, texto TEXT NOT NULL, captura TEXT, version TEXT, plataforma TEXT, estado TEXT NOT NULL DEFAULT 'nuevo');
 CREATE INDEX IF NOT EXISTS opiniones_creado ON opiniones(creado);
 CREATE INDEX IF NOT EXISTS opiniones_usuario ON opiniones(usuario, creado);
+-- v2.40.0: conteo anonimo de uso. Una fila por telefono y dia: anon = identificador al azar del telefono (no es la cuenta).
+CREATE TABLE IF NOT EXISTS visitas (dia TEXT NOT NULL, anon TEXT NOT NULL, plataforma TEXT, cuenta INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (dia, anon));
