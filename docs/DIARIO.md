@@ -8,6 +8,11 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-06
 
+### 19:10 · Hoja de ruta de iPhone (sin cambio de versión)
+- **Pidió:** guardar la hoja de ruta para sacar FuerzaPro en iPhone usando compilación en la nube.
+- **Hecho:** `docs/IOS_HOJA_DE_RUTA.md` (Apple Developer $99/año, Codemagic para compilar sin Mac, Capacitor, StoreKit,
+  Iniciar sesión con Apple, TestFlight; unas 3 a 5 semanas). No se empieza hasta que Luis lo pida.
+
 ### 14:10 · v2.39.3 — Botón Atrás: volver a Entrenar y «Toca atrás de nuevo para salir»
 - **Pidió:** que Atrás no cierre la app de golpe: de una sub-pantalla a su pestaña, de otra pestaña a Entrenar y en
   Entrenar avisar «Toca atrás de nuevo para salir».
