@@ -8,6 +8,11 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-07
 
+### 09:15 · v2.40.3 — PDF: sin página casi en blanco
+- **Pidió:** el PDF dejaba una página casi vacía.
+- **Hecho (js/pdf.js):** cuando la interpretación pasaba a la página 2, el resto seguía debajo del espacio que ocupaba la
+  foto en la página 1 y las gráficas saltaban a la página 3. Ahora, si cambió de página, sigue justo debajo del texto.
+
 ### 09:10 · v2.40.2 — Hip thrust en máquina: 2 → 10 reps
 - **Pidió:** arreglar el conteo del hip thrust en máquina (y en general todo tipo de fallas).
 - **Hecho (js/fisica.js, js/ejercicios.js, js/app.js):** `quitarVolteos(frames)`: descarta los cuadros en que la IA

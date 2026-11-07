@@ -225,8 +225,10 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   if (etiquetas.length) {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...C.naranja); doc.text(limpio(etiquetas.join('   ·   ')), M, yIzq); yIzq += 5.5;
   }
+  const pag0 = doc.getNumberOfPages();
   yIzq = vinetas(notas, yIzq, anchoKpi);
-  y = Math.max(yIzq, yImgFin) + 3;
+  // v2.40.3 si la interpretacion paso a otra pagina, la foto quedo en la anterior: no se deja su espacio en blanco
+  y = (doc.getNumberOfPages() > pag0 ? yIzq : Math.max(yIzq, yImgFin)) + 3;
 
   // ---- tecnica
   if (y > 250) { doc.addPage(); y = 18; }
