@@ -8,6 +8,18 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-07
 
+### 08:20 · v2.40.1 — Línea amarilla del recorrido opcional + diagnóstico del hip thrust en máquina
+- **Pidió:** que la línea amarilla que sigue la carga en el video sea opcional; y el hip thrust en máquina contó 2 de 9.
+- **Hecho:** casilla «Dibujar el recorrido de la carga (línea amarilla)» en Opciones avanzadas (apagada por defecto,
+  se recuerda en `af_estela`); el desvío se sigue midiendo en el informe y el PDF.
+- **Diagnóstico hip thrust (sin cambiar fisica.js todavía):** en la parte alta (cuerpo casi horizontal) la IA de pose
+  «voltea» a la persona (hombros, rodillas y tobillos saltan al otro lado) y los tobillos casi no se ven (tapados por la
+  plataforma): el ancla tobillos queda con ruido. La cadera sola muestra las 9 reps claras. Pruebas hechas: filtro de
+  volteos global (banco 44→42, descartado), anclas piso/hombros/rodillas/ninguna y umbral típico: ninguna da 9 todavía.
+  Video agregado al banco como `Hip_thrust_maquina_Luis` (9 reps).
+- **Pendiente:** arreglo específico para hip thrust (filtro de volteos solo en ese ejercicio + revisar por qué se pierden
+  las primeras reps con la cadera limpia), midiendo el banco antes y después.
+
 ### 07:30 · v2.40.0 — Panel «📊 Uso de la app» en Moderación + conteo anónimo
 - **Pidió:** saber cuántas personas usan la app, con cuenta y sin cuenta, dentro de la app.
 - **Hecho:** cada teléfono manda una vez al día `POST /api/visita` (identificador al azar `af_anon`, plataforma

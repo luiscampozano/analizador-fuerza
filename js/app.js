@@ -24,7 +24,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.40.0';
+const VERSION = '2.40.1';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -516,7 +516,8 @@ async function crearVideoSerie(video, archivoV, e, d, calc, { repsTotal = null, 
     : e.perfil === 'corporal' ? `${e.corto} · peso corporal ${fmt(d.pc, 1)} kg${d.peso ? (e.asistido ? ` − asistencia ${fmt(d.peso, 1)} kg` : ` + lastre ${fmt(d.peso, 1)} kg`) : ''}`
     : `${e.corto} · ${fmt(d.carga, 1)} kg${d.relacion !== 1 ? ` (polea ${d.relacion}:1)` : ''}`;
   const leyendaVel = e.sentido === 'abajo' ? 'Velocidad de la carga (m/s)  ↑ subida  ↓ bajada' : 'Velocidad (m/s)  ↑ fase concéntrica  ↓ excéntrica';
-  const dibujar = prepararDibujo(video, full, res, { puntoIdx: MP[e.punto], angulo: ang, titulo, leyendaVel, trayectoria: tray, alertas: tec.porRep, repsTotal });
+  // v2.40.1 la linea amarilla del recorrido es opcional (apagada por defecto); el informe y el PDF la siguen midiendo
+  const dibujar = prepararDibujo(video, full, res, { puntoIdx: MP[e.punto], angulo: ang, titulo, leyendaVel, trayectoria: $('in-estela').checked ? tray : null, alertas: tec.porRep, repsTotal });
   return generarVideo(video, archivoV, dibujar, { cancelado: () => cancelar, alAvanzar });
 }
 // Videos originales analizados en esta sesion (para rehacer el video al corregir el conteo sin pedirlo de nuevo)
@@ -1247,6 +1248,8 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   nutricion.iniciar();
   atras.iniciar();
   guardia(false);
+  try { $('in-estela').checked = localStorage.getItem('af_estela') === '1'; } catch (e) { /* nada */ }
+  $('in-estela').onchange = () => { try { localStorage.setItem('af_estela', $('in-estela').checked ? '1' : '0'); } catch (e) { /* nada */ } };
   // v2.40.0 conteo anonimo de uso: una vez al dia, un identificador al azar del telefono (no es la cuenta)
   try {
     const hoy = new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10);
