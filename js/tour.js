@@ -3,8 +3,8 @@
 const CLAVE = 'af_tour';
 const PASOS = [
   { titulo: '👋 ¡Bienvenido a FuerzaPro!', texto: 'Te muestro la app en 30 segundos.' },
-  { sel: '.nav [data-vista="v-form"]', titulo: '⚡ Analizar', texto: 'Elige el ejercicio, graba tu serie de lado con el cuerpo completo y la IA cuenta tus repeticiones, mide tu velocidad y tu fuerza. Al final tienes informe, video con telemetría y PDF.' },
   { sel: '.nav [data-vista="v-entrenar"]', titulo: '🏋️ Entrenar', texto: 'Arma tus rutinas, anota series y pesos con cronómetro de descanso y mira tus récords y tu progreso.' },
+  { sel: '.nav [data-vista="v-form"]', titulo: '⚡ Analizar', texto: 'Elige el ejercicio, graba tu serie de lado con el cuerpo completo y la IA cuenta tus repeticiones, mide tu velocidad y tu fuerza. Al final tienes informe, video con telemetría y PDF.' },
   { sel: '.nav [data-vista="v-nutricion"]', titulo: '🥗 Nutrición', texto: 'Metas de calorías y macros. Agrega comida con una foto del plato (IA), el código de barras o el buscador.' },
   { sel: '.nav [data-vista="v-comunidad"]', titulo: '👥 Comunidad', texto: 'Comparte tus análisis y entrenamientos, sigue a otros atletas y comenta.' },
   { sel: '.nav [data-vista="v-perfil"]', titulo: '👤 Perfil', texto: 'Tu cuenta, tu plan y tus datos (toca «Editar» para poner tu peso y estatura). En ⚙️ Ajustes están la guía y «Enviar comentario» si algo falla o tienes ideas.' },

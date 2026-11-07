@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-07
 
+### 14:45 · v2.41.1 — Tour y video tutorial en el orden de las pestañas
+- **Pidió:** que el tutorial empiece por Entrenar (la primera pestaña que se ve) y siga en orden: Analizar, Nutrición, Comunidad.
+- **Se hizo:** el tour de la app ahora recorre Entrenar → Analizar → Nutrición → Comunidad → Perfil. Video tutorial rehecho
+  en ese orden (nuevas tomas: empezar entrenamiento, elegir ejercicios, anotar series, Comunidad).
+- **Pendiente:** nada nuevo.
+
 ### 14:10 · v2.41.0 — Tour de la app + video tutorial
 - **Pidió:** un tutorial de cómo se usa la app (eligió tour dentro de la app + video armado por Claude).
 - **Hecho:** js/tour.js: la primera vez (después de la bienvenida) burbujas que iluminan cada pestaña (Analizar, Entrenar,
