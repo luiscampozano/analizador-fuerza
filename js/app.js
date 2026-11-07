@@ -2,7 +2,7 @@
 import { resumenPesas, resumenActividad } from './sencillo.js';
 import { EJERCICIOS, POR_ID, GRUPOS, GRUPOS_MUSCULO, GRUPO_PROPIOS, agregarPropio, quitarPropio } from './ejercicios.js';
 import { detectarPose, cargarModelo, cargarDetectorBalon } from './pose.js';
-import { interpolar, analizar, anguloArticular, MP, escala, marcarReps } from './fisica.js';
+import { interpolar, quitarVolteos, analizar, anguloArticular, MP, escala, marcarReps } from './fisica.js';
 import { analizarSerie, perfilCargaVelocidad, sugerirCalibracion, estadisticasSerie } from './analisis.js';
 import * as almacen from './almacen.js';
 import { crearSeguidor, calcularTrayectoria } from './trayectoria.js';
@@ -24,7 +24,7 @@ import * as bienvenida from './bienvenida.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.40.1';
+const VERSION = '2.40.2';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -563,6 +563,7 @@ $('in-rehacer').onchange = () => { const f = $('in-rehacer').files[0]; if (f && 
 // a mano las reps (se vuelve a calcular con los mismos puntos, sin el video).
 // excluir: tiempos (s) del tope de las reps que el usuario dijo que no son reps · repsTotal: reps que dice que hizo
 function calcularSerie(frames, dur, e, d, { excluir = [], repsTotal = null, discoPts = null, idSerie = null } = {}) {
+  if (e.volteo) frames = quitarVolteos(frames); // v2.40.2 hip thrust y puente: cuadros con el cuerpo «volteado» por la IA
   const fps = 60, full = interpolar(frames, fps, dur);
   if (d.otraPierna && d.otraPierna.length) excluir = [...excluir, ...d.otraPierna]; // video con los dos lados: solo las reps de este
   const res = analizar(full, fps, e, { masa: d.masa, alfa: d.alfa, relacion: d.relacion, altura: d.altura, inicio: d.ini || null, fin: d.fin || null, frames });

@@ -8,6 +8,16 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-07
 
+### 09:10 · v2.40.2 — Hip thrust en máquina: 2 → 10 reps
+- **Pidió:** arreglar el conteo del hip thrust en máquina (y en general todo tipo de fallas).
+- **Hecho (js/fisica.js, js/ejercicios.js, js/app.js):** `quitarVolteos(frames)`: descarta los cuadros en que la IA
+  «voltea» el cuerpo (dirección cadera→hombros a más de 90° de la media del video; si pasa en más del 30 % no se toca).
+  Solo para ejercicios con `volteo: true` (hip thrust, hip thrust en máquina, a una pierna y puente de glúteo), que además
+  usan el umbral típico (subirse a la máquina es más grande que las reps). Hip thrust en máquina: ancla `hombros` (quedan
+  fijos en el respaldo; los tobillos los tapa la plataforma). Hip thrust con barra sigue con tobillos (con hombros empeoraba).
+- **Medición:** banco 44/62 igual (el resto sin cambios) + video de Luis 2 → 10 reps (Luis dijo 9; en el video se ven
+  10 subidas completas: 12,5 s y 34,9 s también llegan arriba — por confirmar). Muñecos 3366/3570, piernas 551/551.
+
 ### 08:20 · v2.40.1 — Línea amarilla del recorrido opcional + diagnóstico del hip thrust en máquina
 - **Pidió:** que la línea amarilla que sigue la carga en el video sea opcional; y el hip thrust en máquina contó 2 de 9.
 - **Hecho:** casilla «Dibujar el recorrido de la carga (línea amarilla)» en Opciones avanzadas (apagada por defecto,

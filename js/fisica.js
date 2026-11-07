@@ -141,6 +141,25 @@ export function umbralReps(s, fps) {
 
 // ------------------------------------------------------------ puntos
 // frames: [{t, puntos:[[x,y,vis]*33] | null}] en pixeles. Devuelve serie densa a fps con interpolacion.
+// v2.40.2 ejercicios acostados boca arriba con la cadera que sube (hip thrust, puente de glúteo): en la parte alta la IA de
+// pose a veces «da la vuelta» a la persona (pone la cabeza donde van los pies) y hombros, cadera, rodillas y tobillos
+// saltan de lado. Esos cuadros se descartan y se rellenan con los vecinos. Solo para ejercicios con `volteo` (probado:
+// aplicarlo a todos empeoraba press francés y press de banca en el banco de videos).
+export function quitarVolteos(frames) {
+  const ang = frames.map((f) => {
+    const p = f.puntos;
+    if (!p || Math.min(p[11][2], p[12][2], p[23][2], p[24][2]) < 0.3) return NaN;
+    return Math.atan2(p[11][1] + p[12][1] - p[23][1] - p[24][1], p[11][0] + p[12][0] - p[23][0] - p[24][0]);
+  });
+  const ok = ang.filter(Number.isFinite);
+  if (ok.length < 10) return frames;
+  const mc = Math.atan2(ok.reduce((a, b) => a + Math.sin(b), 0), ok.reduce((a, b) => a + Math.cos(b), 0));
+  const volteado = ang.map((a) => { if (!Number.isFinite(a)) return false; let d = Math.abs(a - mc) % (2 * Math.PI); if (d > Math.PI) d = 2 * Math.PI - d; return d > Math.PI / 2; });
+  const nV = volteado.filter(Boolean).length;
+  if (!nV || nV > 0.3 * ok.length) return frames; // si «volteado» es casi la mitad, no se sabe cuál es el lado bueno
+  return frames.map((f, i) => (volteado[i] ? { ...f, puntos: null } : f));
+}
+
 export function interpolar(frames, fps, duracion) {
   const n = Math.max(2, Math.round(duracion * fps));
   const full = Array.from({ length: n }, () => new Array(33));
@@ -438,7 +457,8 @@ export function analizar(full, fps, ej, cfg) {
       const base = corte ? ss : cfg.inicio || cfg.fin ? s.slice(i0, i1) : s;
       // v2.30.0 búlgara (ancla piso): acomodarse antes de la serie o bajarse del banco son movimientos mas grandes que
       // las reps y subian el umbral; se usa el recorrido tipico de las oscilaciones (las reps son la mayoria)
-      const prom = ej.ancla === 'piso' ? umbralTipico(base, fps) : umbralReps(base, fps);
+      // v2.40.2 hip thrust y puente: subirse y acomodarse en la máquina o la banca es más grande que las reps
+      const prom = ej.ancla === 'piso' || ej.volteo ? umbralTipico(base, fps) : umbralReps(base, fps);
       const piv = zigzag(ss, prom).map((p) => ({ ...p, i: p.i + a0 }));
       const pz = [];
       for (let q = 0; q < piv.length - 1; q++) if (piv[q].tipo === 'bajo' && piv[q + 1].tipo === 'alto') pz.push([piv[q].i, piv[q + 1].i, piv[q + 2] ? piv[q + 2].i : b0 - 1]);
