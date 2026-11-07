@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-07
 
+### 14:10 · v2.41.0 — Tour de la app + video tutorial
+- **Pidió:** un tutorial de cómo se usa la app (eligió tour dentro de la app + video armado por Claude).
+- **Hecho:** js/tour.js: la primera vez (después de la bienvenida) burbujas que iluminan cada pestaña (Analizar, Entrenar,
+  Nutrición, Comunidad, Perfil) con su explicación; «Saltar» y «Siguiente»; se recuerda en `af_tour`. Se vuelve a ver en
+  Perfil → ⚙️ Ajustes → «🧭 Ver el tour de la app». Video tutorial de 73 s con capturas reales (fuera del repo).
+- **Otros videos del día (fuera del repo):** 5 reels de ~25 s (boxeo, tenis, natación, nutrición, fatiga en pesas).
+
 ### 09:15 · v2.40.3 — PDF: sin página casi en blanco
 - **Pidió:** el PDF dejaba una página casi vacía.
 - **Hecho (js/pdf.js):** cuando la interpretación pasaba a la página 2, el resto seguía debajo del espacio que ocupaba la

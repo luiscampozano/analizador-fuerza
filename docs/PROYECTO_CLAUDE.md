@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.40.3
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.41.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -308,6 +308,7 @@ bloqueos, reportes, fallos.
 | v2.40.1 | Línea amarilla del recorrido opcional en el video (apagada por defecto). |
 | v2.40.2 | Hip thrust/puente: se descartan cuadros con el cuerpo «volteado» por la IA; hip thrust en máquina con ancla hombros. |
 | v2.40.3 | PDF de series: sin hueco en blanco cuando la interpretación pasa a la página 2. |
+| v2.41.0 | Tour de bienvenida (js/tour.js) la primera vez; se repite desde Ajustes. |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

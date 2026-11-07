@@ -1314,3 +1314,13 @@ body.buscando .action-footer { display: none; }
 .uso-barras div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
 .uso-barras i { display: block; width: 100%; background: #7c5cff; border-radius: 4px 4px 0 0; }
 .uso-barras small { font-size: .62rem; color: var(--text-muted); }
+/* v2.41.0 tour de bienvenida */
+.tour { position: fixed; inset: 0; z-index: 10000; }
+.tour-luz { position: fixed; border-radius: 14px; box-shadow: 0 0 0 9999px rgba(5, 5, 12, .78); border: 2px solid #7c5cff; transition: all .3s; pointer-events: none; }
+.tour-caja { position: fixed; left: 16px; right: 16px; max-width: 420px; margin: 0 auto; background: var(--bg-card, #16161f); border: 1px solid rgba(124, 92, 255, .6); border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.tour-caja.centro { top: 50%; transform: translateY(-50%); }
+.tour-caja b { font-size: 1.1rem; }
+.tour-caja p { margin: 8px 0 12px; line-height: 1.45; font-size: .95rem; }
+.tour-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tour-pie span { display: flex; gap: 8px; }
+.tour-pie small { color: var(--text-muted); }

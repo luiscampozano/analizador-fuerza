@@ -21,10 +21,11 @@ import * as perfil from './perfil.js';
 import * as nube from './nube.js';
 import * as comunidad from './comunidad.js';
 import * as bienvenida from './bienvenida.js';
+import * as tour from './tour.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.40.3';
+const VERSION = '2.41.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -1284,7 +1285,9 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
     window.addEventListener('af-sesion', () => { repintar(); plan.actualizar().then(() => perfil.pintar()); });
     window.addEventListener('af-plan', () => perfil.pintar()); // compra con Google Play (v2.37.0)
     plan.actualizar().then(() => perfil.pintar()); // plan de suscripcion (v2.33.0)
-    bienvenida.iniciar({ alTerminar: repintar });
+    bienvenida.iniciar({ alTerminar: () => { repintar(); setTimeout(() => tour.iniciar(), 400); } });
+    // v2.41.0 tour de la app la primera vez (si la bienvenida está abierta, el tour sale al cerrarla)
+    if ($('bienvenida').style.display !== 'flex') setTimeout(() => tour.iniciar(), 900);
   });
   // la app se mudo a Cloudflare: en la direccion vieja se indica como llevarse los datos
   if (location.hostname.endsWith('github.io')) {
