@@ -1214,7 +1214,8 @@ async function llamarClaude(env, system, content, maxTokens = 900) {
     r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODELO_IA, max_tokens: maxTokens, system, messages: [{ role: 'user', content }] }),
+      // v2.41.3 Haiku 5.5 piensa por defecto y ese pensamiento gasta max_tokens: a veces no quedaba texto (error «no entendí»)
+      body: JSON.stringify({ model: MODELO_IA, max_tokens: maxTokens, thinking: { type: 'disabled' }, system, messages: [{ role: 'user', content }] }),
     });
   } catch (e) { throw fallo('No pude conectar con la IA. Inténtalo en un momento.', 502); }
   if (!r.ok) { console.error('anthropic', r.status, (await r.text()).slice(0, 300)); throw fallo(r.status === 429 || r.status === 529 ? 'La IA está ocupada. Inténtalo en un momento.' : 'La IA no pudo responder. Inténtalo de nuevo.', 502); }

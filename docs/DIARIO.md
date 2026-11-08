@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 10:20 · v2.41.3 — Arreglo: la IA de nutrición daba «La IA respondió algo que no entendí»
+- **Pidió:** la foto del plato y «Escribir lo que comí» fallaban con ese error.
+- **Causa:** Claude Haiku 5.5 «piensa» por defecto y ese pensamiento consume el límite de palabras de la respuesta;
+  a veces no quedaba espacio para el JSON con los alimentos (también explica la explicación de IA vacía de antes).
+- **Se hizo:** el servidor pide la respuesta sin pensamiento (`thinking: disabled`). Aplica a nutrición, etiquetas,
+  explicación de series y entrenador.
+- **Pendiente:** confirmar en el celular.
+
 ### 08:10 · v2.41.2 — Datos más claros: discos, máquina y peso corporal
 - **Pidió:** los testers se confunden con los pesos en las máquinas; separar discos, peso de la máquina y peso corporal.
 - **Se hizo:** nombres nuevos («Discos que pusiste», «Discos (sin la barra)», «Peso de la máquina»), una línea de ayuda
