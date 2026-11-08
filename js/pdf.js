@@ -22,15 +22,25 @@ const limpio = (t) => String(t ?? '').replace(/<[^>]+>/g, '')
 
 // v2.39.1 explicacion en palabras simples (y la de la IA si se pidio) al inicio del informe
 function bloqueSencillo(doc, lineas, ia, y, M, ancho) {
-  const lin = lineas.map((l) => limpio(l)).filter(Boolean), parrafos = String(ia || '').split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  // v2.43.0 la sección «Cómo mejorar tu levantamiento» va en su propia caja (así ninguna caja se pasa de una página)
+  const todos = String(ia || '').split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  const corte = todos.findIndex((p) => /^\*\*\s*c[oó]mo mejorar/i.test(p));
+  const expl = corte >= 0 ? todos.slice(0, corte) : todos, mejora = corte >= 0 ? todos.slice(corte + 1) : [];
+  y = caja(doc, 'EN PALABRAS SIMPLES', lineas.map((l) => limpio(l)).filter(Boolean), expl.length ? ['EXPLICACIÓN DEL ENTRENADOR IA', expl] : null, y, M, ancho);
+  if (mejora.length) y = caja(doc, 'CÓMO MEJORAR TU LEVANTAMIENTO', [], ['', mejora], y, M, ancho);
+  return y;
+}
+function caja(doc, titulo, lin, ia, y, M, ancho) {
+  const parrafos = ia ? ia[1] : [];
   doc.setFontSize(9.5);
   const alto = (txt, w) => doc.splitTextToSize(txt, w).length * 4.4 + 1.4;
   let h = 10 + lin.reduce((a, l) => a + alto(l, ancho - 12), 0);
-  if (parrafos.length) h += 9 + parrafos.reduce((a, p) => a + alto(limpio(p.replace(/\*\*/g, '')), ancho - 12), 0);
+  if (parrafos.length) h += (ia[0] ? 9 : 0) + parrafos.reduce((a, p) => a + alto(limpio(p.replace(/\*\*/g, '')), ancho - 12), 0);
   if (y + h > 285) { doc.addPage(); y = 18; }
+  h = Math.min(h, 285 - y);
   doc.setFillColor(243, 240, 255); doc.setDrawColor(...C.verdeClaro); doc.roundedRect(M, y, ancho, h, 2.5, 2.5, 'FD');
   let yy = y + 6.5;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text('EN PALABRAS SIMPLES', M + 5, yy); yy += 5.5;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text(titulo, M + 5, yy); yy += 5.5;
   doc.setFontSize(9.5); doc.setTextColor(...C.texto);
   for (const l of lin) {
     const partes = doc.splitTextToSize(l, ancho - 12);
@@ -38,11 +48,11 @@ function bloqueSencillo(doc, lineas, ia, y, M, ancho) {
     yy += partes.length * 4.4 + 1.4;
   }
   if (parrafos.length) {
-    yy += 2; doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text('EXPLICACIÓN DEL ENTRENADOR IA', M + 5, yy); yy += 5.5;
+    if (ia[0]) { yy += 2; doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text(ia[0], M + 5, yy); yy += 5.5; }
     doc.setFontSize(9.5); doc.setTextColor(...C.texto);
     for (const p of parrafos) {
-      const titulo = /^\*\*.+\*\*:?$/.test(p), partes = doc.splitTextToSize(limpio(p.replace(/\*\*/g, '')), ancho - 12);
-      doc.setFont('helvetica', titulo ? 'bold' : 'normal'); doc.text(partes, M + 5, yy);
+      const titulo2 = /^\*\*.+\*\*:?$/.test(p), partes = doc.splitTextToSize(limpio(p.replace(/\*\*/g, '')), ancho - 12);
+      doc.setFont('helvetica', titulo2 ? 'bold' : 'normal'); doc.text(partes, M + 5, yy);
       yy += partes.length * 4.4 + 1.4;
     }
   }

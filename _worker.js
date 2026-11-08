@@ -1300,7 +1300,13 @@ Estructura (usa estos titulos en negrita con **):
 **Tu tecnica**: 2-4 puntos cortos sobre lo que se ve en las fotos y en los avisos (empieza cada punto con un guion). Solo comenta lo que realmente se ve; si las fotos no permiten juzgar algo, no lo inventes.
 **Lo que haces bien**: 1-2 puntos.
 **Para la proxima**: 2-3 consejos practicos y concretos (por ejemplo cuanto peso subir, que ritmo llevar o un ejercicio para corregir).
-No inventes numeros que no esten en el JSON. No des consejos medicos; si hay dolor, sugiere ver a un profesional. Maximo 230 palabras.`;
+SOLO si el JSON trae "levantamientoGrande": true, agrega al final esta seccion (v2.43.0):
+**Como mejorar tu levantamiento**
+- Tu punto a mejorar: 1 frase, basada en los numeros (por ejemplo la velocidad cae mucho, la barra se desvia, la subida es lenta o el recorrido cambia entre reps). Si no hay un punto claro, di que la serie fue pareja y que toca sumar fuerza general.
+- 3 ejercicios que ayudan a ese punto, cada uno con series x repeticiones y el porque en pocas palabras (por ejemplo sentadilla con pausa 3x4, peso muerto deficit 3x5, press con pausa 4x3, tiron de arranque 4x3).
+- Tu meta: si viene "meta1RMKg", compara con el maximo estimado ("pesoMaximo1Rep") o con "rmRealKg" si existe: di cuanto falta y una progresion realista por semanas (subir de 1 a 2,5 kg por semana en tren superior y de 2,5 a 5 kg en piernas y espalda; si falta mas del 15 %, dilo con honestidad y calcula en meses). Si no hay meta, sugiere ponerla en la app.
+Para halterofilia (arranque, envion, cargada) habla de tecnica y velocidad antes que de fuerza pura.
+No inventes numeros que no esten en el JSON. No des consejos medicos; si hay dolor, sugiere ver a un profesional. Maximo 230 palabras, o 360 si agregas la seccion de como mejorar.`;
 const MAX_FOTO_SERIE = 200_000;
 async function explicarSerie(req, env, u) {
   const b = await leerJSON(req), datos = JSON.stringify(b.datos || {});
@@ -1309,10 +1315,10 @@ async function explicarSerie(req, env, u) {
   for (const img of fotos) if (typeof img !== 'string' || !img.startsWith('/9j/') || img.length > MAX_FOTO_SERIE || !/^[A-Za-z0-9+/=]+$/.test(img)) throw fallo('Las fotos del video no son válidas.');
   const cupo = await cupoIA(env, u, 's', 'explicaciones con IA');
   const contenido = [...fotos.map((d) => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: d } })), { type: 'text', text: 'Datos medidos por la app:\n' + datos }];
-  const limpiar = (x) => String(x || '').replace(/[\u0000-\u0009\u000b-\u001f\u007f<>]/g, '').trim().slice(0, 3000); // conserva los saltos de linea
-  let texto = limpiar(await llamarClaude(env, PROMPT_SERIE, contenido, 1200));
+  const limpiar = (x) => String(x || '').replace(/[\u0000-\u0009\u000b-\u001f\u007f<>]/g, '').trim().slice(0, 4500); // conserva los saltos de linea
+  let texto = limpiar(await llamarClaude(env, PROMPT_SERIE, contenido, 1700));
   // v2.39.1 si la IA respondio vacio (paso con fotos), se reintenta solo con los numeros; sin texto no se cobra
-  if (!texto && fotos.length) { console.error('ia/serie: respuesta vacia con fotos, reintento sin fotos'); texto = limpiar(await llamarClaude(env, PROMPT_SERIE, [contenido[contenido.length - 1]], 1200)); }
+  if (!texto && fotos.length) { console.error('ia/serie: respuesta vacia con fotos, reintento sin fotos'); texto = limpiar(await llamarClaude(env, PROMPT_SERIE, [contenido[contenido.length - 1]], 1700)); }
   if (!texto) throw fallo('La IA no pudo escribir la explicación. Inténtalo de nuevo en un momento (no se gastó tu crédito).', 502);
   await cupo.contar();
   return json({ texto, quedan: cupo.quedan });
