@@ -76,11 +76,19 @@ function pintarResumen() {
 }
 // v2.44.0 tu objetivo bajo los anillos: peso meta y, si es fuerza, tus metas de 1RM del entrenamiento
 function lineaObjetivo() {
-  const pf = leerLS('af_nutri_perfil', {}); if (!pf.objetivo || !OBJETIVOS[pf.objetivo]) return '';
-  const log = leerLS('af_peso_log', []), actual = (log.length && log[log.length - 1].kg) || pf.peso;
-  const meta = pf.pesoMeta > 0 && actual > 0 && Math.abs(pf.pesoMeta - actual) >= 0.5 ? ` · meta ${fmt(pf.pesoMeta, 1)} kg (te ${pf.pesoMeta < actual ? 'faltan bajar' : 'faltan subir'} ${fmt(Math.abs(pf.pesoMeta - actual), 1)} kg)` : '';
-  const rm = pf.objetivo === 'fuerza' ? Object.entries(leerLS('af_meta_1rm', {})).slice(0, 3).map(([id, kg]) => `${esc((POR_ID[id] && (POR_ID[id].corto || POR_ID[id].nombre)) || id)} ${fmt(+kg, 1)} kg`).join(' · ') : '';
-  return `<p class="hint nu-objetivo">🎯 <b>${OBJETIVOS[pf.objetivo]}</b>${meta}${rm ? `<br>Metas de 1RM: ${rm}` : ''}</p>`;
+  const pf = leerLS('af_nutri_perfil', {}); if (!pf.objetivo || !Object.hasOwn(OBJETIVOS, pf.objetivo)) return '';
+  const ult = [...leerLS('af_peso_log', [])].reverse().find((x) => x && x.kg > 0), actual = (ult && ult.kg) || pf.peso;
+  const meta = pf.pesoMeta > 0 && actual > 0 && Math.abs(pf.pesoMeta - actual) >= 0.5 ? ` · meta ${fmt(pf.pesoMeta, 1)} kg (te ${pf.pesoMeta < actual ? 'falta bajar' : 'falta subir'} ${fmt(Math.abs(pf.pesoMeta - actual), 1)} kg)` : '';
+  const rm = pf.objetivo === 'fuerza' ? Object.entries(leerLS('af_meta_1rm', {})).filter(([id, kg]) => +kg > 0 && POR_ID[id]).slice(0, 3).map(([id, kg]) => `${esc((POR_ID[id] && (POR_ID[id].corto || POR_ID[id].nombre)) || id)} ${fmt(+kg, 1)} kg`).join(' · ') : '';
+  // meta del mes y lo que llevas: peso de hoy contra el registro más cercano a hace 30 días
+  let mes = '';
+  if (Number.isFinite(pf.cambioMes) && Math.abs(pf.cambioMes) >= 0.2) {
+    const log = leerLS('af_peso_log', []).filter((x) => x && x.kg > 0 && x.fecha), hace = sumarDias(fechaISO(new Date()), -30);
+    const base = log.filter((x) => x.fecha <= hace).pop() || log.find((x) => x.fecha > hace && (!ult || x.fecha !== ult.fecha));
+    const llevas = base && ult && base.fecha !== ult.fecha ? ult.kg - base.kg : null;
+    mes = `<br>Meta del mes: <b>${pf.cambioMes > 0 ? 'subir' : 'bajar'} ${fmt(Math.abs(pf.cambioMes), 1)} kg</b>${llevas !== null ? ` · llevas ${llevas > 0 ? '+' : llevas < 0 ? '−' : ''}${fmt(Math.abs(llevas), 1)} kg desde el ${desdeISO(base.fecha).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}` : ' · registra tu peso en Perfil para ver tu avance'}`;
+  }
+  return `<p class="hint nu-objetivo">🎯 <b>${OBJETIVOS[pf.objetivo]}</b>${meta}${mes}${rm ? `<br>Metas de 1RM: ${rm}` : ''}</p>`;
 }
 
 function pintarComidas() {
@@ -468,17 +476,17 @@ function abrirMetas() {
   $('nu-cant').innerHTML = `<p class="hint" style="margin-top:0">Calcula una meta orientativa con tus datos o escribe la tuya (por ejemplo, la de tu nutricionista).</p>
     <div class="form-grid">
       <div class="form-group"><label for="mt-sexo">Sexo</label><select id="mt-sexo"><option value="h">Hombre</option><option value="m"${perfil.sexo === 'm' ? ' selected' : ''}>Mujer</option></select></div>
-      <div class="form-group"><label for="mt-edad">Edad</label><input id="mt-edad" type="number" inputmode="numeric" value="${perfil.edad || ''}"></div>
-      <div class="form-group"><label for="mt-peso">Peso (kg)</label><input id="mt-peso" type="number" inputmode="decimal" value="${pc}"></div>
-      <div class="form-group"><label for="mt-alt">Estatura (cm)</label><input id="mt-alt" type="number" inputmode="numeric" value="${alt}"></div>
+      <div class="form-group"><label for="mt-edad">Edad</label><input id="mt-edad" type="number" inputmode="numeric" value="${esc(perfil.edad || '')}"></div>
+      <div class="form-group"><label for="mt-peso">Peso (kg)</label><input id="mt-peso" type="number" inputmode="decimal" value="${esc(pc)}"></div>
+      <div class="form-group"><label for="mt-alt">Estatura (cm)</label><input id="mt-alt" type="number" inputmode="numeric" value="${esc(alt)}"></div>
       <div class="form-group"><label for="mt-act">Actividad</label><select id="mt-act">
-        <option value="1.375">Entreno 1–3 días</option><option value="1.55" selected>Entreno 3–5 días</option><option value="1.725">Entreno 6–7 días o trabajo físico</option></select></div>
-      <div class="form-group"><label for="mt-obj">Objetivo</label><select id="mt-obj">
+        ${[['1.375', 'Entreno 1–3 días'], ['1.55', 'Entreno 3–5 días'], ['1.725', 'Entreno 6–7 días o trabajo físico']].map(([v, t]) => `<option value="${v}"${+(perfil.actividad || 1.55) === +v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div class="form-group" style="grid-column:span 2"><label for="mt-obj">Objetivo</label><select id="mt-obj">
         ${Object.entries(OBJETIVOS).map(([k, t]) => `<option value="${k}"${(perfil.objetivo || 'mantener') === k ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
-      <div class="form-group"><label for="mt-ritmo">Ritmo</label><select id="mt-ritmo">
+      <div class="form-group" id="mt-ritmo-g"><label for="mt-ritmo">Ritmo</label><select id="mt-ritmo">
         <option value="suave"${perfil.ritmo === 'suave' ? ' selected' : ''}>Suave</option><option value="normal"${perfil.ritmo !== 'suave' ? ' selected' : ''}>Moderado</option></select></div>
-      <div class="form-group"><label for="mt-meta">Peso meta (kg, opcional)</label><input id="mt-meta" type="number" inputmode="decimal" value="${perfil.pesoMeta || ''}"></div>
-      <div class="form-group"><label for="mt-salud">Situación especial</label><select id="mt-salud">
+      <div class="form-group"><label for="mt-meta">Peso meta (kg, opcional)</label><input id="mt-meta" type="number" inputmode="decimal" value="${esc(perfil.pesoMeta || '')}"></div>
+      <div class="form-group" style="grid-column:span 2"><label for="mt-salud">Situación especial</label><select id="mt-salud">
         <option value="">Ninguna</option><option value="emb">Embarazo o lactancia</option><option value="enf">Enfermedad o medicación que afecta la dieta</option></select></div>
     </div>
     <button type="button" class="btn-sec" id="mt-calc" style="width:100%;margin:6px 0 12px">🧮 Calcular sugerencia</button>
@@ -492,20 +500,23 @@ function abrirMetas() {
     <p class="hint">Orientativo: no reemplaza a un nutricionista o médico.</p>
     <div class="en-det-botones"><button type="button" class="btn-sec" id="mt-cancelar">Cancelar</button><button type="button" class="btn-sec en-terminar" id="mt-ok">Guardar metas</button></div>`;
   // v2.44.0 objetivo con ritmo, peso meta y límites seguros (js/objetivos.js)
+  const verRitmo = () => { $('mt-ritmo-g').style.display = ['perder', 'ganar'].includes($('mt-obj').value) ? '' : 'none'; };
+  $('mt-obj').onchange = verRitmo; verRitmo();
   const datosObj = () => ({ objetivo: $('mt-obj').value, ritmo: $('mt-ritmo').value, pesoMeta: parseFloat($('mt-meta').value) || null });
   $('mt-calc').onclick = () => {
     const sexo = $('mt-sexo').value, edad = +$('mt-edad').value, peso = +$('mt-peso').value, alt = +$('mt-alt').value;
     if (!(edad > 0 && peso > 30 && alt > 120)) return alert('Completa edad, peso y estatura.');
     if ($('mt-salud').value) {
-      $('mt-nota').innerHTML = `<b>${$('mt-salud').value === 'emb' ? 'En embarazo o lactancia' : 'Con una enfermedad o medicación que afecta la dieta'} no calculamos metas automáticas.</b> Pide tus metas a tu médico o nutricionista y escríbelas abajo: la app te ayuda a seguirlas.`;
+      $('mt-nota').innerHTML = `<b>${$('mt-salud').value === 'emb' ? 'En embarazo o lactancia' : 'Con una enfermedad o medicación que afecta la dieta'} no calculamos metas automáticas.</b> Pide tus metas a tu médico o nutricionista y escríbelas en las casillas de metas: la app te ayuda a seguirlas.`;
+      ['mt-kcal', 'mt-p', 'mt-c', 'mt-g'].forEach((id) => { $(id).value = ''; });
       return;
     }
     const o = datosObj(), r = calcularPlan({ sexo, edad, peso, altura: alt, actividad: +$('mt-act').value, ...o });
-    if (r.bloqueado) { $('mt-nota').innerHTML = `<b>${r.bloqueado}</b>`; return; }
-    guardarLS('af_nutri_perfil', { ...leerLS('af_nutri_perfil', {}), sexo, edad, peso, altura: alt, ...o, actividad: +$('mt-act').value });
+    if (r.bloqueado) { $('mt-nota').innerHTML = `<b>${r.bloqueado}</b>`; ['mt-kcal', 'mt-p', 'mt-c', 'mt-g'].forEach((id) => { $(id).value = ''; }); return; }
+    guardarLS('af_nutri_perfil', { ...leerLS('af_nutri_perfil', {}), sexo, edad, peso, altura: alt, ...o, actividad: +$('mt-act').value, cambioMes: r.cambioMes });
     $('mt-kcal').value = r.kcal; $('mt-p').value = r.p; $('mt-c').value = r.c; $('mt-g').value = r.g;
     const sem = r.cambioSemana, txtSem = Math.abs(sem) < 0.05 ? 'tu peso se mantiene' : `${sem > 0 ? 'subirías' : 'bajarías'} unos ${fmt(Math.abs(sem), 2)} kg por semana`;
-    $('mt-nota').innerHTML = `Mantenimiento estimado: <b>${fmt(r.mant)} kcal</b>. Con <b>${fmt(r.kcal)} kcal</b> ${txtSem}`
+    $('mt-nota').innerHTML = `<b>Meta diaria:</b> ${fmt(r.kcal)} kcal · proteína ${fmt(r.p)} g.<br><b>Meta del mes:</b> ${Math.abs(r.cambioMes) < 0.2 ? 'mantener tu peso' : `${r.cambioMes > 0 ? 'subir' : 'bajar'} unos ${fmt(Math.abs(r.cambioMes), 1)} kg en 30 días`}.<br>Mantenimiento estimado: <b>${fmt(r.mant)} kcal</b>. Con <b>${fmt(r.kcal)} kcal</b> ${txtSem}`
       + (r.semanas ? ` y llegarías a ${fmt(o.pesoMeta, 1)} kg en <b>unas ${r.semanas} semanas</b>` : '') + '.'
       + (o.objetivo === 'fuerza' ? ' Para fuerza: come un poco por encima de tu mantenimiento, con buena proteína y carbohidratos alrededor del entreno.' : '')
       + r.avisos.map((t) => `<br>⚠️ ${esc(t)}`).join('') + '<br>Es una estimación: ajústala según cómo cambie tu peso en 2–3 semanas.';
@@ -521,7 +532,3 @@ function abrirMetas() {
   };
 }
 
-export function calcularMetas({ sexo, edad, peso, altura, actividad, objetivo }) { // compatibilidad (v2.44.0 usa calcularPlan)
-  const r = calcularPlan({ sexo, edad: edad >= 18 ? edad : 18, peso, altura, actividad, objetivo });
-  return { kcal: r.kcal, p: r.p, c: r.c, g: r.g, mant: r.mant };
-}
