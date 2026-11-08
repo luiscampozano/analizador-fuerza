@@ -8,6 +8,21 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 17:30 · v2.45.0 — Nutricionista personal IA (etapa 3 de 3)
+- **Pidió:** plan de comidas según objetivos; llamarlo «nutricionista personal IA».
+- **Se hizo:** tarjeta «🤖 Nutricionista personal IA» en Nutrición (después de las comidas del día):
+  - Revisión semanal sin IA (`ajusteSemanal` en js/objetivos.js): tendencia del peso (mínimos cuadrados, 21 días o desde
+    el último ajuste, mínimo 10 días) y sugerencia de +150/−100 kcal según el objetivo, sin bajar del mínimo seguro;
+    tras aplicar un ajuste espera 7 días (af_nutri_ajuste).
+  - Menú del día con IA (`POST /api/ia/menu`, cupo 'm' 5/día, pensamiento adaptativo): comida de Ecuador que cumple
+    kcal y proteína, respeta lo que no come; cada comida se agrega a hoy con un toque (reusa listaIA). af_nutri_menu,
+    af_nutri_gustos. Bloqueado para menores de 18 y con embarazo/lactancia/enfermedad (se guarda `salud` en el perfil).
+  - Prueba nueva: pruebas/servidor/menu_test.mjs.
+- **Verificación (subagente):** encontró que se podía bajar calorías varias veces seguidas, la fecha interna se
+  desfasaba al volver del menú, el registro de peso desordenado, menús guardados dañados, comida nula del servidor y
+  textos/diseño: todo corregido.
+- **Pendiente:** probar con la IA real (Luis).
+
 ### 16:45 · v2.44.0 — Objetivos en Nutrición con meta diaria y mensual (etapa 2 de 3)
 - **Pidió:** nutricionista personal según objetivos (fuerza, bajar grasa, subir/bajar peso); meta mensual y diaria.
 - **Se hizo:** `js/objetivos.js` (calcularPlan): 4 objetivos, ritmo suave/moderado, peso meta → kg por semana, meta del

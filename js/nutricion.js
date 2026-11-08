@@ -4,7 +4,7 @@
 import * as almacen from './almacen.js';
 import * as nube from './nube.js';
 import { ALIMENTOS } from './alimentos.js';
-import { calcularPlan, OBJETIVOS } from './objetivos.js';
+import { calcularPlan, OBJETIVOS, ajusteSemanal } from './objetivos.js';
 import { POR_ID } from './ejercicios.js';
 
 const $ = (id) => document.getElementById(id);
@@ -51,7 +51,7 @@ export async function pintar() {
     : desdeISO(dia).toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric', month: 'short' });
   $('nu-hoy').style.visibility = dia === hoy ? 'hidden' : '';
   registros = (await almacen.leerComidas(dia)).sort((a, b) => a.creado - b.creado);
-  pintarResumen(); pintarComidas(); pintarSemana();
+  pintarResumen(); pintarNutriIA(); pintarComidas(); pintarSemana();
 }
 
 function pintarResumen() {
@@ -77,13 +77,13 @@ function pintarResumen() {
 // v2.44.0 tu objetivo bajo los anillos: peso meta y, si es fuerza, tus metas de 1RM del entrenamiento
 function lineaObjetivo() {
   const pf = leerLS('af_nutri_perfil', {}); if (!pf.objetivo || !Object.hasOwn(OBJETIVOS, pf.objetivo)) return '';
-  const ult = [...leerLS('af_peso_log', [])].reverse().find((x) => x && x.kg > 0), actual = (ult && ult.kg) || pf.peso;
+  const logP = leerLS('af_peso_log', []), ult = [...(Array.isArray(logP) ? logP : [])].reverse().find((x) => x && x.kg > 0), actual = (ult && ult.kg) || pf.peso;
   const meta = pf.pesoMeta > 0 && actual > 0 && Math.abs(pf.pesoMeta - actual) >= 0.5 ? ` · meta ${fmt(pf.pesoMeta, 1)} kg (te ${pf.pesoMeta < actual ? 'falta bajar' : 'falta subir'} ${fmt(Math.abs(pf.pesoMeta - actual), 1)} kg)` : '';
   const rm = pf.objetivo === 'fuerza' ? Object.entries(leerLS('af_meta_1rm', {})).filter(([id, kg]) => +kg > 0 && POR_ID[id]).slice(0, 3).map(([id, kg]) => `${esc((POR_ID[id] && (POR_ID[id].corto || POR_ID[id].nombre)) || id)} ${fmt(+kg, 1)} kg`).join(' · ') : '';
   // meta del mes y lo que llevas: peso de hoy contra el registro más cercano a hace 30 días
   let mes = '';
   if (Number.isFinite(pf.cambioMes) && Math.abs(pf.cambioMes) >= 0.2) {
-    const log = leerLS('af_peso_log', []).filter((x) => x && x.kg > 0 && x.fecha), hace = sumarDias(fechaISO(new Date()), -30);
+    const log = (Array.isArray(logP) ? logP : []).filter((x) => x && x.kg > 0 && x.fecha), hace = sumarDias(fechaISO(new Date()), -30);
     const base = log.filter((x) => x.fecha <= hace).pop() || log.find((x) => x.fecha > hace && (!ult || x.fecha !== ult.fecha));
     const llevas = base && ult && base.fecha !== ult.fecha ? ult.kg - base.kg : null;
     mes = `<br>Meta del mes: <b>${pf.cambioMes > 0 ? 'subir' : 'bajar'} ${fmt(Math.abs(pf.cambioMes), 1)} kg</b>${llevas !== null ? ` · llevas ${llevas > 0 ? '+' : llevas < 0 ? '−' : ''}${fmt(Math.abs(llevas), 1)} kg desde el ${desdeISO(base.fecha).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}` : ' · registra tu peso en Perfil para ver tu avance'}`;
@@ -297,17 +297,17 @@ function comidaEscrita(previo = '') {
 }
 
 // lista editable de alimentos que propone la IA (foto o texto): el usuario ajusta gramos y desmarca lo que no comio
-function listaIA(r, titulo, pie, volver = null) {
+function listaIA(r, titulo, pie, volver = null, intro = null) {
   const items = r.alimentos.map((a) => ({ ...a, base: { kcal: a.kcal / a.gramos * 100, p: a.p / a.gramos * 100, c: a.c / a.gramos * 100, g: a.g / a.gramos * 100 }, usar: true }));
   $('nu-paso-buscar').style.display = 'none'; $('nu-paso-cant').style.display = '';
   const CONF = { alta: '🟢', media: '🟡', baja: '🔴' };
   $('nu-cant').innerHTML = `<h3 class="en-det-titulo">${titulo}</h3>
-    <p class="hint" style="margin-top:2px">Estimación de la IA: reconoce bien los alimentos, pero en las porciones puede equivocarse bastante (±40 %). <b>Ajusta los gramos</b> (mejor si pesas) y desmarca lo que no comiste.${r.nota ? ' ' + esc(r.nota) : ''}</p>
+    <p class="hint" style="margin-top:2px">${intro || `Estimación de la IA: reconoce bien los alimentos, pero en las porciones puede equivocarse bastante (±40 %). <b>Ajusta los gramos</b> (mejor si pesas) y desmarca lo que no comiste.${r.nota ? ' ' + esc(r.nota) : ''}`}</p>
     <div class="nu-plato">${items.map((a, i) => `<label class="nu-plato-fila"><input type="checkbox" data-i="${i}" checked>
       <span><b>${esc(a.nombre)}</b> <small title="confianza de la IA en la porción">${CONF[a.confianza] || ''}</small><small id="nu-pl-k${i}"></small></span>
       <input type="number" inputmode="decimal" min="0" step="any" value="${Math.round(a.gramos)}" data-g="${i}"><span class="nu-plato-u">g</span></label>`).join('')}</div>
     <div id="nu-prev" class="nu-prev"></div>
-    <p class="hint" style="margin:0">🟢🟡🔴 = qué tan segura está la IA de la porción. ${pie}</p>
+    <p class="hint" style="margin:0">${intro ? '' : '🟢🟡🔴 = qué tan segura está la IA de la porción. '}${pie}</p>
     <div class="en-det-botones"><button type="button" class="btn-sec" id="nu-volver">‹ Volver</button><button type="button" class="btn-sec en-terminar" id="nu-ok">Agregar</button></div>`;
   const total = () => {
     let t = { kcal: 0, p: 0, c: 0, g: 0 }, n = 0;
@@ -487,7 +487,7 @@ function abrirMetas() {
         <option value="suave"${perfil.ritmo === 'suave' ? ' selected' : ''}>Suave</option><option value="normal"${perfil.ritmo !== 'suave' ? ' selected' : ''}>Moderado</option></select></div>
       <div class="form-group"><label for="mt-meta">Peso meta (kg, opcional)</label><input id="mt-meta" type="number" inputmode="decimal" value="${esc(perfil.pesoMeta || '')}"></div>
       <div class="form-group" style="grid-column:span 2"><label for="mt-salud">Situación especial</label><select id="mt-salud">
-        <option value="">Ninguna</option><option value="emb">Embarazo o lactancia</option><option value="enf">Enfermedad o medicación que afecta la dieta</option></select></div>
+        <option value="">Ninguna</option><option value="emb"${perfil.salud === 'emb' ? ' selected' : ''}>Embarazo o lactancia</option><option value="enf"${perfil.salud === 'enf' ? ' selected' : ''}>Enfermedad o medicación que afecta la dieta</option></select></div>
     </div>
     <button type="button" class="btn-sec" id="mt-calc" style="width:100%;margin:6px 0 12px">🧮 Calcular sugerencia</button>
     <div class="form-grid">
@@ -502,10 +502,11 @@ function abrirMetas() {
   // v2.44.0 objetivo con ritmo, peso meta y límites seguros (js/objetivos.js)
   const verRitmo = () => { $('mt-ritmo-g').style.display = ['perder', 'ganar'].includes($('mt-obj').value) ? '' : 'none'; };
   $('mt-obj').onchange = verRitmo; verRitmo();
-  const datosObj = () => ({ objetivo: $('mt-obj').value, ritmo: $('mt-ritmo').value, pesoMeta: parseFloat($('mt-meta').value) || null });
+  const datosObj = () => ({ objetivo: $('mt-obj').value, ritmo: $('mt-ritmo').value, pesoMeta: parseFloat($('mt-meta').value) || null, salud: $('mt-salud').value || undefined });
   $('mt-calc').onclick = () => {
     const sexo = $('mt-sexo').value, edad = +$('mt-edad').value, peso = +$('mt-peso').value, alt = +$('mt-alt').value;
     if (!(edad > 0 && peso > 30 && alt > 120)) return alert('Completa edad, peso y estatura.');
+    guardarLS('af_nutri_perfil', { ...leerLS('af_nutri_perfil', {}), salud: $('mt-salud').value || undefined });
     if ($('mt-salud').value) {
       $('mt-nota').innerHTML = `<b>${$('mt-salud').value === 'emb' ? 'En embarazo o lactancia' : 'Con una enfermedad o medicación que afecta la dieta'} no calculamos metas automáticas.</b> Pide tus metas a tu médico o nutricionista y escríbelas en las casillas de metas: la app te ayuda a seguirlas.`;
       ['mt-kcal', 'mt-p', 'mt-c', 'mt-g'].forEach((id) => { $(id).value = ''; });
@@ -532,3 +533,83 @@ function abrirMetas() {
   };
 }
 
+
+// ================================================================== NUTRICIONISTA PERSONAL IA (v2.45.0)
+// Revisión semanal (sin IA, con tu peso) y menú del día con IA que cumple tus metas, con comida de aquí.
+function pintarNutriIA() {
+  const cont = $('nu-nutri-ia'); if (!cont) return;
+  const pf = leerLS('af_nutri_perfil', {});
+  if (pf.edad > 0 && pf.edad < 18) { cont.innerHTML = '<strong>🤖 Nutricionista personal IA</strong><p class="hint">Es para mayores de 18 años. Para menores, el plan de comidas lo debe hacer un nutricionista o pediatra.</p>'; return; }
+  if (pf.salud) { cont.innerHTML = '<strong>🤖 Nutricionista personal IA</strong><p class="hint">Por tu situación especial (embarazo, lactancia o salud), tu plan de comidas y sus ajustes los debe hacer tu médico o nutricionista. La app te ayuda a anotar y seguir sus metas.</p>'; return; }
+  const aj = ajusteSemanal({ log: leerLS('af_peso_log', []), perfil: pf, metas, ultimoAjuste: leerLS('af_nutri_ajuste', null) });
+  const menu = menuValido(leerLS('af_nutri_menu', null));
+  cont.innerHTML = `<div class="nu-ia-cab"><strong>🤖 Nutricionista personal IA</strong></div>
+    <div class="nu-ia-rev"><small>Revisión semanal</small><p>${esc(aj.texto)}</p>
+      ${aj.nuevas ? `<button type="button" class="btn-sec" id="nu-ia-aplicar" style="width:100%">${aj.delta > 0 ? '⬆️ Subir' : '⬇️ Bajar'} a ${fmt(aj.nuevas.kcal)} kcal al día</button>` : ''}</div>
+    <button type="button" class="btn-primary" id="nu-ia-menu" style="width:100%;margin-top:10px">🍽️ Armar mi menú de hoy con IA</button>
+    ${menu ? `<button type="button" class="btn-sec" id="nu-ia-ultimo" style="width:100%;margin-top:8px">📋 Ver mi último menú (${esc(menu.fecha === fechaISO(new Date()) ? 'hoy' : menu.fecha)})</button>` : ''}`;
+  if ($('nu-ia-aplicar')) $('nu-ia-aplicar').onclick = () => {
+    if (!confirm(`¿Cambiar tu meta diaria de ${fmt(metas.kcal)} a ${fmt(aj.nuevas.kcal)} kcal? (los carbohidratos se ajustan; la proteína no cambia)`)) return;
+    metas = aj.nuevas; guardarLS('af_nutri_metas', metas); guardarLS('af_nutri_ajuste', fechaISO(new Date())); pintar();
+  };
+  $('nu-ia-menu').onclick = abrirMenuIA;
+  if ($('nu-ia-ultimo')) $('nu-ia-ultimo').onclick = () => verMenu(menu);
+}
+
+const menuValido = (m) => (m && typeof m === 'object' && Array.isArray(m.comidas) && m.comidas.length && typeof m.fecha === 'string'
+  && m.comidas.every((c) => c && Array.isArray(c.alimentos)) ? m : null);
+function abrirMenuIA() {
+  if (!metas) return abrirMetas();
+  const pf = leerLS('af_nutri_perfil', {}), pref = leerLS('af_nutri_gustos', {});
+  $('nu-hoja-titulo').textContent = '🤖 Nutricionista personal IA';
+  $('nu-paso-buscar').style.display = 'none'; $('nu-paso-cant').style.display = '';
+  $('nu-hoja').style.display = 'flex';
+  $('nu-cant').innerHTML = `<p class="hint" style="margin-top:0">Te armo un menú de un día con comida de aquí que cumpla tus metas: <b>${fmt(metas.kcal)} kcal</b> · proteína ${fmt(metas.p)} g${pf.objetivo && OBJETIVOS[pf.objetivo] ? ` · ${OBJETIVOS[pf.objetivo]}` : ''}.</p>
+    <div class="form-grid">
+      <div class="form-group" style="grid-column:span 2"><label for="mi-n">Comidas al día</label><select id="mi-n">${[3, 4, 5].map((n) => `<option value="${n}"${(pref.n || 4) === n ? ' selected' : ''}>${n}${n === 3 ? ' (desayuno, almuerzo y cena)' : n === 4 ? ' (con un snack)' : ' (con dos snacks)'}</option>`).join('')}</select></div>
+      <div class="form-group" style="grid-column:span 2"><label for="mi-gusta">Lo que te gusta (opcional)</label><input id="mi-gusta" maxlength="200" placeholder="ej. pescado, bolón, avena" value="${esc(pref.gustos || '')}"></div>
+      <div class="form-group" style="grid-column:span 2"><label for="mi-evitar">Lo que no comes o te cae mal (opcional)</label><input id="mi-evitar" maxlength="200" placeholder="ej. cerdo, lácteos, soy vegetariano" value="${esc(pref.evitar || '')}"></div>
+    </div>
+    <p class="hint">Usa 1 crédito IA. Es una guía orientativa: no reemplaza a un nutricionista o médico (sobre todo con alergias o enfermedades).</p>
+    <p class="hint" id="mi-estado"></p>
+    <div class="en-det-botones"><button type="button" class="btn-sec" id="mi-cancelar">Cancelar</button><button type="button" class="btn-sec en-terminar" id="mi-ok">Armar menú</button></div>`;
+  $('mi-cancelar').onclick = cerrarHoja;
+  $('mi-ok').onclick = async () => {
+    if (!nube.conectado()) return alert('El nutricionista IA trabaja en el servidor: inicia sesión (Perfil → Cuenta) para usarlo.');
+    const pedido = { n: +$('mi-n').value, gustos: $('mi-gusta').value.trim(), evitar: $('mi-evitar').value.trim() };
+    guardarLS('af_nutri_gustos', pedido);
+    $('mi-ok').disabled = true; $('mi-estado').textContent = '🤖 Armando tu menú… (unos 15 segundos)';
+    try {
+      const r = await nube.api('POST', '/api/ia/menu', { metas, objetivo: pf.objetivo || 'mantener', comidas: pedido.n, gustos: pedido.gustos, evitar: pedido.evitar });
+      const menu = { ...r, fecha: fechaISO(new Date()) }; guardarLS('af_nutri_menu', menu);
+      verMenu(menu); pintarNutriIA();
+    } catch (e) { $('mi-estado').textContent = e.message || String(e); $('mi-ok').disabled = false; }
+  };
+}
+
+const NOMBRE_COMIDA = { desayuno: '🌅 Desayuno', almuerzo: '☀️ Almuerzo', cena: '🌙 Cena', snack: '🍎 Snack' };
+function verMenu(menu) {
+  menu = menuValido(menu); if (!menu) return;
+  $('nu-hoja-titulo').textContent = '🍽️ Tu menú del día';
+  $('nu-paso-buscar').style.display = 'none'; $('nu-paso-cant').style.display = '';
+  $('nu-hoja').style.display = 'flex';
+  const t = menu.total || {}, m = menu.metas || metas || {};
+  $('nu-cant').innerHTML = `<div class="nu-prev"><div><b>${fmt(t.kcal)}</b><small>de ${fmt(m.kcal)} kcal</small></div><div><b>${fmt(t.p)}</b><small>de ${fmt(m.p)} g prot.</small></div><div><b>${fmt(t.c)}</b><small>carbos</small></div><div><b>${fmt(t.g)}</b><small>grasa</small></div></div>
+    ${menu.comidas.map((c, i) => {
+      const k = c.alimentos.reduce((a, x) => a + x.kcal, 0), p = c.alimentos.reduce((a, x) => a + x.p, 0);
+      return `<div class="nu-comida nu-menu"><div class="nu-comida-cab"><strong>${NOMBRE_COMIDA[c.comida] || '🍽️'} · ${esc(c.titulo)}</strong><span>${fmt(k)} kcal · P ${fmt(p)} g</span></div>
+        <ul>${c.alimentos.map((a) => `<li>${esc(a.nombre)} <small>${fmt(a.gramos)} g</small></li>`).join('')}</ul>
+        <button type="button" class="nu-agregar" data-i="${i}">+ Agregar a ${esc((NOMBRE_COMIDA[c.comida] || 'hoy').replace(/^\S+\s/, '').toLowerCase())} de hoy</button></div>`;
+    }).join('')}
+    ${(menu.consejos || []).length ? `<p class="hint">💡 ${menu.consejos.map(esc).join('<br>💡 ')}</p>` : ''}
+    <p class="hint">Valores aproximados de la IA. Puedes cambiar cualquier alimento por otro parecido.</p>
+    <div class="en-det-botones"><button type="button" class="btn-sec" id="mn-otro">🔄 Otro menú</button><button type="button" class="btn-sec en-terminar" id="mn-cerrar">Listo</button></div>`;
+  $('nu-cant').querySelectorAll('.nu-agregar').forEach((b) => (b.onclick = () => {
+    const c = menu.comidas[+b.dataset.i]; comidaSel = c.comida;
+    const hoyM = fechaISO(new Date()); if (dia !== hoyM) { dia = hoyM; pintar(); } // «de hoy»: la pantalla también vuelve a hoy
+    listaIA({ alimentos: c.alimentos.filter((a) => a && a.gramos > 0).map((a) => ({ ...a, confianza: '' })) }, `${NOMBRE_COMIDA[c.comida] || ''} · ${esc(c.titulo)}`, 'Ajusta los gramos a lo que realmente comiste.', () => verMenu(menu),
+      'Del menú de tu nutricionista IA. Desmarca lo que no comiste y ajusta las porciones.');
+  }));
+  $('mn-otro').onclick = abrirMenuIA;
+  $('mn-cerrar').onclick = cerrarHoja;
+}
