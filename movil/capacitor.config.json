@@ -1,0 +1,14 @@
+{
+  "appId": "com.fuerzapro.app",
+  "appName": "FuerzaPro",
+  "webDir": "www",
+  "server": {
+    "url": "https://fuerzapro.pages.dev",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0B0B12",
+    "limitsNavigationsToAppBoundDomains": true
+  }
+}

@@ -1,0 +1,59 @@
+# FuerzaPro para iPhone: Codemagic arma la app en una Mac en la nube y la sube a TestFlight.
+# Se ejecuta a mano desde codemagic.io («Start new build»). La carpeta movil/ tiene la envoltura Capacitor:
+# la app abre https://fuerzapro.pages.dev, así que cada publicación web llega también al iPhone sin pasar por Apple.
+# Pendiente (parte 4, Luis): crear la integración «FuerzaPro ASC» con la llave .p8 en Codemagic (nunca en el chat)
+# y poner APP_STORE_APPLE_ID (número de la app en App Store Connect).
+workflows:
+  ios-testflight:
+    name: FuerzaPro iOS → TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: FuerzaPro ASC
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.fuerzapro.app
+      vars:
+        APP_STORE_APPLE_ID: 0
+        XCODE_WORKSPACE: movil/ios/App/App.xcworkspace
+        XCODE_SCHEME: App
+      node: 20
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Instalar Capacitor
+        working_directory: movil
+        script: npm install
+      - name: Crear el proyecto de iPhone
+        working_directory: movil
+        script: |
+          npx cap add ios
+          npx capacitor-assets generate --ios --iconBackgroundColor '#0B0B12' --splashBackgroundColor '#0B0B12'
+          npx cap sync ios
+      - name: Permisos y ajustes (Info.plist)
+        script: |
+          P=movil/ios/App/App/Info.plist
+          B=/usr/libexec/PlistBuddy
+          $B -c "Add :NSCameraUsageDescription string 'FuerzaPro usa la cámara para grabar tu serie y contar tus repeticiones en el celular. El video no se sube a internet.'" $P
+          $B -c "Add :NSMicrophoneUsageDescription string 'Para grabar el audio de tu video de entrenamiento.'" $P
+          $B -c "Add :NSPhotoLibraryUsageDescription string 'Para elegir un video de tu galería y analizarlo, o una foto de tu comida.'" $P
+          $B -c "Add :NSPhotoLibraryAddUsageDescription string 'Para guardar en tu galería el video con telemetría.'" $P
+          $B -c "Add :ITSAppUsesNonExemptEncryption bool false" $P
+          $B -c "Add :WKAppBoundDomains array" $P
+          $B -c "Add :WKAppBoundDomains:0 string fuerzapro.pages.dev" $P
+      - name: Firma
+        script: xcode-project use-profiles
+      - name: Número de compilación
+        script: |
+          ULTIMO=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          cd movil/ios/App && agvtool new-version -all $((ULTIMO + 1))
+      - name: Compilar
+        script: xcode-project build-ipa --workspace "$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

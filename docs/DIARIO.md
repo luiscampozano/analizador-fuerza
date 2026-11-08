@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 12:50 · iPhone, fase 1 y comienzo de fase 2 (sin cambio de versión)
+- **Pidió:** empezar el proyecto iPhone paso a paso.
+- **Luis hizo:** cuenta de Apple con dos factores, pagó Apple Developer (en activación), cuenta de Codemagic conectada
+  solo a este repositorio.
+- **Se hizo:** `movil/` (Capacitor 7 que abre la web) y `codemagic.yaml` (compila y sube a TestFlight). Probado en
+  Linux que el proyecto iOS se genera. El flujo de publicación web excluye `movil/` y `codemagic.yaml`.
+- **Pendiente:** activación de Apple → parte 4 (app en App Store Connect + llave en Codemagic) → primera compilación.
+
 ### 10:40 · v2.41.4 — Nutrición con IA que «piensa» (esfuerzo bajo)
 - **Pidió:** rapidez y calidad; que la IA de nutrición piense.
 - **Se hizo:** foto del plato y «Escribir lo que comí» usan pensamiento adaptativo con esfuerzo bajo y 3000 tokens extra

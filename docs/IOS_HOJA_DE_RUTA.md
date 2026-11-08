@@ -3,6 +3,18 @@
 Preparada el 6 de noviembre de 2026. **Todavía no se empieza:** primero se lanza en Google Play. Se arranca cuando una
 parte importante de los usuarios use iPhone o lo pidan seguido (Luis dirá «vamos con iPhone»).
 
+## Avance
+- 2026-11-08: Luis dijo «vamos con iPhone». Hecho: cuenta de Apple con dos factores, pago de Apple Developer ($99,
+  esperando activación hasta 2 días hábiles), cuenta personal de Codemagic con acceso solo a este repositorio y la app
+  agregada (tipo iOS; da igual, manda codemagic.yaml).
+- Claude: carpeta `movil/` (Capacitor 7: abre https://fuerzapro.pages.dev dentro de la app, dominio «app-bound» para que
+  funcione el service worker) y `codemagic.yaml` (crea el proyecto iOS en la nube, iconos, permisos de cámara/fotos,
+  firma, número de compilación y subida a TestFlight). Ambos se excluyen de la publicación web.
+- Falta (parte 4, Luis, cuando Apple active la cuenta): crear la app en App Store Connect (com.fuerzapro.app), crear la
+  llave de API (.p8) y pegarla en Codemagic → Integrations como «FuerzaPro ASC»; poner APP_STORE_APPLE_ID.
+- Ojo fase 2: Google bloquea su inicio de sesión dentro de apps con vista web; en iPhone hará falta «Iniciar sesión con
+  Apple» y correo (o abrir Google en Safari).
+
 ## Fase 0 · Ahora (gratis)
 - Los usuarios de iPhone usan la web: Safari → **fuerzapro.pages.dev** → Compartir → Agregar a pantalla de inicio.
 - Sin cobro en iPhone/web: usan el plan Gratis (más adelante se puede cobrar en la web con PayPal u otro, sin Apple).

@@ -1,0 +1,13 @@
+{
+  "name": "fuerzapro-ios",
+  "private": true,
+  "description": "Envoltura nativa de iPhone (Capacitor) para FuerzaPro. Solo la usa Codemagic; la app web no necesita npm.",
+  "dependencies": {
+    "@capacitor/cli": "^7.4.0",
+    "@capacitor/core": "^7.4.0",
+    "@capacitor/ios": "^7.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}
