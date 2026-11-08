@@ -1290,7 +1290,7 @@ async function menuIA(req, env, u) {
     leGusta: texto_(b.gustos, 200), noCome: texto_(b.evitar, 200) };
   const cupo = await cupoIA(env, u, 'm', 'menús del nutricionista IA');
   const res = jsonDe(await llamarClaude(env, PROMPT_MENU, [{ type: 'text', text: JSON.stringify(pedido) }], 2500, true));
-  const comidas = (Array.isArray(res.comidas) ? res.comidas : []).slice(0, 6).map((x) => ({
+  const comidas = (Array.isArray(res.comidas) ? res.comidas : []).filter((x) => x && typeof x === 'object').slice(0, 6).map((x) => ({
     comida: COMIDAS_MENU.includes(x.comida) ? x.comida : 'snack', titulo: texto_(x.titulo, 80) || 'Comida',
     alimentos: alimentosIA(x.alimentos).slice(0, 6).map(({ confianza, ...a }) => a),
   })).filter((x) => x.alimentos.length);

@@ -48,23 +48,33 @@ export function calcularPlan({ sexo, edad, peso, altura, actividad, objetivo = '
 
 // v2.45.0 revisión semanal del nutricionista IA (sin IA): compara cómo cambió tu peso en las últimas 3 semanas con lo
 // esperado para tu objetivo y sugiere subir o bajar calorías (de 100 a 150 kcal, siempre sobre el mínimo seguro).
-export function ajusteSemanal({ log = [], perfil = {}, metas = null, hoy = new Date() }) {
+export function ajusteSemanal({ log = [], perfil = {}, metas = null, hoy = new Date(), ultimoAjuste = null }) {
+  log = Array.isArray(log) ? log : []; perfil = perfil || {};
+  if (perfil.salud) return { estado: 'salud', texto: 'Por tu situación especial (embarazo, lactancia o salud), los ajustes de calorías los debe hacer tu médico o nutricionista.' };
   if (!metas || !(metas.kcal > 0) || !perfil.objetivo) return { estado: 'sin-objetivo', texto: 'Configura tu objetivo y tus metas (botón 🎯) para recibir una revisión cada semana.' };
-  const iso = (d) => d.toISOString().slice(0, 10), desde = new Date(hoy); desde.setDate(desde.getDate() - 21);
-  const pts = log.filter((x) => x && x.kg > 0 && x.fecha && x.fecha >= iso(desde) && x.fecha <= iso(hoy))
-    .map((x) => ({ d: (new Date(x.fecha + 'T12:00:00') - desde) / 86400000, kg: +x.kg }));
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; // fecha local (Ecuador)
+  const desde = new Date(hoy); desde.setHours(12, 0, 0, 0); desde.setDate(desde.getDate() - 21);
+  if (ultimoAjuste) {
+    const ua = new Date(ultimoAjuste + 'T12:00:00'), diasAj = (new Date(iso(hoy) + 'T12:00:00') - ua) / 86400000;
+    if (diasAj >= 0 && diasAj < 7) return { estado: 'espera', texto: `Ajustaste tus calorías el ${ua.toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}. Sigue pesándote: en una semana reviso cómo te va con el cambio.` };
+    if (ua > desde) desde.setTime(ua.getTime()); // solo cuenta lo que pasó después del último ajuste
+  }
+  const pts = log.filter((x) => x && +x.kg > 0 && x.fecha && x.fecha >= iso(desde) && x.fecha <= iso(hoy))
+    .map((x) => ({ d: (new Date(x.fecha + 'T12:00:00') - desde) / 86400000, kg: +x.kg })).sort((a, b) => a.d - b.d);
   const dias = pts.length ? pts[pts.length - 1].d - pts[0].d : 0;
   if (pts.length < 2 || dias < 10) return { estado: 'faltan', texto: 'Pésate 2 o 3 veces por semana (en Perfil, en ayunas) durante al menos 10 días para revisar tu avance.' };
   // pendiente por mínimos cuadrados (kg por día) para que un día de más agua no engañe
   const n = pts.length, md = pts.reduce((a, p) => a + p.d, 0) / n, mk = pts.reduce((a, p) => a + p.kg, 0) / n;
   const pend = pts.reduce((a, p) => a + (p.d - md) * (p.kg - mk), 0) / (pts.reduce((a, p) => a + (p.d - md) ** 2, 0) || 1);
   const semana = Math.round(pend * 7 * 100) / 100, peso = pts[n - 1].kg, pct = 100 * semana / peso;
-  const piso = perfil.sexo === 'm' ? 1200 : 1500, ritmo = Math.abs(semana) < 0.05 ? 'con tu peso estable' : `${semana > 0 ? 'subiendo' : 'bajando'} ${Math.abs(semana).toLocaleString('es-EC', { maximumFractionDigits: 2 })} kg por semana`;
+  const tmb = perfil.edad > 0 && perfil.altura > 0 ? 10 * peso + 6.25 * perfil.altura - 5 * perfil.edad + (perfil.sexo === 'm' ? -161 : 5) : 0;
+  const piso = Math.max(tmb, perfil.sexo === 'm' ? 1200 : 1500);
+  const ritmo = Math.abs(semana) < 0.05 ? 'con tu peso estable' : `${semana > 0 ? 'subiendo' : 'bajando'} ${Math.abs(semana).toLocaleString('es-EC', { maximumFractionDigits: 2 })} kg por semana`;
   let delta = 0, texto;
   const o = perfil.objetivo;
   if (o === 'perder') {
     if (pct < -1) { delta = 150; texto = `Vas ${ritmo}: es más rápido de lo recomendable (más del 1 % de tu peso) y puedes perder músculo. Sube un poco tus calorías.`; }
-    else if (semana > -0.1) { delta = -100; texto = `Vas ${ritmo}: casi no estás bajando. Baja un poco tus calorías y revisa que estés anotando todo.`; }
+    else if (semana > -0.1) { delta = -100; texto = `Vas ${ritmo}: ${semana > 0.05 ? 'estás subiendo en vez de bajar' : 'casi no estás bajando'}. Baja un poco tus calorías y revisa que estés anotando todo.`; }
     else texto = `Vas ${ritmo}: es un buen ritmo para bajar grasa sin perder músculo. ¡Sigue así!`;
   } else if (o === 'ganar') {
     if (pct > 0.5) { delta = -100; texto = `Vas ${ritmo}: es rápido y parte puede ser grasa. Baja un poco tus calorías.`; }
@@ -76,6 +86,9 @@ export function ajusteSemanal({ log = [], perfil = {}, metas = null, hoy = new D
     else texto = `Vas ${ritmo}: tu peso está donde debe estar para tu objetivo. ¡Sigue así!`;
   }
   let kcal = metas.kcal + delta;
-  if (delta < 0 && kcal < piso) { kcal = metas.kcal; delta = 0; texto = `Vas ${ritmo}. Ya estás en el mínimo seguro de calorías, así que no conviene comer menos: mejor sube tu actividad (caminar más, pasos diarios) y revisa que estés anotando todo.`; }
+  if (delta < 0 && kcal < piso) {
+    if (metas.kcal - piso >= 50) { kcal = Math.round(piso / 10) * 10; delta = kcal - metas.kcal; }
+    else { kcal = metas.kcal; delta = 0; texto = `Vas ${ritmo}. Ya estás en el mínimo seguro de calorías, así que no conviene comer menos: mejor sube tu actividad (caminar más, pasos diarios) y revisa que estés anotando todo.`; }
+  }
   return { estado: delta ? (delta > 0 ? 'subir' : 'bajar') : 'ok', texto, semana, delta, nuevas: delta ? { ...metas, kcal, c: Math.max(0, Math.round((metas.c || 0) + delta / 4)) } : null };
 }

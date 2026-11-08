@@ -9,7 +9,7 @@ export const CLIENTE_GOOGLE = '839266600135-40anun54d7qkappj2kv3oq7b6nf6vm9e.app
 const SES = 'af_sesion', EST = 'af_sync';
 // ajustes que viajan a la nube (los demas, como el ultimo ejercicio elegido, son de cada telefono)
 const AJUSTES = ['af_perfil', 'af_1rm_real', 'af_nutri_metas', 'af_nutri_perfil', 'af_peso_log', 'af_alimentos_propios',
-  'af_discos', 'af_descanso', 'af_pc', 'af_altura', 'af_ej_propios', 'af_compartidos', 'af_meta_1rm', 'af_nutri_gustos'];
+  'af_discos', 'af_descanso', 'af_pc', 'af_altura', 'af_ej_propios', 'af_compartidos', 'af_meta_1rm', 'af_nutri_gustos', 'af_nutri_ajuste'];
 const RUTINAS = 'af_rutinas';
 const LOTE = 100, LOTE_BYTES = 3_000_000, MAX_DATO = 1_400_000;
 const CADA = 2 * 60 * 1000;
