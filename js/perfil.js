@@ -40,7 +40,7 @@ export function iniciar(d) {
   $('pf-ir-historial').onclick = () => deps.vista('v-historial');
   $('pf-ir-guia').onclick = () => deps.vista('v-guia');
   $('pf-opinar').onclick = opinar;
-  $('pf-video').onclick = () => import('./tour.js').then((t) => t.verVideo());
+  $('pf-tutorial').onclick = () => import('./tour.js').then((t) => t.verVideo());
   $('pf-tour').onclick = () => { deps.vista('v-entrenar'); import('./tour.js').then((t) => t.iniciar(true)); };
   $('pf-respaldo').onclick = exportarRespaldo;
   $('pf-restaurar').onclick = () => $('pf-archivo').click();

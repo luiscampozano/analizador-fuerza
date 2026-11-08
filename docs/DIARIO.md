@@ -8,6 +8,10 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 13:45 · v2.42.1 — Arreglo: el botón «Ver el video tutorial» de Perfil no hacía nada
+- **Causa:** usé el id `pf-video`, que ya existía (sección de videos del perfil); el clic iba al otro elemento.
+- **Se hizo:** el botón ahora es `pf-tutorial`.
+
 ### 13:20 · v2.42.0 — Video tutorial dentro de la app
 - **Pidió:** el video tutorial en Perfil y en la bienvenida de usuarios nuevos, con opción de omitir.
 - **Se hizo:** `media/tutorial.mp4` (720p, 3,4 MB) + `media/tutorial.jpg`. Bienvenida del tour: «Omitir», «▶ Video» y
