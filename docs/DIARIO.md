@@ -8,6 +8,17 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 16:15 · v2.43.0 — PDF con IA: «Cómo mejorar tu levantamiento» y meta de 1RM (etapa 1 de 3)
+- **Pidió:** que el PDF diga qué hacer para llegar a sus RM (idea de una amiga fitness); hacerlo por etapas con subagentes
+  que verifiquen.
+- **Se hizo:** 25 levantamientos grandes (sentadillas, banca, militar, muertos, hip thrust, remos, halterofilia,
+  dominadas, fondos). Casilla «🎯 Tu meta de 1RM» en las opciones del PDF (no en corporales), guardada en
+  `af_meta_1rm` (se sincroniza). La IA agrega punto a mejorar, 3 accesorios con series×reps y progresión hacia la meta;
+  va en su propia caja del PDF. Si cambia la meta se vuelve a pedir a la IA; si no, se reusa el texto.
+- **Verificación (subagente):** código, pruebas y PDF real en Chromium. Encontró que los KPIs y la foto se cortaban al
+  pie de la página: ahora pasan a la siguiente si no caben (series y deportes).
+- **Pendiente:** etapa 2 (objetivo y metas en Nutrición) y etapa 3 (plan de comidas con IA y ajuste semanal).
+
 ### 13:45 · v2.42.1 — Arreglo: el botón «Ver el video tutorial» de Perfil no hacía nada
 - **Causa:** usé el id `pf-video`, que ya existía (sección de videos del perfil); el clic iba al otro elemento.
 - **Se hizo:** el botón ahora es `pf-tutorial`.

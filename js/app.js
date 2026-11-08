@@ -25,7 +25,7 @@ import * as tour from './tour.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.42.1';
+const VERSION = '2.43.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -693,9 +693,22 @@ function notasInforme(inf) {
 // Se envian los numeros de la serie y 4 fotos sacadas del video con telemetria (con aviso). La respuesta se guarda en
 // el informe para no gastar otro credito al volver a abrirlo.
 const r2 = (x, d = 2) => (Number.isFinite(x) ? Math.round(x * 10 ** d) / 10 ** d : null);
+// v2.43.0 levantamientos grandes (fuerza, potencia y halterofilia): el PDF con IA agrega «Cómo mejorar tu levantamiento»
+const GRANDES = new Set(['sentadilla', 'sentadilla_frontal', 'sentadilla_box', 'sentadilla_pausa', 'press_banca', 'press_banca_pausa',
+  'press_agarre_cerrado', 'press_inclinado', 'press_militar', 'push_press', 'remo_barra', 'remo_pendlay', 'peso_muerto', 'peso_muerto_sumo',
+  'peso_muerto_hex', 'peso_muerto_deficit', 'peso_muerto_rumano', 'hip_thrust', 'cargada', 'cargada_colgante', 'arranque', 'envion',
+  'thruster', 'dominadas', 'fondos']);
+const esGrande = (inf) => !!(inf && inf.ej && GRANDES.has(inf.ej.id));
+function metasRM() { try { return JSON.parse(leer('af_meta_1rm') || '{}') || {}; } catch (e) { return {}; } }
+function metaRM(inf) { const v = Number(metasRM()[inf && inf.ej && inf.ej.id]); return v > 0 ? v : null; }
+function guardarMetaRM(id, kg) {
+  const m = metasRM(); if (kg > 0) m[id] = kg; else delete m[id];
+  try { localStorage.setItem('af_meta_1rm', JSON.stringify(m)); } catch (e) { /* nada */ }
+}
 function datosIASerie(inf) {
   const { s = {}, ej: e = {} } = inf;
-  return { tipo: 'pesas', ejercicio: e.nombre, maquina: e.perfil, lado: ladoDe(inf.datos) || null, carga: textoCarga(inf), reps: inf.corregida ? inf.corregida.real : inf.reps.length,
+  const extra = esGrande(inf) ? { levantamientoGrande: true, meta1RMKg: e.perfil === 'corporal' ? null : metaRM(inf), puedePonerMeta: e.perfil !== 'corporal', rmRealKg: entrenar.rmRealDe(e.id) || null } : {};
+  return { ...extra, tipo: 'pesas', ejercicio: e.nombre, maquina: e.perfil, lado: ladoDe(inf.datos) || null, carga: textoCarga(inf), reps: inf.corregida ? inf.corregida.real : inf.reps.length,
     rir: s.rirTexto, rpe: s.rpeTexto, perdidaVelocidadPct: r2(s.perdida, 0), mejorVelocidad: r2(s.vMejor), velocidadMinimaUltimaRep: r2(s.mvt), pesoMaximo1Rep: e.perfil === 'corporal' ? null : r2(s.rm, 1),
     seriePctDelMaximo: r2(s.pct, 0), fuerzaPicoKg: r2(s.fPico, 0), potenciaPicoW: r2(s.pPico, 0), explosivo: !!e.balistico,
     avisosTecnica: (inf.tec && inf.tec.resumen) || [], trayectoria: textoTrayectoria(inf),
@@ -726,13 +739,13 @@ async function fotosDeVideo(blob, n = 4) {
 }
 // pide la explicacion a la IA (con aviso) y la guarda en el informe; devuelve el texto o null si cancela (v2.39.2)
 async function pedirIA(inf, datos, videoBlob) {
-  if (inf.ia) return inf.ia;
+  if (inf.ia && (inf.iaMeta ?? null) === (datos.meta1RMKg ?? null)) return inf.ia; // v2.43.0 si cambió la meta, se pide de nuevo
   if (!nube.conectado()) { alert('El análisis con IA se hace en el servidor: inicia sesión en Perfil para usarlo.'); return null; }
   if (!confirm(videoBlob ? 'Para el PDF completo se envían a la IA (Anthropic) los números y 4 fotos sacadas del video. No se guardan ni se publican. Gasta 1 crédito IA. ¿Continuar?' : 'Para el PDF completo se envían a la IA (Anthropic) los números de esta serie (este análisis ya no tiene video). Gasta 1 crédito IA. ¿Continuar?')) return null;
   let fotos = [];
   if (videoBlob) try { fotos = await fotosDeVideo(videoBlob); } catch (e) { fotos = []; }
   const r = await nube.api('POST', '/api/ia/serie', { datos, fotos });
-  inf.ia = r.texto;
+  inf.ia = r.texto; inf.iaMeta = datos.meta1RMKg ?? null;
   try { await almacen.guardarInforme(inf); } catch (e) { /* nada */ }
   return r.texto;
 }
@@ -834,6 +847,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   // v2.39.0 explicacion sencilla (sin internet) y boton de IA
   $('r-sencillo').innerHTML = resumenPesas(inf, textoCarga(inf)).map((t) => `<li>${t}</li>`).join('');
   $('r-pdf-op').style.display = 'none';
+  $('r-meta-caja').style.display = esGrande(inf) && inf.ej.perfil !== 'corporal' ? '' : 'none'; $('r-meta').value = metaRM(inf) || '';
 
   // tecnica
   $('r-tecnica').innerHTML = inf.tec.resumen.length
@@ -992,6 +1006,7 @@ $('corregir').addEventListener('click', (ev) => { if (ev.target.id === 'corregir
 $('btn-pdf').onclick = () => { const o = $('r-pdf-op'); o.style.display = o.style.display === 'none' ? '' : 'none'; };
 $('r-pdf-simple').onclick = () => pdfSerie(false);
 $('r-pdf-ia').onclick = () => pdfSerie(true);
+$('r-meta').onchange = () => { if (informeActual) guardarMetaRM(informeActual.ej.id, parseFloat($('r-meta').value) || 0); };
 async function pdfSerie(conIA) {
   if (!informeActual) return;
   const b = $(conIA ? 'r-pdf-ia' : 'r-pdf-simple'), txt = b.textContent;
