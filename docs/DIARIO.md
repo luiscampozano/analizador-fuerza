@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 13:20 · v2.42.0 — Video tutorial dentro de la app
+- **Pidió:** el video tutorial en Perfil y en la bienvenida de usuarios nuevos, con opción de omitir.
+- **Se hizo:** `media/tutorial.mp4` (720p, 3,4 MB) + `media/tutorial.jpg`. Bienvenida del tour: «Omitir», «▶ Video» y
+  «Empezar»; al cerrar el video vuelve a la bienvenida. Perfil → Más → «🎬 Ver el video tutorial». El service worker no
+  guarda /media/ (el video se pide por partes a la red).
+- **Pendiente:** si se rehace el video, reemplazar media/tutorial.mp4.
+
 ### 12:50 · iPhone, fase 1 y comienzo de fase 2 (sin cambio de versión)
 - **Pidió:** empezar el proyecto iPhone paso a paso.
 - **Luis hizo:** cuenta de Apple con dos factores, pagó Apple Developer (en activación), cuenta de Codemagic conectada

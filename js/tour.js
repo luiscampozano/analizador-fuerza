@@ -1,8 +1,8 @@
 // Tour de bienvenida (v2.41.0): la primera vez que se abre la app, burbujas que señalan cada pestaña y explican para qué
-// sirve. Se puede saltar y volver a ver desde Perfil → Más → «Ver el tour de la app».
+// sirve. v2.42.0: en la bienvenida también se puede ver el video tutorial. Se puede saltar y volver a ver desde Perfil → Más → «Ver el tour de la app».
 const CLAVE = 'af_tour';
 const PASOS = [
-  { titulo: '👋 ¡Bienvenido a FuerzaPro!', texto: 'Te muestro la app en 30 segundos.' },
+  { titulo: '👋 ¡Bienvenido a FuerzaPro!', texto: 'Te muestro la app en 30 segundos, o mira el video tutorial de 1 minuto.' },
   { sel: '.nav [data-vista="v-entrenar"]', titulo: '🏋️ Entrenar', texto: 'Arma tus rutinas, anota series y pesos con cronómetro de descanso y mira tus récords y tu progreso.' },
   { sel: '.nav [data-vista="v-form"]', titulo: '⚡ Analizar', texto: 'Elige el ejercicio, graba tu serie de lado con el cuerpo completo y la IA cuenta tus repeticiones, mide tu velocidad y tu fuerza. Al final tienes informe, video con telemetría y PDF.' },
   { sel: '.nav [data-vista="v-nutricion"]', titulo: '🥗 Nutrición', texto: 'Metas de calorías y macros. Agrega comida con una foto del plato (IA), el código de barras o el buscador.' },
@@ -24,7 +24,7 @@ export function iniciar(forzar = false) {
   function pintar() {
     const p = PASOS[i], el = p.sel && document.querySelector(p.sel), r = el && el.getBoundingClientRect();
     caja.innerHTML = `<b>${p.titulo}</b><p>${p.texto}</p><div class="tour-pie"><small>${i + 1} de ${PASOS.length}</small>
-      <span>${i < PASOS.length - 1 ? '<button type="button" class="btn-sec" data-t="saltar">Saltar</button>' : ''}
+      <span>${i < PASOS.length - 1 ? '<button type="button" class="btn-sec" data-t="saltar">Omitir</button>' : ''}${i === 0 ? '<button type="button" class="btn-sec" data-t="video">▶ Video</button>' : ''}
       <button type="button" class="btn-primary" data-t="sig">${i === 0 ? 'Empezar' : i === PASOS.length - 1 ? 'Empezar a usar' : 'Siguiente'}</button></span></div>`;
     if (r && r.width) {
       const m = 6; luz.style.cssText = `display:block;left:${r.left - m}px;top:${r.top - m}px;width:${r.width + 2 * m}px;height:${r.height + 2 * m}px`;
@@ -36,7 +36,20 @@ export function iniciar(forzar = false) {
     }
     caja.querySelector('[data-t="sig"]').onclick = () => { if (++i >= PASOS.length) fin(); else pintar(); };
     const s = caja.querySelector('[data-t="saltar"]'); if (s) s.onclick = fin;
+    const v = caja.querySelector('[data-t="video"]'); if (v) v.onclick = () => { capa.style.display = 'none'; verVideo(() => { capa.style.display = ''; }); };
   }
   addEventListener('resize', pintar);
   pintar();
+}
+
+// v2.42.0 video tutorial (media/tutorial.mp4, 720p, ~3 MB). alCerrar: para volver al tour si se abrió desde la bienvenida.
+export function verVideo(alCerrar) {
+  const capa = document.createElement('div'); capa.className = 'tour tour-video';
+  capa.innerHTML = `<div class="tour-video-caja"><video src="media/tutorial.mp4" poster="media/tutorial.jpg" controls autoplay playsinline preload="auto"></video>
+    <button type="button" class="btn-primary" data-t="cerrar">Cerrar video</button></div>`;
+  document.body.append(capa);
+  const v = capa.querySelector('video');
+  const cerrar = () => { v.pause(); capa.remove(); if (alCerrar) alCerrar(); };
+  capa.querySelector('[data-t="cerrar"]').onclick = cerrar;
+  v.onended = cerrar;
 }

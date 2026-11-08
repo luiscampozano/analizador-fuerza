@@ -1,5 +1,5 @@
 // Service worker: la app funciona sin internet despues de la primera visita.
-const VERSION = 'af-2.41.4';
+const VERSION = 'af-2.42.0';
 const EXTERNOS = ['cdn.jsdelivr.net', 'storage.googleapis.com'];
 const BASE = ['./', 'index.html', 'style.css', 'manifest.json', 'iconos/icono-192.png', 'iconos/icono-512.png', 'iconos/logo.png', 'iconos/favicon.png',
   'js/app.js', 'js/sencillo.js', 'js/tour.js', 'js/ejercicios.js', 'js/fisica.js', 'js/analisis.js', 'js/pose.js', 'js/render.js', 'js/historial.js', 'js/lector.js',
@@ -18,6 +18,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
   if (url.origin === location.origin && url.pathname.startsWith('/api/')) return; // la nube siempre por red, nunca del cache
+  if (url.origin === location.origin && url.pathname.startsWith('/media/')) return; // videos: directo de la red (pide por partes)
   const externo = EXTERNOS.includes(url.hostname);
   if (url.origin !== location.origin && !externo) return;
   const pesado = externo || url.pathname.includes('/modelos/') || url.pathname.includes('/vendor/');
