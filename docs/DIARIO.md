@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 10:40 · v2.41.4 — Nutrición con IA que «piensa» (esfuerzo bajo)
+- **Pidió:** rapidez y calidad; que la IA de nutrición piense.
+- **Se hizo:** foto del plato y «Escribir lo que comí» usan pensamiento adaptativo con esfuerzo bajo y 3000 tokens extra
+  de espacio. Explicación del PDF, entrenador y etiquetas siguen sin pensar (más rápidos). Si pensando falla o sale
+  vacío, el servidor reintenta solo sin pensar. Se registran tiempo y tokens en el log del worker.
+- **Costo estimado:** ~$0,001 por foto; 300 usuarios ≈ $5–15/mes. Topes por plan y tope diario 600 sin cambios.
+- **Pendiente:** Luis prueba con la foto del desayuno; medir tiempos reales.
+
 ### 10:20 · v2.41.3 — Arreglo: la IA de nutrición daba «La IA respondió algo que no entendí»
 - **Pidió:** la foto del plato y «Escribir lo que comí» fallaban con ese error.
 - **Causa:** Claude Haiku 5.5 «piensa» por defecto y ese pensamiento consume el límite de palabras de la respuesta;

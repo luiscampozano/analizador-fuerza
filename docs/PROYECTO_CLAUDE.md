@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.41.3
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.41.4
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -312,6 +312,7 @@ bloqueos, reportes, fallos.
 | v2.41.1 | Tour en el orden de las pestañas: Entrenar primero. |
 | v2.41.2 | Datos más claros: discos / máquina o barra / peso corporal, con ayuda y total. |
 | v2.41.3 | IA: `thinking: disabled` (Haiku 5.5 se quedaba sin texto). |
+| v2.41.4 | Nutrición IA con pensamiento adaptativo (effort low, +3000 tokens); resto sin pensar. |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

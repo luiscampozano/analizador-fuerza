@@ -1208,20 +1208,30 @@ async function renovarPlay(env, uid) {
   }
   return renovo;
 }
-async function llamarClaude(env, system, content, maxTokens = 900) {
-  let r;
+// v2.41.4 pensar=true (nutricion): pensamiento adaptativo con esfuerzo bajo y espacio extra para que no se quede sin texto.
+// pensar=false (explicaciones, etiquetas): sin pensamiento, mas rapido. Si pensando falla o sale vacio, reintenta sin pensar.
+async function llamarClaude(env, system, content, maxTokens = 900, pensar = false) {
+  const extra = pensar ? { thinking: { type: 'adaptive' }, output_config: { effort: 'low' } } : { thinking: { type: 'disabled' } };
+  const t0 = Date.now(); let r;
   try {
     r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      // v2.41.3 Haiku 5.5 piensa por defecto y ese pensamiento gasta max_tokens: a veces no quedaba texto (error «no entendí»)
-      body: JSON.stringify({ model: MODELO_IA, max_tokens: maxTokens, thinking: { type: 'disabled' }, system, messages: [{ role: 'user', content }] }),
+      body: JSON.stringify({ model: MODELO_IA, max_tokens: maxTokens + (pensar ? 3000 : 0), ...extra, system, messages: [{ role: 'user', content }] }),
     });
   } catch (e) { throw fallo('No pude conectar con la IA. Inténtalo en un momento.', 502); }
-  if (!r.ok) { console.error('anthropic', r.status, (await r.text()).slice(0, 300)); throw fallo(r.status === 429 || r.status === 529 ? 'La IA está ocupada. Inténtalo en un momento.' : 'La IA no pudo responder. Inténtalo de nuevo.', 502); }
+  if (!r.ok) {
+    console.error('anthropic', r.status, (await r.text()).slice(0, 300));
+    if (pensar && r.status === 400) return llamarClaude(env, system, content, maxTokens, false);
+    throw fallo(r.status === 429 || r.status === 529 ? 'La IA está ocupada. Inténtalo en un momento.' : 'La IA no pudo responder. Inténtalo de nuevo.', 502);
+  }
   const datos = await r.json();
   const txt = (datos.content || []).filter((c) => c.type === 'text').map((c) => c.text || '').join('\n').trim();
-  if (!txt) console.error('anthropic sin texto', datos.stop_reason, JSON.stringify((datos.content || []).map((c) => c.type)));
+  console.log('ia', pensar ? 'pensando' : 'directo', Date.now() - t0, 'ms', JSON.stringify(datos.usage || {}));
+  if (!txt) {
+    console.error('anthropic sin texto', datos.stop_reason, JSON.stringify((datos.content || []).map((c) => c.type)));
+    if (pensar) return llamarClaude(env, system, content, maxTokens, false);
+  }
   return txt;
 }
 const jsonDe = (texto) => { try { return JSON.parse(texto.slice(texto.indexOf('{'), texto.lastIndexOf('}') + 1)); } catch (e) { throw fallo('La IA respondió algo que no entendí. Inténtalo de nuevo.', 502); } };
@@ -1242,7 +1252,7 @@ Si la foto no es comida, devuelve {"alimentos":[],"nota":"No parece comida."}.`;
 async function fotoPlato(req, env, u) {
   const cupo = await cupoIA(env, u, '', 'fotos del plato');
   const img = fotoValida((await leerJSON(req)).imagen);
-  const res = jsonDe(await llamarClaude(env, PROMPT_PLATO, [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } }, { type: 'text', text: 'Analiza este plato y responde solo con el JSON.' }]));
+  const res = jsonDe(await llamarClaude(env, PROMPT_PLATO, [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } }, { type: 'text', text: 'Analiza este plato y responde solo con el JSON.' }], 900, true));
   await cupo.contar();
   return json({ alimentos: alimentosIA(res.alimentos), nota: texto_(res.nota, 200), quedan: cupo.quedan });
 }
@@ -1256,7 +1266,7 @@ async function comidaTexto(req, env, u) {
   const t = texto_((await leerJSON(req)).texto, 400);
   if (t.length < 3) throw fallo('Escribe qué comiste.');
   const cupo = await cupoIA(env, u, 't', 'consultas escritas');
-  const res = jsonDe(await llamarClaude(env, PROMPT_TEXTO, [{ type: 'text', text: t }], 900));
+  const res = jsonDe(await llamarClaude(env, PROMPT_TEXTO, [{ type: 'text', text: t }], 900, true));
   await cupo.contar();
   return json({ alimentos: alimentosIA(res.alimentos), nota: texto_(res.nota, 200), quedan: cupo.quedan });
 }
