@@ -1304,7 +1304,7 @@ SOLO si el JSON trae "levantamientoGrande": true, agrega al final esta seccion (
 **Como mejorar tu levantamiento**
 - Tu punto a mejorar: 1 frase, basada en los numeros (por ejemplo la velocidad cae mucho, la barra se desvia, la subida es lenta o el recorrido cambia entre reps). Si no hay un punto claro, di que la serie fue pareja y que toca sumar fuerza general.
 - 3 ejercicios que ayudan a ese punto, cada uno con series x repeticiones y el porque en pocas palabras (por ejemplo sentadilla con pausa 3x4, peso muerto deficit 3x5, press con pausa 4x3, tiron de arranque 4x3).
-- Tu meta: si viene "meta1RMKg", compara con el maximo estimado ("pesoMaximo1Rep") o con "rmRealKg" si existe: di cuanto falta y una progresion realista por semanas (subir de 1 a 2,5 kg por semana en tren superior y de 2,5 a 5 kg en piernas y espalda; si falta mas del 15 %, dilo con honestidad y calcula en meses). Si no hay meta, sugiere ponerla en la app.
+- Tu meta: si viene "meta1RMKg", compara con el maximo estimado ("pesoMaximo1Rep") o con "rmRealKg" si existe: di cuanto falta y una progresion realista por semanas (subir de 1 a 2,5 kg por semana en tren superior y de 2,5 a 5 kg en piernas y espalda; si falta mas del 15 %, dilo con honestidad y calcula en meses). Si no hay meta y "puedePonerMeta" es true, sugiere ponerla en la app (casilla «Tu meta de 1RM» junto al boton del PDF).
 Para halterofilia (arranque, envion, cargada) habla de tecnica y velocidad antes que de fuerza pura.
 No inventes numeros que no esten en el JSON. No des consejos medicos; si hay dolor, sugiere ver a un profesional. Maximo 230 palabras, o 360 si agregas la seccion de como mejorar.`;
 const MAX_FOTO_SERIE = 200_000;

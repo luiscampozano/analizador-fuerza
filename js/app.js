@@ -707,7 +707,7 @@ function guardarMetaRM(id, kg) {
 }
 function datosIASerie(inf) {
   const { s = {}, ej: e = {} } = inf;
-  const extra = esGrande(inf) ? { levantamientoGrande: true, meta1RMKg: metaRM(inf), rmRealKg: entrenar.rmRealDe(e.id) || null } : {};
+  const extra = esGrande(inf) ? { levantamientoGrande: true, meta1RMKg: e.perfil === 'corporal' ? null : metaRM(inf), puedePonerMeta: e.perfil !== 'corporal', rmRealKg: entrenar.rmRealDe(e.id) || null } : {};
   return { ...extra, tipo: 'pesas', ejercicio: e.nombre, maquina: e.perfil, lado: ladoDe(inf.datos) || null, carga: textoCarga(inf), reps: inf.corregida ? inf.corregida.real : inf.reps.length,
     rir: s.rirTexto, rpe: s.rpeTexto, perdidaVelocidadPct: r2(s.perdida, 0), mejorVelocidad: r2(s.vMejor), velocidadMinimaUltimaRep: r2(s.mvt), pesoMaximo1Rep: e.perfil === 'corporal' ? null : r2(s.rm, 1),
     seriePctDelMaximo: r2(s.pct, 0), fuerzaPicoKg: r2(s.fPico, 0), potenciaPicoW: r2(s.pPico, 0), explosivo: !!e.balistico,

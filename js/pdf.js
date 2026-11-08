@@ -24,7 +24,7 @@ const limpio = (t) => String(t ?? '').replace(/<[^>]+>/g, '')
 function bloqueSencillo(doc, lineas, ia, y, M, ancho) {
   // v2.43.0 la sección «Cómo mejorar tu levantamiento» va en su propia caja (así ninguna caja se pasa de una página)
   const todos = String(ia || '').split(/\n+/).map((x) => x.trim()).filter(Boolean);
-  const corte = todos.findIndex((p) => /^\*\*\s*c[oó]mo mejorar/i.test(p));
+  const corte = todos.findIndex((p) => /^(\*\*|#+)\s*c[oó]mo mejorar/i.test(p));
   const expl = corte >= 0 ? todos.slice(0, corte) : todos, mejora = corte >= 0 ? todos.slice(corte + 1) : [];
   y = caja(doc, 'EN PALABRAS SIMPLES', lineas.map((l) => limpio(l)).filter(Boolean), expl.length ? ['EXPLICACIÓN DEL ENTRENADOR IA', expl] : null, y, M, ancho);
   if (mejora.length) y = caja(doc, 'CÓMO MEJORAR TU LEVANTAMIENTO', [], ['', mejora], y, M, ancho);
@@ -51,7 +51,7 @@ function caja(doc, titulo, lin, ia, y, M, ancho) {
     if (ia[0]) { yy += 2; doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text(ia[0], M + 5, yy); yy += 5.5; }
     doc.setFontSize(9.5); doc.setTextColor(...C.texto);
     for (const p of parrafos) {
-      const titulo2 = /^\*\*.+\*\*:?$/.test(p), partes = doc.splitTextToSize(limpio(p.replace(/\*\*/g, '')), ancho - 12);
+      const titulo2 = /^(\*\*.+\*\*:?|#+ .+)$/.test(p), partes = doc.splitTextToSize(limpio(p.replace(/\*\*/g, '').replace(/^#+\s*/, '')), ancho - 12);
       doc.setFont('helvetica', titulo2 ? 'bold' : 'normal'); doc.text(partes, M + 5, yy);
       yy += partes.length * 4.4 + 1.4;
     }
@@ -189,6 +189,8 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
     img = await cuadroDelVideo(video, rep && Number.isFinite(rep.tope) ? rep.tope : 1);
   }
   const anchoImg = img ? 62 : 0, anchoKpi = ancho - (img ? anchoImg + 6 : 0);
+  // v2.43.0 si los KPIs y la foto no caben en lo que queda de la página, empiezan en la siguiente
+  if (y + Math.max(3 * (19 + 3) + 2, img ? anchoImg * img.proporcion + 8 : 0) > 282) { doc.addPage(); y = 18; }
   if (img) {
     const altoImg = anchoImg * img.proporcion;
     doc.addImage(img.datos, 'JPEG', W - M - anchoImg, y, anchoImg, altoImg);
@@ -354,6 +356,7 @@ export async function crearPDFActividad(a, { video, version, muestra = false } =
   let img = null;
   if (video) { const ev = a.eventos || []; img = await cuadroDelVideo(video, ev.length ? ev[Math.floor(ev.length / 2)].t : (a.dur || 2) / 2); }
   const anchoImg = img ? 62 : 0, anchoKpi = ancho - (img ? anchoImg + 6 : 0);
+  if (y + Math.max(Math.ceil(Math.max(1, (a.kpis || []).length) / 2) * (19 + 3) + 2, img ? anchoImg * img.proporcion + 8 : 0) > 282) { doc.addPage(); y = 18; }
   if (img) {
     const altoImg = anchoImg * img.proporcion;
     doc.addImage(img.datos, 'JPEG', W - M - anchoImg, y, anchoImg, altoImg);
