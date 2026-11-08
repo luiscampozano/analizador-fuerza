@@ -1336,3 +1336,4 @@ body.buscando .action-footer { display: none; }
 .tour-pie button { white-space: nowrap; }
 
 .pdf-meta { display: flex; flex-direction: column; gap: 6px; font-size: .85rem; color: var(--text-muted); padding: 4px 2px; }
+.nu-objetivo { margin: 10px 0 0; }
