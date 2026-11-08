@@ -45,3 +45,37 @@ export function calcularPlan({ sexo, edad, peso, altura, actividad, objetivo = '
   const cambioMes = Math.round(cambioSemana * 30 / 7 * 10) / 10; // v2.44.0 meta mensual (kg en 30 días)
   return { kcal, p, c, g, mant: Math.round(mant), tmb: Math.round(tmb), cambioSemana, cambioMes, semanas, avisos };
 }
+
+// v2.45.0 revisión semanal del nutricionista IA (sin IA): compara cómo cambió tu peso en las últimas 3 semanas con lo
+// esperado para tu objetivo y sugiere subir o bajar calorías (de 100 a 150 kcal, siempre sobre el mínimo seguro).
+export function ajusteSemanal({ log = [], perfil = {}, metas = null, hoy = new Date() }) {
+  if (!metas || !(metas.kcal > 0) || !perfil.objetivo) return { estado: 'sin-objetivo', texto: 'Configura tu objetivo y tus metas (botón 🎯) para recibir una revisión cada semana.' };
+  const iso = (d) => d.toISOString().slice(0, 10), desde = new Date(hoy); desde.setDate(desde.getDate() - 21);
+  const pts = log.filter((x) => x && x.kg > 0 && x.fecha && x.fecha >= iso(desde) && x.fecha <= iso(hoy))
+    .map((x) => ({ d: (new Date(x.fecha + 'T12:00:00') - desde) / 86400000, kg: +x.kg }));
+  const dias = pts.length ? pts[pts.length - 1].d - pts[0].d : 0;
+  if (pts.length < 2 || dias < 10) return { estado: 'faltan', texto: 'Pésate 2 o 3 veces por semana (en Perfil, en ayunas) durante al menos 10 días para revisar tu avance.' };
+  // pendiente por mínimos cuadrados (kg por día) para que un día de más agua no engañe
+  const n = pts.length, md = pts.reduce((a, p) => a + p.d, 0) / n, mk = pts.reduce((a, p) => a + p.kg, 0) / n;
+  const pend = pts.reduce((a, p) => a + (p.d - md) * (p.kg - mk), 0) / (pts.reduce((a, p) => a + (p.d - md) ** 2, 0) || 1);
+  const semana = Math.round(pend * 7 * 100) / 100, peso = pts[n - 1].kg, pct = 100 * semana / peso;
+  const piso = perfil.sexo === 'm' ? 1200 : 1500, ritmo = Math.abs(semana) < 0.05 ? 'con tu peso estable' : `${semana > 0 ? 'subiendo' : 'bajando'} ${Math.abs(semana).toLocaleString('es-EC', { maximumFractionDigits: 2 })} kg por semana`;
+  let delta = 0, texto;
+  const o = perfil.objetivo;
+  if (o === 'perder') {
+    if (pct < -1) { delta = 150; texto = `Vas ${ritmo}: es más rápido de lo recomendable (más del 1 % de tu peso) y puedes perder músculo. Sube un poco tus calorías.`; }
+    else if (semana > -0.1) { delta = -100; texto = `Vas ${ritmo}: casi no estás bajando. Baja un poco tus calorías y revisa que estés anotando todo.`; }
+    else texto = `Vas ${ritmo}: es un buen ritmo para bajar grasa sin perder músculo. ¡Sigue así!`;
+  } else if (o === 'ganar') {
+    if (pct > 0.5) { delta = -100; texto = `Vas ${ritmo}: es rápido y parte puede ser grasa. Baja un poco tus calorías.`; }
+    else if (semana < 0.05) { delta = 150; texto = `Vas ${ritmo}: para ganar músculo necesitas subir un poco de peso. Sube tus calorías.`; }
+    else texto = `Vas ${ritmo}: buen ritmo para ganar músculo. ¡Sigue así!`;
+  } else {
+    if (semana < -0.25) { delta = 150; texto = `Vas ${ritmo}: estás bajando sin querer y eso le quita fuerza a tus entrenamientos. Sube un poco tus calorías.`; }
+    else if (semana > (o === 'fuerza' ? 0.4 : 0.25)) { delta = -100; texto = `Vas ${ritmo}: estás subiendo más de lo que buscas. Baja un poco tus calorías.`; }
+    else texto = `Vas ${ritmo}: tu peso está donde debe estar para tu objetivo. ¡Sigue así!`;
+  }
+  let kcal = metas.kcal + delta;
+  if (delta < 0 && kcal < piso) { kcal = metas.kcal; delta = 0; texto = `Vas ${ritmo}. Ya estás en el mínimo seguro de calorías, así que no conviene comer menos: mejor sube tu actividad (caminar más, pasos diarios) y revisa que estés anotando todo.`; }
+  return { estado: delta ? (delta > 0 ? 'subir' : 'bajar') : 'ok', texto, semana, delta, nuevas: delta ? { ...metas, kcal, c: Math.max(0, Math.round((metas.c || 0) + delta / 4)) } : null };
+}

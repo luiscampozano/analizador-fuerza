@@ -67,6 +67,7 @@ async function api(req, env, url) {
   if (ruta === '/api/ia/etiqueta' && m === 'POST') return etiquetaIA(req, env, u);
   if (ruta === '/api/ia/entrenador' && m === 'POST') return entrenadorIA(req, env, u);
   if (ruta === '/api/ia/serie' && m === 'POST') return explicarSerie(req, env, u);
+  if (ruta === '/api/ia/menu' && m === 'POST') return menuIA(req, env, u);
   if (/^\/api\/alimentos\/\d{6,14}\/reportar$/.test(ruta) && m === 'POST') return reportarAlimento(env, u, ruta.split('/')[3]);
   if (ruta.startsWith('/api/comunidad/')) return comunidad(req, env, u, ruta.slice(15), m, url);
   if (ruta.startsWith('/api/mod/')) return moderacion(req, env, u, ruta.slice(9), m);
@@ -815,7 +816,7 @@ async function moderacion(req, env, u, r, m) {
   }
   if (r === 'ia' && m === 'GET') { // uso de la foto del plato en los ultimos 7 dias
     const res = await DB.prepare(`SELECT substr(dia, 1, 10) AS dia, sum(CASE WHEN length(dia) = 10 THEN n ELSE 0 END) AS fotos, sum(CASE WHEN dia LIKE '%:t' THEN n ELSE 0 END) AS textos,
-        sum(CASE WHEN dia LIKE '%:e' THEN n ELSE 0 END) AS etiquetas, sum(CASE WHEN dia LIKE '%:c' THEN n ELSE 0 END) AS entrenador, sum(CASE WHEN dia LIKE '%:s' THEN n ELSE 0 END) AS series, count(DISTINCT usuario) AS usuarios
+        sum(CASE WHEN dia LIKE '%:e' THEN n ELSE 0 END) AS etiquetas, sum(CASE WHEN dia LIKE '%:c' THEN n ELSE 0 END) AS entrenador, sum(CASE WHEN dia LIKE '%:s' THEN n ELSE 0 END) AS series, sum(CASE WHEN dia LIKE '%:m' THEN n ELSE 0 END) AS menus, count(DISTINCT usuario) AS usuarios
       FROM uso_ia GROUP BY substr(dia, 1, 10) ORDER BY 1 DESC LIMIT 7`).all();
     return json({ dias: res.results || [], limite: LIMITE_IA_USUARIO, configurada: !!env.ANTHROPIC_API_KEY });
   }
@@ -1007,7 +1008,7 @@ async function reportarAlimento(env, u, codigo) {
 // su limite por persona y por dia (tabla uso_ia; el "dia" lleva un sufijo por funcion: "2026-11-01" = foto del plato,
 // "2026-11-01:t" = texto, ":e" = etiqueta, ":c" = entrenador), y hay un tope general diario para todas. (v2.22-2.23)
 const LIMITE_IA_USUARIO = 10, LIMITE_IA_TOTAL = 600, MAX_FOTO = 400_000; // caracteres base64 (~300 KB)
-const LIMITES_IA = { '': 10, t: 20, e: 10, c: 3, s: 10 }; // plato, texto, etiqueta, entrenador, explicar una serie
+const LIMITES_IA = { '': 10, t: 20, e: 10, c: 3, s: 10, m: 5 }; // plato, texto, etiqueta, entrenador, explicar una serie, menu del nutricionista IA
 const MODELO_IA = 'claude-haiku-5-5';
 const texto_ = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, max) : '');
 const numIA = (x, max) => { const v = +String(x).replace(',', '.'); return Number.isFinite(v) && v >= 0 ? Math.min(max, Math.round(v * 10) / 10) : 0; };
@@ -1269,6 +1270,34 @@ async function comidaTexto(req, env, u) {
   const res = jsonDe(await llamarClaude(env, PROMPT_TEXTO, [{ type: 'text', text: t }], 900, true));
   await cupo.contar();
   return json({ alimentos: alimentosIA(res.alimentos), nota: texto_(res.nota, 200), quedan: cupo.quedan });
+}
+
+// ---------- Nutricionista IA (v2.45.0): menu de un dia que cumple las metas de la persona, con comida de la region
+const PROMPT_MENU = `Eres un nutricionista deportivo de Ecuador. Arma el menu de UN dia para una persona adulta que entrena, que cumpla sus metas diarias.
+Recibes en JSON: metas (kcal, p proteina, c carbohidratos, g grasa en gramos), objetivo (perder grasa, mantener, ganar musculo o fuerza), numero de comidas, lo que le gusta y lo que no come o le cae mal.
+Reglas: comida real y facil de conseguir en Ecuador (arroz, menestra, verde, yuca, huevo, pollo, pescado, atun, carne, queso fresco, yogur, avena, frutas de la zona, encebollado, seco, bolon, tigrillo, etc.), porciones en gramos realistas, sin suplementos raros.
+Respeta SIEMPRE lo que no come (alergias, religion, vegetariano). Reparte la proteina en todas las comidas. Si el objetivo es fuerza o ganar, pon carbohidratos antes y despues de entrenar.
+El total del dia debe quedar dentro de +-5 % de las kcal y +-10 % de la proteina de la meta.
+Responde SOLO con JSON valido, sin texto antes ni despues:
+{"comidas":[{"comida":"desayuno","titulo":"Bolon de verde con huevo y cafe","alimentos":[{"nombre":"verde cocido","gramos":150,"kcal":183,"p":2,"c":48,"g":0.5}]}],"consejos":["frase corta","frase corta"]}
+comida = desayuno, almuerzo, cena o snack. kcal, p, c y g son PARA ESOS GRAMOS, con valores de tablas de composicion. Maximo 6 alimentos por comida y 3 consejos practicos (agua, horarios, como cocinar con menos aceite...). No des consejos medicos.`;
+const COMIDAS_MENU = ['desayuno', 'almuerzo', 'cena', 'snack'];
+async function menuIA(req, env, u) {
+  const b = await leerJSON(req), mt = b.metas || {};
+  const metas = { kcal: numIA(mt.kcal, 6000), p: numIA(mt.p, 400), c: numIA(mt.c, 900), g: numIA(mt.g, 300) };
+  if (!(metas.kcal >= 1000)) throw fallo('Primero configura tus metas de calorías (botón 🎯).');
+  const pedido = { metas, objetivo: texto_(b.objetivo, 40) || 'mantener', comidas: Math.min(5, Math.max(3, Math.round(+b.comidas) || 4)),
+    leGusta: texto_(b.gustos, 200), noCome: texto_(b.evitar, 200) };
+  const cupo = await cupoIA(env, u, 'm', 'menús del nutricionista IA');
+  const res = jsonDe(await llamarClaude(env, PROMPT_MENU, [{ type: 'text', text: JSON.stringify(pedido) }], 2500, true));
+  const comidas = (Array.isArray(res.comidas) ? res.comidas : []).slice(0, 6).map((x) => ({
+    comida: COMIDAS_MENU.includes(x.comida) ? x.comida : 'snack', titulo: texto_(x.titulo, 80) || 'Comida',
+    alimentos: alimentosIA(x.alimentos).slice(0, 6).map(({ confianza, ...a }) => a),
+  })).filter((x) => x.alimentos.length);
+  if (!comidas.length) throw fallo('La IA no pudo armar el menú. Inténtalo de nuevo (no se gastó tu crédito).', 502);
+  const total = ['kcal', 'p', 'c', 'g'].reduce((o, k) => ({ ...o, [k]: Math.round(comidas.reduce((a, x) => a + x.alimentos.reduce((s2, al) => s2 + al[k], 0), 0)) }), {});
+  await cupo.contar();
+  return json({ comidas, total, metas, consejos: (Array.isArray(res.consejos) ? res.consejos : []).slice(0, 3).map((t) => texto_(t, 200)).filter(Boolean), quedan: cupo.quedan });
 }
 
 // ---------- tabla nutricional de una etiqueta (respaldo cuando la lectura del telefono falla)

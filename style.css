@@ -1337,3 +1337,11 @@ body.buscando .action-footer { display: none; }
 
 .pdf-meta { display: flex; flex-direction: column; gap: 6px; font-size: .85rem; color: var(--text-muted); padding: 4px 2px; }
 .nu-objetivo { margin: 10px 0 0; }
+
+/* v2.45.0 nutricionista personal IA */
+.nu-ia { margin-bottom: 14px; }
+.nu-ia-rev { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--bg-input); }
+.nu-ia-rev small { color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; font-size: 11px; }
+.nu-ia-rev p { margin: 4px 0 8px; font-size: 14px; line-height: 1.4; }
+.nu-menu ul { margin: 6px 0 8px; padding-left: 18px; font-size: 14px; }
+.nu-menu li small { color: var(--text-muted); }
