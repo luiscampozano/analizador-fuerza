@@ -567,6 +567,8 @@ function abrirMenuIA() {
   $('nu-cant').innerHTML = `<p class="hint" style="margin-top:0">Te armo un menú de un día con comida de aquí que cumpla tus metas: <b>${fmt(metas.kcal)} kcal</b> · proteína ${fmt(metas.p)} g${pf.objetivo && OBJETIVOS[pf.objetivo] ? ` · ${OBJETIVOS[pf.objetivo]}` : ''}.</p>
     <div class="form-grid">
       <div class="form-group" style="grid-column:span 2"><label for="mi-n">Comidas al día</label><select id="mi-n">${[3, 4, 5].map((n) => `<option value="${n}"${(pref.n || 4) === n ? ' selected' : ''}>${n}${n === 3 ? ' (desayuno, almuerzo y cena)' : n === 4 ? ' (con un snack)' : ' (con dos snacks)'}</option>`).join('')}</select></div>
+      <div class="form-group" style="grid-column:span 2"><label for="mi-entreno">¿Entrenas hoy?</label><select id="mi-entreno">
+        ${[['', 'No, hoy descanso'], ['manana', 'Sí, en la mañana'], ['tarde', 'Sí, en la tarde'], ['noche', 'Sí, en la noche']].map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></div>
       <div class="form-group" style="grid-column:span 2"><label for="mi-gusta">Lo que te gusta (opcional)</label><input id="mi-gusta" maxlength="200" placeholder="ej. pescado, bolón, avena" value="${esc(pref.gustos || '')}"></div>
       <div class="form-group" style="grid-column:span 2"><label for="mi-evitar">Lo que no comes o te cae mal (opcional)</label><input id="mi-evitar" maxlength="200" placeholder="ej. cerdo, lácteos, soy vegetariano" value="${esc(pref.evitar || '')}"></div>
     </div>
@@ -574,13 +576,25 @@ function abrirMenuIA() {
     <p class="hint" id="mi-estado"></p>
     <div class="en-det-botones"><button type="button" class="btn-sec" id="mi-cancelar">Cancelar</button><button type="button" class="btn-sec en-terminar" id="mi-ok">Armar menú</button></div>`;
   $('mi-cancelar').onclick = cerrarHoja;
+  // v2.46.0 si hoy ya registraste un entrenamiento, se marca solo con su hora
+  const hoyE = fechaISO(new Date());
+  almacen.leerEntrenos().then((l) => {
+    const e = l.filter((x) => x && x.inicio && fechaISO(new Date(x.inicio)) === hoyE).pop(); if (!e || !$('mi-entreno')) return;
+    const h = new Date(e.inicio).getHours(); $('mi-entreno').value = h < 12 ? 'manana' : h < 18 ? 'tarde' : 'noche';
+    entrenoHoy = e.titulo ? String(e.titulo).slice(0, 60) : '';
+  }).catch(() => {});
+  let entrenoHoy = '';
   $('mi-ok').onclick = async () => {
     if (!nube.conectado()) return alert('El nutricionista IA trabaja en el servidor: inicia sesión (Perfil → Cuenta) para usarlo.');
     const pedido = { n: +$('mi-n').value, gustos: $('mi-gusta').value.trim(), evitar: $('mi-evitar').value.trim() };
     guardarLS('af_nutri_gustos', pedido);
     $('mi-ok').disabled = true; $('mi-estado').textContent = '🤖 Armando tu menú… (unos 15 segundos)';
     try {
-      const r = await nube.api('POST', '/api/ia/menu', { metas, objetivo: pf.objetivo || 'mantener', comidas: pedido.n, gustos: pedido.gustos, evitar: pedido.evitar });
+      // v2.46.0 contexto del gimnasio: entreno de hoy, días por semana y metas de 1RM
+      const dias = { 1.375: '1 a 3', 1.55: '3 a 5', 1.725: '6 a 7' }[pf.actividad] || '';
+      const metas1RM = Object.entries(leerLS('af_meta_1rm', {})).filter(([id, kg]) => +kg > 0 && POR_ID[id]).slice(0, 5).map(([id, kg]) => ({ ejercicio: POR_ID[id].nombre, kg: +kg }));
+      const r = await nube.api('POST', '/api/ia/menu', { metas, objetivo: pf.objetivo || 'mantener', comidas: pedido.n, gustos: pedido.gustos, evitar: pedido.evitar,
+        entrena: $('mi-entreno').value, entrenoHoy, diasEntreno: dias, metas1RM });
       const menu = { ...r, fecha: fechaISO(new Date()) }; guardarLS('af_nutri_menu', menu);
       verMenu(menu); pintarNutriIA();
     } catch (e) { $('mi-estado').textContent = e.message || String(e); $('mi-ok').disabled = false; }
@@ -601,6 +615,7 @@ function verMenu(menu) {
         <ul>${c.alimentos.map((a) => `<li>${esc(a.nombre)} <small>${fmt(a.gramos)} g</small></li>`).join('')}</ul>
         <button type="button" class="nu-agregar" data-i="${i}">+ Agregar a ${esc((NOMBRE_COMIDA[c.comida] || 'hoy').replace(/^\S+\s/, '').toLowerCase())} de hoy</button></div>`;
     }).join('')}
+    ${menu.porque ? `<p class="hint nu-porque">🎯 ${esc(menu.porque)}</p>` : ''}
     ${(menu.consejos || []).length ? `<p class="hint">💡 ${menu.consejos.map(esc).join('<br>💡 ')}</p>` : ''}
     <p class="hint">Valores aproximados de la IA. Puedes cambiar cualquier alimento por otro parecido.</p>
     <div class="en-det-botones"><button type="button" class="btn-sec" id="mn-otro">🔄 Otro menú</button><button type="button" class="btn-sec en-terminar" id="mn-cerrar">Listo</button></div>`;

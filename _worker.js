@@ -1274,12 +1274,15 @@ async function comidaTexto(req, env, u) {
 
 // ---------- Nutricionista IA (v2.45.0): menu de un dia que cumple las metas de la persona, con comida de la region
 const PROMPT_MENU = `Eres un nutricionista deportivo de Ecuador. Arma el menu de UN dia para una persona adulta que entrena, que cumpla sus metas diarias.
-Recibes en JSON: metas (kcal, p proteina, c carbohidratos, g grasa en gramos), objetivo (perder grasa, mantener, ganar musculo o fuerza), numero de comidas, lo que le gusta y lo que no come o le cae mal.
+Recibes en JSON: metas (kcal, p proteina, c carbohidratos, g grasa en gramos), objetivo (perder grasa, mantener, ganar musculo o fuerza), numero de comidas, lo que le gusta y lo que no come o le cae mal,
+y su gimnasio: entrena ("" = hoy descansa; manana, tarde o noche = hora del entreno de hoy), entrenoHoy (nombre del entreno si ya lo registro), diasEntreno por semana y metas1RM (levantamientos que quiere subir, en kg).
 Reglas: comida real y facil de conseguir en Ecuador (arroz, menestra, verde, yuca, huevo, pollo, pescado, atun, carne, queso fresco, yogur, avena, frutas de la zona, encebollado, seco, bolon, tigrillo, etc.), porciones en gramos realistas, sin suplementos raros.
-Respeta SIEMPRE lo que no come (alergias, religion, vegetariano). Reparte la proteina en todas las comidas. Si el objetivo es fuerza o ganar, pon carbohidratos antes y despues de entrenar.
+Respeta SIEMPRE lo que no come (alergias, religion, vegetariano). Reparte la proteina en todas las comidas.
+Si hoy entrena: la comida 1-3 horas ANTES del entreno con carbohidratos faciles de digerir y poca grasa; la comida DESPUES con proteina y carbohidratos (ordena las comidas segun la hora: manana, tarde o noche). Si hoy descansa: un poco menos de carbohidratos y un poco mas de grasas buenas, con las mismas kcal totales.
+Si hay metas1RM u objetivo fuerza, prioriza energia y recuperacion para esos levantamientos.
 El total del dia debe quedar dentro de +-5 % de las kcal y +-10 % de la proteina de la meta.
 Responde SOLO con JSON valido, sin texto antes ni despues:
-{"comidas":[{"comida":"desayuno","titulo":"Bolon de verde con huevo y cafe","alimentos":[{"nombre":"verde cocido","gramos":150,"kcal":183,"p":2,"c":48,"g":0.5}]}],"consejos":["frase corta","frase corta"]}
+{"porque":"una frase que explique como este menu apoya su meta de gimnasio de hoy","comidas":[{"comida":"desayuno","titulo":"Bolon de verde con huevo y cafe","alimentos":[{"nombre":"verde cocido","gramos":150,"kcal":183,"p":2,"c":48,"g":0.5}]}],"consejos":["frase corta","frase corta"]}
 comida = desayuno, almuerzo, cena o snack. kcal, p, c y g son PARA ESOS GRAMOS, con valores de tablas de composicion. Maximo 6 alimentos por comida y 3 consejos practicos (agua, horarios, como cocinar con menos aceite...). No des consejos medicos.`;
 const COMIDAS_MENU = ['desayuno', 'almuerzo', 'cena', 'snack'];
 async function menuIA(req, env, u) {
@@ -1287,7 +1290,10 @@ async function menuIA(req, env, u) {
   const metas = { kcal: numIA(mt.kcal, 6000), p: numIA(mt.p, 400), c: numIA(mt.c, 900), g: numIA(mt.g, 300) };
   if (!(metas.kcal >= 1000)) throw fallo('Primero configura tus metas de calorías (botón 🎯).');
   const pedido = { metas, objetivo: texto_(b.objetivo, 40) || 'mantener', comidas: Math.min(5, Math.max(3, Math.round(+b.comidas) || 4)),
-    leGusta: texto_(b.gustos, 200), noCome: texto_(b.evitar, 200) };
+    leGusta: texto_(b.gustos, 200), noCome: texto_(b.evitar, 200),
+    // v2.46.0 contexto del gimnasio
+    entrena: ['manana', 'tarde', 'noche'].includes(b.entrena) ? b.entrena : '', entrenoHoy: texto_(b.entrenoHoy, 60), diasEntreno: texto_(b.diasEntreno, 10),
+    metas1RM: (Array.isArray(b.metas1RM) ? b.metas1RM : []).slice(0, 5).map((x) => ({ ejercicio: texto_(x && x.ejercicio, 40), kg: numIA(x && x.kg, 500) })).filter((x) => x.ejercicio && x.kg > 0) };
   const cupo = await cupoIA(env, u, 'm', 'menús del nutricionista IA');
   const res = jsonDe(await llamarClaude(env, PROMPT_MENU, [{ type: 'text', text: JSON.stringify(pedido) }], 2500, true));
   const comidas = (Array.isArray(res.comidas) ? res.comidas : []).filter((x) => x && typeof x === 'object').slice(0, 6).map((x) => ({
@@ -1297,7 +1303,7 @@ async function menuIA(req, env, u) {
   if (!comidas.length) throw fallo('La IA no pudo armar el menú. Inténtalo de nuevo (no se gastó tu crédito).', 502);
   const total = ['kcal', 'p', 'c', 'g'].reduce((o, k) => ({ ...o, [k]: Math.round(comidas.reduce((a, x) => a + x.alimentos.reduce((s2, al) => s2 + al[k], 0), 0)) }), {});
   await cupo.contar();
-  return json({ comidas, total, metas, consejos: (Array.isArray(res.consejos) ? res.consejos : []).slice(0, 3).map((t) => texto_(t, 200)).filter(Boolean), quedan: cupo.quedan });
+  return json({ comidas, total, metas, porque: texto_(res.porque, 240), consejos: (Array.isArray(res.consejos) ? res.consejos : []).slice(0, 3).map((t) => texto_(t, 200)).filter(Boolean), quedan: cupo.quedan });
 }
 
 // ---------- tabla nutricional de una etiqueta (respaldo cuando la lectura del telefono falla)

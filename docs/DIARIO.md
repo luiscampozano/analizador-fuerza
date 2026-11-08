@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 18:20 · v2.46.0 — El menú del nutricionista IA se arma según tu gimnasio
+- **Pidió:** que el menú recomiende qué comer en función de su meta de gym (sin costar más).
+- **Se hizo:** la hoja del menú pregunta «¿Entrenas hoy?» (se marca sola si ya registraste un entreno hoy, con su hora)
+  y envía días de entreno por semana y metas de 1RM. La IA ubica la comida antes (1–3 h, carbos fáciles) y después
+  (proteína + carbos) del entreno; en descanso, menos carbos con las mismas kcal. Devuelve «porque» (una frase) que se
+  muestra arriba del menú. Mismo costo (1 crédito). menu_test.mjs: prueba nueva del contexto.
+
 ### 17:30 · v2.45.0 — Nutricionista personal IA (etapa 3 de 3)
 - **Pidió:** plan de comidas según objetivos; llamarlo «nutricionista personal IA».
 - **Se hizo:** tarjeta «🤖 Nutricionista personal IA» en Nutrición (después de las comidas del día):
