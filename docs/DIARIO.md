@@ -6,6 +6,15 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-08
+
+### 08:10 · v2.41.2 — Datos más claros: discos, máquina y peso corporal
+- **Pidió:** los testers se confunden con los pesos en las máquinas; separar discos, peso de la máquina y peso corporal.
+- **Se hizo:** nombres nuevos («Discos que pusiste», «Discos (sin la barra)», «Peso de la máquina»), una línea de ayuda
+  bajo cada campo y la frase «Mueves en total: X kg (discos + máquina/barra). Tu peso corporal no se suma.»
+  No cambia ningún cálculo.
+- **Pendiente:** nada nuevo.
+
 ## 2026-11-07
 
 ### 14:45 · v2.41.1 — Tour y video tutorial en el orden de las pestañas

@@ -1324,3 +1324,7 @@ body.buscando .action-footer { display: none; }
 .tour-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tour-pie span { display: flex; gap: 8px; }
 .tour-pie small { color: var(--text-muted); }
+
+.campo-ayuda { font-size: 11.5px; color: var(--text-muted); line-height: 1.3; margin-top: -2px; }
+.campo-ayuda:empty { display: none; }
+.carga-total { margin: 10px 0 0; }

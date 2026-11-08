@@ -25,7 +25,7 @@ import * as tour from './tour.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.41.1';
+const VERSION = '2.41.2';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -188,13 +188,29 @@ function ajustarCampos() {
   $('g-incl').style.display = p === 'riel' ? '' : 'none';
   $('g-rel').style.display = p === 'polea' ? '' : 'none';
   $('g-carro').style.display = usaCarro() ? '' : 'none';
-  $('lbl-peso').textContent = p === 'corporal' ? 'Lastre' : p === 'polea' ? 'Peso de la pila' : ej.carro > 0 ? 'Peso de discos' : 'Peso';
-  if (ej.asistido) $('lbl-peso').textContent = 'Asistencia';
-  $('lbl-carro').textContent = p === 'riel' ? 'Carro de la máquina' : 'Peso de la barra';
+  // v2.41.2 nombres claros + una línea de ayuda: la gente confundía discos, máquina y peso corporal
+  const barra = usaCarro() && p !== 'riel';
+  $('lbl-peso').textContent = p === 'corporal' ? 'Lastre' : p === 'polea' ? 'Peso de la pila' : p === 'riel' ? 'Discos que pusiste' : barra ? 'Discos (sin la barra)' : 'Peso';
+  $('ay-peso').textContent = p === 'corporal' ? 'Chaleco o cinturón. 0 si no usas.' : p === 'polea' ? 'El número donde pusiste el pin.' : p === 'riel' || barra ? 'Suma de todos los discos.' : '';
+  if (ej.asistido) { $('lbl-peso').textContent = 'Asistencia'; $('ay-peso').textContent = 'Lo que te ayuda la máquina.'; }
+  $('lbl-carro').textContent = p === 'riel' ? 'Peso de la máquina' : 'Peso de la barra';
+  $('ay-carro').textContent = p === 'riel' ? 'El carro o plataforma vacío. 0 si no sabes.' : 'Barra olímpica: 20 kg.';
+  $('ay-incl').textContent = 'Ángulo del riel (mídelo con el celular).';
+  $('ay-pc').textContent = p === 'corporal' ? 'Con esto se calcula la fuerza.' : 'No se suma a la carga.';
   $('in-incl').value = leer('af_incl_' + ej.id) || ej.alfa || 45;
   $('in-carro').value = leer('af_carro_' + ej.id) ?? ej.carro ?? 0;
   $('in-peso').value = leer('af_peso_' + ej.id) ?? (p === 'corporal' ? 0 : '');
+  cargaTotal();
 }
+// v2.41.2 muestra cuánto mueves en total (discos + máquina o barra) para que no haya dudas
+function cargaTotal() {
+  const el = $('carga-total');
+  if (!usaCarro()) { el.style.display = 'none'; return; }
+  const d = parseFloat($('in-peso').value || '0') || 0, c = parseFloat($('in-carro').value || '0') || 0;
+  const n = ej.perfil === 'riel' ? 'máquina' : 'barra';
+  el.style.display = ''; el.innerHTML = `Mueves en total: <b>${fmt(d + c, (d + c) % 1 ? 1 : 0)} kg</b> (discos ${fmt(d, d % 1 ? 1 : 0)} + ${n} ${fmt(c, c % 1 ? 1 : 0)}). Tu peso corporal no se suma.`;
+}
+$('in-peso').addEventListener('input', cargaTotal); $('in-carro').addEventListener('input', cargaTotal);
 
 // ------------------------------------------------------------------ video
 const inVideo = $('input-video');
@@ -1230,7 +1246,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   if (kg > 0) {
     const carro = usaCarro() ? parseFloat($('in-carro').value || '0') : 0;
     const peso = Math.round((kg - carro) * 100) / 100;
-    $('in-peso').value = peso > 0 ? peso : kg;
+    $('in-peso').value = peso > 0 ? peso : kg; cargaTotal();
   }
   vista('v-form');
   aviso(`🎥 Serie ${serie} de ${nombre}${kg > 0 ? ` (${fmt(kg, kg % 1 ? 1 : 0)} kg en total)` : ''}: graba o elige el video y pulsa Analizar. El resultado se guarda en tu entrenamiento.`, true);
