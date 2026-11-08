@@ -10,8 +10,20 @@ parte importante de los usuarios use iPhone o lo pidan seguido (Luis dirá «vam
 - Claude: carpeta `movil/` (Capacitor 7: abre https://fuerzapro.pages.dev dentro de la app, dominio «app-bound» para que
   funcione el service worker) y `codemagic.yaml` (crea el proyecto iOS en la nube, iconos, permisos de cámara/fotos,
   firma, número de compilación y subida a TestFlight). Ambos se excluyen de la publicación web.
-- Falta (parte 4, Luis, cuando Apple active la cuenta): crear la app en App Store Connect (com.fuerzapro.app), crear la
-  llave de API (.p8) y pegarla en Codemagic → Integrations como «FuerzaPro ASC»; poner APP_STORE_APPLE_ID.
+- Falta (parte 4, Luis, cuando Apple active la cuenta), en este orden:
+  1. App Store Connect → Negocio: acuerdo de apps de pago + banco + impuestos (W-8BEN). Sin esto no se pueden ni probar
+     suscripciones.
+  2. developer.apple.com: registrar el App ID com.fuerzapro.app.
+  3. App Store Connect: crear la app FuerzaPro (anotar su Apple ID numérico → APP_STORE_APPLE_ID en codemagic.yaml).
+  4. Llave de API (.p8, rol App Manager) → Codemagic → Integrations «FuerzaPro ASC» (Luis la pega; nunca en el chat).
+  5. Codemagic → Code signing identities: generar certificado Apple Distribution, crear/traer perfil App Store.
+  6. Primera compilación (testers internos, sin revisión beta).
+- Revisión de un subagente (2026-11-08) aplicada: número de compilación seguro, página sin conexión (errorPath),
+  localhost en WKAppBoundDomains, solo iPhone, user agent «FuerzaProiOS».
+- Riesgos de revisión de Apple a resolver en fase 2: (3.1.1) en iOS ocultar precios y textos/enlaces de Google Play
+  (detectar «FuerzaProiOS» en el user agent); (4.8/2.1) el botón de Google no funciona dentro de la app → Iniciar sesión
+  con Apple + correo; (4.2) «solo un sitio web»: sumar funciones nativas (compras con Apple, compartir, vibración) y
+  evaluar empaquetar la web dentro de la app.
 - Ojo fase 2: Google bloquea su inicio de sesión dentro de apps con vista web; en iPhone hará falta «Iniciar sesión con
   Apple» y correo (o abrir Google en Safari).
 

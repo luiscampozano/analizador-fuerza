@@ -4,11 +4,13 @@
   "webDir": "www",
   "server": {
     "url": "https://fuerzapro.pages.dev",
-    "cleartext": false
+    "cleartext": false,
+    "errorPath": "index.html"
   },
   "ios": {
     "contentInset": "never",
     "backgroundColor": "#0B0B12",
-    "limitsNavigationsToAppBoundDomains": true
+    "limitsNavigationsToAppBoundDomains": true,
+    "appendUserAgent": "FuerzaProiOS"
   }
 }
