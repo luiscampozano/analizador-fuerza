@@ -8,6 +8,18 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 16:45 · v2.44.0 — Objetivos en Nutrición con meta diaria y mensual (etapa 2 de 3)
+- **Pidió:** nutricionista personal según objetivos (fuerza, bajar grasa, subir/bajar peso); meta mensual y diaria.
+- **Se hizo:** `js/objetivos.js` (calcularPlan): 4 objetivos, ritmo suave/moderado, peso meta → kg por semana, meta del
+  mes (kg en 30 días) y semanas para llegar. Límites: sin cálculo para menores de 18, embarazo/lactancia o enfermedad;
+  déficit máx. ~1 %/semana; piso de calorías (máx(TMB, 1200 mujer / 1500 hombre)) y nunca sobre el mantenimiento;
+  no se sugiere bajar con IMC < 18,5; proteína y grasa sobre peso de referencia (IMC 25) con sobrepeso; siempre quedan
+  carbohidratos. Bajo los anillos: objetivo, cuánto falta, meta del mes y lo que llevas en 30 días (af_peso_log), y
+  metas de 1RM si el objetivo es fuerza.
+- **Verificación (subagente):** encontró 3 casos inseguros (piso sobre mantenimiento, proteína con obesidad, déficit con
+  IMC bajo), menús cortados a 412 px, actividad no recordada y textos: todo corregido.
+- **Pendiente:** etapa 3 (plan de comidas con IA y ajuste semanal).
+
 ### 16:15 · v2.43.0 — PDF con IA: «Cómo mejorar tu levantamiento» y meta de 1RM (etapa 1 de 3)
 - **Pidió:** que el PDF diga qué hacer para llegar a sus RM (idea de una amiga fitness); hacerlo por etapas con subagentes
   que verifiquen.

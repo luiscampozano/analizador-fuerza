@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.43.0
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.44.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -316,6 +316,7 @@ bloqueos, reportes, fallos.
 | v2.42.0 | Video tutorial en la bienvenida y en Perfil → Más (media/tutorial.mp4). |
 | v2.42.1 | Arreglo id duplicado del botón del video tutorial (pf-tutorial). |
 | v2.43.0 | PDF con IA: «Cómo mejorar tu levantamiento» + meta de 1RM (af_meta_1rm). |
+| v2.44.0 | Objetivos de nutrición (js/objetivos.js): meta diaria y mensual, peso meta, límites seguros. |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |
