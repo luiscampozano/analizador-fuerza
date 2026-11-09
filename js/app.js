@@ -182,6 +182,8 @@ function usaCarro() {
 }
 function ajustarCampos() {
   const p = ej.perfil;
+  // v2.48.0 el recortador no aplica a cardio/deportes (analizan todo el video)
+  const rc = $('recorte'); if (rc && archivo) rc.style.display = !ej.cardio && rc.dataset.listo ? '' : 'none';
   // cardio, boxeo y HIIT: sin carga; solo estatura (para las distancias) y peso corporal
   $('g-peso').style.display = p === 'cardio' ? 'none' : '';
   $('btn-vivo').style.display = p === 'cardio' && !tipoActividad(ej) ? 'none' : '';
@@ -259,6 +261,7 @@ const recorte = (() => {
   function poner(na, nb, mover) {
     a = Math.max(0, Math.min(na, dur)); b = Math.max(0, Math.min(nb, dur));
     if (b - a < 0.5) { if (mover === 'a') a = Math.max(0, b - 0.5); else b = Math.min(dur, a + 0.5); }
+    if (marca && a > 0.05 && a < marca.t) { marca = null; actualizarMarca(); } // la marca del disco quedaría fuera del tramo
     aCampos(); pintar();
   }
   const tDe = (ev) => { const r = barra.getBoundingClientRect(); return dur * Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)); };
@@ -287,6 +290,7 @@ const recorte = (() => {
   v.onloadedmetadata = () => {
     dur = Number.isFinite(v.duration) ? v.duration : 0;
     if (!dur) { $('recorte').style.display = 'none'; return; } // formato que el navegador no puede previsualizar: queda lo de siempre
+    $('recorte').dataset.listo = '1';
     const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
     a = ini > 0 && ini < dur ? ini : 0; b = fin > a && fin < dur ? fin : dur;
     try { v.currentTime = Math.max(0.01, a); } catch (e) { /* nada */ }
@@ -300,11 +304,11 @@ const recorte = (() => {
     abrir(f) {
       if (url) URL.revokeObjectURL(url);
       $('in-ini').value = ''; $('in-fin').value = ''; // video nuevo: sin recorte heredado
-      dur = 0; url = URL.createObjectURL(f); v.src = url; $('recorte').style.display = '';
+      dur = 0; delete $('recorte').dataset.listo; url = URL.createObjectURL(f); v.src = url; $('recorte').style.display = ej.cardio ? 'none' : ''; // deportes/cardio analizan todo el video
     },
     cerrar() {
       v.pause(); v.removeAttribute('src'); v.load(); if (url) URL.revokeObjectURL(url); url = null; dur = 0;
-      $('recorte').style.display = 'none'; $('in-ini').value = ''; $('in-fin').value = '';
+      $('recorte').style.display = 'none'; delete $('recorte').dataset.listo; $('in-ini').value = ''; $('in-fin').value = '';
     },
   };
 })();

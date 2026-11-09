@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.47.0
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.48.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -321,6 +321,7 @@ bloqueos, reportes, fallos.
 | v2.46.0 | Menú IA según el gimnasio: entreno de hoy y hora, metas de 1RM, comida antes/después. |
 | v2.46.1 | Conteo: dominadas/chin-up (volteo, eje vertical), hack con tobillos tapados, rep final cortada. Banco 47/69. |
 | v2.47.0 | iPhone: «Continuar con Apple» (/api/auth/apple) y sin Google Play ni precios en iOS. |
+| v2.48.0 | Recortador visual del video en Analizar (llena empieza/termina en). |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |
