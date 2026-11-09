@@ -25,7 +25,13 @@ import * as tour from './tour.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.48.0';
+const VERSION = '2.48.1';
+// v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
+if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
+  const vp = document.querySelector('meta[name="viewport"]');
+  if (vp) vp.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+  document.documentElement.classList.add('ios');
+}
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };

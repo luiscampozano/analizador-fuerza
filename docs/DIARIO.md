@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-09
 
+### 08:55 · v2.48.1 — iPhone: que no se mueva la pantalla como página web
+- **Pidió:** en el iPhone (TestFlight) «sale como página web, puedo mover la pantalla».
+- **Se hizo:** solo en la app de iPhone (user agent FuerzaProiOS): viewport sin zoom (iOS hacía zoom al tocar campos y
+  luego la página se podía arrastrar de lado), sin rebote (overscroll-behavior: none) ni desplazamiento lateral.
+  Tour: los botones de la bienvenida pasan a otra fila si no caben (en iPhone «Empezar» se salía).
+- **Nota:** «Continuar con Apple» necesita una compilación nueva en Codemagic (el plugin es código nativo).
+
 ### 08:00 · v2.48.0 — Recortador visual del video en Analizar
 - **Pidió:** (sugerencia de un usuario) cortar el video al subirlo para que no cuente cuando uno se acomoda.
 - **Se hizo:** al elegir/grabar el video aparece vista previa con barra y dos manijas (arrastrables con el dedo),

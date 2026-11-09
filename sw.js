@@ -1,5 +1,5 @@
 // Service worker: la app funciona sin internet despues de la primera visita.
-const VERSION = 'af-2.48.0';
+const VERSION = 'af-2.48.1';
 const EXTERNOS = ['cdn.jsdelivr.net', 'storage.googleapis.com'];
 const BASE = ['./', 'index.html', 'style.css', 'manifest.json', 'iconos/icono-192.png', 'iconos/icono-512.png', 'iconos/logo.png', 'iconos/favicon.png',
   'js/app.js', 'js/sencillo.js', 'js/tour.js', 'js/ejercicios.js', 'js/fisica.js', 'js/analisis.js', 'js/pose.js', 'js/render.js', 'js/historial.js', 'js/lector.js',

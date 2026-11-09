@@ -1321,7 +1321,8 @@ body.buscando .action-footer { display: none; }
 .tour-caja.centro { top: 50%; transform: translateY(-50%); }
 .tour-caja b { font-size: 1.1rem; }
 .tour-caja p { margin: 8px 0 12px; line-height: 1.45; font-size: .95rem; }
-.tour-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tour-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tour-pie small { white-space: nowrap; }
 .tour-pie span { display: flex; gap: 8px; }
 .tour-pie small { color: var(--text-muted); }
 
@@ -1363,3 +1364,7 @@ body.buscando .action-footer { display: none; }
 .rc-botones { display: flex; flex-wrap: wrap; gap: 6px; }
 .rc-botones .btn-sec { flex: 1 1 auto; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
 .rc-ayuda { margin: 0; }
+
+/* v2.48.1 app de iPhone: sin rebote ni arrastre lateral de la página */
+html.ios, html.ios body { overscroll-behavior: none; overflow-x: hidden; }
+html.ios body { -webkit-tap-highlight-color: transparent; }
