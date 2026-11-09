@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 20:15 · iPhone: primera compilación en TestFlight (sin cambio de versión)
+- **Luis hizo:** acuerdo de apps de pago, banco (en revisión), W-8BEN (activo), DSA (no comerciante UE), App ID
+  com.fuerzapro.app (In-App Purchase + Sign in with Apple), app en App Store Connect (6832380426), llave de API en
+  Codemagic «FuerzaPro ASC», certificado y perfil.
+- **Se hizo:** codemagic.yaml con APP_STORE_APPLE_ID y firma por nombre de referencia. Build 3 en verde y publicado.
+- **Pendiente:** probador interno en TestFlight; fase 3 de la hoja de ruta iOS.
+
 ### 19:10 · v2.46.1 — Conteo: arreglos con los primeros reportes de testers
 - **Pidió:** revisar los 6 primeros «fallos de conteo» de testers (sin videos, solo puntos del esqueleto).
 - **Se hizo (análisis con subagente, banco antes/después):** banco 44/69 → 47/69, ningún video que pasaba cambió.

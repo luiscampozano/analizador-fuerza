@@ -27,6 +27,14 @@ parte importante de los usuarios use iPhone o lo pidan seguido (Luis dirá «vam
 - Ojo fase 2: Google bloquea su inicio de sesión dentro de apps con vista web; en iPhone hará falta «Iniciar sesión con
   Apple» y correo (o abrir Google en Safari).
 
+- 2026-11-08 20:15: ✅ PRIMERA COMPILACIÓN en Codemagic (build 3, 2 min 54 s) subida a App Store Connect / TestFlight.
+  App en App Store Connect: «FuerzaPro», Apple ID 6832380426, SKU fuerzapro-ios-001, Español (México).
+  Firma por referencia: certificado `fuerzapro_distribucion` (Apple Distribution, generado por Codemagic) y perfil
+  `fuerzapro_perfil` («FuerzaPro App Store»). Ojo: Codemagic muestra los perfiles/certificados repetidos en pantalla;
+  NO borrar el «duplicado» (se borra el único y se pierde la llave privada del certificado).
+- Siguiente: probador interno en TestFlight (iPhone prestado) → fase 3 (Iniciar sesión con Apple, ocultar Google Play,
+  compras con Apple, funciones nativas) → ficha → revisión.
+
 ## Fase 0 · Ahora (gratis)
 - Los usuarios de iPhone usan la web: Safari → **fuerzapro.pages.dev** → Compartir → Agregar a pantalla de inicio.
 - Sin cobro en iPhone/web: usan el plan Gratis (más adelante se puede cobrar en la web con PayPal u otro, sin Apple).
