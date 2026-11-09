@@ -6,6 +6,18 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-09
+
+### 08:00 · v2.48.0 — Recortador visual del video en Analizar
+- **Pidió:** (sugerencia de un usuario) cortar el video al subirlo para que no cuente cuando uno se acomoda.
+- **Se hizo:** al elegir/grabar el video aparece vista previa con barra y dos manijas (arrastrables con el dedo),
+  «▶️», «Empezar aquí», «Terminar aquí» y «Todo». No re-procesa el archivo: llena «La serie empieza en / Termina en»
+  (in-ini/in-fin, ahora con pasos de 0,1 s), que el análisis ya usaba. El video con telemetría sigue saliendo completo.
+  No se muestra en cardio/deportes (analizan todo el video). Si la marca del disco queda fuera del tramo, se borra.
+- **Verificación (subagente):** análisis real con MediaPipe: video completo 5 reps, recortado 3; arrastre táctil sin
+  abrir la galería. Corregido: la fila de botones se salía a 360 px (ensanchaba toda la app) y el recortador aparecía
+  en cardio, donde no aplica.
+
 ## 2026-11-08
 
 ### 21:10 · v2.47.0 — iPhone: «Continuar con Apple» y sin Google Play (fase 3, parte 1)

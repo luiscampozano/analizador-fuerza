@@ -140,6 +140,16 @@
             <span class="file-name" id="file-name">video.mp4</span>
             <button type="button" class="btn-remove" id="btn-quitar" aria-label="Quitar video">✕</button>
           </div>
+          <!-- v2.48.0 recortador: elige qué parte del video se analiza (llena «empieza / termina en») -->
+          <div class="recorte" id="recorte" style="display:none">
+            <video id="rc-video" playsinline muted preload="metadata"></video>
+            <div class="rc-barra" id="rc-barra"><div class="rc-sel" id="rc-sel"></div><div class="rc-cursor" id="rc-cursor"></div>
+              <button type="button" class="rc-manija" id="rc-a" aria-label="Inicio del recorte"></button><button type="button" class="rc-manija" id="rc-b" aria-label="Final del recorte"></button></div>
+            <div class="rc-tiempos"><span id="rc-ta">0,0 s</span><b id="rc-dur"></b><span id="rc-tb"></span></div>
+            <div class="rc-botones"><button type="button" class="btn-sec" id="rc-play">▶️</button><button type="button" class="btn-sec" id="rc-ini">⏮ Empezar aquí</button>
+              <button type="button" class="btn-sec" id="rc-fin">Terminar aquí ⏭</button><button type="button" class="btn-sec" id="rc-todo">Todo</button></div>
+            <p class="hint rc-ayuda">✂️ Recorta para que no cuente cuando te acomodas o sueltas la carga. Arrastra las manijas o pausa el video y toca «Empezar aquí» / «Terminar aquí».</p>
+          </div>
           <button type="button" class="btn-sec btn-marca" id="btn-marca" style="display:none">🎯 Marcar el disco (trayectoria más precisa)</button>
         </div>
       </section>
@@ -197,11 +207,11 @@
             </div>
             <div class="form-group">
               <label for="in-ini">La serie empieza en</label>
-              <div class="input-unit"><input type="number" id="in-ini" inputmode="decimal" step="0.5" placeholder="0"><span>s</span></div>
+              <div class="input-unit"><input type="number" id="in-ini" inputmode="decimal" step="0.1" placeholder="0"><span>s</span></div>
             </div>
             <div class="form-group">
               <label for="in-fin">Termina en</label>
-              <div class="input-unit"><input type="number" id="in-fin" inputmode="decimal" step="0.5" placeholder="final"><span>s</span></div>
+              <div class="input-unit"><input type="number" id="in-fin" inputmode="decimal" step="0.1" placeholder="final"><span>s</span></div>
             </div>
             <div class="form-group" style="grid-column:span 2">
               <label><input type="checkbox" id="in-video" checked style="width:auto;margin-right:6px"> Generar video con telemetría</label>
