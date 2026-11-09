@@ -25,7 +25,7 @@ import * as tour from './tour.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.47.0';
+const VERSION = '2.48.0';
 const $ = (id) => document.getElementById(id);
 const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -228,14 +228,86 @@ function ponerArchivo(f) {
   $('file-name').textContent = `${archivo.name || 'video'} · ${fmt(archivo.size / 1048576)} MB`;
   $('drop-content').style.display = 'none'; $('file-preview').style.display = 'flex';
   $('dropzone').classList.add('has-file');
-  actualizarMarca();
+  actualizarMarca(); recorte.abrir(f);
 }
 inVideo.onchange = () => { if (inVideo.files && inVideo.files[0]) ponerArchivo(inVideo.files[0]); };
 $('btn-quitar').onclick = (e) => {
   e.stopPropagation(); archivo = null; marca = null; inVideo.value = '';
   $('drop-content').style.display = 'block'; $('file-preview').style.display = 'none'; $('dropzone').classList.remove('has-file');
-  actualizarMarca();
+  actualizarMarca(); recorte.cerrar();
 };
+
+// ---- v2.48.0 recortador visual: dos manijas sobre la barra de tiempo del video. No toca el archivo: solo llena
+// «La serie empieza en / Termina en» (in-ini / in-fin), que el análisis ya usa. Lo que queda fuera no se cuenta.
+const recorte = (() => {
+  const v = $('rc-video'), barra = $('rc-barra'), A = $('rc-a'), B = $('rc-b');
+  let url = null, dur = 0, a = 0, b = 0;
+  const f1 = (x) => `${fmt(x, 1)} s`;
+  function pintar() {
+    if (!dur) return;
+    const pa = 100 * a / dur, pb = 100 * b / dur;
+    A.style.left = pa + '%'; B.style.left = pb + '%';
+    $('rc-sel').style.left = pa + '%'; $('rc-sel').style.width = (pb - pa) + '%';
+    $('rc-cursor').style.left = (100 * (v.currentTime || 0) / dur) + '%';
+    $('rc-ta').textContent = f1(a); $('rc-tb').textContent = f1(b);
+    $('rc-dur').textContent = a < 0.05 && b > dur - 0.05 ? `Video completo · ${f1(dur)}` : `Analiza ${f1(b - a)} de ${f1(dur)}`;
+  }
+  function aCampos() { // lo elegido pasa a los campos que usa el análisis
+    $('in-ini').value = a >= 0.05 ? Math.round(a * 10) / 10 : '';
+    $('in-fin').value = b <= dur - 0.05 ? Math.round(b * 10) / 10 : '';
+  }
+  function poner(na, nb, mover) {
+    a = Math.max(0, Math.min(na, dur)); b = Math.max(0, Math.min(nb, dur));
+    if (b - a < 0.5) { if (mover === 'a') a = Math.max(0, b - 0.5); else b = Math.min(dur, a + 0.5); }
+    aCampos(); pintar();
+  }
+  const tDe = (ev) => { const r = barra.getBoundingClientRect(); return dur * Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)); };
+  function arrastrar(cual) {
+    return (ev) => {
+      ev.preventDefault(); ev.stopPropagation(); v.pause();
+      const mover = (e) => { const t = tDe(e); if (cual === 'a') poner(t, b, 'a'); else poner(a, t, 'b'); v.currentTime = cual === 'a' ? a : b; };
+      const soltar = () => { window.removeEventListener('pointermove', mover); window.removeEventListener('pointerup', soltar); window.removeEventListener('pointercancel', soltar); };
+      window.addEventListener('pointermove', mover); window.addEventListener('pointerup', soltar); window.addEventListener('pointercancel', soltar);
+    };
+  }
+  A.onpointerdown = arrastrar('a'); B.onpointerdown = arrastrar('b');
+  barra.onpointerdown = (ev) => { if (ev.target !== barra && !ev.target.classList.contains('rc-sel')) return; v.pause(); v.currentTime = tDe(ev); pintar(); };
+  $('recorte').onclick = (ev) => ev.stopPropagation(); // que no abra la galería del recuadro
+  $('rc-play').onclick = () => {
+    if (!v.paused) return v.pause();
+    if (v.currentTime < a || v.currentTime >= b - 0.05) v.currentTime = a;
+    v.play().catch(() => {});
+  };
+  $('rc-ini').onclick = () => poner(v.currentTime || 0, b, 'a');
+  $('rc-fin').onclick = () => poner(a, v.currentTime || dur, 'b');
+  $('rc-todo').onclick = () => poner(0, dur);
+  v.onplay = () => { $('rc-play').textContent = '⏸️'; };
+  v.onpause = () => { $('rc-play').textContent = '▶️'; };
+  v.ontimeupdate = () => { if (!v.paused && v.currentTime >= b) { v.pause(); v.currentTime = b; } pintar(); };
+  v.onloadedmetadata = () => {
+    dur = Number.isFinite(v.duration) ? v.duration : 0;
+    if (!dur) { $('recorte').style.display = 'none'; return; } // formato que el navegador no puede previsualizar: queda lo de siempre
+    const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
+    a = ini > 0 && ini < dur ? ini : 0; b = fin > a && fin < dur ? fin : dur;
+    try { v.currentTime = Math.max(0.01, a); } catch (e) { /* nada */ }
+    pintar();
+  };
+  v.onerror = () => { $('recorte').style.display = 'none'; };
+  // si alguien escribe los segundos a mano en «Ajustes avanzados», las manijas lo siguen
+  const desdeCampos = () => { if (!dur) return; const i = parseFloat($('in-ini').value), f = parseFloat($('in-fin').value); a = i > 0 && i < dur ? i : 0; b = f > a && f < dur ? f : dur; pintar(); };
+  $('in-ini').addEventListener('change', desdeCampos); $('in-fin').addEventListener('change', desdeCampos);
+  return {
+    abrir(f) {
+      if (url) URL.revokeObjectURL(url);
+      $('in-ini').value = ''; $('in-fin').value = ''; // video nuevo: sin recorte heredado
+      dur = 0; url = URL.createObjectURL(f); v.src = url; $('recorte').style.display = '';
+    },
+    cerrar() {
+      v.pause(); v.removeAttribute('src'); v.load(); if (url) URL.revokeObjectURL(url); url = null; dur = 0;
+      $('recorte').style.display = 'none'; $('in-ini').value = ''; $('in-fin').value = '';
+    },
+  };
+})();
 
 // ---- marcar el disco para seguir la barra
 let marca = null; // {x, y (0-1), t (s)}

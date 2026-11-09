@@ -1349,3 +1349,17 @@ body.buscando .action-footer { display: none; }
 
 /* v2.47.0 botón «Continuar con Apple» (app de iPhone) */
 .btn-apple { width: 100%; max-width: 320px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 18px; border-radius: 999px; border: 0; background: #fff; color: #000; font-weight: 600; font-size: 16px; font-family: -apple-system, system-ui, sans-serif; cursor: pointer; }
+
+/* v2.48.0 recortador del video */
+.recorte { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; cursor: default; }
+.recorte video { width: 100%; max-height: 300px; border-radius: 12px; background: #000; object-fit: contain; }
+.rc-barra { position: relative; height: 34px; margin: 4px 12px; border-radius: 8px; background: var(--bg-input); touch-action: none; }
+.rc-sel { position: absolute; top: 0; bottom: 0; background: rgba(124, 92, 255, .35); border-top: 2px solid var(--accent-green); border-bottom: 2px solid var(--accent-green); pointer-events: none; }
+.rc-cursor { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #fff; pointer-events: none; }
+.rc-manija { position: absolute; top: -6px; bottom: -6px; width: 22px; margin-left: -11px; border-radius: 6px; border: 0; background: var(--accent-green); touch-action: none; cursor: ew-resize; padding: 0; }
+.rc-manija::after { content: ''; position: absolute; left: 50%; top: 30%; bottom: 30%; width: 2px; margin-left: -1px; background: #fff; border-radius: 1px; }
+.rc-tiempos { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--text-muted); }
+.rc-tiempos b { color: var(--text-main); font-weight: 600; }
+.rc-botones { display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 6px; }
+.rc-botones .btn-sec { padding: 8px 10px; font-size: 13px; white-space: nowrap; }
+.rc-ayuda { margin: 0; }
