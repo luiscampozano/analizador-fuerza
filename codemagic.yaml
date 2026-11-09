@@ -15,7 +15,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.fuerzapro.app
       vars:
-        APP_STORE_APPLE_ID: 0
+        APP_STORE_APPLE_ID: 6832380426
         XCODE_WORKSPACE: movil/ios/App/App.xcworkspace
         XCODE_SCHEME: App
       node: 20
