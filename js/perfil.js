@@ -70,7 +70,7 @@ export function pintarNube(est = nube.estadoActual()) {
       <div id="pf-google" class="pf-google"><span class="hint">Cargando Google…</span></div>
       <button type="button" class="btn-sec pf-correo" id="pf-correo">✉️ Usar otro correo</button>
       ${est.error ? `<p class="pf-nube-error">${esc(est.error)}</p>` : ''}
-      <p class="hint">Solo recibimos tu nombre, correo y foto de Google. <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>`;
+      <p class="hint">${nube.esIOS() ? 'Solo recibimos tu nombre y correo de Apple (puedes ocultar tu correo).' : 'Solo recibimos tu nombre, correo y foto de Google.'} <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>`;
     $('pf-correo').onclick = () => bienvenida.abrir('registro');
     nube.botonGoogle($('pf-google'), {
       alEntrar: () => pintar(),
@@ -315,7 +315,7 @@ function opinar() {
     if (texto.length < 3) { $('pf-op-msg').textContent = 'Escribe tu comentario.'; return; }
     const b = $('pf-op-enviar'); b.disabled = true; $('pf-op-msg').textContent = 'Enviando…';
     try {
-      const plataforma = document.referrer.startsWith('android-app://') || 'getDigitalGoodsService' in window ? 'play' : 'web';
+      const plataforma = nube.esIOS() ? 'ios' : document.referrer.startsWith('android-app://') || 'getDigitalGoodsService' in window ? 'play' : 'web';
       await nube.api('POST', '/api/opiniones', { tipo, texto, captura, version: deps.version, plataforma });
       cuerpo.innerHTML = `<h3 class="en-det-titulo">¡Gracias! 💪</h3><p class="hint">Recibimos tu comentario. Con lo que nos cuentas mejoramos FuerzaPro.</p>
         <div class="en-det-botones"><button type="button" class="btn-sec en-terminar" id="pf-op-cerrar">Cerrar</button></div>`;

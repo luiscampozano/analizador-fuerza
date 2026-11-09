@@ -94,7 +94,7 @@ function formPerfil(pf) {
       <div class="form-group" style="grid-column:span 2"><label for="co-bio">Sobre ti</label><textarea id="co-bio" maxlength="160" rows="2" placeholder="opcional">${esc(base.bio)}</textarea></div>
       <div class="form-group" style="grid-column:span 2"><label>Foto</label><select id="co-foto">
         ${tieneFotoApp ? `<option value="app"${!pf || pf.fotoPropia ? ' selected' : ''}>La foto de mi perfil de la app</option>` : ''}
-        <option value="google"${pf && !pf.fotoPropia && pf.foto ? ' selected' : ''}>La foto de mi cuenta de Google</option>
+        ${yo.googleFoto ? `<option value="google"${pf && !pf.fotoPropia && pf.foto ? ' selected' : ''}>La foto de mi cuenta de Google</option>` : ''}
         <option value="ninguna"${pf && !pf.foto ? ' selected' : ''}>Sin foto (inicial)</option></select></div>
     </div>`;
 }

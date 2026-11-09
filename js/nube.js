@@ -254,6 +254,29 @@ export function iniciar(d = {}) {
   window.addEventListener('online', () => sincronizar());
 }
 
+// v2.47.0 app de iPhone (Capacitor agrega «FuerzaProiOS» al user agent): Google no deja iniciar sesión dentro de apps,
+// así que ahí se usa «Iniciar sesión con Apple» (plugin nativo) y no se muestra nada de Google Play
+export const esIOS = () => /FuerzaProiOS/.test(navigator.userAgent || '');
+export async function entrarConApple(identityToken, nombre) {
+  return abrirSesion(await api('POST', '/api/auth/apple', { identityToken, nombre }));
+}
+async function botonApple(cont, { alEntrar, alError }) {
+  cont.innerHTML = '<button type="button" class="btn-apple"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.37 12.65c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-3-.79-1.54.02-2.96.9-3.75 2.27-1.6 2.78-.41 6.89 1.15 9.14.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.23-.02 2.01-1.12 2.76-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.42-3.66zM14.1 5.9c.63-.77 1.06-1.83.94-2.9-.91.04-2.01.61-2.67 1.37-.58.67-1.09 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.27z"/></svg> Continuar con Apple</button>';
+  cont.querySelector('button').onclick = async () => {
+    const plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SignInWithApple;
+    if (!plugin) return alError(new Error('Actualiza la app de FuerzaPro para iniciar sesión con Apple.'));
+    try {
+      const r = await plugin.authorize({ clientId: 'com.fuerzapro.app', redirectURI: 'https://fuerzapro.pages.dev/', scopes: 'email name' });
+      const x = (r && r.response) || {};
+      if (!x.identityToken) throw new Error('Apple no devolvió la credencial. Inténtalo de nuevo.');
+      alEntrar(await entrarConApple(x.identityToken, [x.givenName, x.familyName].filter(Boolean).join(' ')));
+    } catch (e) {
+      if (/cancel|1001/i.test(String((e && (e.message || e.code)) || ''))) return; // la persona cerró la ventana de Apple
+      alError(e);
+    }
+  };
+}
+
 // ------------------------------------------------------------------ boton de Google
 let gsi = null;
 function cargarGoogle() {
@@ -270,6 +293,7 @@ function cargarGoogle() {
 }
 // dibuja el boton oficial "Continuar con Google" dentro de `cont`; alEntrar(usuario) al terminar
 export async function botonGoogle(cont, { alEntrar = () => {}, alError = () => {} } = {}) {
+  if (esIOS()) return botonApple(cont, { alEntrar, alError });
   const google = await cargarGoogle();
   google.accounts.id.initialize({
     client_id: CLIENTE_GOOGLE,

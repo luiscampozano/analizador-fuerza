@@ -48,6 +48,11 @@ workflows:
           $B -c "Add :WKAppBoundDomains array" $P
           $B -c "Add :WKAppBoundDomains:0 string fuerzapro.pages.dev" $P
           $B -c "Add :WKAppBoundDomains:1 string localhost" $P
+          # Iniciar sesión con Apple (v2.47.0): permiso (entitlement) en la app; el perfil ya lo trae del App ID
+          E=movil/ios/App/App/App.entitlements
+          $B -c "Add :com.apple.developer.applesignin array" $E
+          $B -c "Add :com.apple.developer.applesignin:0 string Default" $E
+          sed -i '' 's#PRODUCT_BUNDLE_IDENTIFIER = com.fuerzapro.app;#PRODUCT_BUNDLE_IDENTIFIER = com.fuerzapro.app; CODE_SIGN_ENTITLEMENTS = App/App.entitlements;#g' movil/ios/App/App.xcodeproj/project.pbxproj
           # solo iPhone (sin iPad) por ahora: menos capturas y pruebas para la revisión
           sed -i '' 's/TARGETED_DEVICE_FAMILY = "1,2";/TARGETED_DEVICE_FAMILY = 1;/g' movil/ios/App/App.xcodeproj/project.pbxproj
       - name: Firma

@@ -58,10 +58,10 @@ export function mostrarMejora(motivo = '') {
   const ids = ['gratis', 'plus', 'pro', 'promax'];
   caja.innerHTML = `<div class="plan-caja"><h3 class="en-det-titulo">⭐ Mejora tu plan</h3>
     ${motivo ? `<p class="plan-motivo">${esc(motivo)}</p>` : ''}
-    ${planes ? `<div class="plan-tabla-wrap"><table class="plan-tabla"><thead><tr><th></th>${ids.map((k) => `<th class="${k === e.plan ? 'actual' : ''}">${esc(planes[k].nombre)}<small>${precios[k] ? `$${precios[k]}/mes` : 'Gratis'}</small></th>`).join('')}</tr></thead>
+    ${planes ? `<div class="plan-tabla-wrap"><table class="plan-tabla"><thead><tr><th></th>${ids.map((k) => `<th class="${k === e.plan ? 'actual' : ''}">${esc(planes[k].nombre)}<small>${nube.esIOS() ? '' : precios[k] ? `$${precios[k]}/mes` : 'Gratis'}</small></th>`).join('')}</tr></thead>
       <tbody>${FILAS.map(([n, f]) => `<tr><td>${n}</td>${ids.map((k) => `<td class="${k === e.plan ? 'actual' : ''}">${esc(f(planes[k]))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : ''}
     <div id="plan-compra" class="plan-compra"></div>
-    <p class="hint">Registrar entrenamientos y comidas es gratis y sin límite. Plan anual = 2 meses gratis. Se cobra con Google Play y se renueva solo; cancelas cuando quieras en Play Store → Pagos y suscripciones.</p>
+    <p class="hint">Registrar entrenamientos y comidas es gratis y sin límite.${nube.esIOS() ? '' : ' Plan anual = 2 meses gratis. Se cobra con Google Play y se renueva solo; cancelas cuando quieras en Play Store → Pagos y suscripciones.'}</p>
     <button type="button" class="btn-primary" id="plan-cerrar" style="width:100%">Cerrar</button></div>`;
   caja.style.display = 'flex';
   caja.onclick = (ev) => { if (ev.target === caja) caja.style.display = 'none'; };
@@ -126,6 +126,7 @@ export async function restaurar(silencioso = false) {
 async function pintarCompra() {
   const caja = document.getElementById('plan-compra');
   if (!caja) return;
+  if (nube.esIOS()) { caja.innerHTML = '<p class="plan-compra-msg">En iPhone, las suscripciones estarán disponibles muy pronto.</p>'; return; } // v2.47.0
   if (!nube.conectado()) { caja.innerHTML = '<p class="plan-compra-msg">Inicia sesión en Perfil para suscribirte (tu plan queda en tu cuenta).</p>'; return; }
   const precios = await leerPrecios();
   if (!precios || !Object.keys(precios).length) {
