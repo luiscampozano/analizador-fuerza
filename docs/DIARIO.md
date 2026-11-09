@@ -8,6 +8,19 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 21:10 · v2.47.0 — iPhone: «Continuar con Apple» y sin Google Play (fase 3, parte 1)
+- **Pidió:** seguir con la fase 3 del iPhone (Luis activó el banco en Apple).
+- **Se hizo:** `POST /api/auth/apple` verifica el identityToken con las claves públicas de Apple (sin secretos);
+  cuentas «a_»+sub, no admin. En la app de iPhone (user agent «FuerzaProiOS») el botón de Google se cambia por
+  «Continuar con Apple» (plugin @capacitor-community/apple-sign-in 7.1, entitlement en codemagic.yaml) y se ocultan
+  precios y menciones de Google Play. Privacidad y borrar-cuenta mencionan Apple. Prueba nueva apple_test.mjs.
+- **Verificación (subagente):** seguridad del token OK; corregidos logo de Apple en el botón, textos (Google→Apple),
+  foto de Google en comunidad, plataforma «ios» en comentarios, clave no RSA.
+- **Pendiente antes de revisión de Apple:** revocar el token de Apple al borrar cuenta (5.1.1(v): llave .p8 de Sign in
+  with Apple como secreto + columna nueva); cobros con Apple (suscripciones en App Store Connect + llave de compras);
+  usuarios de Google no pueden entrar en iPhone (pensar vincular cuentas); límites en «apagado/prueba» durante la
+  revisión; riesgo guía 4.2.
+
 ### 20:15 · iPhone: primera compilación en TestFlight (sin cambio de versión)
 - **Luis hizo:** acuerdo de apps de pago, banco (en revisión), W-8BEN (activo), DSA (no comerciante UE), App ID
   com.fuerzapro.app (In-App Purchase + Sign in with Apple), app en App Store Connect (6832380426), llave de API en

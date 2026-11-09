@@ -199,7 +199,7 @@ async function verificarApple(token, env) {
     datos = JSON.parse(new TextDecoder().decode(b64url(partes[1])));
   } catch (e) { throw fallo('Credencial de Apple inválida.', 401); }
   if (cab.alg !== 'RS256') throw fallo('Credencial de Apple inválida.', 401);
-  const clave = (await clavesApple(env)).find((k) => k.kid === cab.kid);
+  const clave = (await clavesApple(env)).find((k) => k.kid === cab.kid && k.kty === 'RSA');
   if (!clave) { jwksApple = null; throw fallo('Credencial de Apple inválida (clave desconocida). Inténtalo de nuevo.', 401); }
   const pub = await crypto.subtle.importKey('jwk', { kty: clave.kty, n: clave.n, e: clave.e, alg: 'RS256', ext: true }, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
   const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', pub, b64url(partes[2]), new TextEncoder().encode(partes[0] + '.' + partes[1]));
@@ -292,7 +292,7 @@ async function entrarCorreo(req, env) {
     const malo = 'Correo o contraseña incorrectos.';
     if (!c) {
       const g = await DB.prepare('SELECT id FROM usuarios WHERE lower(email) = ?1').bind(email).first();
-      if (g) throw fallo('Ese correo entra con Google. Usa «Continuar con Google».', 401);
+      if (g) throw fallo(String(g.id).startsWith('a_') ? 'Ese correo entra con Apple. Usa «Continuar con Apple».' : 'Ese correo entra con Google. Usa «Continuar con Google».', 401);
       await derivar(d.clave, '00'.repeat(16)); // mismo tiempo de respuesta exista o no la cuenta
       throw fallo(malo, 401);
     }
@@ -314,7 +314,7 @@ async function entrarCorreo(req, env) {
 async function cambiarClave(req, env, u) {
   const d = await leerJSON(req);
   const c = await env.DB.prepare('SELECT * FROM credenciales WHERE usuario = ?1').bind(u.id).first();
-  if (!c) throw fallo('Tu cuenta entra con Google: la contraseña se cambia en tu cuenta de Google.');
+  if (!c) throw fallo(String(u.id).startsWith('a_') ? 'Tu cuenta entra con Apple: no tiene contraseña en FuerzaPro.' : 'Tu cuenta entra con Google: la contraseña se cambia en tu cuenta de Google.');
   if (!igual(await derivar(String(d.actual || ''), c.sal, c.iter), c.hash)) throw fallo('La contraseña actual no es correcta.', 401);
   claveValida(d.nueva);
   const sal = hex(crypto.getRandomValues(new Uint8Array(16)));
