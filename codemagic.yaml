@@ -31,6 +31,9 @@ workflows:
         working_directory: movil
         script: |
           npx cap add ios
+          # iOS 15 como mínimo: Apple lo exige desde abril de 2027 (aviso ITMS-90068 en el build 3)
+          sed -i '' "s/platform :ios, '14.0'/platform :ios, '15.0'/" ios/App/Podfile
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/App/App.xcodeproj/project.pbxproj
           npx capacitor-assets generate --ios --iconBackgroundColor '#0B0B12' --splashBackgroundColor '#0B0B12'
           npx cap sync ios
       - name: Permisos y ajustes (Info.plist)
