@@ -8,6 +8,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-09
 
+### 16:25 · v2.48.2 — Modo en vivo: «Avisar al perder» en 40 % por defecto
+- **Pidió:** dejar el aviso de pérdida de velocidad del modo en vivo en 40 % por defecto (antes 20 %).
+
 ### 08:55 · v2.48.1 — iPhone: que no se mueva la pantalla como página web
 - **Pidió:** en el iPhone (TestFlight) «sale como página web, puedo mover la pantalla».
 - **Se hizo:** solo en la app de iPhone (user agent FuerzaProiOS): viewport sin zoom (iOS hacía zoom al tocar campos y
