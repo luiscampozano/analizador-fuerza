@@ -54,6 +54,7 @@ async function api(req, env, url) {
   }
   if (ruta === '/api/auth/google' && m === 'POST') return entrarGoogle(req, env);
   if (ruta === '/api/auth/correo' && m === 'POST') return entrarCorreo(req, env);
+  if (ruta === '/api/auth/apple' && m === 'POST') return entrarApple(req, env);
   if (ruta === '/api/salir' && m === 'POST') return salir(req, env);
   if (ruta.startsWith('/api/foto/') && m === 'GET') return foto(env, decodeURIComponent(ruta.slice(10)));
   if (/^\/api\/img\/pub\/p[A-Za-z0-9_-]{6,40}$/.test(ruta) && m === 'GET') return imagenPub(env, ruta.slice(13));
@@ -83,7 +84,7 @@ async function api(req, env, url) {
   throw fallo('No encontrado.', 404);
 }
 
-const publico = (u) => ({ id: u.id, email: u.email, nombre: u.nombre, foto: u.foto, creado: u.creado, proveedor: String(u.id).startsWith('c_') ? 'correo' : 'google' });
+const publico = (u) => ({ id: u.id, email: u.email, nombre: u.nombre, foto: u.foto, creado: u.creado, proveedor: String(u.id).startsWith('c_') ? 'correo' : String(u.id).startsWith('a_') ? 'apple' : 'google' });
 
 async function leerJSON(req) {
   const largo = +(req.headers.get('content-length') || 0);
@@ -175,6 +176,60 @@ async function entrarGoogle(req, env) {
   return json({ token, usuario: publico(u) });
 }
 
+// ------------------------------------------------------------------ Iniciar sesión con Apple (v2.47.0, app de iPhone)
+// La app de iPhone pide a Apple un identityToken (JWT RS256) y el servidor lo verifica con las claves públicas de Apple:
+// emisor appleid.apple.com, destinatario = el id de la app (com.fuerzapro.app). No hace falta ningún secreto.
+// Las cuentas de Apple usan el id "a_" + sub. Apple manda el nombre solo la primera vez (lo envía la app).
+const APPLE_EMISOR = 'https://appleid.apple.com', APPLE_APP = 'com.fuerzapro.app';
+let jwksApple = null, jwksAppleHasta = 0;
+async function clavesApple(env) {
+  if (env.JWKS_APPLE_PRUEBA) return JSON.parse(env.JWKS_APPLE_PRUEBA).keys; // solo para pruebas locales
+  if (jwksApple && Date.now() < jwksAppleHasta) return jwksApple;
+  const r = await fetch('https://appleid.apple.com/auth/keys');
+  if (!r.ok) throw fallo('No pude contactar a Apple. Inténtalo de nuevo.', 502);
+  jwksApple = (await r.json()).keys; jwksAppleHasta = Date.now() + 6 * 3600 * 1000;
+  return jwksApple;
+}
+async function verificarApple(token, env) {
+  const partes = String(token || '').split('.');
+  if (partes.length !== 3) throw fallo('Credencial de Apple inválida.', 401);
+  let cab, datos;
+  try {
+    cab = JSON.parse(new TextDecoder().decode(b64url(partes[0])));
+    datos = JSON.parse(new TextDecoder().decode(b64url(partes[1])));
+  } catch (e) { throw fallo('Credencial de Apple inválida.', 401); }
+  if (cab.alg !== 'RS256') throw fallo('Credencial de Apple inválida.', 401);
+  const clave = (await clavesApple(env)).find((k) => k.kid === cab.kid);
+  if (!clave) { jwksApple = null; throw fallo('Credencial de Apple inválida (clave desconocida). Inténtalo de nuevo.', 401); }
+  const pub = await crypto.subtle.importKey('jwk', { kty: clave.kty, n: clave.n, e: clave.e, alg: 'RS256', ext: true }, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+  const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', pub, b64url(partes[2]), new TextEncoder().encode(partes[0] + '.' + partes[1]));
+  if (!ok) throw fallo('Credencial de Apple inválida.', 401);
+  const aud = Array.isArray(datos.aud) ? datos.aud : [datos.aud];
+  if (!aud.includes(env.APPLE_APP_ID || APPLE_APP)) throw fallo('Credencial de Apple para otra aplicación.', 401);
+  if (datos.iss !== APPLE_EMISOR) throw fallo('Credencial de Apple inválida.', 401);
+  if (!(datos.exp > Date.now() / 1000 - 60)) throw fallo('La credencial de Apple expiró. Vuelve a intentarlo.', 401);
+  if (!datos.sub || String(datos.sub).length > 200) throw fallo('Credencial de Apple inválida.', 401);
+  return datos;
+}
+async function entrarApple(req, env) {
+  const b = await leerJSON(req);
+  const a = await verificarApple(b.identityToken, env);
+  const uid = 'a_' + a.sub, ahora = Date.now(), token = aleatorio();
+  const email = a.email && a.email_verified !== false && a.email_verified !== 'false' ? String(a.email).slice(0, 200) : null;
+  const nombre = String(b.nombre || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 120) || null;
+  await env.DB.batch([
+    // el nombre solo llega la primera vez: si ya había uno, no se borra
+    env.DB.prepare(`INSERT INTO usuarios (id, email, nombre, foto, creado, visto, seq) VALUES (?1, ?2, ?3, NULL, ?4, ?4, 0)
+      ON CONFLICT(id) DO UPDATE SET email = coalesce(excluded.email, usuarios.email), nombre = coalesce(?5, usuarios.nombre), visto = excluded.visto`)
+      .bind(uid, email, nombre || (email ? email.split('@')[0] : 'Atleta'), ahora, nombre),
+    env.DB.prepare('INSERT INTO sesiones (token_hash, usuario, creado, expira) VALUES (?1, ?2, ?3, ?4)')
+      .bind(await sha256(token), uid, ahora, ahora + SESION_DIAS * DIA),
+    env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1 AND expira < ?2').bind(uid, ahora),
+  ]);
+  const u = await env.DB.prepare('SELECT * FROM usuarios WHERE id = ?1').bind(uid).first();
+  return json({ token, usuario: publico(u) });
+}
+
 // ------------------------------------------------------------------ correo y contrasena
 // La contrasena nunca se guarda: solo su derivacion PBKDF2-SHA256 (100 000 iteraciones, sal aleatoria por cuenta).
 // Tras 5 intentos fallidos el correo queda bloqueado 15 minutos. Los ids de estas cuentas empiezan con "c_".
@@ -215,7 +270,7 @@ async function entrarCorreo(req, env) {
     const nombre = String(d.nombre || '').trim().slice(0, 120);
     if (!nombre) throw fallo('Escribe tu nombre.');
     const existe = await DB.prepare('SELECT id FROM usuarios WHERE lower(email) = ?1').bind(email).first();
-    if (existe) throw fallo(String(existe.id).startsWith('c_') ? 'Ya existe una cuenta con ese correo. Toca «Ingresar».' : 'Ese correo ya está registrado con Google. Usa «Continuar con Google».', 409);
+    if (existe) throw fallo(String(existe.id).startsWith('c_') ? 'Ya existe una cuenta con ese correo. Toca «Ingresar».' : String(existe.id).startsWith('a_') ? 'Ese correo ya está registrado con Apple. Usa «Continuar con Apple».' : 'Ese correo ya está registrado con Google. Usa «Continuar con Google».', 409);
     const uid = 'c_' + aleatorio(12), sal = hex(crypto.getRandomValues(new Uint8Array(16)));
     const hash = await derivar(d.clave, sal);
     try {
@@ -361,7 +416,7 @@ async function requierePerfil(env, u) {
   if (!pf) throw fallo('Primero crea tu perfil de la comunidad.', 403);
   return pf;
 }
-const esAdmin = (env, u) => !!u.email && !String(u.id).startsWith('c_') && String(env.ADMIN_EMAILS || '').toLowerCase().split(',').map((x) => x.trim()).includes(String(u.email).toLowerCase());
+const esAdmin = (env, u) => !!u.email && !String(u.id).startsWith('c_') && !String(u.id).startsWith('a_') && String(env.ADMIN_EMAILS || '').toLowerCase().split(',').map((x) => x.trim()).includes(String(u.email).toLowerCase());
 
 async function foto(env, usuario) {
   const f = await env.DB.prepare('SELECT foto FROM perfiles WHERE usuario = ?1').bind(usuario).first();

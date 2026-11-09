@@ -254,6 +254,29 @@ export function iniciar(d = {}) {
   window.addEventListener('online', () => sincronizar());
 }
 
+// v2.47.0 app de iPhone (Capacitor agrega «FuerzaProiOS» al user agent): Google no deja iniciar sesión dentro de apps,
+// así que ahí se usa «Iniciar sesión con Apple» (plugin nativo) y no se muestra nada de Google Play
+export const esIOS = () => /FuerzaProiOS/.test(navigator.userAgent || '');
+export async function entrarConApple(identityToken, nombre) {
+  return abrirSesion(await api('POST', '/api/auth/apple', { identityToken, nombre }));
+}
+async function botonApple(cont, { alEntrar, alError }) {
+  cont.innerHTML = '<button type="button" class="btn-apple"><span aria-hidden="true"></span> Continuar con Apple</button>';
+  cont.querySelector('button').onclick = async () => {
+    const plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SignInWithApple;
+    if (!plugin) return alError(new Error('Actualiza la app de FuerzaPro para iniciar sesión con Apple.'));
+    try {
+      const r = await plugin.authorize({ clientId: 'com.fuerzapro.app', redirectURI: 'https://fuerzapro.pages.dev/', scopes: 'email name' });
+      const x = (r && r.response) || {};
+      if (!x.identityToken) throw new Error('Apple no devolvió la credencial. Inténtalo de nuevo.');
+      alEntrar(await entrarConApple(x.identityToken, [x.givenName, x.familyName].filter(Boolean).join(' ')));
+    } catch (e) {
+      if (/cancel|1001/i.test(String((e && (e.message || e.code)) || ''))) return; // la persona cerró la ventana de Apple
+      alError(e);
+    }
+  };
+}
+
 // ------------------------------------------------------------------ boton de Google
 let gsi = null;
 function cargarGoogle() {
@@ -270,6 +293,7 @@ function cargarGoogle() {
 }
 // dibuja el boton oficial "Continuar con Google" dentro de `cont`; alEntrar(usuario) al terminar
 export async function botonGoogle(cont, { alEntrar = () => {}, alError = () => {} } = {}) {
+  if (esIOS()) return botonApple(cont, { alEntrar, alError });
   const google = await cargarGoogle();
   google.accounts.id.initialize({
     client_id: CLIENTE_GOOGLE,
