@@ -75,6 +75,14 @@ function percentil(arr, p) {
   return a[lo] + (a[hi] - a[lo]) * (i - lo);
 }
 const mediana = (a) => percentil(a, 50);
+function correlacion(a, b) { // Pearson, solo con los cuadros donde los dos valores existen
+  let n = 0, ma = 0, mb = 0;
+  for (let i = 0; i < a.length; i++) if (Number.isFinite(a[i]) && Number.isFinite(b[i])) { n++; ma += a[i]; mb += b[i]; }
+  if (n < 10) return 0;
+  ma /= n; mb /= n; let sab = 0, saa = 0, sbb = 0;
+  for (let i = 0; i < a.length; i++) if (Number.isFinite(a[i]) && Number.isFinite(b[i])) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2; }
+  return saa && sbb ? sab / Math.sqrt(saa * sbb) : 0;
+}
 
 // picos con prominencia minima y distancia minima (como scipy.signal.find_peaks)
 export function picos(y, prominencia, distancia) {
@@ -248,7 +256,12 @@ export function repsCuerpo(full, fps, ej) {
   if (!(T0 > 0)) return null;
   const k1 = 2 * Math.round(fps / 8) + 1, k2 = 2 * Math.round(fps / 12) + 1;
   const limpio = (arr) => filtroMediana(filtroMediana(arr, k1), k2);
-  let h = limpio(full.map((f) => (par(f, MP.pies, 1) - par(f, P, 1)) / T0));
+  // v2.46.1 tobillos tapados (plataforma del hack o del péndulo): la IA casi no los ve, los adivina y los mueve junto
+  // con el cuerpo (suben y bajan con los hombros). Entonces el piso se toma fijo: la altura mediana de los tobillos
+  const pieY = full.map((f) => par(f, MP.pies, 1)), puntoY = full.map((f) => par(f, P, 1));
+  const visPies = mediana(full.map((f) => (f[MP.pies[0]][2] + f[MP.pies[1]][2]) / 2));
+  const pisoFijo = visPies < 0.7 && correlacion(pieY, puntoY) > 0.6 ? mediana(pieY) : null;
+  let h = limpio(pieY.map((y, i) => ((pisoFijo ?? y) - puntoY[i]) / T0));
   h = savgol(h.map((x) => (Number.isFinite(x) ? x : 0)), fps / 4, 2);
   // tramo activo: los pies quietos en su lugar (no esta caminando hacia el rack o hacia la camara)
   const pieX = filtroMediana(full.map((f) => par(f, MP.pies, 0)), fps + 1);
@@ -418,6 +431,9 @@ export function analizar(full, fps, ej, cfg) {
     if (d[0] * dg[0] + d[1] * dg[1] < 0) d = [-d[0], -d[1]];
     dirs[i] = d;
   }
+  // v2.46.1 eje fijo (dominadas): el cuerpo cuelga de la barra y solo sube y baja. Con el cuerpo quieto abajo, el temblor
+  // de una mano mal vista giraba la direccion local y la proyeccion daba saltos que parecian reps
+  if (ej.eje === 'vertical') dirs.fill(ej.sentido === 'abajo' ? [0, 1] : [0, -1]);
   // sentadilla / peso muerto: la altura sobre los tobillos con escala fija (ver repsCuerpo) mide mejor que la
   // proyeccion con escala por cuadro, que confunde agacharse con alejarse de la camara
   const cuerpo = ej.detector === 'cuerpo' ? repsCuerpo(full, fps, ej) : null;
@@ -551,6 +567,12 @@ export function analizar(full, fps, ej, cfg) {
   return reps;
   };
   reps = corte ? [...limpiar(reps.filter((r) => r.tope < corte.corte)), ...limpiar(reps.filter((r) => r.tope >= corte.corte))] : limpiar(reps);
+  // v2.46.1 la ultima rep sigue subiendo cuando termina el video y recorrio bastante menos que las otras: es una rep
+  // empezada y cortada (no se completo), no cuenta
+  if (!cuerpo && !corte && reps.length >= 3) {
+    const u = reps[reps.length - 1], mr = mediana(reps.slice(0, -1).map((x) => x.recorrido_cm));
+    if (u.tope >= Math.min(n, i1) - Math.round(0.2 * fps) && u.recorrido_cm < 0.75 * mr) reps.pop();
+  }
   if (reps.length) {
     marcarReps(reps);
     // desenganchar o re-rackear la barra, acomodarse en la maquina: movimientos cortos en los bordes de la serie.

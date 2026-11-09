@@ -8,6 +8,18 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-08
 
+### 19:10 · v2.46.1 — Conteo: arreglos con los primeros reportes de testers
+- **Pidió:** revisar los 6 primeros «fallos de conteo» de testers (sin videos, solo puntos del esqueleto).
+- **Se hizo (análisis con subagente, banco antes/después):** banco 44/69 → 47/69, ningún video que pasaba cambió.
+  - Dominadas y chin-up (mismo video, 1 y 6 → 3): la IA volteaba el cuerpo en ráfagas; `volteo: true` + nuevo
+    `eje: 'vertical'` (la dirección no gira con una mano mal vista) + regla general: la última rep cortada por el fin
+    del video con < 75 % del recorrido no cuenta.
+  - Hack (11 → 7): plataforma tapa los tobillos y la IA los mueve con el cuerpo; si visibilidad < 0,7 y correlación con
+    los hombros > 0,6, el piso se toma fijo.
+  - No arreglables (mala grabación): hack fallo_5d3936fe (sin persona en 61 % de cuadros) y remo riel / sumo
+    fallo_b45b2d6d / c72552ee (no hay remo; persona pequeña, cámara en diagonal, esqueleto al revés).
+- **Pendiente:** aviso de calidad cuando > 40 % de cuadros no tiene persona; `dominadas_asistidas` sin medir.
+
 ### 18:20 · v2.46.0 — El menú del nutricionista IA se arma según tu gimnasio
 - **Pidió:** que el menú recomiende qué comer en función de su meta de gym (sin costar más).
 - **Se hizo:** la hoja del menú pregunta «¿Entrenas hoy?» (se marca sola si ya registraste un entreno hoy, con su hora)
