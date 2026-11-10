@@ -22,6 +22,8 @@ let [s,r]=await call(A,'GET','plan'); ok(s===200&&r.modo==='apagado'&&!r.aplica&
 [s,r]=await call(A,'POST','mod/planes',{modo:'activo'}); ok(s===404,'solo el administrador cambia el modo');
 [s,r]=await call(L,'POST','mod/planes',{modo:'prueba'}); ok(s===200&&r.modo==='prueba','Luis pone el modo prueba');
 [s,r]=await call(A,'GET','plan'); ok(!r.aplica,'modo prueba: Ana (no admin) sigue sin límites');
+env.PRUEBA_EMAILS=' Ana@X.com , otro@x.com'; [s,r]=await call(A,'GET','plan'); ok(r.aplica,'modo prueba: una cuenta en PRUEBA_EMAILS sí ve los planes (v2.49.1)');
+[s,r]=await call(A,'GET','mod/planes'); ok(s===404,'PRUEBA_EMAILS no da permisos de administrador'); delete env.PRUEBA_EMAILS;
 [s,r]=await call(L,'GET','plan'); ok(r.aplica&&r.plan==='gratis'&&r.limites.video.lim===3&&r.limites.ia.lim===10&&r.limites.coach.lim===1&&!r.permisos.pdf&&r.permisos.historialDias===30,'modo prueba: Luis ve el plan Gratis');
 for(let i=0;i<3;i++) await call(L,'POST','plan/usar',{tipo:'video'});
 [s,r]=await call(L,'POST','plan/usar',{tipo:'video'}); ok(s===429&&/3 análisis de video/.test(r.error)&&/Plus/.test(r.error)&&r.limite==='video','Gratis: 3 videos al mes y luego invita a Plus');

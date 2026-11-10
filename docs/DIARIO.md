@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-09
 
+### 21:40 · v2.49.1 — Cuentas de prueba que ven los planes (PRUEBA_EMAILS)
+- **Pidió:** probar la compra en el iPhone prestado; no le aparecía dónde comprar.
+- **Causa:** con los límites en «prueba» solo los administradores (cuentas Google de ADMIN_EMAILS) ven los planes; la
+  cuenta del iPhone es de correo.
+- **Se hizo:** nueva variable de Cloudflare PRUEBA_EMAILS (texto, separados por coma): esas cuentas también ven los
+  planes en modo «prueba», sin permisos de administrador. Sirve también para la cuenta demo de App Review.
+- **Luis:** agregar PRUEBA_EMAILS en Cloudflare con el correo de la cuenta del iPhone.
+
 ### 19:20 · v2.49.0 — iPhone: suscripciones con Apple (fase 3, parte 2) · rama `pagos-apple` (sin publicar)
 - **Pidió:** cobrar los planes en iPhone con Apple (StoreKit). En App Store Connect ya están los 6 productos (mismos ids
   que Google, Pro mensual con 7 días gratis) y en Cloudflare los secretos APPLE_IAP_CLAVE, APPLE_IAP_KEY_ID y

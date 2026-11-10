@@ -419,6 +419,9 @@ async function requierePerfil(env, u) {
   if (!pf) throw fallo('Primero crea tu perfil de la comunidad.', 403);
   return pf;
 }
+// v2.49.1 cuentas que ven los planes en modo «prueba» sin ser administradoras (iPhone de prueba, cuenta demo de App Review).
+// Variable de Cloudflare PRUEBA_EMAILS (texto, separados por coma). No da ningún permiso de administrador.
+const esProbador = (env, u) => !!u.email && String(env.PRUEBA_EMAILS || '').toLowerCase().split(',').map((x) => x.trim()).filter(Boolean).includes(String(u.email).toLowerCase());
 const esAdmin = (env, u) => !!u.email && !String(u.id).startsWith('c_') && !String(u.id).startsWith('a_') && String(env.ADMIN_EMAILS || '').toLowerCase().split(',').map((x) => x.trim()).includes(String(u.email).toLowerCase());
 
 async function foto(env, usuario) {
@@ -1092,7 +1095,7 @@ async function cupoIA(env, u, tipo, queHace) {
 
 // ================================================================== PLANES DE SUSCRIPCION (v2.33.0)
 // Los limites se aplican segun ajustes_app.limites: 'apagado' (nadie tiene limites, como antes), 'prueba' (solo los
-// administradores, para probar cada plan) o 'activo' (todos). El cobro con Google Play llegara despues; por ahora los
+// administradores y las cuentas de PRUEBA_EMAILS, para probar cada plan) o 'activo' (todos). El cobro con Google Play llegara despues; por ahora los
 // planes pagados se asignan desde Moderacion (regalos y pruebas).
 const PLANES = {
   gratis: { nombre: 'Gratis', video: 3, ia: 10, coach: [1, 'mes'], pdf: false, videoComunidad: false, excel: false, historialDias: 30 },
@@ -1142,7 +1145,7 @@ async function planDe(env, u) {
     try { if (await renovarApple(env, u.id)) p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(u.id).first(); } catch (e) { /* sin tabla compras aun */ }
   }
   const vigente = p && PLANES[p.plan] && (p.hasta == null || p.hasta > Date.now());
-  return { modo, aplica: modo === 'activo' || (modo === 'prueba' && esAdmin(env, u)), plan: vigente ? p.plan : 'gratis', hasta: vigente ? p.hasta : null };
+  return { modo, aplica: modo === 'activo' || (modo === 'prueba' && (esAdmin(env, u) || esProbador(env, u))), plan: vigente ? p.plan : 'gratis', hasta: vigente ? p.hasta : null };
 }
 async function usoDe(env, uid, clave, per) {
   const r = await env.DB.prepare('SELECT n FROM uso_plan WHERE usuario = ?1 AND periodo = ?2 AND tipo = ?3').bind(uid, periodo(per), clave).first();
