@@ -239,6 +239,7 @@ function pintarMarcas(lista, marca, pc, cuerpo) {
   }
   $('pf-pl').innerHTML = `<div class="pf-periodo pf-tabs">${Object.entries(TABS_MARCAS).map(([k, t]) => `<button type="button" data-t="${k}" class="${k === tabMarcas ? 'activo' : ''}">${t}</button>`).join('')}</div>${html}`;
   $('pf-pl').querySelectorAll('.pf-tabs button').forEach((b) => (b.onclick = () => { tabMarcas = b.dataset.t; try { localStorage.setItem('af_pf_marcas', tabMarcas); } catch (e) { /* nada */ } pintarMarcas(lista, marca, pc, cuerpo); }));
+  { const tb = $('pf-pl').querySelector('.pf-tabs'), ac = tb && tb.querySelector('.activo'); if (ac) tb.scrollLeft = ac.offsetLeft - (tb.clientWidth - ac.offsetWidth) / 2; } // v2.49.2 en iPhone las pestañas se deslizan: deja visible la elegida
   $('pf-pl').querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => { const x = ejs.get(b.dataset.k); if (x && deps.abrirProgreso) deps.abrirProgreso(x.e); }));
 }
 

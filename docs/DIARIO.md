@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-09
 
+### 21:45 · v2.49.2 — Arreglos de pantalla vistos en el iPhone
+- **Pidió:** mandó 6 capturas del iPhone; en Perfil las letras de un panel se salían.
+- **Se hizo:** las pestañas de «Mis marcas» (Récords…Running) ahora se deslizan de lado y la elegida queda centrada
+  (la letra del iPhone es más ancha). La cabecera de Perfil da más espacio al nombre (foto más chica en pantallas
+  angostas). En iPhone, una franja oscura fija debajo de la hora para que el contenido no se mezcle con la barra de estado.
+- **Luis:** guardó PRUEBA_EMAILS en Cloudflare (se aplica con esta publicación).
+
 ### 21:40 · v2.49.1 — Cuentas de prueba que ven los planes (PRUEBA_EMAILS)
 - **Pidió:** probar la compra en el iPhone prestado; no le aparecía dónde comprar.
 - **Causa:** con los límites en «prueba» solo los administradores (cuentas Google de ADMIN_EMAILS) ven los planes; la

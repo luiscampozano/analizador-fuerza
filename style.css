@@ -1368,3 +1368,15 @@ body.buscando .action-footer { display: none; }
 /* v2.48.1 app de iPhone: sin rebote ni arrastre lateral de la página */
 html.ios, html.ios body { overscroll-behavior: none; overflow-x: hidden; }
 html.ios body { -webkit-tap-highlight-color: transparent; }
+/* v2.49.2: arreglos vistos en iPhone (letra del sistema más ancha) */
+.pf-tabs { display: flex; overflow-x: auto; scrollbar-width: none; }
+.pf-tabs::-webkit-scrollbar { display: none; }
+.pf-tabs button { flex: 1 0 auto; padding: 8px 7px; white-space: nowrap; }
+.pf-datos { flex: 1; }
+.pf-datos small { display: block; line-height: 1.3; }
+@media (max-width: 430px) {
+  .pf-foto { width: 56px; height: 56px; }
+  .pf-foto span { font-size: 24px; }
+  .pf-cabecera { gap: 10px; }
+}
+html.ios body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--bg-dark); z-index: 60; pointer-events: none; }
