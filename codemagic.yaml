@@ -30,7 +30,10 @@ workflows:
       - name: Crear el proyecto de iPhone
         working_directory: movil
         script: |
-          npx cap add ios
+          # el plugin de compras (@capgo/native-purchases, v2.49.0) pide iOS 15: el «pod install» de «cap add» con la
+          # plantilla de iOS 14 puede fallar; se sube a 15 abajo y «cap sync ios» vuelve a correr pod install
+          npx cap add ios || echo "Aviso: pod install con iOS 14 falló; se repite con iOS 15 en «cap sync ios»"
+          test -f ios/App/Podfile
           # iOS 15 como mínimo: Apple lo exige desde abril de 2027 (aviso ITMS-90068 en el build 3)
           sed -i '' "s/platform :ios, '14.0'/platform :ios, '15.0'/" ios/App/Podfile
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/App/App.xcodeproj/project.pbxproj
