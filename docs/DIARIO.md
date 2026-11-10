@@ -8,6 +8,11 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-10
 
+### 08:57 · (sin versión nueva) — Cuenta demo para App Review
+- **Se hizo:** Luis creó la cuenta de correo fuerzapro2026+revision@gmail.com para el revisor de Apple y la agregó a
+  PRUEBA_EMAILS (Cloudflare). Se publica de nuevo para aplicar la variable. Ficha de la App Store: texto entregado,
+  notas para el revisor en inglés.
+
 ### 08:45 · v2.50.0 — Borrar una cuenta de Apple también revoca el permiso en Apple (guía 5.1.1(v))
 - **Pidió:** seguir con la hoja de ruta de iPhone; la auditoría de Gemini marcó esto como crítico (ya estaba pendiente).
 - **Se hizo:** al entrar con Apple, la app manda el código de autorización; el servidor lo cambia por un refresh_token
