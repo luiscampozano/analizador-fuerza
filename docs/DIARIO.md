@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-09
 
+### 21:58 · (sin versión nueva) — Republicar para aplicar PRUEBA_EMAILS
+- **Causa de que no salieran los planes en el iPhone:** el modo de límites estaba en «apagado» y el correo de la cuenta
+  del iPhone tiene una «i» de más (campozanoluis1i+iphone…). Luis corrige PRUEBA_EMAILS y pone el modo «prueba».
+- **Se hizo:** se publica de nuevo (sin cambios de código) para que Cloudflare tome la variable; en Pages no aparece
+  «Retry deployment» para producción.
+
 ### 21:45 · v2.49.2 — Arreglos de pantalla vistos en el iPhone
 - **Pidió:** mandó 6 capturas del iPhone; en Perfil las letras de un panel se salían.
 - **Se hizo:** las pestañas de «Mis marcas» (Récords…Running) ahora se deslizan de lado y la elegida queda centrada
