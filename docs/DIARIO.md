@@ -33,6 +33,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 - **Pendientes:** notificaciones de Apple (App Store Server Notifications v2) para reembolsos al instante; una cuenta
   de correo borrada no puede pasar su suscripción de Apple a otra cuenta (la compra queda ligada a la cuenta vieja).
 
+- **Verificación (subagente independiente):** API de Apple, seguridad, plugin y guía 3.1.2 OK. Corregido: Apple da 401 en
+  producción hasta la primera versión publicada → ahora sigue con sandbox (si no, App Review no podía comprar). También:
+  la restauración en iPhone ya no frena el arranque e incluye el periodo de gracia. Publicado (merge a main).
+- **Pendiente:** después del lanzamiento, aceptar compras sandbox solo para la cuenta de revisión/admin (hoy cualquier
+  tester de TestFlight obtiene el plan gratis); notificaciones de Apple al servidor (reembolsos); evento transactionUpdated.
+
 ### 16:25 · v2.48.2 — Modo en vivo: «Avisar al perder» en 40 % por defecto
 - **Pidió:** dejar el aviso de pérdida de velocidad del modo en vivo en 40 % por defecto (antes 20 %).
 

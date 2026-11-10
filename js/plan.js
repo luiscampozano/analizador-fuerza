@@ -11,7 +11,7 @@ const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 
 export async function actualizar() {
   if (!nube.conectado()) { estado = null; guardar(null); restaurado = false; return null; }
-  if (!restaurado) { restaurado = true; await (nube.esIOS() ? restaurarApple(true) : restaurar(true)); } // app de Play o iPhone: vincula compras hechas antes o en otro telefono
+  if (!restaurado) { restaurado = true; if (nube.esIOS()) restaurarApple(true).then((n) => { if (n) actualizar(); }).catch(() => {}); else await restaurar(true); } // app de Play o iPhone: vincula compras hechas antes o en otro telefono (v2.49.0 en iPhone sin esperar: no frena el arranque; si vinculó algo, recarga el plan)
   try { estado = await nube.api('GET', '/api/plan'); guardar(estado); } catch (e) { /* sin internet: el ultimo conocido */ }
   return estado;
 }
@@ -209,7 +209,7 @@ export async function restaurarApple(silencioso = false, pedirApple = false) {
   let lista = [], n = 0;
   try { lista = ((await t.getPurchases({ productType: 'subs' })) || {}).purchases || []; } catch (e) { return 0; }
   const vigentes = lista.filter((p) => SKUS.includes(p.productIdentifier) && p.isActive !== false && !p.isUpgraded && !p.revocationDate
-    && (!p.expirationDate || Date.parse(p.expirationDate) > Date.now())).slice(0, 3);
+    && (!p.expirationDate || Date.parse(p.expirationDate) > Date.now() - 16 * 864e5)).slice(0, 3); // incluye periodo de gracia (el servidor decide)
   for (const p of vigentes) {
     try {
       const r = await verificarApple(p.transactionId);

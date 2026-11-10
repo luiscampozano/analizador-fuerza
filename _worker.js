@@ -1301,7 +1301,9 @@ async function pedirApple(env, ruta, base) {
     if (r.ok) return { datos: await r.json(), base: b };
     const d = await r.json().catch(() => ({}));
     if (r.status === 404 || d.errorCode === 4040010 || d.errorCode === 4040005 || d.errorCode === 4000006) continue; // no esta en este entorno
-    if (r.status === 401) jwtIAP = null;
+    // v2.49.0 Apple bloquea la API de producción (401) hasta la primera versión publicada: ahí se sigue con sandbox
+    // (App Review y TestFlight compran en sandbox). Si sandbox también da 401, es un problema de configuración.
+    if (r.status === 401) { jwtIAP = null; if (!base && b === APPLE_API[0]) continue; }
     console.error('apple api', r.status, JSON.stringify(d).slice(0, 200));
     throw fallo('No pude verificar la compra con Apple. Inténtalo en un momento.', 502);
   }

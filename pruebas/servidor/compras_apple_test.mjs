@@ -15,13 +15,14 @@ const b64=(o)=>Buffer.from(JSON.stringify(o)).toString('base64url');
 const jws=(o)=>b64({alg:'ES256',x5c:['x']})+'.'+b64(o)+'.firma'; // la firma de Apple no se revisa (llega por TLS de Apple)
 // Apple simulado: transacciones y suscripciones por entorno
 const PROD='https://api.storekit.itunes.apple.com', SAND='https://api.storekit-sandbox.itunes.apple.com';
-const tx={[PROD]:{},[SAND]:{}}, subs={[PROD]:{},[SAND]:{}}; let jwtOk=false, pedidos=[];
+const tx={[PROD]:{},[SAND]:{}}, subs={[PROD]:{},[SAND]:{}}; let jwtOk=false, pedidos=[], prod401=false;
 globalThis.fetch=async(url,o={})=>{url=String(url); const base=url.startsWith(PROD)?PROD:url.startsWith(SAND)?SAND:null; if(!base) return new Response('{}',{status:500});
   const a=String(o.headers?.authorization||'').replace('Bearer ','').split('.');
   const cab=JSON.parse(Buffer.from(a[0],'base64url')), pl=JSON.parse(Buffer.from(a[1],'base64url'));
   const firma=await C.subtle.verify({name:'ECDSA',hash:'SHA-256'},kp.publicKey,Buffer.from(a[2],'base64url'),new TextEncoder().encode(a[0]+'.'+a[1]));
   jwtOk=firma&&cab.alg==='ES256'&&cab.kid==='KID123'&&cab.typ==='JWT'&&pl.iss==='iss-uuid'&&pl.aud==='appstoreconnect-v1'&&pl.bid==='com.fuerzapro.app'&&pl.exp-pl.iat<=3600;
   if(!jwtOk) return new Response('{}',{status:401});
+  if(base===PROD&&prod401) return new Response('{}',{status:401}); // app sin versión publicada: Apple cierra producción
   pedidos.push(url.slice(base.length)+(base===SAND?' (sandbox)':''));
   let m=url.match(/\/inApps\/v1\/transactions\/(\d+)$/); if(m){const t=tx[base][m[1]]; return t?new Response(JSON.stringify({signedTransactionInfo:jws(t)})):new Response(JSON.stringify({errorCode:4040010,errorMessage:'Transaction id not found.'}),{status:404});}
   m=url.match(/\/inApps\/v1\/subscriptions\/(\d+)$/); if(m){const s=subs[base][m[1]]; return s?new Response(JSON.stringify({environment:base===SAND?'Sandbox':'Production',bundleId:'com.fuerzapro.app',data:[{subscriptionGroupIdentifier:'g1',lastTransactions:[s]}]})):new Response(JSON.stringify({errorCode:4040005}),{status:404});}
@@ -104,3 +105,8 @@ for (const k of ['APPLE_IAP_CLAVE','APPLE_IAP_KEY_ID','APPLE_ISSUER_ID']) { cons
 { const e={...env}; delete e.APPLE_IAP_CLAVE; db.prepare("update planes set plan='pro', hasta=?, origen='apple' where usuario=?").run(Date.now()-1000,RA.usuario.id);
   db.prepare("update compras set estado='APPLE_ACTIVA', hasta=?, actualizado=0 where token='apple:2000000001'").run(Date.now()-1000);
   [s,r]=await call(A,'GET','plan',undefined,e); ok(s===200&&r.plan==='gratis','sin secretos: /api/plan sigue funcionando (sin renovar)'); }
+
+// v2.49.0 antes de la primera versión publicada Apple responde 401 en producción: se sigue con sandbox (App Review/TestFlight)
+{ prod401=true; const tq=T('900001','900001','plus_mensual',30,{appAccountToken:cuentaA}); tx[SAND]['900001']=tq; ponerSub(SAND,tq);
+  const [s9,r9]=await call(A,'POST','plan/compra-apple',{transactionId:'900001'}); ok(s9===200,'producción da 401 (app sin publicar): se verifica en sandbox');
+  prod401=false; }
