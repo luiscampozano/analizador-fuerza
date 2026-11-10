@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-10
 
+### 11:55 · v2.50.1 — Texto corto en la cabecera de Perfil + capturas de la App Store
+- **Se hizo:** «Toca Editar para completar tu perfil» → «Completa tu perfil» (en iPhone quedaba una palabra por renglón).
+  Ficha App Store: privacidad publicada, clasificación por edad 16+ (coincide con términos), 5 capturas 1320×2868 con
+  títulos hechas con un análisis real de sentadilla (scratchpad/tienda).
+- **Pendiente:** subir capturas, precio y disponibilidad, elegir compilación, cifrado «No», enviar a revisión.
+
 ### 08:57 · (sin versión nueva) — Cuenta demo para App Review
 - **Se hizo:** Luis creó la cuenta de correo fuerzapro2026+revision@gmail.com para el revisor de Apple y la agregó a
   PRUEBA_EMAILS (Cloudflare). Se publica de nuevo para aplicar la variable. Ficha de la App Store: texto entregado,

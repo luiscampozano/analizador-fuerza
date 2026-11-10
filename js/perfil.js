@@ -114,7 +114,7 @@ export async function pintar() {
   const pf = leerJ('af_perfil', {}), cuerpo = perfilCuerpo(), pc = pesoActual();
   $('pf-cabecera').innerHTML = `<div class="pf-foto">${pf.foto ? `<img src="${pf.foto}" alt="">` : `<span>${esc((pf.nombre || '?').trim().charAt(0).toUpperCase() || '?')}</span>`}</div>
     <div class="pf-datos"><strong>${esc(pf.nombre || 'Tu nombre')}</strong>
-      <small>${[pf.categoria, pf.gimnasio].filter(Boolean).map(esc).join(' · ') || 'Toca Editar para completar tu perfil'}</small>
+      <small>${[pf.categoria, pf.gimnasio].filter(Boolean).map(esc).join(' · ') || 'Completa tu perfil'}</small>
       ${pf.bio ? `<p>${esc(pf.bio)}</p>` : ''}</div>`;
   pintarSocial();
   // plan de suscripcion (solo cuando los limites aplican a esta cuenta)
