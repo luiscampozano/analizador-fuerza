@@ -29,3 +29,36 @@ ok(s===200&&r.usuario.nombre==='Luis bCampozano'&&r.usuario.email==='luis@x.com'
 [s,r]=await call(null,'POST','auth/apple',{identityToken:'basura'}); ok(s===401,'rechaza basura');
 [s,r]=await call(T,'GET','mod/uso'); ok(s===404,'una cuenta de Apple no es administradora aunque su correo esté en la lista');
 [s,r]=await call(null,'POST','auth/correo',{modo:'registro',email:'luis@x.com',clave:'fuerza2026',nombre:'X'}); ok(s===409&&/Apple/.test(r.error),'registro con correo de una cuenta de Apple: avisa usar Apple');
+// v2.50.0 revocar el permiso de Apple al borrar la cuenta (guía 5.1.1(v)): Apple simulado
+{
+  const ec=await C.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+  const pem='-----BEGIN PRIVATE KEY-----\n'+Buffer.from(await C.subtle.exportKey('pkcs8',ec.privateKey)).toString('base64')+'\n-----END PRIVATE KEY-----';
+  const llamadas=[]; const fetchReal=globalThis.fetch;
+  globalThis.fetch=async(url,o={})=>{const u=String(url); if(!u.startsWith('https://appleid.apple.com/auth/')) return fetchReal(url,o);
+    const f=Object.fromEntries(new URLSearchParams(String(o.body))); llamadas.push({u,f});
+    if(u.endsWith('/token')) return new Response(JSON.stringify(f.code==='malo'?{error:'invalid_grant'}:{refresh_token:'rt_'+f.code,access_token:'at'}),{status:f.code==='malo'?400:200});
+    return new Response('',{status:200});};
+  const base2={...base,sub:'009999.siwa'};
+  let [s1,r1]=await call(null,'POST','auth/apple',{identityToken:await firmar(base2),authorizationCode:'c1'});
+  ok(s1===200&&llamadas.length===0,'sin la llave en el servidor: entra igual y no llama a Apple');
+  env.APPLE_SIWA_CLAVE=pem; env.APPLE_SIWA_KEY_ID='KEY1234567';
+  [s1,r1]=await call(null,'POST','auth/apple',{identityToken:await firmar(base2),authorizationCode:'c2'});
+  const t=llamadas.find(x=>x.u.endsWith('/token'));
+  ok(s1===200&&t&&t.f.grant_type==='authorization_code'&&t.f.code==='c2'&&t.f.client_id==='com.fuerzapro.app','con la llave: cambia el código por un refresh_token');
+  const [h,p,sig]=t.f.client_secret.split('.'); const cab=JSON.parse(Buffer.from(h,'base64url')),cu=JSON.parse(Buffer.from(p,'base64url'));
+  const valida=await C.subtle.verify({name:'ECDSA',hash:'SHA-256'},ec.publicKey,Buffer.from(sig,'base64url'),new TextEncoder().encode(h+'.'+p));
+  ok(valida&&cab.alg==='ES256'&&cab.kid==='KEY1234567'&&cu.iss==='N742H5M572'&&cu.aud==='https://appleid.apple.com'&&cu.sub==='com.fuerzapro.app'&&cu.exp>cu.iat,'client_secret firmado ES256 con los datos que pide Apple');
+  ok(db.prepare("SELECT refresh FROM apple_tokens WHERE usuario='a_009999.siwa'").get()?.refresh==='rt_c2','guarda el refresh_token');
+  const [s3]=await call(null,'POST','auth/apple',{identityToken:await firmar(base2),authorizationCode:'malo'});
+  ok(s3===200&&db.prepare("SELECT refresh FROM apple_tokens WHERE usuario='a_009999.siwa'").get()?.refresh==='rt_c2','si Apple rechaza el código: entra igual y conserva el anterior');
+  llamadas.length=0;
+  const [sb]=await call(r1.token,'DELETE','cuenta');
+  const rv=llamadas.find(x=>x.u.endsWith('/revoke'));
+  ok(sb===200&&rv&&rv.f.token==='rt_c2'&&rv.f.token_type_hint==='refresh_token','al borrar la cuenta revoca el permiso en Apple');
+  ok(!db.prepare("SELECT 1 FROM apple_tokens WHERE usuario='a_009999.siwa'").get()&&!db.prepare("SELECT 1 FROM usuarios WHERE id='a_009999.siwa'").get(),'borra el token y la cuenta');
+  globalThis.fetch=async(url,o)=>String(url).startsWith('https://appleid.apple.com/auth/')?(()=>{throw new Error('sin red');})():fetchReal(url,o);
+  const [s4,r4]=await call(null,'POST','auth/apple',{identityToken:await firmar({...base,sub:'00777.x'}),authorizationCode:'c9'});
+  const [s5]=await call(r4.token,'DELETE','cuenta');
+  ok(s4===200&&s5===200,'sin conexión con Apple: igual entra y borra la cuenta');
+  globalThis.fetch=fetchReal; delete env.APPLE_SIWA_CLAVE; delete env.APPLE_SIWA_KEY_ID;
+}

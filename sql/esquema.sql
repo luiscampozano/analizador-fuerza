@@ -50,3 +50,5 @@ CREATE INDEX IF NOT EXISTS opiniones_creado ON opiniones(creado);
 CREATE INDEX IF NOT EXISTS opiniones_usuario ON opiniones(usuario, creado);
 -- v2.40.0: conteo anonimo de uso. Una fila por telefono y dia: anon = identificador al azar del telefono (no es la cuenta).
 CREATE TABLE IF NOT EXISTS visitas (dia TEXT NOT NULL, anon TEXT NOT NULL, plataforma TEXT, cuenta INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (dia, anon));
+-- v2.50.0: permiso de «Iniciar sesión con Apple» (refresh_token) para revocarlo en Apple al borrar la cuenta (guía 5.1.1(v)).
+CREATE TABLE IF NOT EXISTS apple_tokens (usuario TEXT PRIMARY KEY, refresh TEXT NOT NULL, actualizado INTEGER NOT NULL);

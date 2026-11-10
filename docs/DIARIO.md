@@ -6,6 +6,19 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-10
+
+### 08:45 · v2.50.0 — Borrar una cuenta de Apple también revoca el permiso en Apple (guía 5.1.1(v))
+- **Pidió:** seguir con la hoja de ruta de iPhone; la auditoría de Gemini marcó esto como crítico (ya estaba pendiente).
+- **Se hizo:** al entrar con Apple, la app manda el código de autorización; el servidor lo cambia por un refresh_token
+  (firmado con la llave de Sign in with Apple) y lo guarda en la tabla nueva `apple_tokens`. Al borrar la cuenta se
+  llama a appleid.apple.com/auth/revoke. Si Apple falla o no hay llave, igual se entra y se borra (solo queda en el registro).
+  15 pruebas con Apple simulado. No necesita nueva compilación en Codemagic.
+- **Luis:** creó la llave de Sign in with Apple; poner `APPLE_SIWA_CLAVE` y `APPLE_SIWA_KEY_ID` (Secret) en Cloudflare y
+  ejecutar en D1 el CREATE TABLE de `apple_tokens` (sql/esquema.sql).
+- **También ese día:** las 6 suscripciones ya tienen su captura de revisión (planes_1284x2778.png). Compra de prueba en
+  TestFlight completa (Plan Pro). Auditoría de Gemini revisada: solo ERR-01 era urgente.
+
 ## 2026-11-09
 
 ### 21:58 · (sin versión nueva) — Republicar para aplicar PRUEBA_EMAILS

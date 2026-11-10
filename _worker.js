@@ -229,8 +229,53 @@ async function entrarApple(req, env) {
       .bind(await sha256(token), uid, ahora, ahora + SESION_DIAS * DIA),
     env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1 AND expira < ?2').bind(uid, ahora),
   ]);
+  if (b.authorizationCode) await guardarRefreshApple(env, uid, b.authorizationCode); // v2.50.0 para poder revocar al borrar la cuenta
   const u = await env.DB.prepare('SELECT * FROM usuarios WHERE id = ?1').bind(uid).first();
   return json({ token, usuario: publico(u) });
+}
+// v2.50.0 Apple exige (guía 5.1.1(v)) que al borrar una cuenta creada con «Iniciar sesión con Apple» se revoque el
+// permiso en Apple. Al entrar, el código de autorización se cambia por un refresh_token (tabla apple_tokens) y al borrar
+// la cuenta se revoca. Llave de «Sign in with Apple» en Cloudflare: APPLE_SIWA_CLAVE (.p8) y APPLE_SIWA_KEY_ID.
+// Si algo falla nunca impide entrar ni borrar la cuenta (solo queda en el registro).
+const siwaListo = (env) => !!(env.APPLE_SIWA_CLAVE && env.APPLE_SIWA_KEY_ID);
+async function secretoSiwa(env) {
+  const ahora = Math.floor(Date.now() / 1000);
+  const cab = aB64url(JSON.stringify({ alg: 'ES256', kid: env.APPLE_SIWA_KEY_ID }));
+  const cuerpo = aB64url(JSON.stringify({ iss: env.APPLE_TEAM_ID || 'N742H5M572', iat: ahora, exp: ahora + 300, aud: APPLE_EMISOR, sub: env.APPLE_APP_ID || APPLE_APP }));
+  const der = Uint8Array.from(atob(String(env.APPLE_SIWA_CLAVE).replace(/-----[^-]+-----/g, '').replace(/\\n|\s+/g, '')), (c) => c.charCodeAt(0));
+  const llave = await crypto.subtle.importKey('pkcs8', der, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const firma = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, llave, new TextEncoder().encode(cab + '.' + cuerpo));
+  return cab + '.' + cuerpo + '.' + aB64url(firma);
+}
+const formAppleId = async (env, extra) => new URLSearchParams({ client_id: env.APPLE_APP_ID || APPLE_APP, client_secret: await secretoSiwa(env), ...extra });
+let appleTokensOk = false;
+async function tablaAppleTokens(env) {
+  if (appleTokensOk) return true;
+  try { await env.DB.prepare('SELECT usuario FROM apple_tokens LIMIT 1').first(); appleTokensOk = true; } catch (e) { appleTokensOk = false; }
+  return appleTokensOk;
+}
+async function guardarRefreshApple(env, uid, codigo) {
+  if (!siwaListo(env) || !(await tablaAppleTokens(env))) return;
+  try {
+    const r = await fetch(APPLE_EMISOR + '/auth/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: await formAppleId(env, { code: String(codigo).slice(0, 2000), grant_type: 'authorization_code' }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.refresh_token) { console.error('apple token', r.status, d.error || ''); return; }
+    await env.DB.prepare('INSERT INTO apple_tokens (usuario, refresh, actualizado) VALUES (?1, ?2, ?3) ON CONFLICT(usuario) DO UPDATE SET refresh = excluded.refresh, actualizado = excluded.actualizado')
+      .bind(uid, d.refresh_token, Date.now()).run();
+  } catch (e) { console.error('apple token', e && e.message); }
+}
+async function revocarApple(env, uid) {
+  if (!uid.startsWith('a_') || !(await tablaAppleTokens(env))) return [];
+  const t = await env.DB.prepare('SELECT refresh FROM apple_tokens WHERE usuario = ?1').bind(uid).first();
+  if (t && siwaListo(env)) {
+    try {
+      const r = await fetch(APPLE_EMISOR + '/auth/revoke', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: await formAppleId(env, { token: t.refresh, token_type_hint: 'refresh_token' }) });
+      if (!r.ok) console.error('apple revoke', r.status);
+    } catch (e) { console.error('apple revoke', e && e.message); }
+  }
+  return [env.DB.prepare('DELETE FROM apple_tokens WHERE usuario = ?1').bind(uid)];
 }
 
 // ------------------------------------------------------------------ correo y contrasena
@@ -374,7 +419,9 @@ async function sincronizar(req, env, u) {
 
 async function borrarCuenta(env, u) {
   const ids = await idsPublicaciones(env, u.id);
+  const apple = await revocarApple(env, u.id); // v2.50.0 cuentas de Apple: revocar el permiso en Apple
   await env.DB.batch([
+    ...apple,
     ...borrarComunidad(env, u.id),
     env.DB.prepare('DELETE FROM items WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM fallos WHERE usuario = ?1').bind(u.id),
