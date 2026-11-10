@@ -8,6 +8,15 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-10
 
+### 17:50 · v2.50.2 — Arreglos de la auditoría de Gemini (5 hallazgos, todos comprobados)
+- **Pidió:** revisar el informe de Gemini (v2.50.1) y arreglar lo que fuera real.
+- **Se hizo:** FP-02 términos (sección 5) y borrar-cuenta ahora explican cobro, renovación y cancelación en iPhone
+  (Apple) + EULA estándar de Apple; FP-01 el detalle de un reporte de fallo ya no da error 500 si los datos están dañados
+  y los datos de más de 20 000 caracteres se guardan como aviso válido; FP-03 vendor/mediabunny.min.mjs en BASE;
+  FP-04 visitas: Safari en iPhone cuenta como web; FP-05 el cupo diario de IA cambia a medianoche de Ecuador.
+  Prueba nueva en fallos_test.mjs.
+- **Contexto:** la app 1.0 y las 6 suscripciones se enviaron a revisión de Apple hoy (12:30).
+
 ### 11:55 · v2.50.1 — Texto corto en la cabecera de Perfil + capturas de la App Store
 - **Se hizo:** «Toca Editar para completar tu perfil» → «Completa tu perfil» (en iPhone quedaba una palabra por renglón).
   Ficha App Store: privacidad publicada, clasificación por edad 16+ (coincide con términos), 5 capturas 1320×2868 con

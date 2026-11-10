@@ -863,7 +863,8 @@ async function moderacion(req, env, u, r, m) {
   if (r.startsWith('fallos/') && m === 'GET') {
     const f = await DB.prepare('SELECT * FROM fallos WHERE id = ?1').bind(r.slice(7)).first();
     if (!f) throw fallo('No encontrado.', 404);
-    return json({ fallo: { ...f, datos: JSON.parse(f.datos || '{}'), excluidas: JSON.parse(f.excluidas || '[]') } });
+    const leer = (x, d) => { try { return JSON.parse(x || d); } catch (e) { return JSON.parse(d); } }; // v2.50.2 datos recortados no rompen el detalle
+    return json({ fallo: { ...f, datos: leer(f.datos, '{}'), excluidas: leer(f.excluidas, '[]') } });
   }
   if (r.startsWith('fallos/') && m === 'POST') {
     const { estado } = await leerJSON(req);
@@ -1003,7 +1004,7 @@ async function reportarFallo(req, env, u) {
   await env.DB.prepare(`INSERT INTO fallos (id, usuario, creado, ejercicio, nombre, reps_app, reps_real, excluidas, comentario, version, datos, pose, estado)
     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, 'pendiente')`).bind(
     id, u.id, Date.now(), txt(b.ejercicio, 80), txt(b.nombre, 120), ent(b.repsApp), ent(b.repsReal), JSON.stringify(excl),
-    txt(b.comentario, 500), txt(b.version, 20), txt(JSON.stringify(b.datos || {}), 20000), b.pose || null).run();
+    txt(b.comentario, 500), txt(b.version, 20), (() => { const j = JSON.stringify(b.datos || {}); return j.length <= 20000 ? j : JSON.stringify({ recortado: true, largo: j.length }); })(), b.pose || null).run();
   return json({ ok: true, id });
 }
 
@@ -1122,7 +1123,7 @@ const texto_ = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u0
 const numIA = (x, max) => { const v = +String(x).replace(',', '.'); return Number.isFinite(v) && v >= 0 ? Math.min(max, Math.round(v * 10) / 10) : 0; };
 async function cupoIA(env, u, tipo, queHace) {
   if (!env.ANTHROPIC_API_KEY) throw fallo('Esta función con IA estará disponible muy pronto.', 503);
-  const hoy = new Date().toISOString().slice(0, 10), dia = tipo ? `${hoy}:${tipo}` : hoy;
+  const hoy = diaEc(Date.now()), dia = tipo ? `${hoy}:${tipo}` : hoy; // v2.50.2 el cupo diario cambia a medianoche de Ecuador
   const tot = await env.DB.prepare("SELECT coalesce(sum(n), 0) AS n FROM uso_ia WHERE substr(dia, 1, 10) = ?1").bind(hoy).first();
   if (tot && tot.n >= LIMITE_IA_TOTAL) throw fallo('Las funciones con IA llegaron a su límite de hoy. Inténtalo mañana.', 429);
   const stat = () => env.DB.prepare('INSERT INTO uso_ia (usuario, dia, n) VALUES (?1, ?2, 1) ON CONFLICT(usuario, dia) DO UPDATE SET n = n + 1').bind(u.id, dia).run();

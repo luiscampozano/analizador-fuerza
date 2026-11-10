@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.50.1
+**Actualizado:** 29 de octubre de 2026 · **Versión en producción:** v2.50.2
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -329,6 +329,7 @@ bloqueos, reportes, fallos.
 | v2.49.2 | iPhone: pestañas de «Mis marcas» se deslizan (ya no se salen del panel), cabecera de Perfil más ancha, franja fija bajo la barra de estado. |
 | v2.50.0 | Borrar cuenta de Apple revoca el permiso en Apple (guía 5.1.1(v)): refresh_token en tabla apple_tokens; secretos APPLE_SIWA_CLAVE y APPLE_SIWA_KEY_ID. |
 | v2.50.1 | Perfil: texto corto «Completa tu perfil» (en iPhone salía una palabra por renglón). |
+| v2.50.2 | Auditoría Gemini (5 hallazgos reales): términos y borrar cuenta mencionan Apple; detalle de fallos no se rompe con datos recortados; mediabunny en BASE; visitas iOS solo app; cupo IA diario a medianoche de Ecuador. |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

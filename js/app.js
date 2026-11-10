@@ -25,7 +25,7 @@ import * as tour from './tour.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 
-const VERSION = '2.50.1';
+const VERSION = '2.50.2';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -1371,7 +1371,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
     if (localStorage.getItem('af_visita') !== hoy) {
       let anon = localStorage.getItem('af_anon');
       if (!anon) { anon = crypto.randomUUID(); localStorage.setItem('af_anon', anon); }
-      const plataforma = document.referrer.startsWith('android-app://') || 'getDigitalGoodsService' in window ? 'play' : /iPhone|iPad|iPod/.test(navigator.userAgent) ? 'ios' : 'web';
+      const plataforma = nube.esIOS() ? 'ios' : document.referrer.startsWith('android-app://') || 'getDigitalGoodsService' in window ? 'play' : 'web'; // v2.50.2 Safari en iPhone cuenta como web
       fetch('/api/visita', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ anon, plataforma, cuenta: nube.conectado() }) })
         .then((r) => { if (r.ok) try { localStorage.setItem('af_visita', hoy); } catch (e) { /* nada */ } }).catch(() => {});
     }
