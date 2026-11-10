@@ -12,6 +12,8 @@
 //   /api/comunidad/*  perfiles publicos, publicaciones, seguir, likes, comentarios, bloquear, reportar
 //   /api/mod/*        moderacion (solo correos en ADMIN_EMAILS)
 //   GET /api/foto/:usuario                            -> foto del perfil publico (sin sesion)
+//   POST   /api/plan/compra        {token}            -> plan (compra con Google Play)
+//   POST   /api/plan/compra-apple  {transactionId}    -> plan (compra con Apple en iPhone, v2.49.0)
 
 const DIA = 86400000;
 const SESION_DIAS = 180;
@@ -76,6 +78,7 @@ async function api(req, env, url) {
   if (ruta === '/api/plan' && m === 'GET') return json(await estadoPlan(env, u));
   if (ruta === '/api/plan/usar' && m === 'POST') return usarPlan(req, env, u);
   if (ruta === '/api/plan/compra' && m === 'POST') return compraPlay(req, env, u);
+  if (ruta === '/api/plan/compra-apple' && m === 'POST') return compraApple(req, env, u);
   if (ruta === '/api/auth/clave' && m === 'POST') return cambiarClave(req, env, u);
   if (ruta === '/api/sync' && m === 'POST') return sincronizar(req, env, u);
   if (ruta === '/api/cuenta' && m === 'DELETE') return borrarCuenta(env, u);
@@ -377,7 +380,7 @@ async function borrarCuenta(env, u) {
     env.DB.prepare('DELETE FROM fallos WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM uso_ia WHERE usuario = ?1').bind(u.id),
     ...(await tablasPlan(env) ? [env.DB.prepare('DELETE FROM uso_plan WHERE usuario = ?1').bind(u.id), env.DB.prepare('DELETE FROM planes WHERE usuario = ?1').bind(u.id)] : []),
-    ...(await tablaCompras(env) ? [env.DB.prepare('DELETE FROM compras WHERE usuario = ?1').bind(u.id)] : []), // la suscripcion de Play queda libre para otra cuenta
+    ...(await tablaCompras(env) ? [env.DB.prepare('DELETE FROM compras WHERE usuario = ?1').bind(u.id)] : []), // la suscripcion de Play o Apple queda libre para otra cuenta
     ...(await tablaOpiniones(env) ? [env.DB.prepare('DELETE FROM opiniones WHERE usuario = ?1').bind(u.id)] : []),
     env.DB.prepare('UPDATE alimentos SET usuario = NULL WHERE usuario = ?1').bind(u.id), // el producto queda para todos, sin autor
     env.DB.prepare('DELETE FROM sesiones WHERE usuario = ?1').bind(u.id),
@@ -1133,9 +1136,10 @@ async function planDe(env, u) {
   const modo = await modoLimites(env);
   if (modo === 'apagado') return { modo, aplica: false, plan: 'gratis' };
   let p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(u.id).first();
-  // plan de Google Play vencido: ¿se renovo? (v2.37.0)
-  if (p && p.origen === 'play' && p.hasta != null && p.hasta <= Date.now()) {
+  // plan de Google Play (v2.37.0) o de Apple (v2.49.0) vencido: ¿se renovo?
+  if (p && (p.origen === 'play' || p.origen === 'apple') && p.hasta != null && p.hasta <= Date.now()) {
     try { if (await renovarPlay(env, u.id)) p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(u.id).first(); } catch (e) { /* sin tabla compras aun */ }
+    try { if (await renovarApple(env, u.id)) p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(u.id).first(); } catch (e) { /* sin tabla compras aun */ }
   }
   const vigente = p && PLANES[p.plan] && (p.hasta == null || p.hasta > Date.now());
   return { modo, aplica: modo === 'activo' || (modo === 'prueba' && esAdmin(env, u)), plan: vigente ? p.plan : 'gratis', hasta: vigente ? p.hasta : null };
@@ -1206,7 +1210,7 @@ async function consultarPlay(env, token) {
   return { producto: li.productId, plan: PRODUCTOS[li.productId], estado: s.subscriptionState || '', hasta: Date.parse(li.expiryTime) || 0,
     renueva: li.autoRenewingPlan && li.autoRenewingPlan.autoRenewEnabled ? 1 : 0, confirmada: s.acknowledgementState === 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED', vinculado: s.linkedPurchaseToken || null };
 }
-const VALIDOS = new Set(['SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD', 'SUBSCRIPTION_STATE_CANCELED']); // cancelada = vale hasta vencer
+const VALIDOS = new Set(['SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD', 'SUBSCRIPTION_STATE_CANCELED', 'APPLE_ACTIVA', 'APPLE_GRACIA']); // cancelada = vale hasta vencer
 let comprasOk = null;
 async function tablaCompras(env) {
   if (comprasOk) return true;
@@ -1219,9 +1223,9 @@ async function confirmarPlay(env, producto, token) {
     { method: 'POST', headers: { authorization: 'Bearer ' + await accesoPlay(env), 'content-type': 'application/json' }, body: '{}' });
   if (!r.ok) console.error('play ack', r.status, (await r.text()).slice(0, 200));
 }
-// guarda la compra y pone el plan (sin bajar un regalo mejor que siga vigente)
+// guarda la compra y pone el plan (sin bajar un regalo mejor que siga vigente). Token «apple:…» = compra de Apple
 async function aplicarCompra(env, uid, token, c) {
-  const ahora = Date.now();
+  const ahora = Date.now(), origen = String(token).startsWith('apple:') ? 'apple' : 'play';
   await env.DB.prepare(`INSERT INTO compras (token, usuario, producto, plan, estado, hasta, renueva, creado, actualizado) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)
     ON CONFLICT(token) DO UPDATE SET producto = excluded.producto, plan = excluded.plan, estado = excluded.estado, hasta = excluded.hasta, renueva = excluded.renueva, actualizado = excluded.actualizado`)
     .bind(token, uid, c.producto, c.plan, c.estado, c.hasta, c.renueva, ahora).run();
@@ -1229,10 +1233,10 @@ async function aplicarCompra(env, uid, token, c) {
   if (!daDerecho(c)) return;
   const p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(uid).first();
   const vigente = p && PLANES[p.plan] && (p.hasta == null || p.hasta > ahora);
-  if (vigente && p.origen !== 'play' && (RANGO[p.plan] > RANGO[c.plan] || (RANGO[p.plan] === RANGO[c.plan] && (p.hasta == null || p.hasta >= c.hasta)))) return;
-  await env.DB.prepare(`INSERT INTO planes (usuario, plan, hasta, origen, nota, actualizado) VALUES (?1, ?2, ?3, 'play', ?4, ?5)
+  if (vigente && p.origen !== 'play' && p.origen !== 'apple' && (RANGO[p.plan] > RANGO[c.plan] || (RANGO[p.plan] === RANGO[c.plan] && (p.hasta == null || p.hasta >= c.hasta)))) return;
+  await env.DB.prepare(`INSERT INTO planes (usuario, plan, hasta, origen, nota, actualizado) VALUES (?1, ?2, ?3, ?6, ?4, ?5)
     ON CONFLICT(usuario) DO UPDATE SET plan = excluded.plan, hasta = excluded.hasta, origen = excluded.origen, nota = excluded.nota, actualizado = excluded.actualizado`)
-    .bind(uid, c.plan, c.hasta, c.producto, ahora).run();
+    .bind(uid, c.plan, c.hasta, c.producto, ahora, origen).run();
 }
 // POST /api/plan/compra {token} (compra nueva o restaurar compras): verifica, confirma y activa
 async function compraPlay(req, env, u) {
@@ -1261,6 +1265,109 @@ async function renovarPlay(env, uid) {
       await aplicarCompra(env, uid, token, c);
       if (daDerecho(c)) renovo = true;
     } catch (e) { console.error('renovar play', e && e.message); }
+  }
+  return renovo;
+}
+// ================================================================== COBRO CON APPLE (v2.49.0)
+// La app de iPhone compra con StoreKit (plugin @capgo/native-purchases) y manda aqui el transactionId. El servidor lo
+// consulta en la App Store Server API con un JWT ES256 firmado con la llave de compras (.p8) de los secretos
+// APPLE_IAP_CLAVE, APPLE_IAP_KEY_ID y APPLE_ISSUER_ID. Primero produccion; si Apple no la conoce (404 / 4040010),
+// sandbox (compras de TestFlight). Los datos firmados (JWS) llegan directo de Apple por TLS con nuestra llave: se leen sin
+// verificar la cadena x5c. La compra se guarda como «apple:» + originalTransactionId (igual en renovaciones y cambios
+// de plan) y pertenece a una sola cuenta. appAccountToken = UUID derivado de la cuenta (cuentaApple), lo pone la app.
+const APPLE_API = ['https://api.storekit.itunes.apple.com', 'https://api.storekit-sandbox.itunes.apple.com'];
+const APPLE_ESTADOS = { 1: 'APPLE_ACTIVA', 2: 'APPLE_VENCIDA', 3: 'APPLE_REINTENTO', 4: 'APPLE_GRACIA', 5: 'APPLE_REVOCADA' };
+let jwtIAP = null, jwtIAPHasta = 0;
+const appleListo = (env) => !!(env.APPLE_IAP_CLAVE && env.APPLE_IAP_KEY_ID && env.APPLE_ISSUER_ID);
+async function accesoApple(env) {
+  if (jwtIAP && Date.now() < jwtIAPHasta) return jwtIAP;
+  if (!appleListo(env)) throw fallo('Los pagos con Apple todavía no están configurados en el servidor.', 503);
+  const ahora = Math.floor(Date.now() / 1000);
+  const cab = aB64url(JSON.stringify({ alg: 'ES256', kid: env.APPLE_IAP_KEY_ID, typ: 'JWT' }));
+  const cuerpo = aB64url(JSON.stringify({ iss: env.APPLE_ISSUER_ID, iat: ahora, exp: ahora + 55 * 60, aud: 'appstoreconnect-v1', bid: APPLE_APP }));
+  let llave;
+  try {
+    const der = Uint8Array.from(atob(String(env.APPLE_IAP_CLAVE).replace(/-----[^-]+-----/g, '').replace(/\\n|\s+/g, '')), (c) => c.charCodeAt(0));
+    llave = await crypto.subtle.importKey('pkcs8', der, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  } catch (e) { console.error('apple iap clave', e && e.message); throw fallo('Los pagos con Apple no están bien configurados en el servidor.', 503); }
+  const firma = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, llave, new TextEncoder().encode(cab + '.' + cuerpo)); // firma r||s (formato JWS)
+  jwtIAP = cab + '.' + cuerpo + '.' + aB64url(firma); jwtIAPHasta = Date.now() + 50 * 60000;
+  return jwtIAP;
+}
+// GET a la App Store Server API: produccion y, si no existe ahi, sandbox. Devuelve { datos, base } o null (no existe)
+async function pedirApple(env, ruta, base) {
+  for (const b of base ? [base] : APPLE_API) {
+    const r = await fetch(b + ruta, { headers: { authorization: 'Bearer ' + await accesoApple(env) } });
+    if (r.ok) return { datos: await r.json(), base: b };
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 404 || d.errorCode === 4040010 || d.errorCode === 4040005 || d.errorCode === 4000006) continue; // no esta en este entorno
+    // v2.49.0 Apple bloquea la API de producción (401) hasta la primera versión publicada: ahí se sigue con sandbox
+    // (App Review y TestFlight compran en sandbox). Si sandbox también da 401, es un problema de configuración.
+    if (r.status === 401) { jwtIAP = null; if (!base && b === APPLE_API[0]) continue; }
+    console.error('apple api', r.status, JSON.stringify(d).slice(0, 200));
+    throw fallo('No pude verificar la compra con Apple. Inténtalo en un momento.', 502);
+  }
+  return null;
+}
+const leerJWS = (jws) => { try { return JSON.parse(new TextDecoder().decode(b64url(String(jws).split('.')[1]))); } catch (e) { return null; } };
+// UUID fijo por cuenta (los 16 primeros bytes de SHA-256('fuerzapro:' + id), version 4 / variante RFC 4122). js/plan.js lo calcula igual
+export async function cuentaApple(uid) {
+  const b = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('fuerzapro:' + uid))).slice(0, 16);
+  b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+  const h = hex(b);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+// estado actual de la suscripcion (por originalTransactionId): { producto, plan, estado, hasta, renueva, cuenta }
+async function estadoApple(env, orig, base) {
+  const r = await pedirApple(env, `/inApps/v1/subscriptions/${encodeURIComponent(orig)}`, base);
+  if (!r) return null;
+  for (const g of r.datos.data || []) for (const x of g.lastTransactions || []) {
+    if (String(x.originalTransactionId) !== String(orig)) continue;
+    const t = leerJWS(x.signedTransactionInfo), ren = x.signedRenewalInfo ? leerJWS(x.signedRenewalInfo) || {} : {};
+    if (!t || t.bundleId !== APPLE_APP || !PRODUCTOS[t.productId]) return null;
+    const estado = t.revocationDate ? 'APPLE_REVOCADA' : APPLE_ESTADOS[x.status] || 'APPLE_DESCONOCIDO';
+    const hasta = estado === 'APPLE_GRACIA' ? Math.max(+t.expiresDate || 0, +ren.gracePeriodExpiresDate || 0) : +t.expiresDate || 0;
+    return { producto: t.productId, plan: PRODUCTOS[t.productId], estado, hasta, renueva: ren.autoRenewStatus === 1 ? 1 : 0, cuenta: t.appAccountToken || null, base: r.base };
+  }
+  return null;
+}
+// POST /api/plan/compra-apple {transactionId} (compra nueva o restaurar compras): verifica con Apple y activa
+async function compraApple(req, env, u) {
+  const id = String((await leerJSON(req)).transactionId || '');
+  if (!appleListo(env) || !(await tablaCompras(env))) throw fallo('Los pagos con Apple todavía no están listos en el servidor.', 503);
+  if (!/^\d{1,30}$/.test(id)) throw fallo('Compra no válida.');
+  const r = await pedirApple(env, `/inApps/v1/transactions/${id}`);
+  const t = r && leerJWS(r.datos.signedTransactionInfo);
+  if (!t || !t.originalTransactionId) throw fallo('Apple no reconoce esta compra.', 400);
+  if (t.bundleId !== APPLE_APP) throw fallo('Esta compra es de otra aplicación.', 400);
+  if (!PRODUCTOS[t.productId]) throw fallo('Esta compra no es un plan de FuerzaPro.', 400);
+  const mia = await cuentaApple(u.id);
+  if (t.appAccountToken && String(t.appAccountToken).toLowerCase() !== mia) throw fallo('Esta suscripción de Apple se compró con otra cuenta de FuerzaPro. Inicia sesión con esa cuenta.', 409);
+  const token = 'apple:' + t.originalTransactionId;
+  const dueno = await env.DB.prepare('SELECT usuario FROM compras WHERE token = ?1').bind(token).first();
+  if (dueno && dueno.usuario !== u.id) throw fallo('Esta suscripción de Apple ya está asociada a otra cuenta de FuerzaPro. Inicia sesión con esa cuenta.', 409);
+  if (t.revocationDate) throw fallo('Apple anuló o reembolsó esta compra.', 400);
+  // el estado al dia (renovaciones, cambio de plan, periodo de gracia); si Apple no lo da, vale la transaccion misma
+  const c = (await estadoApple(env, t.originalTransactionId, r.base).catch(() => null))
+    || { producto: t.productId, plan: PRODUCTOS[t.productId], estado: +t.expiresDate > Date.now() ? 'APPLE_ACTIVA' : 'APPLE_VENCIDA', hasta: +t.expiresDate || 0, renueva: 0, cuenta: t.appAccountToken || null };
+  if (c.estado === 'APPLE_REVOCADA') throw fallo('Apple anuló o reembolsó esta compra.', 400);
+  if (!daDerecho(c)) throw fallo('Esta suscripción de Apple ya venció.', 400);
+  await aplicarCompra(env, u.id, token, c);
+  return json({ ...(await estadoPlan(env, u)), ok: true, comprado: c.plan, vence: c.hasta, estadoApple: c.estado });
+}
+// al vencer un plan pagado con Apple: pregunta a Apple si se renovo (como mucho una vez cada 6 h por compra)
+async function renovarApple(env, uid) {
+  if (!appleListo(env)) return false;
+  const ahora = Date.now(), lista = (await env.DB.prepare(`SELECT token FROM compras WHERE usuario = ?1 AND token LIKE 'apple:%' AND estado IN ('APPLE_ACTIVA', 'APPLE_GRACIA', 'APPLE_REINTENTO')
+    AND hasta < ?2 AND hasta > ?3 AND actualizado < ?4 ORDER BY hasta DESC LIMIT 2`).bind(uid, ahora, ahora - 400 * DIA, ahora - 6 * 3600000).all()).results || [];
+  let renovo = false;
+  for (const { token } of lista) {
+    try {
+      const c = await estadoApple(env, token.slice(6));
+      if (!c) { await env.DB.prepare("UPDATE compras SET estado = 'INVALIDA', actualizado = ?2 WHERE token = ?1").bind(token, ahora).run(); continue; }
+      await aplicarCompra(env, uid, token, c);
+      if (daDerecho(c)) renovo = true;
+    } catch (e) { console.error('renovar apple', e && e.message); }
   }
   return renovo;
 }

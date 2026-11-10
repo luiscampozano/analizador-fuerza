@@ -8,6 +8,37 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-09
 
+### 19:20 · v2.49.0 — iPhone: suscripciones con Apple (fase 3, parte 2) · rama `pagos-apple` (sin publicar)
+- **Pidió:** cobrar los planes en iPhone con Apple (StoreKit). En App Store Connect ya están los 6 productos (mismos ids
+  que Google, Pro mensual con 7 días gratis) y en Cloudflare los secretos APPLE_IAP_CLAVE, APPLE_IAP_KEY_ID y
+  APPLE_ISSUER_ID.
+- **Se hizo:**
+  - Plugin nativo `@capgo/native-purchases` 7.19.3 (rama para Capacitor 7) en movil/package.json. codemagic.yaml: el
+    plugin pide iOS 15, así que el primer «pod install» de `cap add ios` (plantilla iOS 14) puede fallar; se tolera y
+    `cap sync ios` lo repite ya con iOS 15.
+  - Servidor: `POST /api/plan/compra-apple {transactionId}`. JWT ES256 con la llave de compras (caché 50 min), consulta
+    la App Store Server API en producción y, si no existe ahí, en sandbox (TestFlight). Revisa app, producto, reembolso,
+    vencimiento y que la compra sea de esta cuenta (appAccountToken = UUID fijo derivado del id de la cuenta). Se guarda
+    en `compras` como «apple:»+originalTransactionId (una sola cuenta por suscripción) y el plan con origen «apple».
+    Al vencer, `planDe` pregunta a Apple (máximo cada 6 h): activa/gracia extiende, vencida/reembolsada no. Sin
+    secretos responde 503. Borrar la cuenta borra también estas compras. Sin tablas ni columnas nuevas.
+  - App (solo iPhone): precios del App Store en la moneda de cada persona, botones Mensual/Anual por plan, aviso de
+    prueba gratis de Pro, «Restaurar compras», «Administrar suscripción» (hoja de Apple), texto de renovación
+    automática y enlaces a Términos (EULA de Apple) y Privacidad (guía 3.1.2). Pide sesión antes de comprar; la compra
+    se cierra en el iPhone solo cuando el servidor la confirma. Restauración automática al abrir con sesión. Android y
+    web quedan iguales (comparado el HTML de la ventana antes/después).
+  - privacidad.html: Apple y Google cobran las suscripciones. Prueba nueva `compras_apple_test.mjs` (30 casos).
+- **Falta probar (solo en iPhone con TestFlight, cuenta sandbox):** compilar en Codemagic, comprar, restaurar,
+  cancelar/renovar (en sandbox un mes dura 5 minutos).
+- **Pendientes:** notificaciones de Apple (App Store Server Notifications v2) para reembolsos al instante; una cuenta
+  de correo borrada no puede pasar su suscripción de Apple a otra cuenta (la compra queda ligada a la cuenta vieja).
+
+- **Verificación (subagente independiente):** API de Apple, seguridad, plugin y guía 3.1.2 OK. Corregido: Apple da 401 en
+  producción hasta la primera versión publicada → ahora sigue con sandbox (si no, App Review no podía comprar). También:
+  la restauración en iPhone ya no frena el arranque e incluye el periodo de gracia. Publicado (merge a main).
+- **Pendiente:** después del lanzamiento, aceptar compras sandbox solo para la cuenta de revisión/admin (hoy cualquier
+  tester de TestFlight obtiene el plan gratis); notificaciones de Apple al servidor (reembolsos); evento transactionUpdated.
+
 ### 16:25 · v2.48.2 — Modo en vivo: «Avisar al perder» en 40 % por defecto
 - **Pidió:** dejar el aviso de pérdida de velocidad del modo en vivo en 40 % por defecto (antes 20 %).
 
