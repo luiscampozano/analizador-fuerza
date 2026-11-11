@@ -4,7 +4,14 @@
 // Campo: { k, nombre, unidad, def, min, max, paso, ayuda } o, en vez de unidad/min/max, opciones: [[valor, texto], ...]
 export const EQUIPO = {
   boxeo: [],
-  futbol: [],
+  // fútbol: reglas IFAB/FIFA (talla 5: 68–70 cm, 410–450 g, 0,6–1,1 atm); el pie se mide en el video, así que el
+  // calzado suma masa al golpe; la presión cambia el rebote y lo que dura el contacto
+  futbol: [
+    { k: 'masa', nombre: 'Peso del balón', unidad: 'g', def: 430, min: 250, max: 500, paso: 5, ayuda: 'Talla 5 (oficial): 410–450 g · talla 4: 350–390 g · talla 3: 300–320 g · fútbol sala: 400–440 g.' },
+    { k: 'diametro', nombre: 'Diámetro del balón', unidad: 'cm', def: 22, min: 17, max: 24, paso: 0.1, ayuda: 'Circunferencia ÷ 3,14. Talla 5: 68–70 cm (≈22) · talla 4: 63,5–66 (≈20,5) · talla 3: 58,5–61 (≈19) · fútbol sala: 62–64 (≈20).' },
+    { k: 'presion', nombre: 'Presión del balón', unidad: 'bar', def: 0.9, min: 0.4, max: 1.2, paso: 0.05, ayuda: 'Reglamento: 0,6–1,1 atm (≈ bar). Más inflado: rebota un poco más y el contacto dura menos (golpe más fuerte).' },
+    { k: 'calzado', nombre: 'Peso de cada zapato', unidad: 'g', def: 220, min: 0, max: 900, paso: 10, ayuda: 'Zapatos de fútbol de hoy: 160–250 g. 0 = descalzo. Un zapato más pesado empuja más al balón con el pie a la misma velocidad.' },
+  ],
   // diámetro = circunferencia/π con las medidas FIBA 2026 (talla 7: 750-770 mm; 6: 715-730 mm; 5: 685-700 mm). El
   // balón NBA (29,5 pulg. = 749 mm) es talla 7. El peso del balón no se pide: ningún número del básquet lo usa.
   basquet: [

@@ -473,6 +473,19 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       const pies = [[L, 'izq', R], [R, 'der', L]].map(([s, nom, o]) => ({ s, nom, ...velDe(s.pie, false, false, o.tob), vCad: velDe(s.pie).v }));
       const vtop = pct(pies.flatMap((q) => q.v), 0.98);
       const golpes = [];
+      // v2.51.0 equipo (js/equipo.js). Con los valores estándar dan EXACTAMENTE 0.028·peso, 0.43, 0.5 y 0.009 (como antes).
+      // calzado: el pie se mide en el video; lo que pese el zapato de más (o de menos) sobre 220 g se suma a la masa que
+      // golpea. presión: el rebote crece con la presión (Georgallas y Landry 2016: (1+e²)/(1-e²)² = A·P + B, balón de
+      // fútbol A = 2,76e-4 /Pa, B = 6,60), escalado al 0,5 de una patada real a 0,9 bar. contacto: un balón inflado es un
+      // resorte k = 2π·P·radio (Katz 2008), el contacto dura π·√(m/k): ∝ √(masa / (diámetro·presión)).
+      const est = (k, d) => eq[k] == null || eq[k] === d;
+      const eqEst = est('masa', 430) && est('diametro', 22) && est('presion', 0.9) && est('calzado', 220);
+      const mBal = est('masa', 430) ? 0.43 : eq.masa / 1000;
+      const mPie = est('calzado', 220) ? 0.028 * peso : 0.028 * peso + (eq.calzado - 220) / 1000;
+      const eBote = (bar) => { const C = 2.76e-4 * bar * 1e5 + 6.6; return Math.sqrt((2 * C + 1 - Math.sqrt(8 * C + 1)) / (2 * C)); };
+      const eBal = est('presion', 0.9) ? 0.5 : 0.5 * eBote(eq.presion) / eBote(0.9);
+      const tcBal = est('masa', 430) && est('diametro', 22) && est('presion', 0.9) ? 0.009
+        : 0.009 * Math.sqrt((mBal / 0.43) * (22 / (eq.diametro || 22)) * (0.9 / (eq.presion || 0.9)));
       for (const pg of pies) {
         const otro = pies.find((q) => q !== pg);
         const ok = (i) => { const p = P[i]; if (!p) return false;
@@ -480,14 +493,15 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
           if (!(p[pg.s.pie][1] > (p[23][1] + p[24][1]) / 2)) return false; // el pie por debajo de la cadera
           return !(ang(p[pg.s.cad], p[pg.s.rod], p[pg.s.tob]) < 120); }; // rodilla casi estirada al pegarle
         for (const i of picos(pg.v, Math.max(5, 0.55 * vtop), 1.0, ok)) {
-          const c = choque(pg.v[i], 0.028 * peso, 0.43, 0.5, 0.009); // balon 430 g; contacto ~9 ms
+          const c = choque(pg.v[i], mPie, mBal, eBal, tcBal); // estándar: balon 430 g; contacto ~9 ms
           golpes.push({ i, t: t[i], lado: pg.nom, k: pg.s.pie, v: pg.v[i], ...c, kmh: c.kmh });
         }
       }
       golpes.splice(0, golpes.length, ...unir(golpes, 1.0));
-      resumenGolpes(golpes, 'Patadas', 'Velocidad del balón', 0.43, 0.009, 'Pie más rápido');
+      resumenGolpes(golpes, 'Patadas', 'Velocidad del balón', mBal, tcBal, 'Pie más rápido');
       if (!golpes.length) aviso('No encontré patadas. Graba de lado, con el pie y el balón a la vista y el celular fijo.');
-      else bien('Velocidad del balón: con el pie a esa velocidad, un balón sale ~1,25 veces más rápido (choque pie-balón).');
+      else if (eqEst) bien('Velocidad del balón: con el pie a esa velocidad, un balón sale ~1,25 veces más rápido (choque pie-balón).');
+      else bien(`Velocidad del balón: con el pie a esa velocidad y tu equipo, el balón sale ~${coma((1 + eBal) * mPie / (mPie + mBal), 2)} veces más rápido (choque pie-balón).`);
       avisoFps();
       return fin('Patadas', 'por minuto', golpes.map((g) => g.t));
     }
