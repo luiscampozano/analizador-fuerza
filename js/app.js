@@ -24,8 +24,9 @@ import * as bienvenida from './bienvenida.js';
 import * as tour from './tour.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
+import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 
-const VERSION = '2.50.2';
+const VERSION = '2.51.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -116,7 +117,28 @@ function pintarElegido() {
     if (!abierto) { $('buscar-ej').focus({ preventScroll: true }); subirBuscador(); }
   };
   $('hint-ej').textContent = ej.cardio ? '🎥 ' + (CONSEJO[tipoActividad(ej)] || '') : ej.hint;
-  pintarModoDep();
+  pintarModoDep(); pintarEquipo();
+}
+// v2.51.0 equipo del deporte (guantes, raqueta, balón...): valores estándar que el usuario avanzado puede cambiar
+function leerEquipo(tipo) { try { const o = JSON.parse(leer('af_equipo_' + tipo) || 'null'); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } }
+function pintarEquipo() {
+  const g = $('g-equipo'); if (!g) return; // pagina vieja en cache
+  const tipo = ej.cardio ? tipoActividad(ej) : null;
+  g.style.display = tipo && tieneEquipo(tipo) ? '' : 'none';
+  if (!tipo || !tieneEquipo(tipo)) return;
+  const vals = valoresEquipo(tipo, leerEquipo(tipo)), caja = $('equipo-campos');
+  caja.innerHTML = EQUIPO[tipo].map((c) => `<div class="form-group"><label for="eq-${c.k}">${c.nombre}</label>${c.opciones
+    ? `<select id="eq-${c.k}" data-k="${c.k}">${c.opciones.map(([v, txt]) => `<option value="${v}"${v === vals[c.k] ? ' selected' : ''}>${txt}</option>`).join('')}</select>`
+    : `<div class="input-unit"><input type="number" id="eq-${c.k}" data-k="${c.k}" inputmode="decimal" step="${c.paso || 'any'}" min="${c.min}" max="${c.max}" value="${vals[c.k]}"><span>${c.unidad}</span></div>`}${c.ayuda ? `<small class="campo-ayuda">${c.ayuda}</small>` : ''}</div>`).join('');
+  caja.querySelectorAll('[data-k]').forEach((el) => { el.onchange = () => { // sin redibujar: no se pierde el foco del siguiente campo
+    const o = leerEquipo(tipo), c = EQUIPO[tipo].find((x) => x.k === el.dataset.k);
+    const v = c.opciones ? (typeof c.def === 'number' ? +el.value : el.value) : el.value === '' ? NaN : +el.value;
+    const ok = valoresEquipo(tipo, { [c.k]: v })[c.k] === v, ay = el.closest('.form-group').querySelector('.campo-ayuda');
+    if (ok) o[c.k] = v; else { delete o[c.k]; el.value = c.def; }
+    if (ay) ay.textContent = ok ? (c.ayuda || '') : el.dataset.k && Number.isNaN(v) ? `Escribe un número (con punto decimal): se usa el estándar. ${c.ayuda || ''}` : `Fuera de rango (${String(c.min).replace('.', ',')}–${String(c.max).replace('.', ',')} ${c.unidad}): se usa el estándar. ${c.ayuda || ''}`;
+    guardar('af_equipo_' + tipo, JSON.stringify(o));
+  }; });
+  $('equipo-reset').onclick = () => { guardar('af_equipo_' + tipo, '{}'); pintarEquipo(); };
 }
 // v2.35.0 deportes con balón: «Solo cuerpo» (rápido) o «Análisis completo» con la IA del balón (experimental, más lento)
 const modoDep = () => (CON_BALON.includes(tipoActividad(ej)) && leer('af_modo_dep') === 'completo' ? 'completo' : 'cuerpo');
@@ -513,7 +535,8 @@ async function leerActs() {
 }
 async function analizarActividadVideo(frames, video, d, balon = null) {
   progreso(2, 0.5, 'Midiendo el ritmo y la técnica…');
-  const act = analizarActividad(frames, video.duration, ej, { altura: d.altura, peso: d.pc, balon });
+  const tipoA = tipoActividad(ej), equipo = tieneEquipo(tipoA) ? valoresEquipo(tipoA, leerEquipo(tipoA)) : null; // v2.51.0
+  const act = analizarActividad(frames, video.duration, ej, { altura: d.altura, peso: d.pc, balon, equipo });
   if (balon) act.completo = true;
   act.id = 'act-' + Date.now(); act.fecha = new Date().toISOString(); act.icono = ej.icono;
   progreso(2, 1);

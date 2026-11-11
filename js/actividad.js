@@ -3,6 +3,8 @@
 // alertas de tecnica. Se recomienda grabar DE LADO, con el celular fijo y el cuerpo completo.
 // Las distancias en cm se estiman con la estatura (torso = 30 % de la estatura): son aproximadas.
 
+import { valoresEquipo, cambiados, textoValor } from './equipo.js';
+
 // ---------------------------------------------------------------- que actividad mide cada ejercicio
 const TIPOS = {
   correr: 'carrera', cinta: 'carrera', intervalos_carrera: 'carrera', caminar: 'caminata', caminata_inclinada: 'caminata', senderismo: 'caminata',
@@ -122,6 +124,9 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
   const kpi = (label, valor, sub = '') => res.kpis.push({ label, valor, sub });
   const aviso = (texto) => res.alertas.push({ nivel: 'aviso', texto });
   const bien = (texto) => res.alertas.push({ nivel: 'ok', texto });
+  // v2.51.0 equipo del deporte: sin cfg.equipo (o con los valores estándar) todo sale igual que antes
+  const eq = valoresEquipo(tipo, cfg.equipo), eqCambiado = cambiados(tipo, eq);
+  if (eqCambiado.length) { res.equipo = eq; bien('Calculado con tu equipo: ' + eqCambiado.map((c) => `${c.nombre.toLowerCase()} ${textoValor(c, c.valor)}`).join(' · ') + '.'); }
   const fin = (contador, unidad, evT, factor = 1) => {
     res.contador = contador; res.total = evT.length; res.unidad = unidad;
     if (!evT.length && !res.alertas.some((x) => /No encontré|No detecté/.test(x.texto))) aviso('No detecté el movimiento: revisa que se vea el cuerpo completo, de lado, y que el ejercicio sea el correcto.');
@@ -282,8 +287,17 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     // (Walilko 2005: 2,9 kg, 9,1 m/s, 3427 N). v2.36.8: masa efectiva de aficionado ~2,2 % del peso en rectos y 1,9 % en
     // ganchos/uppercuts (los olímpicos ~4 %, pero un aficionado mete menos cuerpo en el golpe), ahora que la velocidad
     // de la mano se mide bien. Margen amplio (±35 %): técnica, guante y saco. La altura entra en la escala.
+    // v2.51.0 peso de los guantes (equipo, estándar 10 oz = calibración): choque tipo resorte, F pico = v·√(m·K).
+    // Masa: el guante distinto de 10 oz suma/resta (oz-10)·28,35 g a la masa efectiva → factor √(1 + Δm/m_ef).
+    // Acolchado: a IGUAL masa, más acolchado baja el pico ≈ (10/oz)^0,2 (Nakano, Iino y Kojima, ISBS: 16 oz vs
+    // 10 oz + 6 oz de plomo, −11 %). La velocidad medida en el video ya incluye que un guante pesado frena la mano.
+    const fG = (clase) => {
+      if (eq.guantes === 10) return 1; // estándar: exactamente lo de antes
+      const m = cfg.peso * (clase === 'recto' ? 0.022 : 0.019), dm = (eq.guantes - 10) * 0.02835;
+      return Math.sqrt(Math.max(0.1, 1 + dm / m)) * Math.pow(10 / eq.guantes, 0.2);
+    };
     if (cfg.peso > 0 && golpes.length) {
-      const fuerza = (v, clase) => 129 * cfg.peso * (clase === 'recto' ? 0.022 : 0.019) * v / 9.81; // kg
+      const fuerza = (v, clase) => 129 * cfg.peso * (clase === 'recto' ? 0.022 : 0.019) * v / 9.81 * fG(clase); // kg
       for (const g of golpes) g.fuerza = fuerza(g.v, g.clase);
       const fMax = pct(golpes.map((g) => g.fuerza), 0.9), fMed = med(golpes.map((g) => g.fuerza));
       res.fuerzaGolpe = { max: r1(fMax), media: r1(fMed), newton: r1(fMax * 9.81) };
@@ -413,7 +427,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     // IA del balon (analisis completo): velocidad medida justo despues del contacto, siguiendo al balon cuadro a cuadro
     const B = Array.isArray(cfg.balon) && cfg.balon.length === P.length ? cfg.balon : null;
     // v2.36.5 el detector ve muchas cosas redondas: solo cuenta lo que tiene el tamaño de un balon de ese deporte
-    const RADIO = { futbol: 0.11, basquet: 0.12, voley: 0.105, raqueta: 0.033 }[tipo] || 0.11;
+    const RADIO = eq.diametro > 0 ? eq.diametro / 200 : { futbol: 0.11, basquet: 0.12, voley: 0.105, raqueta: 0.033 }[tipo] || 0.11; // v2.51.0 diámetro del balón (cm) del equipo
     const tamBalon = (c, j) => { const r = c[2] * (escI[j] || mPorPx); return r > RADIO * 0.4 && r < RADIO * (tipo === 'raqueta' ? 4 : 2.5); };
     const balonTras = (i, punto) => {
       if (!B) return null;
@@ -468,6 +482,19 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       const pies = [[L, 'izq', R], [R, 'der', L]].map(([s, nom, o]) => ({ s, nom, ...velDe(s.pie, false, false, o.tob), vCad: velDe(s.pie).v }));
       const vtop = pct(pies.flatMap((q) => q.v), 0.98);
       const golpes = [];
+      // v2.51.0 equipo (js/equipo.js). Con los valores estándar dan EXACTAMENTE 0.028·peso, 0.43, 0.5 y 0.009 (como antes).
+      // calzado: el pie se mide en el video; lo que pese el zapato de más (o de menos) sobre 220 g se suma a la masa que
+      // golpea. presión: el rebote crece con la presión (Georgallas y Landry 2016: (1+e²)/(1-e²)² = A·P + B, balón de
+      // fútbol A = 2,76e-4 /Pa, B = 6,60), escalado al 0,5 de una patada real a 0,9 bar. contacto: un balón inflado es un
+      // resorte k = 2π·P·radio (Katz 2008), el contacto dura π·√(m/k): ∝ √(masa / (diámetro·presión)).
+      const est = (k, d) => eq[k] == null || eq[k] === d;
+      const eqEst = est('masa', 430) && est('diametro', 22) && est('presion', 0.9) && est('calzado', 220);
+      const mBal = est('masa', 430) ? 0.43 : eq.masa / 1000;
+      const mPie = est('calzado', 220) ? 0.028 * peso : Math.max(0.5 * 0.028 * peso, 0.028 * peso + (eq.calzado - 220) / 1000); // nunca negativa (peso corporal muy bajo y descalzo)
+      const eBote = (bar) => { const C = 2.76e-4 * bar * 1e5 + 6.6; return Math.sqrt((2 * C + 1 - Math.sqrt(8 * C + 1)) / (2 * C)); };
+      const eBal = est('presion', 0.9) ? 0.5 : 0.5 * eBote(eq.presion) / eBote(0.9);
+      const tcBal = est('masa', 430) && est('diametro', 22) && est('presion', 0.9) ? 0.009
+        : 0.009 * Math.sqrt((mBal / 0.43) * (22 / (eq.diametro || 22)) * (0.9 / (eq.presion || 0.9)));
       for (const pg of pies) {
         const otro = pies.find((q) => q !== pg);
         const ok = (i) => { const p = P[i]; if (!p) return false;
@@ -475,21 +502,39 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
           if (!(p[pg.s.pie][1] > (p[23][1] + p[24][1]) / 2)) return false; // el pie por debajo de la cadera
           return !(ang(p[pg.s.cad], p[pg.s.rod], p[pg.s.tob]) < 120); }; // rodilla casi estirada al pegarle
         for (const i of picos(pg.v, Math.max(5, 0.55 * vtop), 1.0, ok)) {
-          const c = choque(pg.v[i], 0.028 * peso, 0.43, 0.5, 0.009); // balon 430 g; contacto ~9 ms
+          const c = choque(pg.v[i], mPie, mBal, eBal, tcBal); // estándar: balon 430 g; contacto ~9 ms
           golpes.push({ i, t: t[i], lado: pg.nom, k: pg.s.pie, v: pg.v[i], ...c, kmh: c.kmh });
         }
       }
       golpes.splice(0, golpes.length, ...unir(golpes, 1.0));
-      resumenGolpes(golpes, 'Patadas', 'Velocidad del balón', 0.43, 0.009, 'Pie más rápido');
+      resumenGolpes(golpes, 'Patadas', 'Velocidad del balón', mBal, tcBal, 'Pie más rápido');
       if (!golpes.length) aviso('No encontré patadas. Graba de lado, con el pie y el balón a la vista y el celular fijo.');
-      else bien('Velocidad del balón: con el pie a esa velocidad, un balón sale ~1,25 veces más rápido (choque pie-balón).');
+      else if (eqEst) bien('Velocidad del balón: con el pie a esa velocidad, un balón sale ~1,25 veces más rápido (choque pie-balón).');
+      else bien(`Velocidad del balón: con el pie a esa velocidad y tu equipo, el balón sale ~${coma((1 + eBal) * mPie / (mPie + mBal), 2)} veces más rápido (choque pie-balón).`);
       avisoFps();
       return fin('Patadas', 'por minuto', golpes.map((g) => g.t));
     }
 
     if (tipo === 'voley' || tipo === 'raqueta') {
+      // v2.51.0 equipo de tenis/pádel; con el estándar dan EXACTO 2, 0.3, 0.058, 0.75 y 0.005 (resultado de antes).
+      // cabeza: la parte que suma la raqueta a la velocidad de la mano crece con el largo (68,5 cm → ×2; pádel 45,5 → ×1,66).
+      // M: masa efectiva en el impacto proporcional al peso (Me = SW/R², Cross/Brody). tension: casi no cambia la salida
+      // (Haake/Goodwill: 40 vs 70 lb sin diferencia medible; Brody: algo más con menos tensión → exponente 0,02) pero el
+      // contacto dura ~20 % más a 40 lb que a 70 lb → tc ∝ (25/T)^0,34.
+      const rq = tipo !== 'raqueta' ? null : {
+        cabeza: eq.largo === 68.5 ? 2 : 1 + eq.largo / 68.5,
+        M: eq.peso === 300 ? 0.3 : 0.3 * eq.peso / 300,
+        m: eq.pelota === 58 ? 0.058 : eq.pelota / 1000,
+        e: eq.tension === 25 ? 0.75 : 0.75 * (25 / eq.tension) ** 0.02,
+        tc: eq.tension === 25 ? 0.005 : 0.005 * (25 / eq.tension) ** 0.34,
+      };
       const manos = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.mun) }));
       const vtop = pct(manos.flatMap((q) => q.v), 0.98), golpes = [];
+      // v2.51.0 equipo de voley: masa del balon (kg) y tiempo de contacto. El contacto de un balon inflado dura
+      // t = √(π·m / (2·R·P)) (m masa, R radio, P presion): con el balon de sala (270 g, 21 cm, 4,4 psi) da ~11,5 ms, por
+      // eso se usan 12 ms y se escalan con √(m·R0·P0 / (m0·R·P)). Con los valores estandar sale exactamente 0,27 y 0,012.
+      const mV = tipo === 'voley' ? eq.pesoBalon / 1000 : 0;
+      const tcV = tipo === 'voley' ? 0.012 * Math.sqrt((mV / 0.27) * (0.105 / (eq.diametro / 200)) * (4.4 / eq.presion)) : 0;
       for (const m of manos) {
         const ok = (i) => { const p = P[i]; if (!p) return false;
           return tipo === 'raqueta' || p[m.s.mun][1] < Math.min(p[11][1], p[12][1]); }; // voley: remate o saque, mano arriba
@@ -499,7 +544,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
           // mas rapido que la mano y pega con ~0,3 kg efectivos a una pelota de 58 g (como un saque: no suma la pelota que
           // llega). A 30 fps la IA pierde el pico del golpe (-20 a -27 % medido): se corrige ×1,2
           const vm = m.v[i] * (fr < 45 ? 1.2 : 1);
-          const c = tipo === 'voley' ? choque(vm, 0.04 * peso, 0.27, 0.5, 0.012) : choque(2 * vm, 0.3, 0.058, 0.75, 0.005);
+          const c = tipo === 'voley' ? choque(vm, 0.04 * peso, mV, 0.5, tcV) : choque(rq.cabeza * vm, rq.M, rq.m, rq.e, rq.tc);
           golpes.push({ i, t: t[i], lado: m.nom, k: m.s.mun, v: vm, arriba, salto: saltoCm(i), ...c });
         }
       }
@@ -508,15 +553,15 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
         const iz = golpes.filter((g) => g.lado === 'izq').length, dom = iz > golpes.length - iz ? 'izq' : 'der'; for (const g of golpes) g.lado = dom;
       }
       if (tipo === 'voley') {
-        resumenGolpes(golpes, 'Remates', 'Velocidad del balón', 0.27, 0.012, 'Mano más rápida');
+        resumenGolpes(golpes, 'Remates', 'Velocidad del balón', mV, tcV, 'Mano más rápida');
         const s = med(golpes.map((g) => g.salto));
         if (s > 5) kpi('Salto', r1(s), 'cm (aprox.)');
         if (!golpes.length) aviso('No encontré remates ni saques: la mano debe golpear por encima de la cabeza y verse completa.');
       } else {
-        resumenGolpes(golpes, 'Golpes', 'Velocidad de la pelota', 0.058, 0.005, 'Mano más rápida');
+        resumenGolpes(golpes, 'Golpes', 'Velocidad de la pelota', rq.m, rq.tc, 'Mano más rápida');
         if (golpes.length) kpi('Por arriba', golpes.filter((g) => g.arriba).length, 'remates o saques');
         if (!golpes.length) aviso('No encontré golpes: graba con el brazo de la raqueta a la vista.');
-        else bien('Velocidad de la pelota estimada con la mano: la cabeza de la raqueta va ~1,5 veces más rápido que la mano.');
+        else bien(`Velocidad de la pelota estimada con la mano: la cabeza de la raqueta va ~${coma(rq.cabeza)} veces más rápido que la mano.`); // v2.51.0 decía 1,5 pero el cálculo usa 2
       }
       avisoFps();
       return fin(tipo === 'voley' ? 'Remates' : 'Golpes', 'por minuto', golpes.map((g) => g.t));
@@ -672,7 +717,7 @@ export function dibujoActividad(fuente, full, fps, a, balon = null) {
     if (balon && balon.length) {
       const dtB = balon.length > 1 ? (balon[balon.length - 1].t - balon[0].t) / (balon.length - 1) : 1;
       const q = balon[Math.max(0, Math.min(balon.length - 1, Math.round((t - balon[0].t) / dtB)))];
-      const R0 = { futbol: 0.11, basquet: 0.12, voley: 0.105, raqueta: 0.033 }[a.tipo] || 0.11; // solo lo que tiene tamaño de balon
+      const R0 = a.equipo && a.equipo.diametro > 0 ? a.equipo.diametro / 200 : { futbol: 0.11, basquet: 0.12, voley: 0.105, raqueta: 0.033 }[a.tipo] || 0.11; // solo lo que tiene tamaño de balon (v2.51.0: o el del equipo)
       const bq = q && q.b && q.b.find((c) => { const r = c[2] * (a.mPorPx || 0); return r > R0 * 0.4 && r < R0 * (a.tipo === 'raqueta' ? 4 : 2.5); });
       if (bq) { const [bx, by, br] = bq; ctx.beginPath(); ctx.arc(bx * esc, by * esc - s0 + off, Math.max(18, br * esc * 1.3), 0, 7); ctx.strokeStyle = COL.cian; ctx.lineWidth = 6; ctx.stroke(); }
     }
