@@ -418,7 +418,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     // IA del balon (analisis completo): velocidad medida justo despues del contacto, siguiendo al balon cuadro a cuadro
     const B = Array.isArray(cfg.balon) && cfg.balon.length === P.length ? cfg.balon : null;
     // v2.36.5 el detector ve muchas cosas redondas: solo cuenta lo que tiene el tamaño de un balon de ese deporte
-    const RADIO = { futbol: 0.11, basquet: 0.12, voley: 0.105, raqueta: 0.033 }[tipo] || 0.11;
+    const RADIO = eq.diametro > 0 ? eq.diametro / 200 : { futbol: 0.11, basquet: 0.12, voley: 0.105, raqueta: 0.033 }[tipo] || 0.11; // v2.51.0 diámetro del balón (cm) del equipo
     const tamBalon = (c, j) => { const r = c[2] * (escI[j] || mPorPx); return r > RADIO * 0.4 && r < RADIO * (tipo === 'raqueta' ? 4 : 2.5); };
     const balonTras = (i, punto) => {
       if (!B) return null;
@@ -677,7 +677,7 @@ export function dibujoActividad(fuente, full, fps, a, balon = null) {
     if (balon && balon.length) {
       const dtB = balon.length > 1 ? (balon[balon.length - 1].t - balon[0].t) / (balon.length - 1) : 1;
       const q = balon[Math.max(0, Math.min(balon.length - 1, Math.round((t - balon[0].t) / dtB)))];
-      const R0 = { futbol: 0.11, basquet: 0.12, voley: 0.105, raqueta: 0.033 }[a.tipo] || 0.11; // solo lo que tiene tamaño de balon
+      const R0 = a.equipo && a.equipo.diametro > 0 ? a.equipo.diametro / 200 : { futbol: 0.11, basquet: 0.12, voley: 0.105, raqueta: 0.033 }[a.tipo] || 0.11; // solo lo que tiene tamaño de balon (v2.51.0: o el del equipo)
       const bq = q && q.b && q.b.find((c) => { const r = c[2] * (a.mPorPx || 0); return r > R0 * 0.4 && r < R0 * (a.tipo === 'raqueta' ? 4 : 2.5); });
       if (bq) { const [bx, by, br] = bq; ctx.beginPath(); ctx.arc(bx * esc, by * esc - s0 + off, Math.max(18, br * esc * 1.3), 0, 7); ctx.strokeStyle = COL.cian; ctx.lineWidth = 6; ctx.stroke(); }
     }
