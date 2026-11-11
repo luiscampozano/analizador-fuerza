@@ -552,7 +552,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
         resumenGolpes(golpes, 'Golpes', 'Velocidad de la pelota', rq.m, rq.tc, 'Mano más rápida');
         if (golpes.length) kpi('Por arriba', golpes.filter((g) => g.arriba).length, 'remates o saques');
         if (!golpes.length) aviso('No encontré golpes: graba con el brazo de la raqueta a la vista.');
-        else bien('Velocidad de la pelota estimada con la mano: la cabeza de la raqueta va ~1,5 veces más rápido que la mano.');
+        else bien(`Velocidad de la pelota estimada con la mano: la cabeza de la raqueta va ~${coma(rq.cabeza)} veces más rápido que la mano.`); // v2.51.0 decía 1,5 pero el cálculo usa 2
       }
       avisoFps();
       return fin(tipo === 'voley' ? 'Remates' : 'Golpes', 'por minuto', golpes.map((g) => g.t));
