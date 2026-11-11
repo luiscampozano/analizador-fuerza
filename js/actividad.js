@@ -287,8 +287,17 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     // (Walilko 2005: 2,9 kg, 9,1 m/s, 3427 N). v2.36.8: masa efectiva de aficionado ~2,2 % del peso en rectos y 1,9 % en
     // ganchos/uppercuts (los olímpicos ~4 %, pero un aficionado mete menos cuerpo en el golpe), ahora que la velocidad
     // de la mano se mide bien. Margen amplio (±35 %): técnica, guante y saco. La altura entra en la escala.
+    // v2.51.0 peso de los guantes (equipo, estándar 10 oz = calibración): choque tipo resorte, F pico = v·√(m·K).
+    // Masa: el guante distinto de 10 oz suma/resta (oz-10)·28,35 g a la masa efectiva → factor √(1 + Δm/m_ef).
+    // Acolchado: a IGUAL masa, más acolchado baja el pico ≈ (10/oz)^0,2 (Nakano, Iino y Kojima, ISBS: 16 oz vs
+    // 10 oz + 6 oz de plomo, −11 %). La velocidad medida en el video ya incluye que un guante pesado frena la mano.
+    const fG = (clase) => {
+      if (eq.guantes === 10) return 1; // estándar: exactamente lo de antes
+      const m = cfg.peso * (clase === 'recto' ? 0.022 : 0.019), dm = (eq.guantes - 10) * 0.02835;
+      return Math.sqrt(Math.max(0.1, 1 + dm / m)) * Math.pow(10 / eq.guantes, 0.2);
+    };
     if (cfg.peso > 0 && golpes.length) {
-      const fuerza = (v, clase) => 129 * cfg.peso * (clase === 'recto' ? 0.022 : 0.019) * v / 9.81; // kg
+      const fuerza = (v, clase) => 129 * cfg.peso * (clase === 'recto' ? 0.022 : 0.019) * v / 9.81 * fG(clase); // kg
       for (const g of golpes) g.fuerza = fuerza(g.v, g.clase);
       const fMax = pct(golpes.map((g) => g.fuerza), 0.9), fMed = med(golpes.map((g) => g.fuerza));
       res.fuerzaGolpe = { max: r1(fMax), media: r1(fMed), newton: r1(fMax * 9.81) };

@@ -3,7 +3,10 @@
 // teléfono (af_equipo_<tipo>). Con los valores estándar el resultado es EXACTAMENTE el de antes.
 // Campo: { k, nombre, unidad, def, min, max, paso, ayuda } o, en vez de unidad/min/max, opciones: [[valor, texto], ...]
 export const EQUIPO = {
-  boxeo: [],
+  // 10 oz = guante olímpico con el que está calibrada la fuerza del golpe (Walilko 2005; reglamento AIBA de la época)
+  boxeo: [
+    { k: 'guantes', nombre: 'Peso de los guantes', unidad: 'oz', def: 10, min: 4, max: 20, paso: 2, ayuda: 'Más acolchado alarga el choque y baja el pico de fuerza; el peso del guante suma un poco. Competencia: 10-12 oz; sparring: 14-16 oz; MMA: 4-6 oz.' },
+  ],
   // fútbol: reglas IFAB/FIFA (talla 5: 68–70 cm, 410–450 g, 0,6–1,1 atm); el pie se mide en el video, así que el
   // calzado suma masa al golpe; la presión cambia el rebote y lo que dura el contacto
   futbol: [
