@@ -3,6 +3,8 @@
 // alertas de tecnica. Se recomienda grabar DE LADO, con el celular fijo y el cuerpo completo.
 // Las distancias en cm se estiman con la estatura (torso = 30 % de la estatura): son aproximadas.
 
+import { valoresEquipo, cambiados, textoValor } from './equipo.js';
+
 // ---------------------------------------------------------------- que actividad mide cada ejercicio
 const TIPOS = {
   correr: 'carrera', cinta: 'carrera', intervalos_carrera: 'carrera', caminar: 'caminata', caminata_inclinada: 'caminata', senderismo: 'caminata',
@@ -122,6 +124,9 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
   const kpi = (label, valor, sub = '') => res.kpis.push({ label, valor, sub });
   const aviso = (texto) => res.alertas.push({ nivel: 'aviso', texto });
   const bien = (texto) => res.alertas.push({ nivel: 'ok', texto });
+  // v2.51.0 equipo del deporte: sin cfg.equipo (o con los valores estándar) todo sale igual que antes
+  const eq = valoresEquipo(tipo, cfg.equipo), eqCambiado = cambiados(tipo, eq);
+  if (eqCambiado.length) { res.equipo = eq; bien('Calculado con tu equipo: ' + eqCambiado.map((c) => `${c.nombre.toLowerCase()} ${textoValor(c, c.valor)}`).join(' · ') + '.'); }
   const fin = (contador, unidad, evT, factor = 1) => {
     res.contador = contador; res.total = evT.length; res.unidad = unidad;
     if (!evT.length && !res.alertas.some((x) => /No encontré|No detecté/.test(x.texto))) aviso('No detecté el movimiento: revisa que se vea el cuerpo completo, de lado, y que el ejercicio sea el correcto.');
