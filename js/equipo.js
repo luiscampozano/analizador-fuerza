@@ -5,7 +5,12 @@
 export const EQUIPO = {
   boxeo: [],
   futbol: [],
-  basquet: [],
+  // diámetro = circunferencia/π con las medidas FIBA 2026 (talla 7: 750-770 mm; 6: 715-730 mm; 5: 685-700 mm). El
+  // balón NBA (29,5 pulg. = 749 mm) es talla 7. El peso del balón no se pide: ningún número del básquet lo usa.
+  basquet: [
+    { k: 'diametro', nombre: 'Talla del balón', def: 24, opciones: [[24, '7 · 24 cm (hombres y NBA)'], [23, '6 · 23 cm (mujeres)'], [22, '5 · 22 cm (minibásquet)']],
+      ayuda: 'Sirve para que la IA del balón reconozca el balón en el video. El peso del balón no cambia ningún resultado.' },
+  ],
   voley: [],
   raqueta: [],
 };
