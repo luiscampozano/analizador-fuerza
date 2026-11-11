@@ -25,8 +25,22 @@ jobs:
       - name: Verificar antes de publicar
         run: bash pruebas/verificar.sh
 
+  # Recorridos automáticos (E2E): abren la app en Chromium como un usuario y analizan un video, registran un
+  # entrenamiento y anotan una comida. Si alguno falla, NO se publica.
+  recorridos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar Playwright y Chromium (solo para las pruebas; la app no los usa)
+        run: npm install --no-save --no-package-lock playwright@1.63.0 && npx playwright install --with-deps chromium
+      - name: Recorridos de principio a fin
+        run: bash pruebas/e2e/correr.sh
+
   publicar:
-    needs: verificar
+    needs: [verificar, recorridos]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     env:
