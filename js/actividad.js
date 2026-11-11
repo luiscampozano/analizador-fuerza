@@ -490,7 +490,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
       const est = (k, d) => eq[k] == null || eq[k] === d;
       const eqEst = est('masa', 430) && est('diametro', 22) && est('presion', 0.9) && est('calzado', 220);
       const mBal = est('masa', 430) ? 0.43 : eq.masa / 1000;
-      const mPie = est('calzado', 220) ? 0.028 * peso : 0.028 * peso + (eq.calzado - 220) / 1000;
+      const mPie = est('calzado', 220) ? 0.028 * peso : Math.max(0.5 * 0.028 * peso, 0.028 * peso + (eq.calzado - 220) / 1000); // nunca negativa (peso corporal muy bajo y descalzo)
       const eBote = (bar) => { const C = 2.76e-4 * bar * 1e5 + 6.6; return Math.sqrt((2 * C + 1 - Math.sqrt(8 * C + 1)) / (2 * C)); };
       const eBal = est('presion', 0.9) ? 0.5 : 0.5 * eBote(eq.presion) / eBote(0.9);
       const tcBal = est('masa', 430) && est('diametro', 22) && est('presion', 0.9) ? 0.009

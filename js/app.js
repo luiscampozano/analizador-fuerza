@@ -120,7 +120,7 @@ function pintarElegido() {
   pintarModoDep(); pintarEquipo();
 }
 // v2.51.0 equipo del deporte (guantes, raqueta, balón...): valores estándar que el usuario avanzado puede cambiar
-function leerEquipo(tipo) { try { return JSON.parse(leer('af_equipo_' + tipo) || 'null') || {}; } catch (e) { return {}; } }
+function leerEquipo(tipo) { try { const o = JSON.parse(leer('af_equipo_' + tipo) || 'null'); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } }
 function pintarEquipo() {
   const g = $('g-equipo'); if (!g) return; // pagina vieja en cache
   const tipo = ej.cardio ? tipoActividad(ej) : null;
@@ -130,10 +130,13 @@ function pintarEquipo() {
   caja.innerHTML = EQUIPO[tipo].map((c) => `<div class="form-group"><label for="eq-${c.k}">${c.nombre}</label>${c.opciones
     ? `<select id="eq-${c.k}" data-k="${c.k}">${c.opciones.map(([v, txt]) => `<option value="${v}"${v === vals[c.k] ? ' selected' : ''}>${txt}</option>`).join('')}</select>`
     : `<div class="input-unit"><input type="number" id="eq-${c.k}" data-k="${c.k}" inputmode="decimal" step="${c.paso || 'any'}" min="${c.min}" max="${c.max}" value="${vals[c.k]}"><span>${c.unidad}</span></div>`}${c.ayuda ? `<small class="campo-ayuda">${c.ayuda}</small>` : ''}</div>`).join('');
-  caja.querySelectorAll('[data-k]').forEach((el) => { el.onchange = () => {
+  caja.querySelectorAll('[data-k]').forEach((el) => { el.onchange = () => { // sin redibujar: no se pierde el foco del siguiente campo
     const o = leerEquipo(tipo), c = EQUIPO[tipo].find((x) => x.k === el.dataset.k);
-    o[c.k] = c.opciones ? (typeof c.def === 'number' ? +el.value : el.value) : el.value === '' ? '' : +el.value;
-    guardar('af_equipo_' + tipo, JSON.stringify(o)); pintarEquipo();
+    const v = c.opciones ? (typeof c.def === 'number' ? +el.value : el.value) : el.value === '' ? NaN : +el.value;
+    const ok = valoresEquipo(tipo, { [c.k]: v })[c.k] === v, ay = el.closest('.form-group').querySelector('.campo-ayuda');
+    if (ok) o[c.k] = v; else { delete o[c.k]; el.value = c.def; }
+    if (ay) ay.textContent = ok ? (c.ayuda || '') : `Fuera de rango (${String(c.min).replace('.', ',')}–${String(c.max).replace('.', ',')} ${c.unidad}): se usa el estándar. ${c.ayuda || ''}`;
+    guardar('af_equipo_' + tipo, JSON.stringify(o));
   }; });
   $('equipo-reset').onclick = () => { guardar('af_equipo_' + tipo, '{}'); pintarEquipo(); };
 }
