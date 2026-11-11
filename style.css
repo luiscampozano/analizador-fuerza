@@ -1380,3 +1380,7 @@ html.ios body { -webkit-tap-highlight-color: transparent; }
   .pf-cabecera { gap: 10px; }
 }
 html.ios body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--bg-dark); z-index: 60; pointer-events: none; }
+
+/* v2.52.0 selector de ejercicios en 3 pestañas: Gym, Cardio y Deportes */
+.ej-secc { grid-template-columns: repeat(3, 1fr); margin: 10px 0 6px; }
+.ej-secc button { font-size: 14px; padding: 10px 2px; }

@@ -26,7 +26,7 @@ import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 
-const VERSION = '2.51.0';
+const VERSION = '2.52.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -42,6 +42,7 @@ const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 
 let ej = POR_ID[leer('af_ej')] || POR_ID.remo_riel;
 let grupo = 'Todos';
+let seccEj = null; // v2.52.0 pestaña del selector: gym | cardio | deportes (null = la del ejercicio elegido)
 let archivo = null;
 let cancelar = false;
 
@@ -114,7 +115,8 @@ function pintarElegido() {
     $('selector-ej').style.display = abierto ? 'none' : 'block';
     // v2.37.2: al buscar, la figura se esconde y el buscador sube arriba para que el teclado no tape la lista
     if (demo) $('ej-demo').style.display = abierto ? '' : 'none';
-    if (!abierto) { $('buscar-ej').focus({ preventScroll: true }); subirBuscador(); }
+    // v2.52.0 con las pestañas Gym/Cardio/Deportes ya no abre el teclado solo (tapaba la lista); se abre en la pestaña del ejercicio actual
+    if (!abierto) { seccEj = null; $('buscar-ej').value = ''; pintarLista(); setTimeout(() => $('selector-ej').scrollIntoView({ block: 'start', behavior: 'smooth' }), 50); }
   };
   $('hint-ej').textContent = ej.cardio ? '🎥 ' + (CONSEJO[tipoActividad(ej)] || '') : ej.hint;
   pintarModoDep(); pintarEquipo();
@@ -153,20 +155,33 @@ function pintarModoDep() {
     ? '🧪 Experimental: además del cuerpo, otra IA busca el balón en cada cuadro y MIDE su velocidad. Tarda más (la primera vez descarga ~7 MB). El balón debe verse bien.'
     : 'Mide tu cuerpo (velocidad del pie o la mano) y ESTIMA la velocidad del balón y la fuerza del impacto con física.';
 }
+// v2.52.0 selector en 3 pestañas: Gym (por músculo), Cardio y Deportes. El buscador busca en las tres.
+const DEPORTES = ['boxeo', 'futbol', 'basquet', 'voley', 'raqueta', 'natacion'];
+const seccionDe = (e) => (!e.cardio ? 'gym' : DEPORTES.includes(tipoActividad(e)) ? 'deportes' : 'cardio');
+const SECCIONES = { gym: '🏋️ Gym', cardio: '🏃 Cardio', deportes: '⚽ Deportes' };
 function pintarLista() {
   const q = $('buscar-ej').value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  $('chips-grupo').innerHTML = ['Todos', ...GRUPOS].map((g) => `<button type="button" class="chip${g === grupo ? ' active' : ''}" data-g="${g}">${g}</button>`).join('');
+  const secc = seccEj || seccionDe(ej);
+  if ($('secc-ej')) {
+    $('secc-ej').innerHTML = Object.entries(SECCIONES).map(([k, t]) => `<button type="button" data-s="${k}" class="${k === secc && !q ? 'activo' : ''}">${t}</button>`).join('');
+    $('secc-ej').querySelectorAll('button').forEach((b) => (b.onclick = () => { seccEj = b.dataset.s; grupo = 'Todos'; $('buscar-ej').value = ''; pintarLista(); }));
+  }
+  const gruposGym = [...new Set(EJERCICIOS.filter((e) => !e.cardio).map((e) => e.grupo))];
+  $('chips-grupo').style.display = secc === 'gym' && !q ? '' : 'none';
+  $('btn-crear-ej').style.display = secc === 'gym' || q ? '' : 'none';
+  $('chips-grupo').innerHTML = ['Todos', ...gruposGym].map((g) => `<button type="button" class="chip${g === grupo ? ' active' : ''}" data-g="${g}">${g}</button>`).join('');
   $('chips-grupo').querySelectorAll('.chip').forEach((c) => (c.onclick = () => { grupo = c.dataset.g; pintarLista(); }));
-  if (grupo !== 'Todos' && !GRUPOS.includes(grupo)) grupo = 'Todos';
+  if (grupo !== 'Todos' && !gruposGym.includes(grupo)) grupo = 'Todos';
   const palabras = q.split(/\s+/).filter(Boolean);
   const lista = EJERCICIOS.filter((e) => {
     if (e.cardio && !tipoActividad(e)) return false; // cardio sin analisis por video (natacion, deportes...)
-    if (grupo !== 'Todos' && e.grupo !== grupo) return false;
+    if (!palabras.length && seccionDe(e) !== secc) return false; // con búsqueda: en las tres pestañas
+    if (!palabras.length && secc === 'gym' && grupo !== 'Todos' && e.grupo !== grupo) return false;
     const texto = [e.nombre, e.grupo, e.equipo, e.musculo, e.en].join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     return palabras.every((w) => texto.includes(w));
   });
   $('lista-ej').innerHTML = lista.map((e) => `<button type="button" class="preset-card${e.id === ej.id ? ' active' : ''}" data-id="${e.id}">
-    <span class="preset-icon">${figIcono(e.id, e.icono)}</span><span class="preset-name">${esc(e.corto)}</span><span class="preset-sub">${esc(e.equipo || e.grupo)}</span></button>`).join('')
+    <span class="preset-icon">${figIcono(e.id, e.icono)}</span><span class="preset-name">${esc(e.corto)}</span><span class="preset-sub">${esc(seccionDe(e) === 'deportes' ? 'Deporte' : e.equipo || e.grupo)}</span></button>`).join('')
     || '<p class="vacio">No encontré ese ejercicio. Puedes crearlo con el botón de abajo.</p>';
   $('lista-ej').querySelectorAll('.preset-card').forEach((b) => (b.onclick = () => elegir(POR_ID[b.dataset.id])));
 }
@@ -199,7 +214,7 @@ $('p-guardar').onclick = () => {
     nombre, equipo: $('p-equipo').value, musculo: $('p-musculo').value, punto: $('p-punto').value,
     sentido: $('p-sentido').value, brazos: $('p-brazos').value, ancla: $('p-ancla').value,
   });
-  $('form-propio').style.display = 'none'; $('buscar-ej').value = ''; grupo = 'Todos';
+  $('form-propio').style.display = 'none'; $('buscar-ej').value = ''; grupo = 'Todos'; seccEj = null;
   elegir(nuevo);
   aviso(`Ejercicio "${nombre}" creado. Lo encuentras en "${GRUPO_PROPIOS}".`, true);
 };

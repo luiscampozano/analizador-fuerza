@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-11
 
+### 08:55 · v2.52.0 — Selector de ejercicios: pestañas Gym, Cardio y Deportes
+- **Pidió:** rediseñar el selector (los deportes y el cardio estaban mezclados con los músculos).
+- **Se hizo:** en Analizar → Cambiar, tres pestañas arriba: 🏋️ Gym (con las subpestañas por músculo y «Crear mi propio
+  ejercicio»), 🏃 Cardio y ⚽ Deportes (boxeo, fútbol, básquet, vóley, tenis/pádel, natación; subtítulo «Deporte»). El
+  buscador busca en las tres. Se abre en la pestaña del ejercicio actual y ya no abre el teclado solo (tapaba la lista).
+
 ### 07:30 · v2.51.0 — Equipo de cada deporte (opciones avanzadas)
 - **Pidió:** poder cambiar el equipo en los deportes (peso de guantes, raqueta y tensión, peso/tamaño/presión de
   balones), puesto por defecto en los valores que ya usaba la física, para deportistas avanzados. Con subagentes por
