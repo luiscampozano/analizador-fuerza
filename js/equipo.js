@@ -12,7 +12,15 @@ export const EQUIPO = {
       ayuda: 'Sirve para que la IA del balón reconozca el balón en el video. El peso del balón no cambia ningún resultado.' },
   ],
   voley: [],
-  raqueta: [],
+  // tenis y pádel. Estándar = lo que usaba la física: raqueta de 300 g (0,3 kg efectivos en el impacto), 68,5 cm
+  // (la cabeza va 2 veces más rápido que la mano), cuerdas a 25 kg (rebote 0,75, contacto 5 ms), pelota de 58 g y 6,6 cm
+  raqueta: [
+    { k: 'peso', nombre: 'Peso de la raqueta', unidad: 'g', def: 300, min: 200, max: 450, paso: 5, ayuda: 'Con cuerdas. Tenis 260–340 g; pádel 340–390 g. Más pesada = la pelota sale algo más rápido.' },
+    { k: 'largo', nombre: 'Largo de la raqueta', unidad: 'cm', def: 68.5, min: 40, max: 74, paso: 0.5, ayuda: 'Tenis 68,5 cm (máx. 73,7); pádel 45,5 cm (máx.). Más larga = la cabeza va más rápido.' },
+    { k: 'tension', nombre: 'Tensión de las cuerdas', unidad: 'kg', def: 25, min: 15, max: 32, paso: 0.5, ayuda: 'Tenis 22–28 kg (48–62 lb). Menos tensión = contacto más largo y fuerza media menor. En pádel (sin cuerdas) déjalo en 25.' },
+    { k: 'pelota', nombre: 'Peso de la pelota', unidad: 'g', def: 58, min: 45, max: 62, paso: 0.5, ayuda: 'Reglamento ITF y FIP: 56,0–59,4 g. Pelotas de iniciación pesan menos.' },
+    { k: 'diametro', nombre: 'Diámetro de la pelota', unidad: 'cm', def: 6.6, min: 5.5, max: 7.5, paso: 0.1, ayuda: 'Tenis 6,54–7,30 cm (ITF); pádel 6,35–6,77 cm (FIP). Ayuda a la IA a reconocer la pelota.' },
+  ],
 };
 const valido = (c, v) => (c.opciones ? c.opciones.some((o) => o[0] === v) : Number.isFinite(v) && v >= c.min && v <= c.max);
 // valores que usa el cálculo: lo guardado si es válido; si no, el estándar

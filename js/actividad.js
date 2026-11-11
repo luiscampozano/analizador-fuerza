@@ -493,6 +493,18 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     }
 
     if (tipo === 'voley' || tipo === 'raqueta') {
+      // v2.51.0 equipo de tenis/pádel; con el estándar dan EXACTO 2, 0.3, 0.058, 0.75 y 0.005 (resultado de antes).
+      // cabeza: la parte que suma la raqueta a la velocidad de la mano crece con el largo (68,5 cm → ×2; pádel 45,5 → ×1,66).
+      // M: masa efectiva en el impacto proporcional al peso (Me = SW/R², Cross/Brody). tension: casi no cambia la salida
+      // (Haake/Goodwill: 40 vs 70 lb sin diferencia medible; Brody: algo más con menos tensión → exponente 0,02) pero el
+      // contacto dura ~20 % más a 40 lb que a 70 lb → tc ∝ (25/T)^0,34.
+      const rq = tipo !== 'raqueta' ? null : {
+        cabeza: eq.largo === 68.5 ? 2 : 1 + eq.largo / 68.5,
+        M: eq.peso === 300 ? 0.3 : 0.3 * eq.peso / 300,
+        m: eq.pelota === 58 ? 0.058 : eq.pelota / 1000,
+        e: eq.tension === 25 ? 0.75 : 0.75 * (25 / eq.tension) ** 0.02,
+        tc: eq.tension === 25 ? 0.005 : 0.005 * (25 / eq.tension) ** 0.34,
+      };
       const manos = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.mun) }));
       const vtop = pct(manos.flatMap((q) => q.v), 0.98), golpes = [];
       for (const m of manos) {
@@ -504,7 +516,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
           // mas rapido que la mano y pega con ~0,3 kg efectivos a una pelota de 58 g (como un saque: no suma la pelota que
           // llega). A 30 fps la IA pierde el pico del golpe (-20 a -27 % medido): se corrige ×1,2
           const vm = m.v[i] * (fr < 45 ? 1.2 : 1);
-          const c = tipo === 'voley' ? choque(vm, 0.04 * peso, 0.27, 0.5, 0.012) : choque(2 * vm, 0.3, 0.058, 0.75, 0.005);
+          const c = tipo === 'voley' ? choque(vm, 0.04 * peso, 0.27, 0.5, 0.012) : choque(rq.cabeza * vm, rq.M, rq.m, rq.e, rq.tc);
           golpes.push({ i, t: t[i], lado: m.nom, k: m.s.mun, v: vm, arriba, salto: saltoCm(i), ...c });
         }
       }
@@ -518,7 +530,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
         if (s > 5) kpi('Salto', r1(s), 'cm (aprox.)');
         if (!golpes.length) aviso('No encontré remates ni saques: la mano debe golpear por encima de la cabeza y verse completa.');
       } else {
-        resumenGolpes(golpes, 'Golpes', 'Velocidad de la pelota', 0.058, 0.005, 'Mano más rápida');
+        resumenGolpes(golpes, 'Golpes', 'Velocidad de la pelota', rq.m, rq.tc, 'Mano más rápida');
         if (golpes.length) kpi('Por arriba', golpes.filter((g) => g.arriba).length, 'remates o saques');
         if (!golpes.length) aviso('No encontré golpes: graba con el brazo de la raqueta a la vista.');
         else bien('Velocidad de la pelota estimada con la mano: la cabeza de la raqueta va ~1,5 veces más rápido que la mano.');
