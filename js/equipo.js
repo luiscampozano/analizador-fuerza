@@ -11,7 +11,13 @@ export const EQUIPO = {
     { k: 'diametro', nombre: 'Talla del balón', def: 24, opciones: [[24, '7 · 24 cm (hombres y NBA)'], [23, '6 · 23 cm (mujeres)'], [22, '5 · 22 cm (minibásquet)']],
       ayuda: 'Sirve para que la IA del balón reconozca el balón en el video. El peso del balón no cambia ningún resultado.' },
   ],
-  voley: [],
+  voley: [
+    // reglas FIVB 2025-2028 (regla 3.1): sala 65-67 cm de circunferencia (≈ 20,7-21,3 cm de diámetro), 260-280 g,
+    // 0,30-0,325 kg/cm² (4,26-4,61 psi); playa 66-68 cm (≈ 21-21,6 cm), 260-280 g, 0,175-0,225 kg/cm² (2,5-3,2 psi)
+    { k: 'diametro', nombre: 'Diámetro del balón', unidad: 'cm', def: 21, min: 18, max: 24, paso: 0.1, ayuda: 'Reglamento: 20,7–21,3 cm en sala (65–67 cm de contorno); 21–21,6 cm en playa.' },
+    { k: 'pesoBalon', nombre: 'Peso del balón', unidad: 'g', def: 270, min: 150, max: 450, paso: 5, ayuda: 'Reglamento: 260–280 g (sala y playa). Más pesado: sale un poco más lento pero pega más fuerte.' },
+    { k: 'presion', nombre: 'Presión de inflado', unidad: 'psi', def: 4.4, min: 1.5, max: 8, paso: 0.1, ayuda: 'Sala: 4,3–4,6 psi (0,30–0,325 kg/cm²). Playa: 2,5–3,2 psi. Más presión: contacto más corto y más fuerza.' },
+  ],
   // tenis y pádel. Estándar = lo que usaba la física: raqueta de 300 g (0,3 kg efectivos en el impacto), 68,5 cm
   // (la cabeza va 2 veces más rápido que la mano), cuerdas a 25 kg (rebote 0,75, contacto 5 ms), pelota de 58 g y 6,6 cm
   raqueta: [
