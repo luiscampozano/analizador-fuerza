@@ -495,6 +495,11 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
     if (tipo === 'voley' || tipo === 'raqueta') {
       const manos = [[L, 'izq'], [R, 'der']].map(([s, nom]) => ({ s, nom, ...velDe(s.mun) }));
       const vtop = pct(manos.flatMap((q) => q.v), 0.98), golpes = [];
+      // v2.51.0 equipo de voley: masa del balon (kg) y tiempo de contacto. El contacto de un balon inflado dura
+      // t = √(π·m / (2·R·P)) (m masa, R radio, P presion): con el balon de sala (270 g, 21 cm, 4,4 psi) da ~11,5 ms, por
+      // eso se usan 12 ms y se escalan con √(m·R0·P0 / (m0·R·P)). Con los valores estandar sale exactamente 0,27 y 0,012.
+      const mV = tipo === 'voley' ? eq.pesoBalon / 1000 : 0;
+      const tcV = tipo === 'voley' ? 0.012 * Math.sqrt((mV / 0.27) * (0.105 / (eq.diametro / 200)) * (4.4 / eq.presion)) : 0;
       for (const m of manos) {
         const ok = (i) => { const p = P[i]; if (!p) return false;
           return tipo === 'raqueta' || p[m.s.mun][1] < Math.min(p[11][1], p[12][1]); }; // voley: remate o saque, mano arriba
@@ -504,7 +509,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
           // mas rapido que la mano y pega con ~0,3 kg efectivos a una pelota de 58 g (como un saque: no suma la pelota que
           // llega). A 30 fps la IA pierde el pico del golpe (-20 a -27 % medido): se corrige ×1,2
           const vm = m.v[i] * (fr < 45 ? 1.2 : 1);
-          const c = tipo === 'voley' ? choque(vm, 0.04 * peso, 0.27, 0.5, 0.012) : choque(2 * vm, 0.3, 0.058, 0.75, 0.005);
+          const c = tipo === 'voley' ? choque(vm, 0.04 * peso, mV, 0.5, tcV) : choque(2 * vm, 0.3, 0.058, 0.75, 0.005);
           golpes.push({ i, t: t[i], lado: m.nom, k: m.s.mun, v: vm, arriba, salto: saltoCm(i), ...c });
         }
       }
@@ -513,7 +518,7 @@ export function analizarActividad(frames, dur, ej, cfg = {}) {
         const iz = golpes.filter((g) => g.lado === 'izq').length, dom = iz > golpes.length - iz ? 'izq' : 'der'; for (const g of golpes) g.lado = dom;
       }
       if (tipo === 'voley') {
-        resumenGolpes(golpes, 'Remates', 'Velocidad del balón', 0.27, 0.012, 'Mano más rápida');
+        resumenGolpes(golpes, 'Remates', 'Velocidad del balón', mV, tcV, 'Mano más rápida');
         const s = med(golpes.map((g) => g.salto));
         if (s > 5) kpi('Salto', r1(s), 'cm (aprox.)');
         if (!golpes.length) aviso('No encontré remates ni saques: la mano debe golpear por encima de la cabeza y verse completa.');
