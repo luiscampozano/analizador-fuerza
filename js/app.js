@@ -26,7 +26,7 @@ import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 
-const VERSION = '2.50.2';
+const VERSION = '2.51.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -135,7 +135,7 @@ function pintarEquipo() {
     const v = c.opciones ? (typeof c.def === 'number' ? +el.value : el.value) : el.value === '' ? NaN : +el.value;
     const ok = valoresEquipo(tipo, { [c.k]: v })[c.k] === v, ay = el.closest('.form-group').querySelector('.campo-ayuda');
     if (ok) o[c.k] = v; else { delete o[c.k]; el.value = c.def; }
-    if (ay) ay.textContent = ok ? (c.ayuda || '') : `Fuera de rango (${String(c.min).replace('.', ',')}–${String(c.max).replace('.', ',')} ${c.unidad}): se usa el estándar. ${c.ayuda || ''}`;
+    if (ay) ay.textContent = ok ? (c.ayuda || '') : el.dataset.k && Number.isNaN(v) ? `Escribe un número (con punto decimal): se usa el estándar. ${c.ayuda || ''}` : `Fuera de rango (${String(c.min).replace('.', ',')}–${String(c.max).replace('.', ',')} ${c.unidad}): se usa el estándar. ${c.ayuda || ''}`;
     guardar('af_equipo_' + tipo, JSON.stringify(o));
   }; });
   $('equipo-reset').onclick = () => { guardar('af_equipo_' + tipo, '{}'); pintarEquipo(); };

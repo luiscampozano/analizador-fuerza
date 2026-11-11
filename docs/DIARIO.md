@@ -6,6 +6,21 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-11
+
+### 07:30 · v2.51.0 — Equipo de cada deporte (opciones avanzadas)
+- **Pidió:** poder cambiar el equipo en los deportes (peso de guantes, raqueta y tensión, peso/tamaño/presión de
+  balones), puesto por defecto en los valores que ya usaba la física, para deportistas avanzados. Con subagentes por
+  deporte, revisión mía y de otro Claude independiente, y autorización para publicar si ambos aprueban.
+- **Se hizo:** js/equipo.js (campos por deporte, validación, guardado en af_equipo_<tipo>), bloque plegable «🎽 Equipo
+  del deporte» en Analizar (solo en esos deportes), cfg.equipo en analizarActividad y aviso en el informe si se cambió algo.
+  Boxeo: guantes (oz, Nakano/Walilko). Tenis/pádel: peso y largo de raqueta, tensión, peso y diámetro de pelota.
+  Fútbol: peso, diámetro y presión del balón, peso del zapato. Vóley: diámetro, peso y presión. Básquet: talla (diámetro).
+  Con los valores estándar el resultado es idéntico (comparado contra main en 28+ casos y pruebas). Corregido el texto
+  de tenis «~1,5 veces» → «~2 veces» (el cálculo usa 2). Revisión independiente: APROBADO tras arreglos (foco al
+  editar, aviso fuera de rango, datos dañados, masa del pie nunca negativa).
+- **Pendiente:** nada. Apple sigue revisando la app 1.0.
+
 ## 2026-11-10
 
 ### 17:50 · v2.50.2 — Arreglos de la auditoría de Gemini (5 hallazgos, todos comprobados)
