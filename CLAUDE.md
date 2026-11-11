@@ -33,7 +33,9 @@ REGLAS PARA CAMBIAR CÓDIGO (obligatorias)
 3. Toda versión que cambie algo visible sube el número EN DOS LUGARES a la vez: sw.js (const VERSION = 'af-X.Y.Z')
    y js/app.js (const VERSION = 'X.Y.Z'). Arreglo = último número; función nueva = número del medio.
    Archivo nuevo en js/ => agrégalo a la lista BASE de sw.js.
-4. Antes de publicar: bash pruebas/verificar.sh debe terminar en "TODO BIEN". Si puedes, prueba en Chromium con
+4. Antes de publicar: bash pruebas/verificar.sh debe terminar en "TODO BIEN". Si cambiaste pantallas o flujos, corre también
+   bash pruebas/e2e/correr.sh (3 recorridos de usuario: analizar video, registrar entrenamiento, anotar comida; GitHub los
+   corre solos en cada push y si fallan NO se publica). Si un recorrido falla, arregla la app, no el recorrido. Si puedes, prueba en Chromium con
    Playwright a 412 px de ancho, con datos de prueba, y mira las capturas.
 5. Publica con commit a main; espera que GitHub Actions termine en verde (verificar + publicar) y confirma que
    https://fuerzapro.pages.dev/sw.js muestra la versión nueva. Dile a Luis que cierre y abra la app dos veces.

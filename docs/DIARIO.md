@@ -8,6 +8,15 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-11
 
+### 11:50 · (sin versión nueva) — Recorridos automáticos de principio a fin (E2E)
+- **Pidió:** pruebas E2E de los flujos centrales (analizar, registrar entrenamiento y comida) para mejorar la calidad.
+- **Se hizo:** pruebas/e2e/ con 3 recorridos en Chromium a 412 px, sin cuenta y sin internet (solo se permite descargar
+  la IA de pose de MediaPipe, como un usuario real): analizar.cjs (video sentadilla.mp4 de 12 s → 3 reps y guardado en
+  historial), entrenar.cjs (Press de banca 80 × 8 → 640 kg, lista, calendario y persiste al recargar), comida.cjs (arroz
+  1 taza → 205 kcal, persiste). correr.sh los corre; nuevo trabajo «recorridos» en GitHub Actions (instala Playwright
+  1.63.0 + Chromium solo para pruebas) y «publicar» ahora espera a verificar y recorridos. CLAUDE.md regla 4 actualizada.
+  Tarda ~3–4 min por push, en paralelo con verificar; no gasta tokens.
+
 ### 08:55 · v2.52.0 — Selector de ejercicios: pestañas Gym, Cardio y Deportes
 - **Pidió:** rediseñar el selector (los deportes y el cardio estaban mezclados con los músculos).
 - **Se hizo:** en Analizar → Cambiar, tres pestañas arriba: 🏋️ Gym (con las subpestañas por músculo y «Crear mi propio
