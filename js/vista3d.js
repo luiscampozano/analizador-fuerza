@@ -12,10 +12,10 @@ let estado = null;
 
 // Muestra el botón solo si la serie guardó puntos 3D (las series analizadas desde esta versión).
 export async function preparar(boton, id) {
-  boton.style.display = 'none'; boton.onclick = null;
+  boton.style.display = 'none'; boton.onclick = null; boton.dataset.id = id || '';
   if (!id) return;
   const pose = await almacen.leerPose(id).catch(() => null);
-  if (!pose || !pose.wx) return;
+  if (boton.dataset.id !== id || !pose || !pose.wx) return; // ya se abrió otra serie mientras se leía
   boton.style.display = '';
   boton.onclick = () => abrir(pose);
 }
@@ -40,21 +40,25 @@ function abrir(pose) {
   const mundo = almacen.desempacarMundo(pose);
   if (!mundo) return;
   const ts = Array.from(pose.ts), dur = pose.dur || ts[ts.length - 1] || 1;
-  estado = { P: preparar3D(mundo), ts, dur, t: 0, corre: true, prev: performance.now(), yaw: VISTAS.lado[0], pitch: VISTAS.lado[1], giro: false, vista: 'lado', raf: 0, drag: null };
+  const css = getComputedStyle(document.documentElement), color = (n) => css.getPropertyValue(n).trim();
+  const colores = { piso: color('--border-color'), i: color('--accent-blue'), d: color('--accent-orange'), c: color('--text-muted'), punto: color('--text-main') };
+  estado = { colores, P: preparar3D(mundo), ts, dur, t: 0, corre: true, prev: performance.now(), yaw: VISTAS.lado[0], pitch: VISTAS.lado[1], giro: false, vista: 'lado', raf: 0, drag: null };
   $('v3d-modal').style.display = 'flex';
+  $('v3d-cerrar').focus();
   marcar(); $('v3d-play').textContent = '⏸';
   estado.raf = requestAnimationFrame(dibujar);
 }
 
 function cerrar() {
+  if ($('v3d-modal').style.display === 'none') return;
   $('v3d-modal').style.display = 'none';
   if (estado) cancelAnimationFrame(estado.raf);
   estado = null;
 }
 
 function marcar() {
-  document.querySelectorAll('[data-v3d]').forEach((b) => b.classList.toggle('on', !!estado && b.dataset.v3d === estado.vista && !estado.giro));
-  $('v3d-giro').classList.toggle('on', !!estado && estado.giro);
+  document.querySelectorAll('[data-v3d]').forEach((b) => { const on = !!estado && b.dataset.v3d === estado.vista && !estado.giro; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  const g = !!estado && estado.giro; $('v3d-giro').classList.toggle('on', g); $('v3d-giro').setAttribute('aria-pressed', g);
 }
 
 function indice(t) { // último cuadro con tiempo <= t
@@ -71,12 +75,11 @@ function dibujar(ahora) {
   const c = $('v3d-canvas'), r = c.getBoundingClientRect(), dp = window.devicePixelRatio || 1;
   const w = Math.round(r.width * dp), h = Math.round(r.height * dp);
   if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
-  const g = c.getContext('2d'), css = getComputedStyle(document.documentElement);
-  const color = (n) => css.getPropertyValue(n).trim();
+  const g = c.getContext('2d'), col = e.colores;
   g.clearRect(0, 0, w, h);
   const cy = Math.cos(e.yaw), sy = Math.sin(e.yaw), cp = Math.cos(e.pitch), sp = Math.sin(e.pitch), S = h * 0.42, ox = w / 2, oy = h * 0.86;
   const pr = (p) => { const x = p[0] * cy - p[2] * sy, z = p[0] * sy + p[2] * cy; const y2 = p[1] * cp - z * sp, z2 = p[1] * sp + z * cp; const k = 3 / (3 + z2); return [ox + x * S * k, oy + y2 * S * k, z2]; };
-  g.strokeStyle = color('--border-color'); g.lineWidth = dp;
+  g.strokeStyle = col.piso; g.lineWidth = dp;
   for (let q = -0.6; q <= 0.61; q += 0.2) {
     for (const [a, b] of [[[q, 0, -0.6], [q, 0, 0.6]], [[-0.6, 0, q], [0.6, 0, q]]]) { const A = pr(a), B = pr(b); g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.stroke(); }
   }
@@ -85,9 +88,8 @@ function dibujar(ahora) {
     const Q = p.map(pr);
     const segs = LINKS.map(([a, b, l]) => ({ a, b, l, z: (Q[a][2] + Q[b][2]) / 2 })).sort((m, n) => n.z - m.z);
     g.lineCap = 'round';
-    const col = { i: color('--accent-blue'), d: color('--accent-orange'), c: color('--text-muted') };
     for (const s of segs) { g.strokeStyle = col[s.l]; g.lineWidth = (s.l === 'c' ? 4 : 6) * dp; g.beginPath(); g.moveTo(Q[s.a][0], Q[s.a][1]); g.lineTo(Q[s.b][0], Q[s.b][1]); g.stroke(); }
-    g.fillStyle = color('--text-main');
+    g.fillStyle = col.punto;
     for (const k of ARTIC) { g.beginPath(); g.arc(Q[k][0], Q[k][1], (k === 0 ? 7 : 3.5) * dp, 0, 7); g.fill(); }
   }
   e.raf = requestAnimationFrame(dibujar);
@@ -96,6 +98,7 @@ function dibujar(ahora) {
 export function iniciar() {
   const c = $('v3d-canvas');
   $('v3d-cerrar').onclick = cerrar;
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && estado) cerrar(); });
   $('v3d-play').onclick = () => { if (!estado) return; estado.corre = !estado.corre; $('v3d-play').textContent = estado.corre ? '⏸' : '▶'; };
   $('v3d-giro').onclick = () => { if (!estado) return; estado.giro = !estado.giro; estado.vista = ''; marcar(); };
   document.querySelectorAll('[data-v3d]').forEach((b) => { b.onclick = () => { if (!estado) return; estado.vista = b.dataset.v3d; [estado.yaw, estado.pitch] = VISTAS[estado.vista]; estado.giro = false; marcar(); }; });

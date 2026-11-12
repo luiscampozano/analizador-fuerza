@@ -774,10 +774,10 @@
   </div></nav>
 
   <!-- ============ VISTA 3D (experimental, v2.53.0) ============ -->
-  <div id="v3d-modal" class="modal" style="display:none">
+  <div id="v3d-modal" class="modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="v3d-titulo">
     <div class="modal-caja v3d-caja">
-      <div class="v3d-cab"><h3>🧊 Vista 3D <span class="v3d-exp">Experimental</span></h3><button type="button" class="btn-sec v3d-x" id="v3d-cerrar" aria-label="Cerrar">✕</button></div>
-      <canvas id="v3d-canvas"></canvas>
+      <div class="v3d-cab"><h3 id="v3d-titulo">🧊 Vista 3D <span class="v3d-exp">Experimental</span></h3><button type="button" class="btn-sec v3d-x" id="v3d-cerrar" aria-label="Cerrar">✕</button></div>
+      <canvas id="v3d-canvas" role="img" aria-label="Muñeco 3D de la serie; arrastra para girarlo"></canvas>
       <div class="v3d-ctrl">
         <button type="button" class="btn-sec" id="v3d-play" aria-label="Pausa o reproducir">⏸</button>
         <button type="button" class="btn-sec" data-v3d="frente">Frente</button><button type="button" class="btn-sec" data-v3d="lado">Lado</button><button type="button" class="btn-sec" data-v3d="diag">Diagonal</button><button type="button" class="btn-sec" data-v3d="arriba">Arriba</button><button type="button" class="btn-sec" id="v3d-giro">Girar</button>

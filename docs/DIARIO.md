@@ -14,6 +14,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
   deportes aparece «🧊 Ver en 3D · Experimental»: muñeco que se gira con el dedo, vistas Frente/Lado/Diagonal/Arriba, girar solo,
   pausa y barra de tiempo. Solo es una vista: los cálculos no cambian. Solo sale en series nuevas (las viejas no tienen 3D).
   El recorrido E2E «analizar» ahora comprueba que el botón abre y dibuja el muñeco.
+- **Revisión de otro Claude:** aprobado. Se corrigió: el botón podía mostrar la serie anterior si se cambiaba rápido de serie;
+  se guardan solo los 19 puntos 3D que se dibujan (menos espacio en el teléfono) y la limpieza de poses viejas ya no hace esperar;
+  la ventana es accesible (rol de diálogo, Escape para cerrar, botones con estado).
 - **Prueba del conteo con 3D** (7 videos contados a mano, puntos 3D proyectados a una «cámara virtual» de frente al movimiento):
   aciertos exactos 2D 5/7 vs 3D 4/7 (error total 5 vs 8 reps; el 3D falló en el hack: 8 de 11). El 3D da velocidades
   10–40 % más altas y no sabemos cuál es la real. Conclusión: por ahora el 3D NO se usa en los cálculos.
