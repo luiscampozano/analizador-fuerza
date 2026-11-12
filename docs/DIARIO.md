@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-12
 
+### 18:45 · v2.55.0 — ¿Qué máquina es? (lista en la rama «maquina», se publica cuando Apple apruebe)
+- **Pidió:** identificar máquinas del gimnasio con una foto y agregarlas solas al entrenamiento.
+- **Hecho:** en el buscador de ejercicios del entrenamiento, botón «📷 ¿No sabes qué máquina es? Tómale una foto». La foto
+  se achica en el teléfono y va a POST /api/ia/maquina junto con la lista de ejercicios de fuerza; Claude Haiku elige un id
+  de esa lista (el servidor rechaza ids que no estén), con confianza, músculos, 3 consejos y hasta 3 opciones. Cupo diario
+  propio (q: 10) y, con planes activos, gasta 1 crédito de IA. Pruebas del servidor nuevas en ia_test.mjs.
+- **Pendiente:** publicar al aprobar Apple; probar con fotos reales de máquinas.
+
 ### 18:15 · v2.54.2 — Cronómetro del entrenamiento más visible
 - **Pidió:** el editor del tiempo de entrenamiento era muy pequeño; resaltarlo y encerrarlo en un cuadro.
 - **Hecho:** el botón ⏱ ahora tiene borde celeste, fondo suave, números un poco más grandes y el lápiz más visible.

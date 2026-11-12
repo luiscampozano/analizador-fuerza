@@ -1421,3 +1421,30 @@ html.ios body::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 .pf-fuentes { display: block; margin: -4px 0 12px; font-size: .85rem; color: var(--text-muted); text-align: center; }
 .fuentes-link { margin: 0 0 10px; }
 .fuentes-link a, .pf-fuentes { color: var(--accent-blue); }
+
+/* v2.55.0 ¿Qué máquina es? */
+.en-maquina { width: 100%; margin: 0 0 8px; border: 1.5px dashed var(--accent-blue); color: var(--accent-blue); background: rgba(34, 211, 238, .07); font-weight: 700; }
+.mq-caja { padding: 4px 2px 10px; }
+.mq-foto { position: relative; border-radius: 12px; overflow: hidden; width: fit-content; max-width: 100%; margin: 4px auto 8px; }
+.mq-foto img { display: block; max-width: 100%; max-height: 300px; }
+.mq-escaner { position: absolute; left: 6%; right: 6%; height: 3px; background: var(--accent-blue); box-shadow: 0 0 16px var(--accent-blue); animation: mq-esc 2.2s ease-in-out infinite; }
+@keyframes mq-esc { 0%, 100% { top: 10%; } 50% { top: 88%; } }
+@media (prefers-reduced-motion: reduce) { .mq-escaner { animation: none; top: 50%; } }
+.mq-res { border: 2px solid var(--accent-blue); border-radius: 14px; padding: 12px; margin-bottom: 10px; background: var(--bg-input); }
+.mq-res.mq-alta { border-color: #3DDC97; }
+.mq-cab { display: flex; align-items: center; gap: 10px; }
+.mq-cab img { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; flex: none; }
+.mq-cab b { display: block; font-size: 1.05rem; }
+.mq-cab small { color: var(--text-muted); font-size: .8rem; }
+.mq-conf { margin-left: auto; font-size: 11px; font-weight: 700; border: 1px solid currentColor; border-radius: 999px; padding: 1px 8px; white-space: nowrap; color: var(--accent-blue); }
+.mq-alta .mq-conf { color: #3DDC97; }
+.mq-baja .mq-conf { color: var(--accent-orange); }
+.mq-res ul { margin: 8px 0 0; padding-left: 18px; font-size: .88rem; }
+.mq-res li { margin: 3px 0; }
+.mq-agregar { width: 100%; }
+.mq-otras { margin: 12px 0 6px; }
+.mq-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mq-chip { border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.mq-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.mq-pie small { color: var(--text-muted); }
+.mq-volver { width: auto; }

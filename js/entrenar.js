@@ -3,6 +3,7 @@
 // con enlace opcional al analisis por video de cada serie e importacion desde Hevy, Strong o Excel.
 import * as tarjetas from './tarjetas.js';
 import * as plan from './plan.js';
+import * as maquina from './maquina.js';
 import { icono as figIcono, animacion } from './figura.js';
 import * as almacen from './almacen.js';
 import { leerArchivo, convertir } from './importar.js';
@@ -154,6 +155,15 @@ export async function iniciar(d) {
   $('en-barra').onclick = () => deps.vista('v-entrenar');
   $('en-buscar').oninput = pintarSelector;
   $('en-sel-cerrar').onclick = () => { reemplazarIndex = null; $('en-selector').style.display = 'none'; };
+  // v2.55.0 ¿Qué máquina es? foto -> la IA elige el ejercicio de la biblioteca
+  $('en-maquina').onclick = () => $('en-maquina-in').click();
+  $('en-maquina-in').onchange = (ev) => {
+    const f = ev.target.files && ev.target.files[0]; ev.target.value = '';
+    if (!f) return;
+    $('en-maquina').style.display = 'none';
+    maquina.identificar(f, { caja: $('en-sel-lista'), ejercicios: deps.ejercicios, porId: deps.porId,
+      alAgregar: (id, nombre) => agregarEjercicio(id, nombre), alVolver: () => pintarSelector() });
+  };
   $('en-det-cerrar').onclick = () => { $('en-detalle').style.display = 'none'; };
   $('en-ejs-cerrar').onclick = () => { $('en-ejs-modal').style.display = 'none'; };
   $('pf-grupo-cerrar').onclick = () => { $('pf-grupo').style.display = 'none'; };
@@ -785,6 +795,7 @@ function recientes() {
   return vistos;
 }
 function pintarSelector() {
+  $('en-maquina').style.display = '';
   const q = norm($('en-buscar').value), pal = q.split(/\s+/).filter(Boolean);
   const pasa = (texto) => pal.every((w) => norm(texto).includes(w));
   const rec = recientes().filter((r) => pasa(r.ej && deps.porId[r.ej] ? `${deps.porId[r.ej].nombre} ${deps.porId[r.ej].en}` : r.nombre));
