@@ -6,6 +6,19 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-12
+
+### 06:40 · v2.54.0 — Macros en 3D a partir de la foto del plato
+- **Pidió:** llevar a la app la maqueta de los macros en 3D.
+- **Hecho:** al analizar la foto del plato aparece «🧊 Tus macros en 3D · Experimental»: la foto con cada alimento marcado
+  (la IA ahora devuelve también la posición x, y de cada alimento), tres columnas 3D (proteína, carbos, grasa) divididas por
+  color según el alimento, chips para ver solo un alimento, girar y gramos/kcal. Cambia en vivo con los gramos que se ajustan.
+  En «escribir lo que comí» y en el menú del nutricionista sale cerrada (sin foto). No cambia lo que se guarda.
+- **Revisión de otro Claude:** pidió cambios y se corrigieron: la animación seguía corriendo con la hoja cerrada (ahora solo
+  dibuja cuando algo se mueve), las caras 3D se pintaban en orden inverso, las etiquetas se corrían en fotos verticales,
+  más espacio de respuesta para la IA (1100), prueba del servidor para x/y, respeta «reducir movimiento».
+- **Pendiente:** ver con fotos reales qué tan bien ubica la IA cada alimento.
+
 ## 2026-11-11
 
 ### 23:55 · v2.53.1 — Recortar el video también en cardio y deportes

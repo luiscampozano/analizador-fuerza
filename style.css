@@ -1397,3 +1397,19 @@ html.ios body::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 .v3d-ctrl .btn-sec { width: auto; padding: 6px 12px; font-size: 13px; }
 .v3d-ctrl .btn-sec.on { border-color: var(--accent-green); color: var(--accent-green); font-weight: 600; }
 #v3d-t { width: 100%; accent-color: var(--accent-green); }
+
+/* v2.54.0 Macros en 3D (foto del plato) */
+.m3 { margin: 4px 0 10px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 8px 10px; }
+.m3 summary { cursor: pointer; font-weight: 600; font-size: .92rem; }
+.m3-foto { position: relative; width: fit-content; max-width: 100%; margin: 8px auto 0; border-radius: 10px; overflow: hidden; }
+.m3-foto img { width: auto; max-width: 100%; max-height: 320px; display: block; }
+.m3-tag { position: absolute; transform: translate(-50%, -50%); background: rgba(11, 11, 18, .85); color: #fff; border: 1.5px solid; border-radius: 999px; padding: 3px 9px; font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.m3-tag.off, .m3-chip.off { opacity: .35; }
+.m3-canvas { width: 100%; height: 300px; display: block; touch-action: none; cursor: grab; margin-top: 6px; }
+.m3-ley { display: flex; flex-wrap: wrap; gap: 6px; }
+.m3-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.m3-chip span { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.m3-chip.on, .m3-tag.on { border-color: var(--accent-green); }
+.m3-ctrl { display: flex; gap: 6px; margin-top: 8px; }
+.m3-ctrl .btn-sec { width: auto; padding: 6px 12px; font-size: 13px; }
+.m3-ctrl .btn-sec.on { border-color: var(--accent-green); color: var(--accent-green); font-weight: 600; }

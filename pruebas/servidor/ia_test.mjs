@@ -17,9 +17,10 @@ let [s,r]=await call(A,'POST','ia/plato',{imagen:foto}); ok(s===503&&/pronto/.te
 env.ANTHROPIC_API_KEY='sk-ant-prueba';
 [s,r]=await call(null,'POST','ia/plato',{imagen:foto}); ok(s===401,'sin sesión no se puede');
 [s,r]=await call(A,'POST','ia/plato',{imagen:'<script>'}); ok(s===400,'foto no base64 rechazada');
-respuesta=claude('Aquí está: {"alimentos":[{"nombre":"Arroz blanco","gramos":150,"kcal":195,"p":4,"c":42,"g":0.4,"confianza":"alta"},{"nombre":"Pollo <b>","gramos":120,"kcal":198,"p":37,"c":0,"g":4.3,"confianza":"media"},{"nombre":"x","gramos":0}],"nota":"Plato típico"}');
+respuesta=claude('Aquí está: {"alimentos":[{"nombre":"Arroz blanco","gramos":150,"kcal":195,"p":4,"c":42,"g":0.4,"confianza":"alta","x":30.4,"y":55},{"nombre":"Pollo <b>","gramos":120,"kcal":198,"p":37,"c":0,"g":4.3,"confianza":"media","x":150,"y":"20"},{"nombre":"x","gramos":0}],"nota":"Plato típico"}');
 [s,r]=await call(A,'POST','ia/plato',{imagen:foto});
 ok(s===200&&r.alimentos.length===2&&r.alimentos[0].kcal===195&&r.alimentos[1].nombre==='Pollo b'&&r.quedan===9,'analiza, limpia nombres y descarta porciones en 0');
+ok(r.alimentos[0].x===30&&r.alimentos[0].y===55&&!('x' in r.alimentos[1])&&!('y' in r.alimentos[1]),'v2.54.0 posición en la foto: solo números de 0 a 100');
 ok(ultimo.url==='https://api.anthropic.com/v1/messages'&&ultimo.op.headers['x-api-key']==='sk-ant-prueba'&&ultimo.body.model==='claude-haiku-5-5'&&ultimo.body.messages[0].content[0].source.data===foto,'llama a Claude Haiku con la clave del secreto y la foto');
 respuesta=claude('no es json');
 [s,r]=await call(A,'POST','ia/plato',{imagen:foto}); ok(s===502,'respuesta rara de la IA: error claro');

@@ -1453,6 +1453,8 @@ const fotoValida = (img) => { if (typeof img !== 'string' || !img || img.length 
 const alimentosIA = (lista) => (Array.isArray(lista) ? lista : []).slice(0, 12).map((a) => ({
   nombre: texto_(a.nombre, 50) || 'Alimento', gramos: numIA(a.gramos, 2000), kcal: numIA(a.kcal, 5000), p: numIA(a.p, 500), c: numIA(a.c, 500), g: numIA(a.g, 500),
   confianza: ['alta', 'media', 'baja'].includes(a.confianza) ? a.confianza : 'media',
+  // v2.54.0 posicion del alimento en la foto (0-100 %), solo para marcarlo en la vista 3D; opcional
+  ...(typeof a.x === 'number' && typeof a.y === 'number' && a.x >= 0 && a.x <= 100 && a.y >= 0 && a.y <= 100 ? { x: Math.round(a.x), y: Math.round(a.y) } : {}),
 })).filter((a) => a.gramos > 0);
 const FORMATO_ALIMENTOS = `Responde SOLO con JSON valido, sin texto antes ni despues, con este formato exacto:
 {"alimentos":[{"nombre":"arroz blanco cocido","gramos":150,"kcal":195,"p":4,"c":42,"g":0.4,"confianza":"alta"}],"nota":"una frase corta"}
@@ -1462,11 +1464,12 @@ kcal, p (proteina), c (carbohidratos) y g (grasa) son PARA ESOS GRAMOS, con valo
 const PROMPT_PLATO = `Eres nutricionista. Mira la foto de una comida (puede ser comida ecuatoriana o latinoamericana) e identifica cada alimento visible.
 Para cada uno estima los gramos que hay en el plato (usa referencias: tamano del plato ~25 cm, cubiertos, manos). Incluye salsas o aceite visibles.
 ${FORMATO_ALIMENTOS}
+Ademas, en cada alimento agrega "x" y "y": la posicion del centro de ese alimento en la foto, en porcentaje de 0 a 100 desde la esquina superior izquierda (ej. "x":30,"y":55).
 Si la foto no es comida, devuelve {"alimentos":[],"nota":"No parece comida."}.`;
 async function fotoPlato(req, env, u) {
   const cupo = await cupoIA(env, u, '', 'fotos del plato');
   const img = fotoValida((await leerJSON(req)).imagen);
-  const res = jsonDe(await llamarClaude(env, PROMPT_PLATO, [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } }, { type: 'text', text: 'Analiza este plato y responde solo con el JSON.' }], 900, true));
+  const res = jsonDe(await llamarClaude(env, PROMPT_PLATO, [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } }, { type: 'text', text: 'Analiza este plato y responde solo con el JSON.' }], 1100, true));
   await cupo.contar();
   return json({ alimentos: alimentosIA(res.alimentos), nota: texto_(res.nota, 200), quedan: cupo.quedan });
 }

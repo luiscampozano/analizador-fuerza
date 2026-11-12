@@ -3,6 +3,7 @@
 // telefono; los productos con codigo que crea el usuario pueden compartirse con la comunidad (v2.19.0).
 import * as almacen from './almacen.js';
 import * as nube from './nube.js';
+import * as macros3d from './macros3d.js';
 import { ALIMENTOS } from './alimentos.js';
 import { calcularPlan, OBJETIVOS, ajusteSemanal } from './objetivos.js';
 import { POR_ID } from './ejercicios.js';
@@ -268,11 +269,12 @@ async function reducirFoto(archivo, lado = 768) {
 async function fotoPlato(archivo) {
   $('nu-off').innerHTML = '<p class="hint">📸 Analizando tu plato con IA… (unos segundos)</p>';
   let r;
-  try { r = await nube.api('POST', '/api/ia/plato', { imagen: await reducirFoto(archivo) }); }
+  let img;
+  try { img = await reducirFoto(archivo); r = await nube.api('POST', '/api/ia/plato', { imagen: img }); }
   catch (e) { $('nu-off').innerHTML = `<p class="hint">${esc(e.message || e)}</p>`; return; }
   $('nu-off').innerHTML = '';
   if (!r.alimentos.length) { $('nu-off').innerHTML = `<p class="hint">${esc(r.nota || 'No reconocí alimentos en la foto.')} Prueba con otra foto, desde arriba y con buena luz.</p>`; return; }
-  listaIA(r, '📸 Tu plato', `Te quedan ${r.quedan} fotos hoy.`);
+  listaIA(r, '📸 Tu plato', `Te quedan ${r.quedan} fotos hoy.`, null, null, 'data:image/jpeg;base64,' + img);
 }
 
 // comida escrita: "arroz con menestra, carne asada y un jugo de mora" -> lista editable igual que la foto (v2.23.0)
@@ -297,7 +299,7 @@ function comidaEscrita(previo = '') {
 }
 
 // lista editable de alimentos que propone la IA (foto o texto): el usuario ajusta gramos y desmarca lo que no comio
-function listaIA(r, titulo, pie, volver = null, intro = null) {
+function listaIA(r, titulo, pie, volver = null, intro = null, foto = null) {
   const items = r.alimentos.map((a) => ({ ...a, base: { kcal: a.kcal / a.gramos * 100, p: a.p / a.gramos * 100, c: a.c / a.gramos * 100, g: a.g / a.gramos * 100 }, usar: true }));
   $('nu-paso-buscar').style.display = 'none'; $('nu-paso-cant').style.display = '';
   const CONF = { alta: '🟢', media: '🟡', baja: '🔴' };
@@ -307,6 +309,7 @@ function listaIA(r, titulo, pie, volver = null, intro = null) {
       <span><b>${esc(a.nombre)}</b> <small title="confianza de la IA en la porción">${CONF[a.confianza] || ''}</small><small id="nu-pl-k${i}"></small></span>
       <input type="number" inputmode="decimal" min="0" step="any" value="${Math.round(a.gramos)}" data-g="${i}"><span class="nu-plato-u">g</span></label>`).join('')}</div>
     <div id="nu-prev" class="nu-prev"></div>
+    <details class="m3" id="nu-3d"${foto ? ' open' : ''}><summary>🧊 Tus macros en 3D <span class="v3d-exp">Experimental</span></summary><div id="nu-3d-caja"></div></details>
     <p class="hint" style="margin:0">${intro ? '' : '🟢🟡🔴 = qué tan segura está la IA de la porción. '}${pie}</p>
     <div class="en-det-botones"><button type="button" class="btn-sec" id="nu-volver">‹ Volver</button><button type="button" class="btn-sec en-terminar" id="nu-ok">Agregar</button></div>`;
   const total = () => {
@@ -322,6 +325,7 @@ function listaIA(r, titulo, pie, volver = null, intro = null) {
     $('nu-ok').disabled = !n;
   };
   $('nu-cant').querySelectorAll('input').forEach((x) => (x.oninput = x.onchange = total)); total();
+  macros3d.montar($('nu-3d-caja'), items, foto); // v2.54.0 vista 3D de los macros (lee los gramos que se van ajustando)
   $('nu-volver').onclick = volver || (() => { $('nu-paso-buscar').style.display = ''; $('nu-paso-cant').style.display = 'none'; });
   $('nu-ok').onclick = async () => {
     let k = 0;
