@@ -2,7 +2,7 @@
 // el informe completo de cada serie (para volver a abrirla y generar el PDF) y el video con telemetria.
 const DB = 'analizador-fuerza', VERSION_DB = 4;
 export const MAX_VIDEOS = 15; // se conservan los videos de las ultimas 15 series (cada uno pesa 5-25 MB)
-export const MAX_POSES = 60; // puntos del cuerpo de las ultimas 60 series (~150 KB c/u): para corregir reps y reportar fallos
+export const MAX_POSES = 60; // puntos del cuerpo de las ultimas 60 series (~150 KB c/u; ~280 KB con los puntos 3D): para corregir reps y reportar fallos
 
 let abierta = null;
 function abrir() {
@@ -54,13 +54,36 @@ export async function guardarVideo(id, salida) {
 
 // Puntos del cuerpo detectados por la IA (sin imagen): x, y en pixeles y visibilidad en centesimas, cuadro por cuadro.
 // Permiten volver a calcular la serie al corregir las reps y, si el usuario lo reporta, reproducir el fallo exacto.
+// v2.53.0 puntos 3D que se guardan (los que dibuja la vista 3D): nariz, orejas, hombros a pies
+const P3 = [0, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
 export function empacarPose(frames, meta) {
   const n = frames.length, xs = new Int16Array(n * 33), ys = new Int16Array(n * 33), vs = new Uint8Array(n * 33), ts = new Float32Array(n);
   frames.forEach((f, i) => {
     ts[i] = f.t;
     if (f.puntos) f.puntos.forEach((p, k) => { xs[i * 33 + k] = Math.round(p[0]); ys[i * 33 + k] = Math.round(p[1]); vs[i * 33 + k] = Math.max(1, Math.round((p[2] ?? 1) * 100)); });
   });
-  return { ...meta, n, ts, xs, ys, vs };
+  // v2.53.0 puntos 3D (vista 3D experimental) en milímetros; las series viejas no los tienen
+  if (!frames.some((f) => f.mundo)) return { ...meta, n, ts, xs, ys, vs };
+  const m = P3.length, wx = new Int16Array(n * m), wy = new Int16Array(n * m), wz = new Int16Array(n * m), wv = new Uint8Array(n);
+  frames.forEach((f, i) => {
+    if (!f.mundo || !f.puntos) return;
+    wv[i] = 1;
+    P3.forEach((k, j) => { const p = f.mundo[k]; wx[i * m + j] = Math.round(p[0] * 1000); wy[i * m + j] = Math.round(p[1] * 1000); wz[i * m + j] = Math.round(p[2] * 1000); });
+  });
+  return { ...meta, n, ts, xs, ys, vs, wx, wy, wz, wv };
+}
+// Solo los puntos 3D: [[x, y, z] * 33] en metros (los que no se guardan quedan en 0), o null en los cuadros sin persona.
+// null si la serie no los guardó.
+export function desempacarMundo(p) {
+  if (!p || !p.wx || !p.wv) return null;
+  const m = P3.length, out = [];
+  for (let i = 0; i < p.n; i++) {
+    if (!p.wv[i]) { out.push(null); continue; }
+    const q = Array.from({ length: 33 }, () => [0, 0, 0]);
+    P3.forEach((k, j) => { q[k] = [p.wx[i * m + j] / 1000, p.wy[i * m + j] / 1000, p.wz[i * m + j] / 1000]; });
+    out.push(q);
+  }
+  return out;
 }
 export function desempacarPose(p) {
   const frames = [];
@@ -75,13 +98,16 @@ export function desempacarPose(p) {
 export async function guardarPose(id, frames, meta) {
   try {
     await tx('poses', 'readwrite', (s) => s.put({ id, fecha: Date.now(), ...empacarPose(frames, meta) }));
-    const todos = await tx('poses', 'readonly', (s) => s.getAllKeys());
-    if ((todos || []).length > MAX_POSES) {
-      const lista = await tx('poses', 'readonly', (s) => s.getAll());
-      for (const v of lista.sort((a, b) => b.fecha - a.fecha).slice(MAX_POSES)) await tx('poses', 'readwrite', (s) => s.delete(v.id));
-    }
+    limpiarPoses().catch(() => {}); // v2.53.0 sin esperar: la app no se detiene mientras borra las poses viejas
     return true;
   } catch (e) { return false; }
+}
+async function limpiarPoses() {
+  const todos = await tx('poses', 'readonly', (s) => s.getAllKeys());
+  if ((todos || []).length > MAX_POSES) {
+    const lista = await tx('poses', 'readonly', (s) => s.getAll());
+    for (const v of lista.sort((a, b) => b.fecha - a.fecha).slice(MAX_POSES)) await tx('poses', 'readwrite', (s) => s.delete(v.id));
+  }
 }
 export const leerPose = (id) => tx('poses', 'readonly', (s) => s.get(id)).catch(() => null);
 

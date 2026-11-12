@@ -8,6 +8,23 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-11
 
+### 23:30 · v2.53.0 — Vista 3D experimental del esqueleto
+- **Pidió:** un botón para ver la serie en 3D (como experimental), revisado por otro Claude y publicado; y probar si el 3D cuenta las reps mejor.
+- **Hecho:** la app ahora guarda también los puntos 3D que MediaPipe ya calculaba (en metros). En los resultados de pesas y de
+  deportes aparece «🧊 Ver en 3D · Experimental»: muñeco que se gira con el dedo, vistas Frente/Lado/Diagonal/Arriba, girar solo,
+  pausa y barra de tiempo. Solo es una vista: los cálculos no cambian. Solo sale en series nuevas (las viejas no tienen 3D).
+  El recorrido E2E «analizar» ahora comprueba que el botón abre y dibuja el muñeco.
+- **Revisión de otro Claude:** aprobado. Se corrigió: el botón podía mostrar la serie anterior si se cambiaba rápido de serie;
+  se guardan solo los 19 puntos 3D que se dibujan (menos espacio en el teléfono) y la limpieza de poses viejas ya no hace esperar;
+  la ventana es accesible (rol de diálogo, Escape para cerrar, botones con estado).
+- **Prueba del conteo con 3D** (7 videos contados a mano, puntos 3D proyectados a una «cámara virtual» de frente al movimiento):
+  aciertos exactos 2D 5/7 vs 3D 4/7 (error total 5 vs 8 reps; el 3D falló en el hack: 8 de 11). El 3D da velocidades
+  10–40 % más altas y no sabemos cuál es la real. Conclusión: por ahora el 3D NO se usa en los cálculos.
+- **Pruebas de calidad del 3D** (14 videos): los huesos varían de largo 2–12 % en 3D vs 3–38 % en 2D; la profundidad tiembla el
+  doble; en el remo 130 kg el eje de las manos da 43° en 3D vs 29° en 2D (riel ~45°). Natación: mala en 2D y en 3D.
+- **Pendiente:** videos en diagonal con velocidad conocida para decidir si el 3D mejora la velocidad; natación; idea de Luis:
+  vista 3D/interactiva de los macros de la comida a partir de la foto.
+
 ### 11:50 · (sin versión nueva) — Recorridos automáticos de principio a fin (E2E)
 - **Pidió:** pruebas E2E de los flujos centrales (analizar, registrar entrenamiento y comida) para mejorar la calidad.
 - **Se hizo:** pruebas/e2e/ con 3 recorridos en Chromium a 412 px, sin cuenta y sin internet (solo se permite descargar

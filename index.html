@@ -354,6 +354,7 @@
         <div class="kpi-card"><span class="kpi-label">POTENCIA PICO</span><span class="kpi-value" id="r-ppico">--</span><span class="kpi-sub">watts</span></div>
       </section>
 
+      <button type="button" class="btn-sec btn-3d" id="btn-3d" style="display:none">🧊 Ver en 3D <span class="v3d-exp">Experimental</span></button>
       <p class="hint aviso-video" id="r-sin-video" style="display:none"></p>
       <section class="section" id="sec-video">
         <label class="section-title">Video con telemetría</label>
@@ -503,6 +504,7 @@
       <section class="card sencillo"><h3>🗣️ En palabras simples</h3><ul id="act-sencillo" class="sencillo-lista"></ul></section>
       <section class="section"><label class="section-title">Técnica</label><div class="card act-alertas" id="act-alertas"></div></section>
       <section class="section"><label class="section-title" id="act-graf-tit">Ritmo durante el video</label><div class="card"><canvas id="act-graf" class="grafica"></canvas></div></section>
+      <button type="button" class="btn-sec btn-3d" id="act-3d" style="display:none">🧊 Ver en 3D <span class="v3d-exp">Experimental</span></button>
       <section class="section" id="act-sec-video">
         <label class="section-title">Video con telemetría</label>
         <div class="video-container"><video id="act-video" playsinline controls preload="metadata"></video></div>
@@ -770,6 +772,20 @@
     <button type="button" data-vista="v-comunidad"><span>👥</span>Comunidad</button>
     <button type="button" data-vista="v-perfil"><span>👤</span>Perfil</button>
   </div></nav>
+
+  <!-- ============ VISTA 3D (experimental, v2.53.0) ============ -->
+  <div id="v3d-modal" class="modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="v3d-titulo">
+    <div class="modal-caja v3d-caja">
+      <div class="v3d-cab"><h3 id="v3d-titulo">🧊 Vista 3D <span class="v3d-exp">Experimental</span></h3><button type="button" class="btn-sec v3d-x" id="v3d-cerrar" aria-label="Cerrar">✕</button></div>
+      <canvas id="v3d-canvas" role="img" aria-label="Muñeco 3D de la serie; arrastra para girarlo"></canvas>
+      <div class="v3d-ctrl">
+        <button type="button" class="btn-sec" id="v3d-play" aria-label="Pausa o reproducir">⏸</button>
+        <button type="button" class="btn-sec" data-v3d="frente">Frente</button><button type="button" class="btn-sec" data-v3d="lado">Lado</button><button type="button" class="btn-sec" data-v3d="diag">Diagonal</button><button type="button" class="btn-sec" data-v3d="arriba">Arriba</button><button type="button" class="btn-sec" id="v3d-giro">Girar</button>
+      </div>
+      <input type="range" id="v3d-t" min="0" max="1000" value="0" aria-label="Momento del video">
+      <p class="hint" style="margin:6px 0 0">Arrastra el muñeco para girarlo. La IA estima la profundidad con un solo video: puede temblar o un pie puede quedar flotando. Es solo una vista: los resultados de la serie no la usan.</p>
+    </div>
+  </div>
 
   <div id="bienvenida" class="bienvenida" style="display:none"><div id="bv-caja" class="bv-caja"></div></div>
   <script type="module" src="js/app.js"></script>
