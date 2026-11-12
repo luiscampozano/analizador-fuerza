@@ -25,8 +25,9 @@ import * as tour from './tour.js';
 import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
+import * as vista3d from './vista3d.js';
 
-const VERSION = '2.52.0';
+const VERSION = '2.53.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -505,7 +506,7 @@ async function analizarArchivo() {
       const registro = hist.agregar({ ...registroDe(ej, dh, c.res, c.serie, c.tray, c.tec, infH, origen), ...(h ? { id: (Date.now() + 1).toString(36) } : {}) });
       infH.id = registro.id; infH.fecha = registro.fecha;
       if (h === 0 ? entrenar.vincular(registro) : entrenar.vincularOtraPierna(registro)) aviso('');
-      almacen.guardarPose(registro.id, frames, { dur: video.duration, W: video.videoWidth, H: video.videoHeight, version: VERSION });
+      await almacen.guardarPose(registro.id, frames, { dur: video.duration, W: video.videoWidth, H: video.videoHeight, version: VERSION });
       recordarArchivo(registro.id, archivo);
       infs.push(infH);
     }
@@ -561,7 +562,7 @@ async function analizarActividadVideo(frames, video, d, balon = null) {
     salida = await generarVideo(video, archivo, dibujoActividad(video, full, 30, act, balon && frames.map((f, i) => ({ t: f.t, b: balon[i] }))), { cancelado: () => cancelar, alAvanzar: (f) => progreso(3, f, 'Creando el video con telemetría…') });
     await almacen.guardarVideo(act.id, salida);
   }
-  almacen.guardarPose(act.id, frames, { dur: video.duration, W: video.videoWidth, H: video.videoHeight, version: VERSION });
+  await almacen.guardarPose(act.id, frames, { dur: video.duration, W: video.videoWidth, H: video.videoHeight, version: VERSION });
   act.actividad = true;
   await almacen.guardarInforme(act);
   const enEntreno = entrenar.vincularActividad(act);
@@ -572,6 +573,7 @@ async function analizarActividadVideo(frames, video, d, balon = null) {
 let actActual = null, actDesde = 'v-form', actVideo = null;
 function mostrarActividad(a, { video = null, desde = 'v-form' } = {}) {
   actActual = a; actDesde = desde; actVideo = video;
+  vista3d.preparar($('act-3d'), a.id);
   $('act-titulo').textContent = `${a.icono || '🏃'} ${a.nombre}`;
   $('act-sub').textContent = `${new Date(a.fecha).toLocaleString('es-EC', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${fmt(a.dur, 0)} s de video`;
   $('act-kpis').innerHTML = a.kpis.map((k) => `<div class="kpi-card"><span class="kpi-label">${esc(k.label)}</span><span class="kpi-value">${k.valor ?? '--'}</span><span class="kpi-sub">${esc(k.sub)}</span></div>`).join('');
@@ -910,6 +912,7 @@ function pintarPierna(inf, desde) {
 }
 function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } = {}) {
   informeActual = inf; videoActual = video; vistaPrevia = desde;
+  vista3d.preparar($('btn-3d'), inf.id);
   const { ej: e, s, datos: d } = inf, corporal = e.perfil === 'corporal';
   $('btn-nueva').textContent = nuevo ? '← Nueva serie' : '← Volver';
   $('r-guardado').textContent = nuevo ? '✓ Guardado en historial' : 'Serie del historial';
@@ -1399,6 +1402,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   pintarLista(); ajustarCampos();
   $('version').textContent = `Versión ${VERSION}`;
   nutricion.iniciar();
+  vista3d.iniciar();
   atras.iniciar();
   guardia(false);
   try { $('in-estela').checked = localStorage.getItem('af_estela') === '1'; } catch (e) { /* nada */ }

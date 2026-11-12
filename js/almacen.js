@@ -60,7 +60,27 @@ export function empacarPose(frames, meta) {
     ts[i] = f.t;
     if (f.puntos) f.puntos.forEach((p, k) => { xs[i * 33 + k] = Math.round(p[0]); ys[i * 33 + k] = Math.round(p[1]); vs[i * 33 + k] = Math.max(1, Math.round((p[2] ?? 1) * 100)); });
   });
-  return { ...meta, n, ts, xs, ys, vs };
+  // v2.53.0 puntos 3D (vista 3D experimental) en milímetros; las series viejas no los tienen
+  if (!frames.some((f) => f.mundo)) return { ...meta, n, ts, xs, ys, vs };
+  const wx = new Int16Array(n * 33), wy = new Int16Array(n * 33), wz = new Int16Array(n * 33), wv = new Uint8Array(n);
+  frames.forEach((f, i) => {
+    if (!f.mundo || !f.puntos) return;
+    wv[i] = 1;
+    f.mundo.forEach((p, k) => { wx[i * 33 + k] = Math.round(p[0] * 1000); wy[i * 33 + k] = Math.round(p[1] * 1000); wz[i * 33 + k] = Math.round(p[2] * 1000); });
+  });
+  return { ...meta, n, ts, xs, ys, vs, wx, wy, wz, wv };
+}
+// Solo los puntos 3D: [[x, y, z] * 33] en metros, o null en los cuadros sin persona. null si la serie no los guardó.
+export function desempacarMundo(p) {
+  if (!p || !p.wx || !p.wv) return null;
+  const out = [];
+  for (let i = 0; i < p.n; i++) {
+    if (!p.wv[i]) { out.push(null); continue; }
+    const q = [];
+    for (let k = 0; k < 33; k++) q.push([p.wx[i * 33 + k] / 1000, p.wy[i * 33 + k] / 1000, p.wz[i * 33 + k] / 1000]);
+    out.push(q);
+  }
+  return out;
 }
 export function desempacarPose(p) {
   const frames = [];

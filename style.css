@@ -1384,3 +1384,16 @@ html.ios body::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 /* v2.52.0 selector de ejercicios en 3 pestañas: Gym, Cardio y Deportes */
 .ej-secc { grid-template-columns: repeat(3, 1fr); margin: 10px 0 6px; }
 .ej-secc button { font-size: 14px; padding: 10px 2px; }
+
+/* v2.53.0 Vista 3D experimental */
+.btn-3d { width: 100%; margin: 0 0 12px; }
+.v3d-exp { font-size: 11px; font-weight: 600; color: var(--accent-orange); border: 1px solid var(--accent-orange); border-radius: 999px; padding: 1px 7px; margin-left: 4px; vertical-align: middle; }
+.v3d-caja { max-width: 520px; max-height: 94vh; overflow-y: auto; }
+.v3d-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.v3d-cab h3 { margin: 0; font-size: 17px; }
+.v3d-x { width: auto; padding: 6px 12px; }
+#v3d-canvas { width: 100%; height: min(58vh, 520px); display: block; touch-action: none; cursor: grab; background: var(--bg-dark); border-radius: 10px; }
+.v3d-ctrl { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 6px; }
+.v3d-ctrl .btn-sec { width: auto; padding: 6px 12px; font-size: 13px; }
+.v3d-ctrl .btn-sec.on { border-color: var(--accent-green); color: var(--accent-green); font-weight: 600; }
+#v3d-t { width: 100%; accent-color: var(--accent-green); }

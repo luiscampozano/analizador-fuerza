@@ -88,7 +88,7 @@ export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvan
   const t0 = performance.now();
   for await (const { t, imagen } of fuente.iterar(tiempos)) {
     if (cancelado()) throw new Error('cancelado');
-    let puntos = null;
+    let puntos = null, mundo = null;
     if (imagen) {
       const ts = Math.max(relojMs + 1, base + Math.round(t * 1000));
       relojMs = ts;
@@ -100,19 +100,22 @@ export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvan
       }
       if (r.landmarks && r.landmarks.length) {
         // persona principal: la mas grande y, a igualdad, la mas cercana a la del cuadro anterior
-        let mejor = -Infinity, cMejor = null;
-        for (const l of r.landmarks) {
+        let mejor = -Infinity, cMejor = null, iMejor = 0;
+        for (const [i, l] of r.landmarks.entries()) {
           const xs = l.map((p) => p.x), ys = l.map((p) => p.y);
           const area = (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
           const c = [xs.reduce((a, b) => a + b) / xs.length, ys.reduce((a, b) => a + b) / ys.length];
           const puntaje = area - (centroPrev ? 0.2 * Math.hypot(c[0] - centroPrev[0], c[1] - centroPrev[1]) : 0);
-          if (puntaje > mejor) { mejor = puntaje; puntos = l; cMejor = c; }
+          if (puntaje > mejor) { mejor = puntaje; puntos = l; cMejor = c; iMejor = i; }
         }
         centroPrev = cMejor;
         puntos = puntos.map((p) => [p.x * W, p.y * H, p.visibility ?? 1]);
+        // v2.53.0 puntos 3D en metros (centro en la cadera) para la vista 3D experimental; los cálculos no los usan
+        const w3 = r.worldLandmarks && r.worldLandmarks[iMejor];
+        if (w3 && w3.length === 33) mundo = w3.map((p) => [p.x, p.y, p.z]);
       }
     }
-    frames.push({ t, puntos });
+    frames.push(mundo ? { t, puntos, mundo } : { t, puntos });
     if (alCuadro && imagen) alCuadro(imagen, t);
     if (k % 5 === 0) {
       const hecho = k / total, trans = (performance.now() - t0) / 1000;
