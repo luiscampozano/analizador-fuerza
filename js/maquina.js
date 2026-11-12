@@ -3,6 +3,8 @@
 import * as nube from './nube.js';
 
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let turno = 0; // sube cada vez que se pide o se cancela: una respuesta vieja que llega tarde se ignora
+export const cancelar = () => { turno++; };
 const CONF = { alta: 'Muy segura', media: 'Bastante segura', baja: 'No muy segura' };
 
 async function reducir(archivo, lado = 768) {
@@ -15,18 +17,21 @@ async function reducir(archivo, lado = 768) {
 // caja: dónde se pinta; ejercicios: biblioteca (deps.ejercicios); porId: deps.porId;
 // alAgregar(id, nombre): agrega el ejercicio; alVolver(): vuelve a la lista del buscador.
 export async function identificar(archivo, { caja, ejercicios, porId, alAgregar, alVolver }) {
+  const mio = ++turno, vigente = () => mio === turno && caja.isConnected && caja.offsetParent !== null;
   const volver = '<button type="button" class="btn-sec mq-volver">‹ Volver a la lista</button>';
   const enlazar = () => { const b = caja.querySelector('.mq-volver'); if (b) b.onclick = alVolver; };
   if (!nube.conectado()) { caja.innerHTML = `<div class="mq-caja"><p class="hint">Inicia sesión en Perfil para usar la IA que reconoce máquinas.</p>${volver}</div>`; enlazar(); return; }
   let img;
-  try { img = await reducir(archivo); } catch { caja.innerHTML = `<div class="mq-caja"><p class="hint">No pude leer la foto. Prueba con otra.</p>${volver}</div>`; enlazar(); return; }
+  try { img = await reducir(archivo); } catch { if (!vigente()) return; caja.innerHTML = `<div class="mq-caja"><p class="hint">No pude leer la foto. Prueba con otra.</p>${volver}</div>`; enlazar(); return; }
+  if (!vigente()) return;
   const foto = 'data:image/jpeg;base64,' + img;
   caja.innerHTML = `<div class="mq-caja"><div class="mq-foto"><img src="${foto}" alt="Foto de la máquina"><div class="mq-escaner"></div></div>
     <p class="hint" style="text-align:center">🤖 Identificando la máquina… (unos segundos)</p></div>`;
   const lista = ejercicios.filter((e) => !e.cardio).map((e) => ({ id: e.id, nombre: [e.nombre, e.equipo].filter(Boolean).join(' · ') }));
   let r;
   try { r = await nube.api('POST', '/api/ia/maquina', { imagen: img, lista }); }
-  catch (e) { caja.innerHTML = `<div class="mq-caja"><p class="hint">${esc(e.message || e)}</p>${volver}</div>`; enlazar(); return; }
+  catch (e) { if (!vigente()) return; caja.innerHTML = `<div class="mq-caja"><p class="hint">${esc(e.message || e)}</p>${volver}</div>`; enlazar(); return; }
+  if (!vigente()) return; // la persona escribió en el buscador o lo cerró mientras la IA respondía
   const def = r.id && porId[r.id];
   const opciones = (r.otras || []).filter((id) => porId[id]);
   const chip = (id) => `<button type="button" class="mq-chip" data-ej="${esc(id)}">${esc(porId[id].nombre)}</button>`;

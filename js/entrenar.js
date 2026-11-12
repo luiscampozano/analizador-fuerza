@@ -795,7 +795,7 @@ function recientes() {
   return vistos;
 }
 function pintarSelector() {
-  $('en-maquina').style.display = '';
+  $('en-maquina').style.display = ''; maquina.cancelar();
   const q = norm($('en-buscar').value), pal = q.split(/\s+/).filter(Boolean);
   const pasa = (texto) => pal.every((w) => norm(texto).includes(w));
   const rec = recientes().filter((r) => pasa(r.ej && deps.porId[r.ej] ? `${deps.porId[r.ej].nombre} ${deps.porId[r.ej].en}` : r.nombre));
