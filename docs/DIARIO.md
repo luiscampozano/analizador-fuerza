@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-12
 
+### 18:15 · v2.54.2 — Cronómetro del entrenamiento más visible
+- **Pidió:** el editor del tiempo de entrenamiento era muy pequeño; resaltarlo y encerrarlo en un cuadro.
+- **Hecho:** el botón ⏱ ahora tiene borde celeste, fondo suave, números un poco más grandes y el lápiz más visible.
+  Solo estilo (style.css); la app sigue en revisión de Apple, por eso un cambio mínimo.
+- **Pendiente:** identificador de máquinas con foto (maqueta primero).
+
 ### 10:50 · v2.54.1 — Respuesta al primer rechazo de Apple (1.4.1 y 2.1(b))
 - **Pasó:** Apple rechazó la versión 1.0 (6): (1) información de salud sin citas; (2) el revisor (iPad Air) no encontró las
   compras dentro de la app.
