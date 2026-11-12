@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-11
 
+### 23:55 · v2.53.1 — Recortar el video también en cardio y deportes
+- **Pidió:** la herramienta de recorte no funcionaba en boxeo; revisar todos los ejercicios, deportes incluidos.
+- **Hecho:** el recortador estaba apagado a propósito para cardio y deportes (se analizaba todo el video). Ahora aparece en
+  todos los ejercicios y en cardio/deportes solo se cuenta el tramo elegido; el video con telemetría sigue sincronizado.
+  Prueba en boxeo: video completo 14 golpes, recortado 0–5 s 7 golpes. Revisado por otro Claude (corrigió que al cambiar a
+  un deporte el recortador se ocultaba y el recorte se aplicaba sin verse).
+- **Pendiente:** aviso más claro si el tramo elegido es demasiado corto.
+
 ### 23:30 · v2.53.0 — Vista 3D experimental del esqueleto
 - **Pidió:** un botón para ver la serie en 3D (como experimental), revisado por otro Claude y publicado; y probar si el 3D cuenta las reps mejor.
 - **Hecho:** la app ahora guarda también los puntos 3D que MediaPipe ya calculaba (en metros). En los resultados de pesas y de

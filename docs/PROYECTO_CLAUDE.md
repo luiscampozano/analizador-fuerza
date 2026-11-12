@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 11 de noviembre de 2026 · **Versión en producción:** v2.53.0
+**Actualizado:** 11 de noviembre de 2026 · **Versión en producción:** v2.53.1
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -333,6 +333,7 @@ bloqueos, reportes, fallos.
 | v2.51.0 | Equipo del deporte (js/equipo.js): boxeo guantes; tenis/pádel peso, largo, tensión, pelota y diámetro; fútbol peso, diámetro, presión y calzado; vóley diámetro, peso y presión; básquet talla. Estándar = resultado idéntico al de antes (pruebas equipo_*.mjs). 5 subagentes + revisión independiente. |
 | v2.52.0 | Selector de ejercicios en 3 pestañas: Gym (subpestañas por músculo), Cardio y Deportes; el buscador busca en las tres; ya no abre el teclado solo. |
 | v2.53.0 | Vista 3D experimental: se guardan los puntos 3D de MediaPipe y un botón en resultados (pesas y deportes) muestra un muñeco 3D girable. No cambia los cálculos. |
+| v2.53.1 | El recortador de video también funciona en cardio y deportes (solo se analiza el tramo elegido). |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

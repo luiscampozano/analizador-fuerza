@@ -27,7 +27,7 @@ import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON }
 import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 import * as vista3d from './vista3d.js';
 
-const VERSION = '2.53.0';
+const VERSION = '2.53.1';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -226,8 +226,8 @@ function usaCarro() {
 }
 function ajustarCampos() {
   const p = ej.perfil;
-  // v2.48.0 el recortador no aplica a cardio/deportes (analizan todo el video)
-  const rc = $('recorte'); if (rc && archivo) rc.style.display = !ej.cardio && rc.dataset.listo ? '' : 'none';
+  // v2.53.1 el recortador aplica a todos los ejercicios, también cardio y deportes
+  const rc = $('recorte'); if (rc && archivo) rc.style.display = rc.dataset.listo ? '' : 'none';
   // cardio, boxeo y HIIT: sin carga; solo estatura (para las distancias) y peso corporal
   $('g-peso').style.display = p === 'cardio' ? 'none' : '';
   $('btn-vivo').style.display = p === 'cardio' && !tipoActividad(ej) ? 'none' : '';
@@ -348,7 +348,7 @@ const recorte = (() => {
     abrir(f) {
       if (url) URL.revokeObjectURL(url);
       $('in-ini').value = ''; $('in-fin').value = ''; // video nuevo: sin recorte heredado
-      dur = 0; delete $('recorte').dataset.listo; url = URL.createObjectURL(f); v.src = url; $('recorte').style.display = ej.cardio ? 'none' : ''; // deportes/cardio analizan todo el video
+      dur = 0; delete $('recorte').dataset.listo; url = URL.createObjectURL(f); v.src = url; $('recorte').style.display = ''; // v2.53.1 también en cardio y deportes
     },
     cerrar() {
       v.pause(); v.removeAttribute('src'); v.load(); if (url) URL.revokeObjectURL(url); url = null; dur = 0;
@@ -552,7 +552,14 @@ async function leerActs() {
 async function analizarActividadVideo(frames, video, d, balon = null) {
   progreso(2, 0.5, 'Midiendo el ritmo y la técnica…');
   const tipoA = tipoActividad(ej), equipo = tieneEquipo(tipoA) ? valoresEquipo(tipoA, leerEquipo(tipoA)) : null; // v2.51.0
-  const act = analizarActividad(frames, video.duration, ej, { altura: d.altura, peso: d.pc, balon, equipo });
+  // v2.53.1 recorte también en cardio y deportes: solo se analiza el tramo elegido (los tiempos siguen siendo los del video,
+  // así el video con telemetría queda sincronizado; el esqueleto se dibuja en todo el video)
+  const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
+  const a0 = ini > 0 ? ini : 0, b0 = fin > a0 ? fin : Infinity;
+  const dentro = frames.map((f) => f.t >= a0 && f.t <= b0);
+  const recortado = a0 > 0 || b0 < video.duration;
+  const act = analizarActividad(recortado ? frames.filter((_, i) => dentro[i]) : frames, video.duration, ej,
+    { altura: d.altura, peso: d.pc, balon: recortado && balon ? balon.filter((_, i) => dentro[i]) : balon, equipo });
   if (balon) act.completo = true;
   act.id = 'act-' + Date.now(); act.fecha = new Date().toISOString(); act.icono = ej.icono;
   progreso(2, 1);
