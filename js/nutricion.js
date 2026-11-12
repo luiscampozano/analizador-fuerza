@@ -310,7 +310,7 @@ function listaIA(r, titulo, pie, volver = null, intro = null, foto = null) {
       <input type="number" inputmode="decimal" min="0" step="any" value="${Math.round(a.gramos)}" data-g="${i}"><span class="nu-plato-u">g</span></label>`).join('')}</div>
     <div id="nu-prev" class="nu-prev"></div>
     <details class="m3" id="nu-3d"${foto ? ' open' : ''}><summary>🧊 Tus macros en 3D <span class="v3d-exp">Experimental</span></summary><div id="nu-3d-caja"></div></details>
-    <p class="hint" style="margin:0">${intro ? '' : '🟢🟡🔴 = qué tan segura está la IA de la porción. '}${pie}</p>
+    <p class="hint" style="margin:0">${intro ? '' : '🟢🟡🔴 = qué tan segura está la IA de la porción. '}${pie} <a href="fuentes.html#alimentos" target="_blank" rel="noopener">📚 Fuentes</a></p>
     <div class="en-det-botones"><button type="button" class="btn-sec" id="nu-volver">‹ Volver</button><button type="button" class="btn-sec en-terminar" id="nu-ok">Agregar</button></div>`;
   const total = () => {
     let t = { kcal: 0, p: 0, c: 0, g: 0 }, n = 0;
@@ -500,7 +500,7 @@ function abrirMetas() {
       <div class="form-group"><label for="mt-c">Carbohidratos (g)</label><input id="mt-c" type="number" inputmode="numeric" value="${m.c || ''}"></div>
       <div class="form-group"><label for="mt-g">Grasa (g)</label><input id="mt-g" type="number" inputmode="numeric" value="${m.g || ''}"></div>
     </div>
-    <p class="hint" id="mt-nota">Fórmula Mifflin-St Jeor × actividad. Proteína 1,8–2,2 g por kg, grasa ~0,9 g por kg y el resto carbohidratos. Es una estimación: ajústala según cómo cambie tu peso en 2–3 semanas.</p>
+    <p class="hint" id="mt-nota">Fórmula Mifflin-St Jeor × actividad. Proteína 1,8–2,2 g por kg, grasa ~0,9 g por kg y el resto carbohidratos. Es una estimación: ajústala según cómo cambie tu peso en 2–3 semanas. <a href="fuentes.html#nutricion" target="_blank" rel="noopener">📚 Fuentes</a></p>
     <p class="hint">Orientativo: no reemplaza a un nutricionista o médico.</p>
     <div class="en-det-botones"><button type="button" class="btn-sec" id="mt-cancelar">Cancelar</button><button type="button" class="btn-sec en-terminar" id="mt-ok">Guardar metas</button></div>`;
   // v2.44.0 objetivo con ritmo, peso meta y límites seguros (js/objetivos.js)
@@ -524,7 +524,7 @@ function abrirMetas() {
     $('mt-nota').innerHTML = `<b>Meta diaria:</b> ${fmt(r.kcal)} kcal · proteína ${fmt(r.p)} g.<br><b>Meta del mes:</b> ${Math.abs(r.cambioMes) < 0.2 ? 'mantener tu peso' : `${r.cambioMes > 0 ? 'subir' : 'bajar'} unos ${fmt(Math.abs(r.cambioMes), 1)} kg en 30 días`}.<br>Mantenimiento estimado: <b>${fmt(r.mant)} kcal</b>. Con <b>${fmt(r.kcal)} kcal</b> ${txtSem}`
       + (r.semanas ? ` y llegarías a ${fmt(o.pesoMeta, 1)} kg en <b>unas ${r.semanas} semanas</b>` : '') + '.'
       + (o.objetivo === 'fuerza' ? ' Para fuerza: come un poco por encima de tu mantenimiento, con buena proteína y carbohidratos alrededor del entreno.' : '')
-      + r.avisos.map((t) => `<br>⚠️ ${esc(t)}`).join('') + '<br>Es una estimación: ajústala según cómo cambie tu peso en 2–3 semanas.';
+      + r.avisos.map((t) => `<br>⚠️ ${esc(t)}`).join('') + '<br>Es una estimación: ajústala según cómo cambie tu peso en 2–3 semanas. <a href="fuentes.html#nutricion" target="_blank" rel="noopener">📚 Fuentes</a>';
   };
   $('mt-cancelar').onclick = cerrarHoja;
   $('mt-ok').onclick = () => {

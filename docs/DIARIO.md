@@ -8,6 +8,16 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-12
 
+### 10:50 · v2.54.1 — Respuesta al primer rechazo de Apple (1.4.1 y 2.1(b))
+- **Pasó:** Apple rechazó la versión 1.0 (6): (1) información de salud sin citas; (2) el revisor (iPad Air) no encontró las
+  compras dentro de la app.
+- **Hecho:** nueva página fuentes.html con las referencias (Mifflin-St Jeor, FAO/OMS/UNU, ISSN, Morton, Helms, NHLBI, OMS,
+  Hall, USDA FoodData Central, Open Food Facts, Compendio de actividades 2024, ACSM, González-Badillo, Sánchez-Medina,
+  Zourdos, Epley/LeSuer) y enlaces «📚 Fuentes» en Perfil, Información, metas de Nutrición, lista de la IA de comida y
+  resultados. En iPhone/iPad, Perfil siempre muestra «⭐ Planes FuerzaPro · Ver planes»; nuevo GET /api/planes público
+  (solo la tabla fija de planes y precios) para ver la tabla sin sesión. Revisado y aprobado por otro Claude.
+- **Pendiente:** Luis confirma que el Paid Apps Agreement esté activo, responde a Apple y reenvía.
+
 ### 06:40 · v2.54.0 — Macros en 3D a partir de la foto del plato
 - **Pidió:** llevar a la app la maqueta de los macros en 3D.
 - **Hecho:** al analizar la foto del plato aparece «🧊 Tus macros en 3D · Experimental»: la foto con cada alimento marcado

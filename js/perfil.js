@@ -120,8 +120,13 @@ export async function pintar() {
   // plan de suscripcion (solo cuando los limites aplican a esta cuenta)
   const rp = plan.resumen(), cp = $('pf-plan');
   if (cp) {
-    cp.style.display = rp ? '' : 'none';
-    if (rp) {
+    // v2.54.1 en iPhone/iPad los planes y suscripciones siempre se ven aquí (Apple pide que se puedan encontrar)
+    cp.style.display = rp || nube.esIOS() ? '' : 'none';
+    if (!rp && nube.esIOS()) {
+      cp.innerHTML = `<div class="pf-plan-cab"><b>⭐ Planes FuerzaPro</b><button type="button" class="btn-sec" id="pf-plan-ver">Ver planes</button></div>
+        <small>Suscripciones Plus, Pro y Pro Max con más análisis de video y más IA.${nube.conectado() ? '' : ' Inicia sesión para suscribirte.'}</small>`;
+      $('pf-plan-ver').onclick = () => plan.mostrarMejora();
+    } else if (rp) {
       cp.innerHTML = `<div class="pf-plan-cab"><b>⭐ Plan ${esc(rp.plan)}</b>${rp.hasta ? `<small> · hasta ${new Date(rp.hasta).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}</small>` : ''}<button type="button" class="btn-sec" id="pf-plan-ver">Ver planes</button></div>
         <small>${rp.lineas.map(esc).join(' · ')}</small>`;
       $('pf-plan-ver').onclick = () => plan.mostrarMejora();

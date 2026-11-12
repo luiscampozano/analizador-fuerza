@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 12 de noviembre de 2026 · **Versión en producción:** v2.54.0
+**Actualizado:** 12 de noviembre de 2026 · **Versión en producción:** v2.54.1
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -335,6 +335,7 @@ bloqueos, reportes, fallos.
 | v2.53.0 | Vista 3D experimental: se guardan los puntos 3D de MediaPipe y un botón en resultados (pesas y deportes) muestra un muñeco 3D girable. No cambia los cálculos. |
 | v2.53.1 | El recortador de video también funciona en cardio y deportes (solo se analiza el tramo elegido). |
 | v2.54.0 | Macros en 3D (experimental) en la foto del plato: alimentos marcados en la foto y columnas 3D de proteína, carbos y grasa por alimento. |
+| v2.54.1 | Rechazo de Apple: página de fuentes científicas con enlaces en toda la app y planes siempre visibles en iPhone/iPad (GET /api/planes público). |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |
 | v2.14.0 | Al corregir el conteo se rehace el video con las reps corregidas (automático si el original sigue en memoria; si no, botón para elegirlo). |
 | v2.13.0 | Segundo contador por ángulos (`js/conteo.js`) combinado con el principal: banco 29 → 37/59, más robusto a cámara y velocidad. Detalle en `docs/DIARIO.md`. |

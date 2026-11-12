@@ -51,8 +51,10 @@ const FILAS = [
   ['Exportar a Excel', (p) => (p.excel ? '✅' : '—')],
   ['Historial de velocidad', (p) => (p.historialDias ? `${p.historialDias} días` : 'Todo')],
 ];
+let publicos = null; // v2.54.1 tabla de planes sin sesión (GET /api/planes)
 export function mostrarMejora(motivo = '') {
-  const e = estado || {}, planes = e.planes, precios = e.precios || {};
+  const e = estado || {}, planes = e.planes || (publicos && publicos.planes), precios = e.precios || (publicos && publicos.precios) || {};
+  if (!planes && !publicos) fetch('/api/planes', { cache: 'no-store' }).then((r) => r.json()).then((d) => { if (d && d.planes) { publicos = d; const c = document.getElementById('plan-modal'); if (c && c.style.display !== 'none') mostrarMejora(motivo); } }).catch(() => {});
   let caja = document.getElementById('plan-modal');
   if (!caja) { caja = document.createElement('div'); caja.id = 'plan-modal'; caja.className = 'modal plan-modal'; document.body.appendChild(caja); }
   const ids = ['gratis', 'plus', 'pro', 'promax'];

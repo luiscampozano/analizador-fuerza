@@ -27,7 +27,7 @@ import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON }
 import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 import * as vista3d from './vista3d.js';
 
-const VERSION = '2.54.0';
+const VERSION = '2.54.1';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');

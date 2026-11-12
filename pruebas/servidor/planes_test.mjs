@@ -42,3 +42,4 @@ db.prepare("update planes set hasta=? where usuario=(select id from usuarios whe
 [s,r]=await call(A,'GET','plan'); ok(r.plan==='gratis','al vencer el regalo vuelve a Gratis');
 [s,r]=await call(L,'POST','mod/planes',{modo:'apagado'}); [s,r]=await call(L,'GET','plan'); ok(!r.aplica,'apagar los límites');
 [s,r]=await call(A,'DELETE','cuenta'); ok(s===200&&db.prepare("select count(*) n from uso_plan where usuario not in (select id from usuarios)").get().n===0&&db.prepare("select count(*) n from planes where usuario not in (select id from usuarios)").get().n===0,'borrar la cuenta borra su plan y su uso');
+[s,r]=await call(null,'GET','planes'); ok(s===200&&r.planes&&r.planes.promax&&r.precios&&!r.usos,'v2.54.1 tabla de planes pública (sin sesión) para la revisión de Apple');

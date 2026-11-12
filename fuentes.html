@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0B0B12">
+  <title>Fuentes científicas · FuerzaPro</title>
+  <link rel="icon" href="iconos/favicon.png">
+  <style>
+    :root { --bg: #0B0B12; --card: #14141F; --borde: #29293D; --texto: #F0F2F5; --suave: #A3A8B8; --violeta: #7C5CFF; --cian: #22D3EE; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--texto); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    header img { width: 48px; height: 48px; border-radius: 12px; }
+    h1 { font-size: 26px; margin: 0; }
+    h2 { font-size: 18px; color: var(--cian); margin: 28px 0 8px; }
+    p, li { color: var(--texto); }
+    .suave { color: var(--suave); font-size: 14px; }
+    .caja { background: var(--card); border: 1px solid var(--borde); border-radius: 12px; padding: 14px 16px; margin: 16px 0; }
+    a { color: var(--violeta); }
+    ul { padding-left: 20px; }
+  </style>
+</head>
+<body>
+<main>
+  <header><img src="iconos/logo.png" alt=""><div><h1>Fuentes científicas</h1><div class="suave">FuerzaPro · Ing. Luis Campozano, MBA (Ecuador) · Última actualización: 12 de noviembre de 2026</div></div></header>
+
+  <div class="caja">FuerzaPro da <b>estimaciones</b> para entrenar y comer mejor; no es un dispositivo médico ni reemplaza a un médico,
+    nutricionista o entrenador. Si tienes una enfermedad, tomas medicación, estás embarazada o en lactancia, o eres menor de 18 años,
+    pide tus metas a un profesional de la salud. Aquí están las fuentes de cada cálculo y recomendación de la app.</div>
+
+  <h2 id="nutricion">1. Metas de calorías y macros (Nutrición → Mis metas)</h2>
+  <ul>
+    <li><b>Gasto en reposo:</b> ecuación de Mifflin-St Jeor. Mifflin MD, St Jeor ST, et al. <i>A new predictive equation for resting energy expenditure in healthy individuals.</i> Am J Clin Nutr. 1990;51(2):241-247.
+      <a href="https://doi.org/10.1093/ajcn/51.2.241" target="_blank" rel="noopener">doi.org/10.1093/ajcn/51.2.241</a></li>
+    <li><b>Factor de actividad física:</b> FAO/OMS/UNU. <i>Human energy requirements</i> (Informe de la consulta de expertos, 2001; publicado en 2004).
+      <a href="https://www.fao.org/4/y5686e/y5686e00.htm" target="_blank" rel="noopener">fao.org/4/y5686e</a></li>
+    <li><b>Proteína de 1,6 a 2,2 g por kg</b> para quienes entrenan fuerza: Jäger R, et al. <i>International Society of Sports Nutrition Position Stand: protein and exercise.</i> J Int Soc Sports Nutr. 2017;14:20.
+      <a href="https://doi.org/10.1186/s12970-017-0177-8" target="_blank" rel="noopener">doi.org/10.1186/s12970-017-0177-8</a>
+      · Morton RW, et al. <i>A systematic review, meta-analysis and meta-regression of the effect of protein supplementation on resistance training-induced gains in muscle mass and strength.</i> Br J Sports Med. 2018;52:376-384.
+      <a href="https://doi.org/10.1136/bjsports-2017-097608" target="_blank" rel="noopener">doi.org/10.1136/bjsports-2017-097608</a></li>
+    <li><b>Déficit moderado (hasta ~1 % del peso por semana), grasa y proteína al bajar de peso:</b> Helms ER, Aragon AA, Fitschen PJ. <i>Evidence-based recommendations for natural bodybuilding contest preparation: nutrition and supplementation.</i> J Int Soc Sports Nutr. 2014;11:20.
+      <a href="https://doi.org/10.1186/1550-2783-11-20" target="_blank" rel="noopener">doi.org/10.1186/1550-2783-11-20</a></li>
+    <li><b>Calorías mínimas (1200 mujeres / 1500 hombres) y peso saludable:</b> NHLBI (Institutos Nacionales de Salud de EE. UU.). <i>Clinical Guidelines on the Identification, Evaluation, and Treatment of Overweight and Obesity in Adults</i>, 1998.
+      <a href="https://www.ncbi.nlm.nih.gov/books/NBK2003/" target="_blank" rel="noopener">ncbi.nlm.nih.gov/books/NBK2003</a>
+      · Organización Mundial de la Salud, índice de masa corporal (IMC 18,5–24,9).
+      <a href="https://www.who.int/news-room/fact-sheets/detail/obesity-and-overweight" target="_blank" rel="noopener">who.int · Obesity and overweight</a></li>
+    <li><b>~7700 kcal por kg de cambio de peso (aproximación):</b> Hall KD. <i>What is the required energy deficit per unit weight loss?</i> Int J Obes. 2008;32:573-576.
+      <a href="https://doi.org/10.1038/sj.ijo.0803720" target="_blank" rel="noopener">doi.org/10.1038/sj.ijo.0803720</a></li>
+  </ul>
+
+  <h2 id="alimentos">2. Calorías y macros de los alimentos</h2>
+  <ul>
+    <li>Valores por 100 g de la lista de alimentos: Departamento de Agricultura de EE. UU., <i>FoodData Central</i>.
+      <a href="https://fdc.nal.usda.gov/" target="_blank" rel="noopener">fdc.nal.usda.gov</a>
+      · Alimentos empacados: <i>Open Food Facts</i> y la etiqueta nutricional del producto.
+      <a href="https://world.openfoodfacts.org/" target="_blank" rel="noopener">openfoodfacts.org</a></li>
+    <li>La foto del plato, la comida escrita y el menú del nutricionista IA usan inteligencia artificial que estima porciones con valores de tablas de composición de alimentos (como FoodData Central). Son aproximaciones: revisa y ajusta los gramos.</li>
+  </ul>
+
+  <h2 id="cardio">3. Calorías del cardio</h2>
+  <ul>
+    <li>Equivalentes metabólicos (MET) × peso × tiempo: Herrmann SD, Ainsworth BE, et al. <i>2024 Adult Compendium of Physical Activities.</i> J Sport Health Sci. 2024.
+      <a href="https://pacompendium.com/" target="_blank" rel="noopener">pacompendium.com</a></li>
+    <li>Caminar y correr según la velocidad: ecuaciones metabólicas del American College of Sports Medicine (<i>ACSM's Guidelines for Exercise Testing and Prescription</i>).</li>
+  </ul>
+
+  <h2 id="fuerza">4. Velocidad, RIR, RPE y 1RM (análisis de video)</h2>
+  <ul>
+    <li><b>Relación velocidad–carga y %1RM:</b> González-Badillo JJ, Sánchez-Medina L. <i>Movement velocity as a measure of loading intensity in resistance training.</i> Int J Sports Med. 2010;31(5):347-352.
+      <a href="https://doi.org/10.1055/s-0030-1248333" target="_blank" rel="noopener">doi.org/10.1055/s-0030-1248333</a></li>
+    <li><b>Velocidad y carga relativa en la sentadilla:</b> Sánchez-Medina L, Pallarés JG, Pérez CE, Morán-Navarro R, González-Badillo JJ. <i>Estimation of relative load from bar velocity in the full back squat exercise.</i> Sports Med Int Open. 2017;1(2):E80-E88.
+      <a href="https://doi.org/10.1055/s-0043-102933" target="_blank" rel="noopener">doi.org/10.1055/s-0043-102933</a></li>
+    <li><b>Pérdida de velocidad como medida de fatiga:</b> Sánchez-Medina L, González-Badillo JJ. <i>Velocity loss as an indicator of neuromuscular fatigue during resistance training.</i> Med Sci Sports Exerc. 2011;43(9):1725-1734.
+      <a href="https://doi.org/10.1249/MSS.0b013e318213f880" target="_blank" rel="noopener">doi.org/10.1249/MSS.0b013e318213f880</a></li>
+    <li><b>Escala RPE basada en repeticiones en reserva (RIR):</b> Zourdos MC, et al. <i>Novel resistance training-specific rating of perceived exertion scale measuring repetitions in reserve.</i> J Strength Cond Res. 2016;30(1):267-275.
+      <a href="https://doi.org/10.1519/JSC.0000000000001049" target="_blank" rel="noopener">doi.org/10.1519/JSC.0000000000001049</a></li>
+    <li><b>1RM a partir de repeticiones:</b> fórmula de Epley (Epley B. <i>Poundage Chart</i>. Boyd Epley Workout, 1985), comparada con otras ecuaciones en LeSuer DA, et al. <i>The accuracy of prediction equations for estimating 1-RM performance in the bench press, squat, and deadlift.</i> J Strength Cond Res. 1997;11(4):211-213.</li>
+  </ul>
+
+  <p class="suave">¿Ves una fuente que falta o un dato que no coincide? Escríbenos a <a href="mailto:fuerzapro2026@gmail.com">fuerzapro2026@gmail.com</a>.</p>
+  <p class="suave"><a href="./">← Volver a FuerzaPro</a></p>
+</main>
+</body>
+</html>
