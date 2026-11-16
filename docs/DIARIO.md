@@ -16,6 +16,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
   Estadísticas. Velocidad: si se recorta el video, la IA mira solo ese tramo más 3 s a cada lado (banco: 53 de 56
   casos con las mismas reps, aciertos 25 vs 24 antes). Sin recorte se analiza todo el video, como siempre.
   Imagen de 960 px para la IA: ≈3 veces más rápido, pero 1 de cada 10 puntos cambió bastante → queda apagada (LADO_POSE = 0).
+- **Revisión (otro Claude):** sin esqueleto congelado fuera del tramo en el video con telemetría (fuerza y deportes), un
+  recorte escrito mal analiza todo el video, color del encabezado y foco en «Cerrar». Pendiente menor: la vista 3D recorre
+  todo el video aunque esté recortado.
 - **Pendiente:** medir la imagen de 960 px con el conteo y las velocidades (¿cambia izquierda/derecha?) antes de activarla.
 
 ### 18:30 · v2.55.1 — Corregir el peso después de analizar
