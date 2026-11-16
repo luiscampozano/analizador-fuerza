@@ -658,7 +658,7 @@ function pintarActivo() {
           <input type="number" inputmode="decimal" step="0.5" min="1" max="10" data-campo="rpe" value="${s.rpe ?? ''}" placeholder="${m.rpe ?? ''}">
           <button type="button" class="en-check" data-acc="hecha">✓</button>
           <button type="button" class="en-video${s.analisis ? ' con' : ''}" data-acc="video" title="Analizar con video">${s.analisis ? '⚡' : '🎥'}</button>
-        </div>${s.analisis ? `<button type="button" class="en-analisis" data-acc="ver" data-is="${is}">⚡ ${fmt(s.analisis.v, 2)} m/s${s.analisis.rpe ? ` · RPE ${fmt(s.analisis.rpe, 1)}` : ''}${s.analisis.rm ? ` · 1RM ≈ ${fmt(s.analisis.rm)} kg` : ''} · ver análisis</button>` : ''}`;
+        </div>${s.analisis ? `<button type="button" class="en-analisis" data-acc="ver" data-is="${is}">${textoAnalisis(s.analisis)}</button>` : ''}`;
       }).join('')}`}
       ${esCardio(e) ? `<div class="en-kcal">${kcalTxt(e)}</div>` : ''}
       <button type="button" class="btn-sec en-mas-serie" data-acc="serie">+ Agregar serie</button>
@@ -691,7 +691,13 @@ function enlazarEventos() {
         const s = e.series[+inp.closest('.en-fila').dataset.is];
         if (!s || !s.analisis || s.kg == null || !deps.recalcularPeso) return;
         const r = await deps.recalcularPeso(s.analisis.id, s.kg).catch(() => null);
-        if (r) { actualizarAnalisis(s, r.reg); guardarBorrador(); }
+        if (r) {
+          actualizarAnalisis(s, r.reg); guardarBorrador();
+          const fila = inp.closest('.en-fila'), bt = fila && fila.parentElement.querySelector(`.en-analisis[data-is="${fila.dataset.is}"]`), rp = fila && fila.querySelector('[data-campo="rpe"]');
+          if (bt) bt.textContent = textoAnalisis(s.analisis);
+          if (rp && document.activeElement !== rp && s.rpe != null) rp.value = s.rpe;
+        }
+        else alert('Se guardó el peso nuevo, pero no se pudo recalcular el análisis de esta serie (no guardó los puntos del cuerpo). Para tenerlo bien, analiza el video otra vez.');
       };
     });
     caja.querySelector('[data-acc="nota"]').oninput = (ev) => { e.notas = ev.target.value; guardarBorrador(); };
@@ -1245,11 +1251,17 @@ export function vincularOtraPierna(registro) {
   enlacePendiente = { ...p, is: p.is + 1 };
   return vincular(registro);
 }
-const actualizarAnalisis = (s, reg) => { s.analisis = { ...s.analisis, v: reg.vMejor, rpe: reg.rpe ?? null, rm: reg.rm ?? null }; };
+const textoAnalisis = (a) => `⚡ ${fmt(a.v, 2)} m/s${a.rpe ? ` · RPE ${fmt(a.rpe, 1)}` : ''}${a.rm ? ` · 1RM ≈ ${fmt(a.rm)} kg` : ''} · ver análisis`;
+const actualizarAnalisis = (s, reg) => {
+  if (s.rpe != null && s.rpe === s.analisis.rpe && reg.rpe) s.rpe = reg.rpe; // el RPE lo había puesto el análisis: se actualiza
+  s.analisis = { ...s.analisis, v: reg.vMejor, rpe: reg.rpe ?? null, rm: reg.rm ?? null };
+};
 // v2.55.1 se corrigió el peso desde el informe de la serie: la serie del entrenamiento en curso queda con el mismo peso
 export function alCorregirPeso(id, kg, reg) {
   if (!activo) return;
-  for (const e of activo.ejercicios) for (const s of e.series) if (s.analisis && s.analisis.id === id) { s.kg = kg; actualizarAnalisis(s, reg); guardarBorrador(); }
+  let hubo = false;
+  for (const e of activo.ejercicios) for (const s of e.series) if (s.analisis && s.analisis.id === id) { s.kg = kg; actualizarAnalisis(s, reg); hubo = true; }
+  if (hubo) { guardarBorrador(); pintar(); }
 }
 export function vincular(registro) {
   const p = enlacePendiente; enlacePendiente = null;

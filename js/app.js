@@ -1152,10 +1152,10 @@ async function recalcularConPeso(id, cargaNueva) {
   nuevo.id = id; nuevo.fecha = inf.fecha || r.fecha; if (inf.pareja) nuevo.pareja = inf.pareja;
   if (k) { nuevo.corregida = k; nuevo.s.notas = [`Conteo corregido a mano: la app contó ${k.app} y hiciste ${k.real}.`, ...nuevo.s.notas]; }
   const antes = corporal ? d0.peso : d0.carga;
-  nuevo.s.notas = [`Peso corregido: ${fmt(antes || 0, 1)} kg → ${fmt(cargaNueva, 1)} kg. Todo se volvió a calcular${archivosSesion.has(id) ? '' : '; el video con telemetría muestra todavía el peso anterior'}.`, ...nuevo.s.notas];
+  nuevo.s.notas = [`Peso corregido: ${fmt(antes || 0, 1)} kg → ${fmt(cargaNueva, 1)} kg. Todo se volvió a calcular; el video con telemetría muestra todavía el peso anterior.`, ...nuevo.s.notas];
   const reg = registroDe(e, d, c.res, c.serie, c.tray, c.tec, nuevo, d0.origen || 'video');
-  hist.actualizar(id, reg);
   await almacen.guardarInforme(nuevo);
+  hist.actualizar(id, reg);
   nube.sincronizar && nube.sincronizar();
   return { inf: nuevo, reg };
 }
@@ -1163,7 +1163,7 @@ $('btn-peso').onclick = async () => {
   const inf = informeActual; if (!inf || !inf.id || !inf.datos) return;
   const e = POR_ID[inf.ej && inf.ej.id]; if (!e) return;
   const corporal = e.perfil === 'corporal', antes = corporal ? inf.datos.peso || 0 : inf.datos.carga;
-  const txt = prompt(corporal ? '¿Cuánto lastre usaste? (kg; 0 si fue solo tu peso)' : `¿Cuánto peso moviste en total? (kg${(inf.datos.carga || 0) > (inf.datos.peso || 0) ? ', discos + barra o máquina' : ''})`, antes);
+  const txt = prompt(corporal ? (e.asistido ? '¿Cuánta asistencia usaste? (kg)' : '¿Cuánto lastre usaste? (kg; 0 si fue solo tu peso)') : `¿Cuánto peso moviste en total? (kg${(inf.datos.carga || 0) > (inf.datos.peso || 0) ? ', discos + barra o máquina' : ''})`, antes);
   if (txt == null) return;
   const kg = parseFloat(String(txt).replace(',', '.'));
   if (!Number.isFinite(kg) || kg < 0 || kg > 1000 || (!corporal && kg === 0)) return alert('Escribe el peso en kg, por ejemplo 40.');
@@ -1172,6 +1172,8 @@ $('btn-peso').onclick = async () => {
   try { r = await recalcularConPeso(inf.id, kg); } catch (err) { return alert('No se pudo recalcular la serie: ' + (err.message || err)); }
   if (!r) return alert('Esta serie no guardó los puntos del cuerpo, así que no se puede recalcular. Analiza el video otra vez con el peso correcto.');
   entrenar.alCorregirPeso(inf.id, kg, r.reg);
+  // video con los dos lados (o dos piernas): el otro lado se grabó con el mismo peso, se corrige igual
+  if (inf.pareja) { const r2 = await recalcularConPeso(inf.pareja, kg).catch(() => null); if (r2) entrenar.alCorregirPeso(inf.pareja, kg, r2.reg); }
   mostrarInforme(r.inf, { video: videoActual, desde: vistaPrevia });
   aviso('Peso corregido: se recalculó la serie.', true);
 };

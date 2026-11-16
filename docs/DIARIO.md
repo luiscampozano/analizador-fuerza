@@ -13,6 +13,8 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 - **Hecho:** botón «✏️ ¿Peso mal? Corregir» en la tarjeta Carga efectiva del informe; además, si se cambian los kg de
   una serie con análisis en el entrenamiento, se recalcula sola. Se usan los puntos del cuerpo guardados (sin video);
   se mantiene la corrección del conteo si la había. El recorrido E2E «analizar» ahora prueba la corrección (100 → 50 kg).
+- **Revisión (otro Claude):** se corrige también el otro lado en videos con dos lados, la fila del entrenamiento muestra
+  el 1RM nuevo sin cerrar el teclado, avisa si no se puede recalcular, texto correcto para asistidos y el RPE se actualiza.
 - **Pendiente:** el análisis tarda mucho en celulares de gama media (video de ~1 min ≈ 5-9 min en un Poco X8 Pro):
   propuestas para Luis (analizar solo el tramo recortado, resolución de trabajo menor, aviso de «Rápida»).
 
