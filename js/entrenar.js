@@ -1363,7 +1363,7 @@ $('tj-comunidad').onclick = () => {
 async function pintarGuia(id, caja) {
   if (!caja) return;
   let g;
-  try { g = (await import('./ejercicios-guia.js')).GUIA[id]; } catch { return; }
+  try { const G = (await import('./ejercicios-guia.js')).GUIA; g = Object.hasOwn(G, id) ? G[id] : null; } catch { return; }
   if (!g || !caja.isConnected) return;
   caja.innerHTML = `<details class="en-guia" open><summary>📸 Cómo se hace</summary>
     <div class="en-guia-fotos"><img src="ejercicios-img/${esc(g.img)}-0.webp" alt="Posición inicial" loading="lazy"><img src="ejercicios-img/${esc(g.img)}-1.webp" alt="Posición final" loading="lazy"></div>

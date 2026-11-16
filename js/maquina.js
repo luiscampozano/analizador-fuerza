@@ -49,7 +49,7 @@ export async function identificar(archivo, { caja, ejercicios, porId, alAgregar,
   </div>`;
   enlazar();
   // v2.56.0 foto de referencia del ejercicio (free-exercise-db) junto a la tuya, para confirmar que es la máquina
-  if (def) import('./ejercicios-guia.js').then((m) => { const g = m.GUIA[r.id], cab = caja.querySelector('.mq-cab img'); if (!g || !cab || !vigente()) return;
+  if (def) import('./ejercicios-guia.js').then((m) => { const g = Object.hasOwn(m.GUIA, r.id) ? m.GUIA[r.id] : null, cab = caja.querySelector('.mq-cab img'); if (!g || !cab || !vigente()) return;
     const ref = document.createElement('img'); ref.className = 'mq-ref'; ref.alt = 'Foto de referencia del ejercicio'; ref.src = `ejercicios-img/${g.img}-1.webp`; ref.onerror = () => ref.remove(); cab.after(ref); }).catch(() => {});
   caja.querySelectorAll('[data-ej]').forEach((b) => (b.onclick = () => alAgregar(b.dataset.ej, porId[b.dataset.ej].nombre)));
 }
