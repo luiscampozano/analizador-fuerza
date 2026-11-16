@@ -18,7 +18,7 @@ export function asegurar() {
       <h3 id="ia-permiso-titulo">🤖 Funciones con inteligencia artificial</h3>
       <p>Para responderte, FuerzaPro envía a <b>Anthropic</b>, la empresa que hace la IA <b>Claude</b>, solo lo necesario:</p>
       <ul>
-        <li>la <b>foto</b> de tu plato o de la etiqueta, o el <b>texto</b> que escribes;</li>
+        <li>la <b>foto</b> de tu plato, de la etiqueta o de una máquina del gimnasio, o el <b>texto</b> que escribes;</li>
         <li>para el entrenador IA y el menú del nutricionista: un resumen de tus <b>entrenamientos, comidas, metas y perfil</b> (edad, sexo, peso, estatura, objetivo y, en el menú, tus gustos y lo que evitas);</li>
         <li>para la explicación de una serie: los <b>números medidos</b> de esa serie y, si la pides con fotos, hasta 4 imágenes del video.</li>
       </ul>

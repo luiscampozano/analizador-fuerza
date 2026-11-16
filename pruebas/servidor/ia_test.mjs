@@ -40,4 +40,12 @@ respuesta=claude('🏋️ Subiste el volumen 10%.');
 await call(A,'POST','ia/entrenador',{datos:{}}); await call(A,'POST','ia/entrenador',{datos:{}});
 [s,r]=await call(A,'POST','ia/entrenador',{datos:{}}); ok(s===429&&/3 análisis/.test(r.error),'entrenador: 3 por día');
 [s,r]=await call(A,'POST','ia/entrenador',{datos:{x:'a'.repeat(13000)}}); ok(s===400,'entrenador: datos demasiado grandes');
+// v2.55.0 ¿Qué máquina es?
+const listaEj=[{id:'prensa_45',nombre:'Prensa 45°'},{id:'hack',nombre:'Hack squat'},{id:'prensa_horizontal',nombre:'Prensa horizontal'},{id:'jalon_pecho',nombre:'Jalón al pecho'},{id:'remo_sentado',nombre:'Remo sentado'}];
+[s,r]=await call(A,'POST','ia/maquina',{imagen:foto,lista:[]}); ok(s===400,'máquina: sin lista de ejercicios se rechaza');
+respuesta=claude('{"id":"prensa_45","confianza":"alta","maquina":"Prensa de piernas","musculos":"Cuádriceps","consejos":["Espalda pegada","Pies al ancho de hombros","No bloquees","sobra"],"otras":["hack","inventado","prensa_45"]}');
+[s,r]=await call(A,'POST','ia/maquina',{imagen:foto,lista:listaEj});
+ok(s===200&&r.id==='prensa_45'&&r.confianza==='alta'&&r.consejos.length===3&&JSON.stringify(r.otras)==='["hack"]'&&/prensa_45\|Prensa 45/.test(JSON.stringify(ultimo.body)),'máquina: elige de la lista, limpia opciones y consejos');
+respuesta=claude('{"id":"inventado","confianza":"alta","otras":[]}');
+[s,r]=await call(A,'POST','ia/maquina',{imagen:foto,lista:listaEj}); ok(s===200&&r.id===''&&r.confianza==='baja','máquina: un id fuera de la lista no se acepta');
 [s,r]=await call(A,'DELETE','cuenta'); ok(s===200&&db.prepare('select count(*) n from uso_ia').get().n===0,'borrar la cuenta borra su uso');

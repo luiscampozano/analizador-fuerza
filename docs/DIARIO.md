@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-16
 
+### 14:10 · v2.55.0 publicada — Apple aprobó la versión 1.0 (6)
+- **Pasó:** Apple aprobó FuerzaPro (correo del 16 nov, 13:41); queda «lista para distribuir» con publicación manual.
+- **Hecho:** se publica «¿Qué máquina es?» (rama `maquina`) unida a v2.54.3; el aviso de permiso de IA y la privacidad
+  ahora nombran también la foto de la máquina.
+- **Pendiente:** día de lanzamiento (modo «activo», «Publicar esta versión», Play producción); fotos de ejercicios
+  (free-exercise-db); versión 1.1 con funciones nativas y texto de cámara.
+
 ### 10:50 · v2.54.3 — Pre-revisión de Apple: permiso explícito para las funciones con IA (5.1.2(i))
 - **Pidió:** revisar la app como un revisor de Apple antes de que vuelvan a rechazarla.
 - **Hallazgo principal:** desde noviembre de 2025 Apple exige permiso explícito antes de enviar datos personales a una IA
@@ -19,6 +26,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
   nativas (miércoles).
 
 ## 2026-11-12
+
+### 18:45 · v2.55.0 — ¿Qué máquina es? (lista en la rama «maquina», se publica cuando Apple apruebe)
+- **Pidió:** identificar máquinas del gimnasio con una foto y agregarlas solas al entrenamiento.
+- **Hecho:** en el buscador de ejercicios del entrenamiento, botón «📷 ¿No sabes qué máquina es? Tómale una foto». La foto
+  se achica en el teléfono y va a POST /api/ia/maquina junto con la lista de ejercicios de fuerza; Claude Haiku elige un id
+  de esa lista (el servidor rechaza ids que no estén), con confianza, músculos, 3 consejos y hasta 3 opciones. Cupo diario
+  propio (q: 10) y, con planes activos, gasta 1 crédito de IA. Pruebas del servidor nuevas en ia_test.mjs.
+- **Pendiente:** publicar al aprobar Apple; probar con fotos reales de máquinas.
 
 ### 18:15 · v2.54.2 — Cronómetro del entrenamiento más visible
 - **Pidió:** el editor del tiempo de entrenamiento era muy pequeño; resaltarlo y encerrarlo en un cuadro.

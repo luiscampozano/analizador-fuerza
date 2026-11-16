@@ -67,6 +67,7 @@ async function api(req, env, url) {
   const u = await sesion(req, env);
   if (ruta === '/api/alimentos' && m === 'POST') return crearAlimento(req, env, u);
   if (ruta === '/api/ia/plato' && m === 'POST') return fotoPlato(req, env, u);
+  if (ruta === '/api/ia/maquina' && m === 'POST') return fotoMaquina(req, env, u); // v2.55.0
   if (ruta === '/api/ia/texto' && m === 'POST') return comidaTexto(req, env, u);
   if (ruta === '/api/ia/etiqueta' && m === 'POST') return etiquetaIA(req, env, u);
   if (ruta === '/api/ia/entrenador' && m === 'POST') return entrenadorIA(req, env, u);
@@ -1118,7 +1119,7 @@ async function reportarAlimento(env, u, codigo) {
 // su limite por persona y por dia (tabla uso_ia; el "dia" lleva un sufijo por funcion: "2026-11-01" = foto del plato,
 // "2026-11-01:t" = texto, ":e" = etiqueta, ":c" = entrenador), y hay un tope general diario para todas. (v2.22-2.23)
 const LIMITE_IA_USUARIO = 10, LIMITE_IA_TOTAL = 600, MAX_FOTO = 400_000; // caracteres base64 (~300 KB)
-const LIMITES_IA = { '': 10, t: 20, e: 10, c: 3, s: 10, m: 5 }; // plato, texto, etiqueta, entrenador, explicar una serie, menu del nutricionista IA
+const LIMITES_IA = { '': 10, t: 20, e: 10, c: 3, s: 10, m: 5, q: 10 }; // plato, texto, etiqueta, entrenador, explicar una serie, menu del nutricionista IA, maquina (v2.55.0)
 const MODELO_IA = 'claude-haiku-5-5';
 const texto_ = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, max) : '');
 const numIA = (x, max) => { const v = +String(x).replace(',', '.'); return Number.isFinite(v) && v >= 0 ? Math.min(max, Math.round(v * 10) / 10) : 0; };
@@ -1473,6 +1474,35 @@ async function fotoPlato(req, env, u) {
   const res = jsonDe(await llamarClaude(env, PROMPT_PLATO, [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } }, { type: 'text', text: 'Analiza este plato y responde solo con el JSON.' }], 1100, true));
   await cupo.contar();
   return json({ alimentos: alimentosIA(res.alimentos), nota: texto_(res.nota, 200), quedan: cupo.quedan });
+}
+
+// ---------- v2.55.0 ¿Que maquina es? foto de una maquina o equipo de gimnasio -> ejercicio de la lista de FuerzaPro
+const PROMPT_MAQUINA = `Eres entrenador de gimnasio. Mira la foto de una maquina o equipo de gimnasio y elige que ejercicio se hace con ella, SOLO de la lista que te doy (una linea por ejercicio: id|nombre).
+Responde SOLO con JSON valido, sin texto antes ni despues, con este formato exacto:
+{"id":"id de la lista","confianza":"alta|media|baja","maquina":"nombre comun de la maquina en espanol (max 40 letras)","musculos":"musculos principales (max 60 letras)","consejos":["3 consejos cortos de como usarla con buena tecnica y seguridad (max 90 letras cada uno)"],"otras":["hasta 3 ids de la lista que tambien podrian ser"]}
+Si la maquina sirve para varios ejercicios, elige el mas comun y pon los otros en "otras". Si no estas seguro, usa "confianza":"baja".
+Si la foto no muestra un equipo de gimnasio, devuelve {"id":"","confianza":"baja","maquina":"","musculos":"","consejos":[],"otras":[],"nota":"No veo una maquina de gimnasio en la foto."}.
+Los consejos son generales de tecnica; no des consejos medicos.`;
+async function fotoMaquina(req, env, u) {
+  const b = await leerJSON(req);
+  const img = fotoValida(b.imagen);
+  const lista = (Array.isArray(b.lista) ? b.lista : []).slice(0, 400)
+    .map((x) => ({ id: String((x && x.id) || '').replace(/[^a-z0-9_]/g, '').slice(0, 40), nombre: texto_(x && x.nombre, 70).replace(/[|\n]/g, ' ') }))
+    .filter((x) => x.id && x.nombre);
+  if (lista.length < 5) throw fallo('Falta la lista de ejercicios.');
+  const ids = new Set(lista.map((x) => x.id));
+  const cupo = await cupoIA(env, u, 'q', 'fotos de máquinas');
+  const res = jsonDe(await llamarClaude(env, PROMPT_MAQUINA, [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } },
+    { type: 'text', text: `Lista de ejercicios (id|nombre):\n${lista.map((x) => `${x.id}|${x.nombre}`).join('\n')}\n\nResponde solo con el JSON.` }], 600, false));
+  await cupo.contar();
+  const id = ids.has(res.id) ? res.id : '';
+  const otras = [...new Set((Array.isArray(res.otras) ? res.otras : []).filter((x) => typeof x === 'string' && ids.has(x) && x !== id))].slice(0, 3);
+  return json({
+    id, confianza: ['alta', 'media', 'baja'].includes(res.confianza) && id ? res.confianza : 'baja',
+    maquina: texto_(res.maquina, 40), musculos: texto_(res.musculos, 60),
+    consejos: (Array.isArray(res.consejos) ? res.consejos : []).slice(0, 3).map((t) => texto_(t, 120)).filter(Boolean),
+    otras, nota: texto_(res.nota, 200), quedan: cupo.quedan,
+  });
 }
 
 // ---------- comida escrita ("arroz con menestra y carne asada")
