@@ -28,7 +28,7 @@ import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 
-const VERSION = '2.55.1';
+const VERSION = '2.56.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -461,18 +461,22 @@ async function analizarArchivo() {
     // v2.35.0 análisis completo: la IA del balón mira los mismos cuadros que la IA de pose (solo en el primer intento)
     let detBalon = null; const balonT = new Map();
     if (ej.cardio && modoDep() === 'completo') { progreso(0, 0, 'Cargando la IA del balón (la primera vez descarga ~7 MB)…'); detBalon = await cargarDetectorBalon(); }
+    // v2.56.0 si recortó el video, la IA mira solo esa parte (más 3 s a cada lado: la física los usa para orientarse)
+    const rIni = parseFloat($('in-ini').value), rFin = parseFloat($('in-fin').value);
+    const rango = rIni > 0 || (rFin > 0 && rFin < video.duration) ? [Math.max(0, (rIni > 0 ? rIni : 0) - 3), rFin > 0 ? rFin + 3 : video.duration] : null;
     const intentos = [{}, { soloCPU: true }, { soloCPU: true, conReproductor: true }];
     let frames = [], delegado = '', diag = [];
     for (let k = 0; k < intentos.length; k++) {
       const op = intentos[k];
       if (op.conReproductor) { if (video.tipo !== 'webcodecs') break; video = await abrirVideo(archivo, { conReproductor: true }); }
       const r = await detectarPose(video, {
-        calidad, hz, cancelado: () => cancelar, soloCPU: !!op.soloCPU,
+        calidad, hz, cancelado: () => cancelar, soloCPU: !!op.soloCPU, rango,
         alCuadro: seguidor && k === 0 ? (img, t) => seguidor.procesar(img, t) : detBalon ? (img, t) => balonT.set(t, detBalon(img, video.videoWidth, video.videoHeight)) : null,
         alAvanzar: (f, resta, del) => progreso(1, f, `${k ? 'Reintentando con otro método · ' : ''}Detectando ${detBalon ? 'pose y balón (más lento)' : 'pose'} (${del === 'GPU' ? 'GPU' : 'CPU'})${minutos(resta)}`),
       });
       frames = r.frames; delegado = r.delegado;
-      const vistos = frames.filter((f) => f.puntos).length / Math.max(1, frames.length);
+      const mirados = rango ? frames.filter((f) => f.t >= rango[0] && f.t <= rango[1]) : frames; // solo los cuadros que vio la IA
+      const vistos = mirados.filter((f) => f.puntos).length / Math.max(1, mirados.length);
       diag.push({ fuente: video.tipo, delegado, vistos: Math.round(100 * vistos) });
       if (vistos >= 0.3) break;
       if (k === intentos.length - 1 || (op.soloCPU && video.tipo !== 'webcodecs')) {

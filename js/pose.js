@@ -56,6 +56,8 @@ export async function cargarModelo(calidad = 'normal', { soloCPU = false } = {})
   return cache[clave];
 }
 
+const LADO_POSE = 960; // v2.56.0 lado mayor de la imagen que recibe la IA de pose
+
 export function esperarCuadro(video, t) {
   return new Promise((ok, mal) => {
     let hecho = false;
@@ -76,17 +78,23 @@ export function esperarCuadro(video, t) {
 
 // Recorre el video a `hz` cuadros por segundo y devuelve los 33 puntos (en pixeles) de la persona principal.
 // `fuente` viene de lector.js: {videoWidth, videoHeight, duration, iterar(tiempos)}.
-export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvanzar = () => {}, cancelado = () => false, alCuadro = null, soloCPU = false } = {}) {
+// v2.56.0 rango [desde, hasta] (s): si el video se recortó, la IA solo mira esa parte; fuera de ella los cuadros quedan
+// sin persona (la física ya trabaja solo con lo recortado). Sin recorte se mira todo el video, como siempre.
+export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvanzar = () => {}, cancelado = () => false, alCuadro = null, soloCPU = false, rango = null } = {}) {
   const { lm, delegado } = await cargarModelo(calidad, { soloCPU });
   const W = fuente.videoWidth, H = fuente.videoHeight, dur = fuente.duration;
   const tiempos = [];
   for (let k = 0; k <= Math.floor(dur * hz); k++) tiempos.push(Math.min(k / hz, dur - 0.001));
-  const total = tiempos.length;
+  const dentro = rango ? tiempos.filter((t) => t >= rango[0] && t <= rango[1]) : tiempos;
+  const total = Math.max(1, dentro.length);
   const frames = [];
+  if (rango) for (const t of tiempos) { if (t >= rango[0]) break; frames.push({ t, puntos: null }); }
   let centroPrev = null, k = 0;
   const base = relojMs + 1000;
   const t0 = performance.now();
-  for await (const { t, imagen } of fuente.iterar(tiempos)) {
+  // v2.56.0 la IA trabaja con una imagen más chica (como máximo 960 px): por dentro igual la reduce a 256 px, así que
+  // la precisión es la misma y el celular mueve 4 veces menos datos. Si otro detector usa el cuadro (disco, balón), va completo.
+  for await (const { t, imagen } of fuente.iterar(dentro, alCuadro ? {} : { lado: LADO_POSE })) {
     if (cancelado()) throw new Error('cancelado');
     let puntos = null, mundo = null;
     if (imagen) {
@@ -123,6 +131,7 @@ export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvan
     }
     k++;
   }
+  if (rango) for (const t of tiempos) if (t > rango[1]) frames.push({ t, puntos: null });
   return { frames, delegado };
 }
 

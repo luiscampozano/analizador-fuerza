@@ -33,8 +33,10 @@ async function fuenteWebCodecs(archivo) {
   const fps = await track.computePacketStats(120).then((st) => st.averagePacketRate).catch(() => null);
   return {
     tipo: 'webcodecs', videoWidth: W, videoHeight: H, duration: Math.max(0.1, fin - t0), fps,
-    async *iterar(tiempos) {
-      const sink = new CanvasSink(track, { width: W, height: H, fit: 'fill', poolSize: 3 });
+    // lado (v2.56.0): tamaño máximo de la imagen entregada (más chica = más rápido); las medidas siguen en W x H
+    async *iterar(tiempos, { lado = 0 } = {}) {
+      const k = lado ? Math.min(1, lado / Math.max(W, H)) : 1;
+      const sink = new CanvasSink(track, { width: Math.round((W * k) / 2) * 2, height: Math.round((H * k) / 2) * 2, fit: 'fill', poolSize: 3 });
       let i = 0;
       for await (const c of sink.canvasesAtTimestamps(tiempos.map((t) => t + t0))) {
         yield { t: tiempos[i++], imagen: c ? c.canvas : null };
