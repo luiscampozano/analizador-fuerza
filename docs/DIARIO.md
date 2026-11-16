@@ -8,6 +8,15 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-16
 
+### 15:00 · v2.56.0 — Fotos y pasos de cada ejercicio (free-exercise-db)
+- **Pidió:** usar el repositorio free-exercise-db en la app.
+- **Hecho:** 154 de 169 ejercicios de fuerza emparejados a mano con free-exercise-db (dominio público); 286 fotos en
+  ejercicios-img/ (webp 360 px, 2,3 MB, se cachean al verlas) y pasos traducidos y resumidos al español en
+  js/ejercicios-guia.js (carga solo al abrir un ejercicio). En el detalle del ejercicio: «📸 Cómo se hace». En «¿Qué
+  máquina es?» se muestra la foto de referencia junto a la tuya. Créditos en Información.
+- **Sin foto (15):** belt squat, búlgara con barra, pistol, rumano unipodal, hip thrust en máquina y unilateral, jalón y
+  remos en máquina, landmine, thruster, curtsy, abducción en polea, laterales en máquina.
+
 ### 14:10 · v2.55.0 publicada — Apple aprobó la versión 1.0 (6)
 - **Pasó:** Apple aprobó FuerzaPro (correo del 16 nov, 13:41); queda «lista para distribuir» con publicación manual.
 - **Hecho:** se publica «¿Qué máquina es?» (rama `maquina`) unida a v2.54.3; el aviso de permiso de IA y la privacidad

@@ -923,6 +923,7 @@ export function abrirProgreso(e) {
   const demo = e.ej && animacion(e.ej);
   $('en-det-cuerpo').innerHTML = `<h3 class="en-det-titulo">${iconoEj(e)} ${esc(nombreEj(e))}</h3>
     ${demo ? `<div class="fig-demo">${demo}</div>` : ''}
+    <div id="en-guia"></div>
     <div class="en-musc-box">
       <canvas id="en-musc-graf" class="en-musc-graf"></canvas>
       <div class="en-musc-info">
@@ -945,6 +946,7 @@ export function abrirProgreso(e) {
     ${!r.puntos.length && !rf ? '<p class="vacio">Todavía no hay series de este ejercicio.</p>' : ''}`;
   $('en-detalle').style.display = 'flex';
   $('en-det-cuerpo').scrollTop = 0;
+  if (e.ej) pintarGuia(e.ej, $('en-guia')); // v2.56.0 fotos y pasos (free-exercise-db)
   $('en-rm-ok').onclick = () => {
     const v = parseFloat(($('en-rm-in').value || '').replace(',', '.'));
     P.guardarRmReal(k, v > 0 ? v : 0);
@@ -1355,3 +1357,18 @@ $('tj-comunidad').onclick = () => {
   cerrarTarjetas(false);
   if (deps.compartir) deps.compartir(t.en, t.recs, sel ? sel.blob : null);
 };
+
+// v2.56.0 «Cómo se hace»: 2 fotos y los pasos en español, de free-exercise-db (dominio público, Unlicense).
+// Se carga solo cuando se abre un ejercicio; las fotos se guardan en la caché al verlas.
+async function pintarGuia(id, caja) {
+  if (!caja) return;
+  let g;
+  try { g = (await import('./ejercicios-guia.js')).GUIA[id]; } catch { return; }
+  if (!g || !caja.isConnected) return;
+  caja.innerHTML = `<details class="en-guia" open><summary>📸 Cómo se hace</summary>
+    <div class="en-guia-fotos"><img src="ejercicios-img/${esc(g.img)}-0.webp" alt="Posición inicial" loading="lazy"><img src="ejercicios-img/${esc(g.img)}-1.webp" alt="Posición final" loading="lazy"></div>
+    ${g.pasos.length ? `<ol class="en-guia-pasos">${g.pasos.map((p) => `<li>${esc(p)}</li>`).join('')}</ol>` : ''}
+    <p class="hint en-guia-cred">Fotos e instrucciones: <a href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">free-exercise-db</a> (dominio público), traducidas al español. Pueden variar un poco de tu máquina o tu técnica.</p>
+  </details>`;
+  caja.querySelectorAll('img').forEach((im) => (im.onerror = () => im.remove()));
+}

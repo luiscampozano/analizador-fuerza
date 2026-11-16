@@ -1456,3 +1456,13 @@ html.ios body::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 .mq-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
 .mq-pie small { color: var(--text-muted); }
 .mq-volver { width: auto; }
+
+/* v2.56.0 Cómo se hace (fotos y pasos de cada ejercicio) */
+.en-guia { margin: 10px 0; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 8px 10px; }
+.en-guia summary { cursor: pointer; font-weight: 600; }
+.en-guia-fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.en-guia-fotos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: #fff; }
+.en-guia-pasos { margin: 10px 0 4px; padding-left: 20px; font-size: .9rem; }
+.en-guia-pasos li { margin: 5px 0; }
+.en-guia-cred { font-size: .75rem; margin: 6px 0 0; }
+.mq-ref { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; flex: none; background: #fff; }
