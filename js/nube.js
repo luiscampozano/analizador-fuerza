@@ -4,6 +4,7 @@
 // la que tenia en la ultima sincronizacion. Los videos no se suben (pesan demasiado).
 import * as almacen from './almacen.js';
 import * as hist from './historial.js';
+import * as consentia from './consentia.js';
 
 export const CLIENTE_GOOGLE = '839266600135-40anun54d7qkappj2kv3oq7b6nf6vm9e.apps.googleusercontent.com';
 const SES = 'af_sesion', EST = 'af_sync';
@@ -27,6 +28,8 @@ function ponerEstado(cambios) { estado = { ...estado, ...cambios }; try { alEsta
 
 // ------------------------------------------------------------------ API
 export async function api(metodo, ruta, cuerpo) {
+  // v2.54.3 nada se envía a la IA (Anthropic) sin el permiso explícito de la persona (App Store 5.1.2(i))
+  if (ruta.startsWith('/api/ia/') && !(await consentia.asegurar())) throw new Error('Para usar esta función con IA necesitas aceptar el envío de datos a Anthropic (Claude).');
   const s = sesion();
   const r = await fetch(ruta, {
     method: metodo, cache: 'no-store',

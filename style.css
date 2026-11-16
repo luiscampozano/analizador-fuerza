@@ -1421,3 +1421,11 @@ html.ios body::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 .pf-fuentes { display: block; margin: -4px 0 12px; font-size: .85rem; color: var(--text-muted); text-align: center; }
 .fuentes-link { margin: 0 0 10px; }
 .fuentes-link a, .pf-fuentes { color: var(--accent-blue); }
+
+/* v2.54.3 permiso para las funciones con IA */
+.ia-permiso-caja { max-width: 460px; max-height: 92vh; overflow-y: auto; }
+.ia-permiso-caja h3 { margin: 0 0 8px; }
+.ia-permiso-caja ul { margin: 6px 0 10px; padding-left: 20px; font-size: .92rem; }
+.ia-permiso-caja li { margin: 4px 0; }
+.ia-permiso-caja p { font-size: .92rem; }
+.pf-ia-retirar { background: none; border: none; width: 100%; cursor: pointer; font: inherit; font-size: .85rem; }

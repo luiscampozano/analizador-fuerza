@@ -6,6 +6,18 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-16
+
+### 10:50 · v2.54.3 — Pre-revisión de Apple: permiso explícito para las funciones con IA (5.1.2(i))
+- **Pidió:** revisar la app como un revisor de Apple antes de que vuelvan a rechazarla.
+- **Hallazgo principal:** desde noviembre de 2025 Apple exige permiso explícito antes de enviar datos personales a una IA
+  de terceros (guía 5.1.2(i)); FuerzaPro solo lo explicaba en la política de privacidad.
+- **Hecho:** js/consentia.js: la primera vez que se usa cualquier función con IA (/api/ia/*, desde nube.api) aparece una
+  ventana que dice qué se envía a Anthropic (Claude) y para qué, con «Acepto y continuar» / «Ahora no». Sin permiso no se
+  envía nada. Perfil → «Retirar el permiso para enviar datos a la IA». Privacidad actualizada (permiso, menú IA, cámara).
+- **Pendiente para la próxima compilación:** texto del permiso de cámara (mencionar la foto del plato con IA); funciones
+  nativas (miércoles).
+
 ## 2026-11-12
 
 ### 18:15 · v2.54.2 — Cronómetro del entrenamiento más visible
