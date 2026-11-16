@@ -19,7 +19,8 @@ export function asegurar() {
       <p>Para responderte, FuerzaPro envía a <b>Anthropic</b>, la empresa que hace la IA <b>Claude</b>, solo lo necesario:</p>
       <ul>
         <li>la <b>foto</b> de tu plato o de la etiqueta, o el <b>texto</b> que escribes;</li>
-        <li>para el entrenador IA, el menú del nutricionista y la explicación de una serie: un resumen de tus <b>entrenamientos, comidas y perfil</b> (edad, peso, estatura, objetivo) y, si pides la explicación con fotos, hasta 4 imágenes del video.</li>
+        <li>para el entrenador IA y el menú del nutricionista: un resumen de tus <b>entrenamientos, comidas, metas y perfil</b> (edad, sexo, peso, estatura, objetivo y, en el menú, tus gustos y lo que evitas);</li>
+        <li>para la explicación de una serie: los <b>números medidos</b> de esa serie y, si la pides con fotos, hasta 4 imágenes del video.</li>
       </ul>
       <p>Se usa solo para darte la respuesta. FuerzaPro no guarda esas fotos ni las publica, y no se usan para publicidad. Según sus condiciones comerciales, Anthropic no usa estos datos para entrenar sus modelos.
         <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>

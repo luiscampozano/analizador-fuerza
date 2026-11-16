@@ -26,6 +26,7 @@ import * as atras from './atras.js';
 import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON } from './actividad.js';
 import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 import * as vista3d from './vista3d.js';
+import * as consentia from './consentia.js';
 
 const VERSION = '2.54.3';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
@@ -870,6 +871,7 @@ async function fotosDeVideo(blob, n = 4) {
 async function pedirIA(inf, datos, videoBlob) {
   if (inf.ia && (inf.iaMeta ?? null) === (datos.meta1RMKg ?? null)) return inf.ia; // v2.43.0 si cambió la meta, se pide de nuevo
   if (!nube.conectado()) { alert('El análisis con IA se hace en el servidor: inicia sesión en Perfil para usarlo.'); return null; }
+  if (!(await consentia.asegurar())) return null; // v2.54.3 primero el permiso para la IA, antes de sacar las fotos
   if (!confirm(videoBlob ? 'Para el PDF completo se envían a la IA (Anthropic) los números y 4 fotos sacadas del video. No se guardan ni se publican. Gasta 1 crédito IA. ¿Continuar?' : 'Para el PDF completo se envían a la IA (Anthropic) los números de esta serie (este análisis ya no tiene video). Gasta 1 crédito IA. ¿Continuar?')) return null;
   let fotos = [];
   if (videoBlob) try { fotos = await fotosDeVideo(videoBlob); } catch (e) { fotos = []; }
