@@ -19,6 +19,13 @@ const { abrir } = require('./comun.cjs');
     ok(reps >= 2 && reps <= 6, `cuenta las repeticiones (${reps})`);
     const hist = await p.evaluate(() => JSON.parse(localStorage.getItem('af_historial_v1') || '[]'));
     ok(hist.length === 1 && hist[0].reps === reps, 'la serie queda guardada en el historial');
+    // v2.55.1 corregir el peso después de analizar: se recalcula la serie con los puntos guardados
+    await p.evaluate(() => { window.prompt = () => '50'; });
+    await p.click('#btn-peso');
+    await p.waitForFunction(() => (JSON.parse(localStorage.getItem('af_historial_v1') || '[]')[0] || {}).carga === 50, null, { timeout: 15000 }).catch(() => {});
+    const h2 = await p.evaluate(() => JSON.parse(localStorage.getItem('af_historial_v1') || '[]'));
+    ok(h2.length === 1 && h2[0].carga === 50 && h2[0].reps === reps, 'corregir el peso recalcula la serie (100 → 50 kg)');
+    ok(!hist[0].rm || !h2[0].rm || h2[0].rm < hist[0].rm, `el 1RM baja con menos peso (${hist[0].rm} → ${h2[0].rm})`);
     // v2.53.0 vista 3D experimental: el botón aparece, abre el muñeco y se cierra
     await p.waitForSelector('#btn-3d', { state: 'visible', timeout: 10000 });
     await p.click('#btn-3d');

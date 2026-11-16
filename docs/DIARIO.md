@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-16
 
+### 18:30 · v2.55.1 — Corregir el peso después de analizar
+- **Pidió:** una usuaria puso 20 kg en vez de 40; cambió el peso pero el 1RM y la explicación siguieron con 20 kg.
+- **Hecho:** botón «✏️ ¿Peso mal? Corregir» en la tarjeta Carga efectiva del informe; además, si se cambian los kg de
+  una serie con análisis en el entrenamiento, se recalcula sola. Se usan los puntos del cuerpo guardados (sin video);
+  se mantiene la corrección del conteo si la había. El recorrido E2E «analizar» ahora prueba la corrección (100 → 50 kg).
+- **Pendiente:** el análisis tarda mucho en celulares de gama media (video de ~1 min ≈ 5-9 min en un Poco X8 Pro):
+  propuestas para Luis (analizar solo el tramo recortado, resolución de trabajo menor, aviso de «Rápida»).
+
 ### 14:10 · v2.55.0 publicada — Apple aprobó la versión 1.0 (6)
 - **Pasó:** Apple aprobó FuerzaPro (correo del 16 nov, 13:41); queda «lista para distribuir» con publicación manual.
 - **Hecho:** se publica «¿Qué máquina es?» (rama `maquina`) unida a v2.54.3; el aviso de permiso de IA y la privacidad

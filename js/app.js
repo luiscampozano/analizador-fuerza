@@ -28,7 +28,7 @@ import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 
-const VERSION = '2.55.0';
+const VERSION = '2.55.1';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -1132,6 +1132,49 @@ async function guardarCorreccion(inf, base, excluidas, real, enviar, comentario)
   catch (err) { aviso('Corrección guardada, pero no se pudo enviar el caso: ' + (err.message || err), true); }
 }
 $('btn-corregir').onclick = abrirCorreccion;
+
+// v2.55.1 Peso equivocado (por ejemplo puso 20 y eran 40): se vuelve a calcular la serie con los puntos del cuerpo
+// guardados, sin el video (fuerza, potencia, RIR, 1RM), y se corrige también la serie del entrenamiento.
+// cargaNueva: lo que se mueve en total (discos + barra o carro), o el lastre en ejercicios con peso corporal.
+async function recalcularConPeso(id, cargaNueva) {
+  const r = hist.leer().find((x) => x.id === id); if (!r) return null;
+  const inf = (await almacen.leerInforme(id)) || informeDesdeRegistro(r);
+  const e = POR_ID[inf.ej && inf.ej.id], pose = await almacen.leerPose(id), d0 = inf.datos;
+  if (!e || !pose || !d0 || !d0.altura) return null; // serie vieja sin puntos guardados: no se puede recalcular
+  const corporal = e.perfil === 'corporal', carro = corporal ? 0 : Math.max(0, (d0.carga || 0) - (d0.peso || 0));
+  const peso = corporal ? cargaNueva : cargaNueva - carro;
+  if (!(peso >= 0) || (!corporal && !(cargaNueva > 0))) return null;
+  const d = { ...d0, peso, carga: peso + carro, masa: corporal ? Math.max(5, d0.pc * (e.fraccion || 1) + (e.asistido ? -peso : peso)) : peso + carro };
+  const k = inf.corregida;
+  const c = calcularSerie(almacen.desempacarPose(pose), pose.dur, e, d, { excluir: k ? k.excluidas : [], repsTotal: k ? k.real : null, idSerie: id });
+  const datos = { ...d0, peso: d.peso, carga: d.carga, masa: d.masa };
+  const nuevo = crearInforme({ res: c.res, s: c.serie, tray: c.tray, tec: c.tec, pcv: c.pcv, datos, fps: c.fps, e });
+  nuevo.id = id; nuevo.fecha = inf.fecha || r.fecha; if (inf.pareja) nuevo.pareja = inf.pareja;
+  if (k) { nuevo.corregida = k; nuevo.s.notas = [`Conteo corregido a mano: la app contó ${k.app} y hiciste ${k.real}.`, ...nuevo.s.notas]; }
+  const antes = corporal ? d0.peso : d0.carga;
+  nuevo.s.notas = [`Peso corregido: ${fmt(antes || 0, 1)} kg → ${fmt(cargaNueva, 1)} kg. Todo se volvió a calcular${archivosSesion.has(id) ? '' : '; el video con telemetría muestra todavía el peso anterior'}.`, ...nuevo.s.notas];
+  const reg = registroDe(e, d, c.res, c.serie, c.tray, c.tec, nuevo, d0.origen || 'video');
+  hist.actualizar(id, reg);
+  await almacen.guardarInforme(nuevo);
+  nube.sincronizar && nube.sincronizar();
+  return { inf: nuevo, reg };
+}
+$('btn-peso').onclick = async () => {
+  const inf = informeActual; if (!inf || !inf.id || !inf.datos) return;
+  const e = POR_ID[inf.ej && inf.ej.id]; if (!e) return;
+  const corporal = e.perfil === 'corporal', antes = corporal ? inf.datos.peso || 0 : inf.datos.carga;
+  const txt = prompt(corporal ? '¿Cuánto lastre usaste? (kg; 0 si fue solo tu peso)' : `¿Cuánto peso moviste en total? (kg${(inf.datos.carga || 0) > (inf.datos.peso || 0) ? ', discos + barra o máquina' : ''})`, antes);
+  if (txt == null) return;
+  const kg = parseFloat(String(txt).replace(',', '.'));
+  if (!Number.isFinite(kg) || kg < 0 || kg > 1000 || (!corporal && kg === 0)) return alert('Escribe el peso en kg, por ejemplo 40.');
+  if (kg === antes) return;
+  let r = null;
+  try { r = await recalcularConPeso(inf.id, kg); } catch (err) { return alert('No se pudo recalcular la serie: ' + (err.message || err)); }
+  if (!r) return alert('Esta serie no guardó los puntos del cuerpo, así que no se puede recalcular. Analiza el video otra vez con el peso correcto.');
+  entrenar.alCorregirPeso(inf.id, kg, r.reg);
+  mostrarInforme(r.inf, { video: videoActual, desde: vistaPrevia });
+  aviso('Peso corregido: se recalculó la serie.', true);
+};
 $('corregir').addEventListener('click', (ev) => { if (ev.target.id === 'corregir') $('corregir').style.display = 'none'; });
 
 // v2.39.2 el boton del PDF ofrece «simple» (sin IA) o «completo con análisis de IA»
@@ -1431,7 +1474,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   perfil.iniciar({ vista, version: VERSION, porId: POR_ID, abrirProgreso: (e) => entrenar.abrirProgreso(e), abrirEstadisticas: () => entrenar.abrirEstadisticas(), abrirEjercicios: () => entrenar.abrirEjercicios(),
     abrirSerie: (id) => abrirSerie(id, 'v-perfil'), alias: () => comunidad.aliasPropio(), verPerfil: (a) => comunidad.verPerfil(a) });
   document.querySelectorAll('[data-volver]').forEach((b) => (b.onclick = () => vista(b.dataset.volver)));
-  entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar'), abrirActividad: (id) => abrirActividad(id, 'v-entrenar'), analizable: (id) => !!tipoActividad(POR_ID[id]), compartir: (en, recs, img) => comunidad.compartir(en, recs, img), compartido: (id) => comunidad.compartido(id), alias: () => comunidad.aliasPropio() }).then(() => {
+  entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar'), recalcularPeso: recalcularConPeso, abrirActividad: (id) => abrirActividad(id, 'v-entrenar'), analizable: (id) => !!tipoActividad(POR_ID[id]), compartir: (en, recs, img) => comunidad.compartir(en, recs, img), compartido: (id) => comunidad.compartido(id), alias: () => comunidad.aliasPropio() }).then(() => {
     entrenar.alCambiarVista('v-entrenar');
     // nube: al recibir cambios de otro dispositivo se repinta lo que este a la vista
     nube.iniciar({

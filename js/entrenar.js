@@ -686,6 +686,13 @@ function enlazarEventos() {
         guardarBorrador(); tic();
       };
       if (inp.dataset.campo === 'kg') inp.onfocus = () => { ultimoKg = parseFloat(inp.value || inp.placeholder) || ultimoKg; };
+      // v2.55.1 si la serie ya tiene análisis por video y se corrige el peso, el análisis se vuelve a calcular con el nuevo peso
+      if (inp.dataset.campo === 'kg' && !esCardio(e)) inp.onchange = async () => {
+        const s = e.series[+inp.closest('.en-fila').dataset.is];
+        if (!s || !s.analisis || s.kg == null || !deps.recalcularPeso) return;
+        const r = await deps.recalcularPeso(s.analisis.id, s.kg).catch(() => null);
+        if (r) { actualizarAnalisis(s, r.reg); guardarBorrador(); }
+      };
     });
     caja.querySelector('[data-acc="nota"]').oninput = (ev) => { e.notas = ev.target.value; guardarBorrador(); };
     caja.querySelectorAll('button[data-acc]').forEach((b) => (b.onclick = () => accion(b.dataset.acc, ie, b.closest('.en-fila') ? +b.closest('.en-fila').dataset.is : +b.dataset.is)));
@@ -1237,6 +1244,12 @@ export function vincularOtraPierna(registro) {
   if (!e.series[p.is + 1]) e.series.push(serieVacia(e.series[p.is] ? e.series[p.is].tipo : 'normal'));
   enlacePendiente = { ...p, is: p.is + 1 };
   return vincular(registro);
+}
+const actualizarAnalisis = (s, reg) => { s.analisis = { ...s.analisis, v: reg.vMejor, rpe: reg.rpe ?? null, rm: reg.rm ?? null }; };
+// v2.55.1 se corrigió el peso desde el informe de la serie: la serie del entrenamiento en curso queda con el mismo peso
+export function alCorregirPeso(id, kg, reg) {
+  if (!activo) return;
+  for (const e of activo.ejercicios) for (const s of e.series) if (s.analisis && s.analisis.id === id) { s.kg = kg; actualizarAnalisis(s, reg); guardarBorrador(); }
 }
 export function vincular(registro) {
   const p = enlacePendiente; enlacePendiente = null;
