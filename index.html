@@ -443,7 +443,7 @@
       <div id="en-activo" style="display:none">
         <div class="en-cab">
           <input id="en-titulo" class="en-titulo" maxlength="50" aria-label="Nombre del entrenamiento">
-          <div class="en-cab-datos"><button type="button" class="en-reloj" id="en-reloj" aria-label="Editar hora de inicio y duración">⏱ <b id="en-tiempo">0:00</b> <i>✎</i></button><span>🏋️ <b id="en-vol">0 kg</b></span><span>✓ <b id="en-nser">0</b> series</span></div>
+          <div class="en-cab-datos"><button type="button" class="en-reloj" id="en-reloj" aria-label="Editar hora de inicio y duración">⏱ <b id="en-tiempo">0:00</b> <i>✎</i></button><span>🏋️ <b id="en-vol">0 kg</b></span><span>✓ <b id="en-nser">0</b> series</span><button type="button" class="en-musc-btn" id="en-musc-btn" aria-label="Ver los músculos que trabajaste en este entrenamiento">💪 Músculos</button></div>
           <div class="en-cab-fila">
             <label class="en-desc-sel">Descanso
               <select id="en-descanso"><option value="0">Sin</option><option value="60">1:00</option><option value="90">1:30</option><option value="120">2:00</option>
@@ -657,6 +657,15 @@
     <div class="en-ejs-filtros"><input id="en-ejs-buscar" class="buscar" type="search" placeholder="Buscar ejercicio…" autocomplete="off">
       <select id="en-ejs-orden" aria-label="Ordenar"><option value="reciente">Recientes</option><option value="sesiones">Más hechos</option><option value="nombre">A-Z</option></select></div>
     <div id="en-ejs-lista" class="en-sel-lista en-ejs"></div>
+  </div></div>
+  <div id="en-musc-hoy" class="modal en-modal" style="display:none" role="dialog" aria-labelledby="en-musc-hoy-titulo"><div class="modal-caja en-sel-caja pf-hoja">
+    <div class="en-sec-cab"><strong id="en-musc-hoy-titulo">Músculos de este entrenamiento</strong><button type="button" class="btn-sec" id="en-musc-hoy-cerrar">Cerrar</button></div>
+    <div class="en-det-cuerpo">
+      <div class="card pf-cuerpo-sem"><canvas id="en-musc-hoy-graf" class="en-musc-graf" data-alto="260" style="height:260px"></canvas>
+        <div class="pf-escala"><span>Poco</span><i></i><span>Mucho</span></div></div>
+      <div class="card"><div class="en-mh-cab"><span>Músculo</span><span>Series hechas</span></div><div id="en-musc-hoy-lista"></div>
+        <p class="hint" style="margin:8px 0 0">Músculo principal del ejercicio = 1 serie; músculo que ayuda = ½ serie. Solo cuentan las series marcadas ✓.</p></div>
+    </div>
   </div></div>
   <div id="pf-estad" class="modal en-modal" style="display:none" role="dialog" aria-labelledby="pf-estad-titulo"><div class="modal-caja en-sel-caja pf-hoja">
     <div class="en-sec-cab"><strong id="pf-estad-titulo">Estadísticas</strong><button type="button" class="btn-sec" id="pf-estad-cerrar">Cerrar</button></div>

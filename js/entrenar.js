@@ -169,6 +169,9 @@ export async function iniciar(d) {
   $('pf-grupo-cerrar').onclick = () => { $('pf-grupo').style.display = 'none'; };
   $('en-reloj').onclick = abrirDuracion;
   $('en-duracion-cerrar').onclick = () => { $('en-duracion').style.display = 'none'; };
+  $('en-musc-btn').onclick = abrirMusculosHoy;
+  $('en-musc-hoy-cerrar').onclick = () => { $('en-musc-hoy').style.display = 'none'; };
+  $('en-musc-hoy').addEventListener('click', (ev) => { if (ev.target.id === 'en-musc-hoy') $('en-musc-hoy').style.display = 'none'; });
   $('en-dur-inicio').onchange = () => {
     const d = deLocal($('en-dur-inicio').value); if (!d || !activo) return;
     activo.inicio = new Date(Math.min(+d, Date.now())).toISOString(); guardarBorrador(); tic(); llenarDuracion();
@@ -331,6 +334,32 @@ function abrirMusculo(k) {
   const claves = Object.keys(tarjetas.NOMBRES_MUSC).filter((x) => tarjetas.NOMBRES_MUSC[x] === nombre);
   const rol = (e) => { const m = obtenerMusculos(e); return claves.some((c) => m.pri.includes(c)) ? 'pri' : claves.some((c) => m.sec.includes(c)) ? 'sec' : null; };
   abrirGrupo(nombre, (e) => rol(e), (e) => (rol(e) === 'pri' ? 'principal' : 'secundario'));
+}
+// v2.56.0 series por músculo de una lista de ejercicios (principal = 1 serie, secundario = ½), como en Estadísticas
+function cargaDe(ejercicios) {
+  const carga = {};
+  for (const e of ejercicios) {
+    const n = e.series.filter(cuenta).length; if (!n) continue;
+    const m = obtenerMusculos(e);
+    m.pri.forEach((k) => { carga[k] = (carga[k] || 0) + n; });
+    m.sec.forEach((k) => { carga[k] = (carga[k] || 0) + 0.5 * n; });
+  }
+  return carga;
+}
+const mezclaCol = (a, b, t) => '#' + [0, 2, 4].map((i) => Math.round(parseInt(a.substr(i + 1, 2), 16) * (1 - t) + parseInt(b.substr(i + 1, 2), 16) * t).toString(16).padStart(2, '0')).join('');
+const colorCarga = (v, max) => { if (!v || !max) return null; const t = v / max; return t < 0.5 ? mezclaCol('#3a3360', '#7c5cff', t / 0.5) : mezclaCol('#7c5cff', '#ff5722', (t - 0.5) / 0.5); };
+// v2.56.0 «💪 Músculos» del entrenamiento en curso: mapa del cuerpo y series hechas por músculo
+function abrirMusculosHoy() {
+  if (!activo) return;
+  const carga = cargaDe(activo.ejercicios), max = Math.max(0, ...Object.values(carga));
+  $('en-musc-hoy').style.display = 'flex';
+  pintarCuerpo($('en-musc-hoy-graf'), (k) => colorCarga(carga[k] || 0, max));
+  // un mismo músculo puede tener varias zonas en el dibujo (p. ej. pantorrillas): se cuenta una vez
+  const porNombre = new Map();
+  for (const [k, v] of Object.entries(carga)) { const n = tarjetas.NOMBRES_MUSC[k]; if (n) porNombre.set(n, Math.max(porNombre.get(n) || 0, v)); }
+  const filas = [...porNombre.entries()].sort((a, b) => b[1] - a[1]), top = filas.length ? filas[0][1] : 0;
+  $('en-musc-hoy-lista').innerHTML = filas.length ? filas.map(([n, v]) => `<div class="en-mh-fila"><span>${esc(n)}</span><i><b style="width:${Math.max(4, (100 * v) / top)}%;background:${colorCarga(v, top)}"></b></i><strong>${fmt(v, v % 1 ? 1 : 0)}</strong></div>`).join('')
+    : '<p class="vacio">Todavía no marcaste series con ✓. Al marcarlas, aquí ves qué músculos vas trabajando.</p>';
 }
 function pintarCuerpoSemana() {
   const desde = desdePeriodo(), carga = {};
