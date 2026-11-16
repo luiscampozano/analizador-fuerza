@@ -7,6 +7,7 @@ import * as bienvenida from './bienvenida.js';
 import * as hist from './historial.js';
 import * as plan from './plan.js';
 import { icono as figIcono } from './figura.js';
+import * as consentia from './consentia.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -118,6 +119,8 @@ export async function pintar() {
       ${pf.bio ? `<p>${esc(pf.bio)}</p>` : ''}</div>`;
   pintarSocial();
   // plan de suscripcion (solo cuando los limites aplican a esta cuenta)
+  const bIA = $('pf-ia-retirar'); // v2.54.3 retirar el permiso de las funciones con IA
+  if (bIA) { bIA.style.display = consentia.tienePermiso() ? '' : 'none'; bIA.onclick = () => { consentia.retirar(); bIA.style.display = 'none'; alert('Listo: la próxima vez que uses una función con IA te volveremos a pedir permiso.'); }; }
   const rp = plan.resumen(), cp = $('pf-plan');
   if (cp) {
     // v2.54.1 en iPhone/iPad los planes y suscripciones siempre se ven aquí (Apple pide que se puedan encontrar)
