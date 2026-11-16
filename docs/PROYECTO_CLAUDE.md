@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 16 de noviembre de 2026 · **Versión en producción:** v2.55.1
+**Actualizado:** 16 de noviembre de 2026 · **Versión en producción:** v2.56.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -338,6 +338,7 @@ bloqueos, reportes, fallos.
 | v2.54.1 | Rechazo de Apple: página de fuentes científicas con enlaces en toda la app y planes siempre visibles en iPhone/iPad (GET /api/planes público). |
 | v2.54.2 | El cronómetro editable del entrenamiento va dentro de un cuadro con borde (más visible). |
 | v2.54.3 | Permiso explícito antes de enviar datos a la IA (Anthropic), retirable en Perfil (App Store 5.1.2(i)). |
+| v2.56.0 | «💪 Músculos» en el entrenamiento en curso (cuerpo coloreado + series por músculo, como Hevy); el análisis mira solo el tramo recortado (±3 s) y la IA recibe una imagen de 960 px (más rápido). |
 | v2.55.1 | Corregir el peso después de analizar (botón en el informe o cambiando los kg de la serie en el entrenamiento): se recalcula todo con los puntos guardados. |
 | v2.55.0 | ¿Qué máquina es?: foto de una máquina del gimnasio → la IA elige el ejercicio de la biblioteca y se agrega al entrenamiento. |
 | v2.15.0 | Análisis por video de cardio (carrera, bici, remo, elíptica, cuerda), boxeo y HIIT (`js/actividad.js`), con video propio, vista de resultados e historial «Cardio y boxeo». Validado con esqueletos sintéticos; falta validar con videos reales. |

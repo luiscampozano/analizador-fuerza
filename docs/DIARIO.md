@@ -8,6 +8,16 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-16
 
+### 19:30 · v2.56.0 — Músculos del entrenamiento (como Hevy) y análisis más rápido
+- **Pidió:** una usuaria usa mucho la «distribución muscular» de Hevy durante el entrenamiento; además el análisis de
+  un video de ~1 min tardaba 5-9 min en un Poco X8 Pro.
+- **Hecho:** botón «💪 Músculos» en el entrenamiento en curso: cuerpo de frente y espalda coloreado (poco → mucho) y
+  barras con las series hechas por músculo (principal = 1, secundario = ½; solo series ✓), con la misma cuenta que
+  Estadísticas. Velocidad: si se recorta el video, la IA mira solo ese tramo más 3 s a cada lado (banco: 53 de 56
+  casos con las mismas reps, aciertos 25 vs 24 antes); la IA de pose recibe una imagen de 960 px en vez de 1920
+  (≈3 veces más rápido en la prueba con CPU). Sin recorte se analiza todo el video, como siempre.
+- **Pendiente:** confirmar el tiempo en el celular de la usuaria.
+
 ### 18:30 · v2.55.1 — Corregir el peso después de analizar
 - **Pidió:** una usuaria puso 20 kg en vez de 40; cambió el peso pero el 1RM y la explicación siguieron con 20 kg.
 - **Hecho:** botón «✏️ ¿Peso mal? Corregir» en la tarjeta Carga efectiva del informe; además, si se cambian los kg de
