@@ -56,7 +56,9 @@ export async function cargarModelo(calidad = 'normal', { soloCPU = false } = {})
   return cache[clave];
 }
 
-const LADO_POSE = 960; // v2.56.0 lado mayor de la imagen que recibe la IA de pose
+// v2.56.0 lado mayor de la imagen que recibe la IA de pose (0 = la imagen completa). Con 960 px fue ~3 veces más rápido,
+// pero 1 de cada 10 puntos cambió bastante: queda apagado hasta medir su efecto en el conteo y las velocidades.
+const LADO_POSE = 0;
 
 export function esperarCuadro(video, t) {
   return new Promise((ok, mal) => {
@@ -92,9 +94,8 @@ export async function detectarPose(fuente, { calidad = 'normal', hz = 30, alAvan
   let centroPrev = null, k = 0;
   const base = relojMs + 1000;
   const t0 = performance.now();
-  // v2.56.0 la IA trabaja con una imagen más chica (como máximo 960 px): por dentro igual la reduce a 256 px, así que
-  // la precisión es la misma y el celular mueve 4 veces menos datos. Si otro detector usa el cuadro (disco, balón), va completo.
-  for await (const { t, imagen } of fuente.iterar(dentro, alCuadro ? {} : { lado: LADO_POSE })) {
+  // si otro detector usa el cuadro (disco, balón), la imagen va completa
+  for await (const { t, imagen } of fuente.iterar(dentro, alCuadro || !LADO_POSE ? {} : { lado: LADO_POSE })) {
     if (cancelado()) throw new Error('cancelado');
     let puntos = null, mundo = null;
     if (imagen) {

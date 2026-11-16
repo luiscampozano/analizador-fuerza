@@ -14,9 +14,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 - **Hecho:** botón «💪 Músculos» en el entrenamiento en curso: cuerpo de frente y espalda coloreado (poco → mucho) y
   barras con las series hechas por músculo (principal = 1, secundario = ½; solo series ✓), con la misma cuenta que
   Estadísticas. Velocidad: si se recorta el video, la IA mira solo ese tramo más 3 s a cada lado (banco: 53 de 56
-  casos con las mismas reps, aciertos 25 vs 24 antes); la IA de pose recibe una imagen de 960 px en vez de 1920
-  (≈3 veces más rápido en la prueba con CPU). Sin recorte se analiza todo el video, como siempre.
-- **Pendiente:** confirmar el tiempo en el celular de la usuaria.
+  casos con las mismas reps, aciertos 25 vs 24 antes). Sin recorte se analiza todo el video, como siempre.
+  Imagen de 960 px para la IA: ≈3 veces más rápido, pero 1 de cada 10 puntos cambió bastante → queda apagada (LADO_POSE = 0).
+- **Pendiente:** medir la imagen de 960 px con el conteo y las velocidades (¿cambia izquierda/derecha?) antes de activarla.
 
 ### 18:30 · v2.55.1 — Corregir el peso después de analizar
 - **Pidió:** una usuaria puso 20 kg en vez de 40; cambió el peso pero el 1RM y la explicación siguieron con 20 kg.
