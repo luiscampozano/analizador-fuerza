@@ -463,7 +463,8 @@ async function analizarArchivo() {
     if (ej.cardio && modoDep() === 'completo') { progreso(0, 0, 'Cargando la IA del balón (la primera vez descarga ~7 MB)…'); detBalon = await cargarDetectorBalon(); }
     // v2.56.0 si recortó el video, la IA mira solo esa parte (más 3 s a cada lado: la física los usa para orientarse)
     const rIni = parseFloat($('in-ini').value), rFin = parseFloat($('in-fin').value);
-    const rango = rIni > 0 || (rFin > 0 && rFin < video.duration) ? [Math.max(0, (rIni > 0 ? rIni : 0) - 3), rFin > 0 ? rFin + 3 : video.duration] : null;
+    let rango = rIni > 0 || (rFin > 0 && rFin < video.duration) ? [Math.max(0, (rIni > 0 ? rIni : 0) - 3), rFin > 0 ? rFin + 3 : video.duration] : null;
+    if (rango && !(rango[1] > rango[0] + 0.5 && rango[0] < video.duration)) rango = null; // recorte escrito mal: se mira todo el video
     const intentos = [{}, { soloCPU: true }, { soloCPU: true, conReproductor: true }];
     let frames = [], delegado = '', diag = [];
     for (let k = 0; k < intentos.length; k++) {
@@ -558,7 +559,7 @@ async function analizarActividadVideo(frames, video, d, balon = null) {
   progreso(2, 0.5, 'Midiendo el ritmo y la técnica…');
   const tipoA = tipoActividad(ej), equipo = tieneEquipo(tipoA) ? valoresEquipo(tipoA, leerEquipo(tipoA)) : null; // v2.51.0
   // v2.53.1 recorte también en cardio y deportes: solo se analiza el tramo elegido (los tiempos siguen siendo los del video,
-  // así el video con telemetría queda sincronizado; el esqueleto se dibuja en todo el video)
+  // así el video con telemetría queda sincronizado; desde v2.56.0 el esqueleto solo se dibuja en el tramo que miró la IA)
   const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
   const a0 = ini > 0 ? ini : 0, b0 = fin > a0 ? fin : Infinity;
   const dentro = frames.map((f) => f.t >= a0 && f.t <= b0);
@@ -571,7 +572,7 @@ async function analizarActividadVideo(frames, video, d, balon = null) {
   let salida = null;
   if ($('in-video').checked) {
     const full = interpolar(frames, 30, video.duration);
-    salida = await generarVideo(video, archivo, dibujoActividad(video, full, 30, act, balon && frames.map((f, i) => ({ t: f.t, b: balon[i] }))), { cancelado: () => cancelar, alAvanzar: (f) => progreso(3, f, 'Creando el video con telemetría…') });
+    salida = await generarVideo(video, archivo, dibujoActividad(video, full, 30, act, balon && frames.map((f, i) => ({ t: f.t, b: balon[i] })), tramoDe(frames)), { cancelado: () => cancelar, alAvanzar: (f) => progreso(3, f, 'Creando el video con telemetría…') });
     await almacen.guardarVideo(act.id, salida);
   }
   await almacen.guardarPose(act.id, frames, { dur: video.duration, W: video.videoWidth, H: video.videoHeight, version: VERSION });
@@ -660,6 +661,8 @@ async function abrirActividad(id, desde = 'v-historial') {
 }
 
 // Video con telemetria (esqueleto, flecha de fuerza, graficas y contador de reps). Se usa al analizar y al corregir el conteo.
+// v2.56.0 del primer al último cuadro en que la IA vio a la persona (con recorte, fuera de ese tramo no hay esqueleto)
+const tramoDe = (frames) => { const v = frames.filter((f) => f.puntos); return v.length && (v[0].t > 0.5 || v[v.length - 1].t < frames[frames.length - 1].t - 0.5) ? [v[0].t, v[v.length - 1].t] : null; };
 async function crearVideoSerie(video, archivoV, e, d, calc, { repsTotal = null, alAvanzar = () => {} } = {}) {
   const { full, res, tray, tec, fps } = calc;
   const ang = $('in-angulo').value ? anguloArticular(full, $('in-angulo').value, fps) : null;
@@ -668,7 +671,8 @@ async function crearVideoSerie(video, archivoV, e, d, calc, { repsTotal = null, 
     : `${e.corto} · ${fmt(d.carga, 1)} kg${d.relacion !== 1 ? ` (polea ${d.relacion}:1)` : ''}`;
   const leyendaVel = e.sentido === 'abajo' ? 'Velocidad de la carga (m/s)  ↑ subida  ↓ bajada' : 'Velocidad (m/s)  ↑ fase concéntrica  ↓ excéntrica';
   // v2.40.1 la linea amarilla del recorrido es opcional (apagada por defecto); el informe y el PDF la siguen midiendo
-  const dibujar = prepararDibujo(video, full, res, { puntoIdx: MP[e.punto], angulo: ang, titulo, leyendaVel, trayectoria: $('in-estela').checked ? tray : null, alertas: tec.porRep, repsTotal });
+  const tramo = d.ini || d.fin ? [Math.max(0, (d.ini || 0) - 3), d.fin ? d.fin + 3 : Infinity] : null; // el mismo tramo que miró la IA
+  const dibujar = prepararDibujo(video, full, res, { puntoIdx: MP[e.punto], angulo: ang, titulo, leyendaVel, trayectoria: $('in-estela').checked ? tray : null, alertas: tec.porRep, repsTotal, tramo });
   return generarVideo(video, archivoV, dibujar, { cancelado: () => cancelar, alAvanzar });
 }
 // Videos originales analizados en esta sesion (para rehacer el video al corregir el conteo sin pedirlo de nuevo)

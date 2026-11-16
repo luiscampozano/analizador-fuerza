@@ -83,7 +83,9 @@ export function prepararDibujo(fuente, full, res, opciones) {
     const s0 = sup[i], yOff = Hs < VH ? (VH - Hs) / 2 : 0;
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, OW, VH); ctx.clip();
     if (imagen) ctx.drawImage(imagen, 0, -s0 + yOff, OW, Hs);
-    const P = (k) => [full[i][k][0] * esc, full[i][k][1] * esc - s0 + yOff, full[i][k][2]];
+    // v2.56.0 fuera del tramo que miró la IA (video recortado) no hay esqueleto: se dibuja solo el video
+    const fuera = opciones.tramo && (t < opciones.tramo[0] || t > opciones.tramo[1]);
+    const P = (k) => [full[i][k][0] * esc, full[i][k][1] * esc - s0 + yOff, fuera ? 0 : full[i][k][2]];
     ctx.lineCap = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = C.rosa;
     for (const [a, b] of LINEAS) {
       const pa = P(a), pb = P(b);

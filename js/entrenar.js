@@ -352,7 +352,7 @@ const colorCarga = (v, max) => { if (!v || !max) return null; const t = v / max;
 function abrirMusculosHoy() {
   if (!activo) return;
   const carga = cargaDe(activo.ejercicios), max = Math.max(0, ...Object.values(carga));
-  $('en-musc-hoy').style.display = 'flex';
+  $('en-musc-hoy').style.display = 'flex'; $('en-musc-hoy-cerrar').focus();
   pintarCuerpo($('en-musc-hoy-graf'), (k) => colorCarga(carga[k] || 0, max));
   // un mismo músculo puede tener varias zonas en el dibujo (p. ej. pantorrillas): se cuenta una vez
   const porNombre = new Map();

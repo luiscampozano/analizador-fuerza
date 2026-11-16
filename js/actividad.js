@@ -690,7 +690,7 @@ const COL = { bg: '#101218', rosa: '#ec48c8', verde: '#5adc78', cian: '#22d3ee',
 const LINEAS = [[11, 13], [13, 15], [12, 14], [14, 16], [11, 12], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 31], [28, 32]];
 const FUENTE = 'system-ui, -apple-system, Roboto, "Segoe UI", sans-serif';
 // full: puntos interpolados por cuadro (fps). Devuelve dibujar(ctx, t, imagen) para generarVideo.
-export function dibujoActividad(fuente, full, fps, a, balon = null) {
+export function dibujoActividad(fuente, full, fps, a, balon = null, tramo = null) {
   const W = fuente.videoWidth, H = fuente.videoHeight, esc = OW / W, Hs = H * esc;
   const off = Hs < VH ? (VH - Hs) / 2 : 0;
   const cy = full.map((f) => { const ys = [11, 12, 23, 24].map((k) => f[k][1]).filter(Number.isFinite); return ys.length ? ys.reduce((x, y) => x + y) / ys.length * esc : Hs / 2; });
@@ -706,7 +706,8 @@ export function dibujoActividad(fuente, full, fps, a, balon = null) {
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, OW, VH); ctx.clip();
     const s0 = sup[i];
     if (imagen) ctx.drawImage(imagen, 0, -s0 + off, OW, Hs);
-    const P = (k) => [full[i][k][0] * esc, full[i][k][1] * esc - s0 + off, full[i][k][2]];
+    const fuera = tramo && (t < tramo[0] || t > tramo[1]); // v2.56.0 fuera del tramo recortado no hay esqueleto
+    const P = (k) => [full[i][k][0] * esc, full[i][k][1] * esc - s0 + off, fuera ? 0 : full[i][k][2]];
     ctx.lineCap = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = COL.rosa;
     for (const [x, y] of LINEAS) { const p = P(x), q = P(y); if (p[2] > 0.3 && q[2] > 0.3) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); } }
     for (const k of [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]) { const p = P(k); if (p[2] > 0.3) { ctx.beginPath(); ctx.arc(p[0], p[1], 9, 0, 7); ctx.fillStyle = COL.verde; ctx.fill(); } }
