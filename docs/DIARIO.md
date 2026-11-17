@@ -8,6 +8,16 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-17
 
+### 18:20 · v2.64.0 — Intentar de nuevo y corregir en las funciones con IA; re-análisis gratis del video
+- **Pidió:** Luis: un botón para reintentar cuando la IA falla o la persona se equivoca, sin gastar otro crédito; también
+  cuando el análisis del video sale mal. Aprobó el boceto.
+- **Hecho:** _worker.js: plato, texto, etiqueta y máquina no cobran si la IA no encontró nada (los errores técnicos ya no
+  cobraban); nuevo /api/ia/corregir (lista anterior + corrección escrita; la 1.ª gratis con tope de 10 al día, después usa
+  créditos). App: «🔄 Intentar de nuevo» (misma foto/texto) y «📷 Otra foto», aviso «✅ No se descontó tu crédito»,
+  caja «✏️ ¿Algo está mal? Corrígelo» en foto del plato y comida escrita. Video: «Analizar de nuevo · gratis» bajo los
+  resultados (fuerza y deportes): vuelve al formulario con el mismo video; ese análisis no cuenta en el plan; 1 vez por
+  video (si se cierra la app o se elige otro video se pierde). Pruebas: servidor (ia_test) y recorrido analizar ampliados.
+
 ### 17:05 · v2.63.0 — Lista de usuarios con plan (Moderación)
 - **Pidió:** Luis: la lista de planes regalados en una sola línea no servirá con más usuarios. Aprobó el boceto.
 - **Hecho:** resumen por plan, buscador por @alias o correo, filtros (Pro Max, Pro, Plus, regalados, pagados, vencen en

@@ -26,13 +26,27 @@ respuesta=claude('no es json');
 [s,r]=await call(A,'POST','ia/plato',{imagen:foto}); ok(s===502,'respuesta rara de la IA: error claro');
 respuesta=()=>new Response('{"error":"overloaded"}',{status:529});
 [s,r]=await call(A,'POST','ia/plato',{imagen:foto}); ok(s===502&&/ocupada/.test(r.error),'IA saturada: mensaje claro');
-respuesta=claude('{"alimentos":[],"nota":"x"}');
+respuesta=claude('{"alimentos":[],"nota":"No parece comida."}');
+[s,r]=await call(A,'POST','ia/plato',{imagen:foto}); ok(s===200&&r.cobrado===false&&r.quedan===9&&db.prepare("select coalesce(sum(n),0) n from uso_ia").get().n===1,'v2.64.0 si no encuentra comida no se cobra');
+respuesta=claude('{"alimentos":[{"nombre":"Pan","gramos":50,"kcal":130,"p":4,"c":25,"g":1}],"nota":"x"}');
 for(let i=0;i<9;i++) await call(A,'POST','ia/plato',{imagen:foto});
 [s,r]=await call(A,'POST','ia/plato',{imagen:foto}); ok(s===429&&/10 fotos/.test(r.error),'límite de 10 fotos por día');
 // ---- v2.23.0: comida escrita, etiqueta y entrenador (cada una con su propio límite)
 respuesta=claude('{"alimentos":[{"nombre":"Bolón de verde","gramos":200,"kcal":420,"p":9,"c":55,"g":18,"confianza":"media"}],"nota":"ok"}');
 [s,r]=await call(A,'POST','ia/texto',{texto:'un bolón con café'}); ok(s===200&&r.alimentos[0].kcal===420&&r.quedan===19&&ultimo.body.messages[0].content[0].text==='un bolón con café','comida escrita: usa su propio cupo (20) aunque las fotos se acabaron');
 [s,r]=await call(A,'POST','ia/texto',{texto:'a'}); ok(s===400,'texto vacío rechazado');
+// v2.64.0 corregir un resultado: la 1.ª es gratis (tope diario), sin gratis usa el cupo de correcciones
+const prev=[{nombre:'Huevo frito',gramos:150,kcal:270,p:18,c:1,g:21,x:40,y:40}];
+respuesta=claude('{"alimentos":[{"nombre":"Huevo cocido","gramos":100,"kcal":155,"p":13,"c":1,"g":11}],"nota":"ok"}');
+const usoIA=()=>db.prepare("select coalesce(sum(n),0) n from uso_ia where dia like '%:t'").get().n;
+const t0=usoIA();
+[s,r]=await call(A,'POST','ia/corregir',{alimentos:prev,correccion:'eran 2 huevos, sin aceite',gratis:true});
+const pedido=JSON.parse(ultimo.body.messages[0].content[0].text);
+ok(s===200&&r.gratis===true&&r.cobrado===false&&r.alimentos[0].kcal===155&&pedido.correccion==='eran 2 huevos, sin aceite'&&pedido.antes[0].kcal===270&&!('x' in pedido.antes[0])&&usoIA()===t0,'corregir gratis: manda lo anterior y la corrección, no gasta el cupo de texto');
+[s,r]=await call(A,'POST','ia/corregir',{alimentos:prev,correccion:'más arroz'}); ok(s===200&&r.gratis===false&&r.cobrado===true&&r.quedan===18,'corregir sin gratis: usa el cupo de correcciones');
+[s,r]=await call(A,'POST','ia/corregir',{alimentos:[],correccion:'más arroz',gratis:true}); ok(s===400,'corregir sin lista: rechazado');
+[s,r]=await call(A,'POST','ia/corregir',{alimentos:prev,correccion:'a',gratis:true}); ok(s===400,'corregir sin texto: rechazado');
+respuesta=claude('{"alimentos":[{"nombre":"Bolón de verde","gramos":200,"kcal":420,"p":9,"c":55,"g":18,"confianza":"media"}],"nota":"ok"}');
 respuesta=claude('{"porcion":"30","base":"100g","kcal":380,"p":12,"c":75,"g":"1,5","nombre":"Fideo","marca":"<x>"}');
 [s,r]=await call(A,'POST','ia/etiqueta',{imagen:foto}); ok(s===200&&r.por100&&r.kcal===380&&r.porcion===30&&r.g===1.5&&r.marca==='x'&&r.quedan===9,'etiqueta con IA: números limpios y por 100 g');
 respuesta=claude('🏋️ Subiste el volumen 10%.');
@@ -48,4 +62,7 @@ respuesta=claude('{"id":"prensa_45","confianza":"alta","maquina":"Prensa de pier
 ok(s===200&&r.id==='prensa_45'&&r.confianza==='alta'&&r.consejos.length===3&&JSON.stringify(r.otras)==='["hack"]'&&/prensa_45\|Prensa 45/.test(JSON.stringify(ultimo.body)),'máquina: elige de la lista, limpia opciones y consejos');
 respuesta=claude('{"id":"inventado","confianza":"alta","otras":[]}');
 [s,r]=await call(A,'POST','ia/maquina',{imagen:foto,lista:listaEj}); ok(s===200&&r.id===''&&r.confianza==='baja','máquina: un id fuera de la lista no se acepta');
+ok(r.cobrado===false&&r.quedan===9,'v2.64.0 máquina no reconocida: no se cobra');
+respuesta=claude('{"kcal":null,"nota":"No veo la tabla nutricional."}');
+[s,r]=await call(A,'POST','ia/etiqueta',{imagen:foto}); ok(s===200&&r.cobrado===false&&r.quedan===9,'v2.64.0 etiqueta sin tabla: no se cobra');
 [s,r]=await call(A,'DELETE','cuenta'); ok(s===200&&db.prepare('select count(*) n from uso_ia').get().n===0,'borrar la cuenta borra su uso');

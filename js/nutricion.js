@@ -269,15 +269,24 @@ async function reducirFoto(archivo, lado = 768) {
   c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
   return c.toDataURL('image/jpeg', 0.75).split(',')[1];
 }
+// v2.64.0 si falla o no reconoce nada: «Intentar de nuevo» (misma foto) u «Otra foto»; sin resultado no se cobra
+const esLimite = (m) => /límite|Ya usaste|aceptar|Inicia sesión|disponible muy pronto/.test(m || '');
+function reintentoIA(caja, texto, gratis, deNuevo, otra) {
+  caja.innerHTML = `<p class="hint">${esc(texto)}</p>${gratis ? '<p class="nu-ia-gratis">✅ No se descontó tu crédito.</p>' : ''}
+    <div class="en-det-botones"><button type="button" class="btn-sec en-terminar" data-ia="otra">🔄 Intentar de nuevo</button>${otra ? `<button type="button" class="btn-sec" data-ia="cambiar">${otra[0]}</button>` : ''}</div>`;
+  caja.querySelector('[data-ia="otra"]').onclick = deNuevo;
+  if (otra) caja.querySelector('[data-ia="cambiar"]').onclick = otra[1];
+}
 async function fotoPlato(archivo) {
   $('nu-off').innerHTML = '<p class="hint">📸 Analizando tu plato con IA… (unos segundos)</p>';
   let r;
   let img;
+  const otraFoto = ['📷 Otra foto', () => $('nu-plato-in').click()];
   try { img = await reducirFoto(archivo); r = await nube.api('POST', '/api/ia/plato', { imagen: img }); }
-  catch (e) { $('nu-off').innerHTML = `<p class="hint">${esc(e.message || e)}</p>`; return; }
+  catch (e) { const m = e.message || String(e); if (esLimite(m)) $('nu-off').innerHTML = `<p class="hint">${esc(m)}</p>`; else reintentoIA($('nu-off'), m, true, () => fotoPlato(archivo), otraFoto); return; }
   $('nu-off').innerHTML = '';
-  if (!r.alimentos.length) { $('nu-off').innerHTML = `<p class="hint">${esc(r.nota || 'No reconocí alimentos en la foto.')} Prueba con otra foto, desde arriba y con buena luz.</p>`; return; }
-  listaIA(r, '📸 Tu plato', `Te quedan ${r.quedan} fotos hoy.`, null, null, 'data:image/jpeg;base64,' + img);
+  if (!r.alimentos.length) { reintentoIA($('nu-off'), `${r.nota || 'No reconocí alimentos en la foto.'} Prueba con otra foto, desde arriba y con buena luz.`, r.cobrado === false, () => fotoPlato(archivo), otraFoto); return; }
+  listaIA(r, '📸 Tu plato', `Te quedan ${r.quedan} fotos hoy.`, null, null, 'data:image/jpeg;base64,' + img, { gratis: true });
 }
 
 // comida escrita: "arroz con menestra, carne asada y un jugo de mora" -> lista editable igual que la foto (v2.23.0)
@@ -295,14 +304,14 @@ function comidaEscrita(previo = '') {
     $('nu-texto-ok').disabled = true; $('nu-texto-txt').textContent = '🤖 Calculando… (unos segundos)';
     let r;
     try { r = await nube.api('POST', '/api/ia/texto', { texto: t }); }
-    catch (e) { $('nu-texto-ok').disabled = false; $('nu-texto-txt').textContent = e.message || String(e); return; }
-    if (!r.alimentos.length) { $('nu-texto-ok').disabled = false; $('nu-texto-txt').textContent = (r.nota || 'No entendí qué comiste.') + ' Prueba escribiéndolo de otra forma.'; return; }
-    listaIA(r, '✍️ Lo que comiste', `Te quedan ${r.quedan} consultas escritas hoy.`, () => comidaEscrita(t));
+    catch (e) { $('nu-texto-ok').disabled = false; $('nu-texto-ok').textContent = esLimite(e.message) ? 'Calcular' : '🔄 Intentar de nuevo'; $('nu-texto-txt').textContent = (e.message || String(e)) + (esLimite(e.message) ? '' : ' No se descontó tu crédito.'); return; }
+    if (!r.alimentos.length) { $('nu-texto-ok').disabled = false; $('nu-texto-txt').textContent = (r.nota || 'No entendí qué comiste.') + ' Prueba escribiéndolo de otra forma.' + (r.cobrado === false ? ' ✅ No se descontó tu crédito.' : ''); return; }
+    listaIA(r, '✍️ Lo que comiste', `Te quedan ${r.quedan} consultas escritas hoy.`, () => comidaEscrita(t), null, null, { gratis: true });
   };
 }
 
 // lista editable de alimentos que propone la IA (foto o texto): el usuario ajusta gramos y desmarca lo que no comio
-function listaIA(r, titulo, pie, volver = null, intro = null, foto = null) {
+function listaIA(r, titulo, pie, volver = null, intro = null, foto = null, corr = null) {
   const items = r.alimentos.map((a) => ({ ...a, base: { kcal: a.kcal / a.gramos * 100, p: a.p / a.gramos * 100, c: a.c / a.gramos * 100, g: a.g / a.gramos * 100 }, usar: true }));
   $('nu-paso-buscar').style.display = 'none'; $('nu-paso-cant').style.display = '';
   const CONF = { alta: '🟢', media: '🟡', baja: '🔴' };
@@ -314,7 +323,20 @@ function listaIA(r, titulo, pie, volver = null, intro = null, foto = null) {
     <div id="nu-prev" class="nu-prev"></div>
     <details class="m3" id="nu-3d"${foto ? ' open' : ''}><summary>🧊 Tus macros en 3D <span class="v3d-exp">Experimental</span></summary><div id="nu-3d-caja"></div></details>
     <p class="hint" style="margin:0">${intro ? '' : '🟢🟡🔴 = qué tan segura está la IA de la porción. '}${pie} <a href="fuentes.html#alimentos" target="_blank" rel="noopener">📚 Fuentes</a></p>
+    ${corr ? `<div class="nu-corr"><b>✏️ ¿Algo está mal? Corrígelo</b>
+      <textarea id="nu-corr-txt" maxlength="300" placeholder="Ej.: eran 2 huevos, sin aceite"></textarea><p class="hint" id="nu-corr-msg" style="margin:4px 0 0"></p>
+      <button type="button" class="btn-sec en-terminar" id="nu-corr-ok" style="width:100%">Corregir${corr.gratis ? ' · gratis' : ''}</button>
+      <p class="hint" style="margin:6px 0 0">${corr.gratis ? 'La primera corrección es gratis; las siguientes usan 1 crédito.' : 'Esta corrección usa 1 crédito.'}</p></div>` : ''}
     <div class="en-det-botones"><button type="button" class="btn-sec" id="nu-volver">‹ Volver</button><button type="button" class="btn-sec en-terminar" id="nu-ok">Agregar</button></div>`;
+  if (corr) $('nu-corr-ok').onclick = async () => { // v2.64.0 la IA corrige su resultado con lo que escribe la persona
+    const t = $('nu-corr-txt').value.trim(); if (t.length < 3) return alert('Escribe qué está mal. Ej.: «eran 2 huevos».');
+    const b = $('nu-corr-ok'); b.disabled = true; $('nu-corr-msg').textContent = '🤖 Corrigiendo… (unos segundos)';
+    let r2;
+    try { r2 = await nube.api('POST', '/api/ia/corregir', { alimentos: items.map((a) => ({ ...a, kcal: a.base.kcal * a.gramos / 100, p: a.base.p * a.gramos / 100, c: a.base.c * a.gramos / 100, g: a.base.g * a.gramos / 100 })), correccion: t, gratis: corr.gratis }); }
+    catch (e) { b.disabled = false; $('nu-corr-msg').textContent = (e.message || String(e)) + (esLimite(e.message) ? '' : ' No se descontó tu crédito.'); return; }
+    if (!r2.alimentos.length) { b.disabled = false; $('nu-corr-msg').textContent = 'No entendí la corrección. Escríbela de otra forma. ✅ No se descontó tu crédito.'; return; }
+    listaIA({ ...r2, nota: '' }, titulo, r2.gratis ? 'Corrección gratis.' : r2.quedan != null ? `Te quedan ${r2.quedan} correcciones o créditos.` : '', volver, null, foto, { gratis: false });
+  };
   const total = () => {
     let t = { kcal: 0, p: 0, c: 0, g: 0 }, n = 0;
     items.forEach((a, i) => {
@@ -437,7 +459,7 @@ function formularioPropio(codigo = null) {
     const b = $('pa-ia'), txt = $('pa-foto-txt'); b.disabled = true; txt.textContent = '🤖 Leyendo la tabla con IA… (unos segundos)';
     try {
       const r = await nube.api('POST', '/api/ia/etiqueta', { imagen: await reducirFoto(fotoEt, 1280) });
-      if (r.kcal == null) { txt.textContent = (r.nota || 'La IA no encontró la tabla nutricional.') + ' Toma otra foto solo de la tabla o escribe los datos.'; b.disabled = false; return; }
+      if (r.kcal == null) { txt.textContent = (r.nota || 'La IA no encontró la tabla nutricional.') + ' Toma otra foto solo de la tabla o escribe los datos.' + (r.cobrado === false ? ' ✅ No se descontó tu crédito.' : ''); b.disabled = false; return; }
       const poner = (id, v) => { if (v != null) { $(id).value = String(v); $(id).classList.remove('nu-leido', 'nu-calculado'); $(id).classList.add('nu-ia'); } };
       poner('pa-kcal', r.kcal); poner('pa-p', r.p); poner('pa-c', r.c); poner('pa-g', r.g); poner('pa-porcion', r.porcion);
       $('pa-base').value = r.por100 || !r.porcion ? '100' : 'porcion';
@@ -445,7 +467,7 @@ function formularioPropio(codigo = null) {
       if (r.marca && !$('pa-marca').value.trim()) $('pa-marca').value = r.marca;
       txt.textContent = `La IA leyó la tabla (en celeste). Revisa que coincida con la etiqueta antes de guardar. Te quedan ${r.quedan} lecturas con IA hoy.`;
       b.hidden = true;
-    } catch (e) { txt.textContent = e.message || String(e); b.disabled = false; }
+    } catch (e) { txt.textContent = (e.message || String(e)) + (esLimite(e.message) ? '' : ' No se descontó tu crédito: toca de nuevo para reintentar.'); b.disabled = false; }
   };
   $('pa-ok').onclick = async () => {
     const v = (id) => parseFloat(($(id).value || '0').replace(',', '.')) || 0;

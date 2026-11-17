@@ -35,6 +35,15 @@ const { abrir } = require('./comun.cjs');
     ok(dibujado > 1000, 'la vista 3D dibuja el muñeco');
     await p.click('#v3d-cerrar');
     ok(await p.evaluate(() => document.getElementById('v3d-modal').style.display === 'none'), 'la vista 3D se cierra');
+    // v2.64.0 «Analizar de nuevo · gratis»: 1 vez por video, vuelve al formulario con el mismo video
+    await p.evaluate(() => document.getElementById('r-reanalizar').scrollIntoView({ block: 'center' }));
+    if (process.env.CAPTURA2) await p.screenshot({ path: process.env.CAPTURA2 });
+    ok(await p.isVisible('#r-reanalizar [data-reanalizar]'), 'aparece «Analizar de nuevo · gratis»');
+    await p.click('#r-reanalizar [data-reanalizar]');
+    ok(await p.evaluate(() => document.getElementById('v-form').classList.contains('active')), 're-analizar vuelve al formulario con el video cargado');
+    await p.click('#btn-analizar');
+    await p.waitForFunction(() => JSON.parse(localStorage.getItem('af_historial_v1') || '[]').length === 2 && document.getElementById('v-resultados').classList.contains('active'), null, { timeout: 240000 });
+    ok(!(await p.isVisible('#r-reanalizar')), 'después del re-análisis gratis ya no se ofrece otra vez');
   } catch (e) { ok(false, 'el recorrido se completó: ' + e.message.split('\n')[0]); }
   await fin();
 })();

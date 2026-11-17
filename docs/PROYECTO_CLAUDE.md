@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 17 de noviembre de 2026 · **Versión en producción:** v2.63.0
+**Actualizado:** 17 de noviembre de 2026 · **Versión en producción:** v2.64.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -341,6 +341,7 @@ bloqueos, reportes, fallos.
 | v2.61.0 | Sin cuenta y con los planes activos: 1 análisis de video de prueba al mes por teléfono (af_sin_cuenta); después «Crea tu cuenta gratis» (en la web, con enlaces a App Store y Google Play muy pronto). /api/planes devuelve el modo. |
 | v2.62.0 | Permiso expreso y separado de datos de salud (LOPDP, js/salud.js, af_salud_permiso): se pide antes de analizar, modo en vivo, empezar entrenamiento, registrar comidas/metas, peso/medidas y guardar sexo/edad/estatura. Retirar en Perfil (opción A: los datos se quedan, la app deja de usarlos; borrar = Eliminar cuenta). privacidad.html actualizada. |
 | v2.63.0 | Moderación → Suscripciones: lista de usuarios con plan con resumen por plan (Pro Max/Pro/Plus/Gratis), buscador, filtros (plan, regalados, pagados, vencen en 30 días), 10 filas + «Ver más»; tocar una fila llena «Regalar». /api/mod/planes sin el límite de 100. |
+| v2.64.0 | IA: si no encuentra nada (plato, texto, etiqueta, máquina) no se cobra (`cobrado:false`); «🔄 Intentar de nuevo» y «📷 Otra foto»; «✏️ Corrígelo» en foto del plato y comida escrita (POST /api/ia/corregir, 1.ª gratis con tope de 10 al día, luego cupo 'k'/créditos). Video: «Analizar de nuevo · gratis» 1 vez por video (mismo archivo cargado). |
 | v2.60.0 | Créditos IA por mes 10/90/300/900 y tope global 1.000/día. Avisos una sola vez: 🎁 regalo de plan (con sus días) y ⭐ llegada de los planes (solo a Gratis). En la web, enlaces a App Store (id6832380426) y «Google Play muy pronto». |
 | v2.59.0 | Precisión «Automática · recomendada» (nueva por defecto): empieza en Normal y, si el análisis va a tardar más de 70 s (límite también del botón manual), pasa sola a Rápida en ese video y avisa. Quien tenía «Normal» guardada pasa una vez a Automática (af_calidad_auto). |
 | v2.58.0 | Si el análisis va a tardar más de 40 s aparece «⚡ Seguir en modo Rápido» (reinicia con la IA liviana y la deja elegida). La imagen de 960 px se descartó (banco: 2/5 vs 3/5 reps, velocidades hasta ±16 %). |

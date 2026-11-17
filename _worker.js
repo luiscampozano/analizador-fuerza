@@ -69,6 +69,7 @@ async function api(req, env, url) {
   if (ruta === '/api/ia/plato' && m === 'POST') return fotoPlato(req, env, u);
   if (ruta === '/api/ia/maquina' && m === 'POST') return fotoMaquina(req, env, u); // v2.55.0
   if (ruta === '/api/ia/texto' && m === 'POST') return comidaTexto(req, env, u);
+  if (ruta === '/api/ia/corregir' && m === 'POST') return corregirIA(req, env, u); // v2.64.0
   if (ruta === '/api/ia/etiqueta' && m === 'POST') return etiquetaIA(req, env, u);
   if (ruta === '/api/ia/entrenador' && m === 'POST') return entrenadorIA(req, env, u);
   if (ruta === '/api/ia/serie' && m === 'POST') return explicarSerie(req, env, u);
@@ -1120,7 +1121,10 @@ async function reportarAlimento(env, u, codigo) {
 // "2026-11-01:t" = texto, ":e" = etiqueta, ":c" = entrenador), y hay un tope general diario para todas. (v2.22-2.23)
 const IA_DIA_PERSONA = 60; // v2.60.0 máximo de usos de IA por persona y día con los planes activos
 const LIMITE_IA_USUARIO = 10, LIMITE_IA_TOTAL = 1000, MAX_FOTO = 400_000; // caracteres base64 (~300 KB)
-const LIMITES_IA = { '': 10, t: 20, e: 10, c: 3, s: 10, m: 5, q: 10 }; // plato, texto, etiqueta, entrenador, explicar una serie, menu del nutricionista IA, maquina (v2.55.0)
+const LIMITES_IA = { '': 10, t: 20, e: 10, c: 3, s: 10, m: 5, q: 10, k: 20 }; // k = corregir un resultado (v2.64.0)
+const CORRECCIONES_GRATIS_DIA = 10; // v2.64.0 la 1.ª corrección de cada resultado es gratis, con este tope diario por persona
+// v2.64.0 si la IA no encontró nada no se cobra: devuelve cuántos quedan sin contar este uso
+const sinCobro = (cupo) => (cupo.quedan == null ? null : cupo.quedan + 1); // plato, texto, etiqueta, entrenador, explicar una serie, menu del nutricionista IA, maquina (v2.55.0)
 const MODELO_IA = 'claude-haiku-5-5';
 const texto_ = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, max) : '');
 const numIA = (x, max) => { const v = +String(x).replace(',', '.'); return Number.isFinite(v) && v >= 0 ? Math.min(max, Math.round(v * 10) / 10) : 0; };
@@ -1478,8 +1482,10 @@ async function fotoPlato(req, env, u) {
   const cupo = await cupoIA(env, u, '', 'fotos del plato');
   const img = fotoValida((await leerJSON(req)).imagen);
   const res = jsonDe(await llamarClaude(env, PROMPT_PLATO, [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } }, { type: 'text', text: 'Analiza este plato y responde solo con el JSON.' }], 1100, true));
+  const alimentos = alimentosIA(res.alimentos);
+  if (!alimentos.length) return json({ alimentos, nota: texto_(res.nota, 200), quedan: sinCobro(cupo), cobrado: false });
   await cupo.contar();
-  return json({ alimentos: alimentosIA(res.alimentos), nota: texto_(res.nota, 200), quedan: cupo.quedan });
+  return json({ alimentos, nota: texto_(res.nota, 200), quedan: cupo.quedan, cobrado: true });
 }
 
 // ---------- v2.55.0 ¿Que maquina es? foto de una maquina o equipo de gimnasio -> ejercicio de la lista de FuerzaPro
@@ -1500,14 +1506,14 @@ async function fotoMaquina(req, env, u) {
   const cupo = await cupoIA(env, u, 'q', 'fotos de máquinas');
   const res = jsonDe(await llamarClaude(env, PROMPT_MAQUINA, [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } },
     { type: 'text', text: `Lista de ejercicios (id|nombre):\n${lista.map((x) => `${x.id}|${x.nombre}`).join('\n')}\n\nResponde solo con el JSON.` }], 600, false));
-  await cupo.contar();
   const id = ids.has(res.id) ? res.id : '';
+  if (id) await cupo.contar(); // v2.64.0 si no reconoció la máquina no se cobra
   const otras = [...new Set((Array.isArray(res.otras) ? res.otras : []).filter((x) => typeof x === 'string' && ids.has(x) && x !== id))].slice(0, 3);
   return json({
     id, confianza: ['alta', 'media', 'baja'].includes(res.confianza) && id ? res.confianza : 'baja',
     maquina: texto_(res.maquina, 40), musculos: texto_(res.musculos, 60),
     consejos: (Array.isArray(res.consejos) ? res.consejos : []).slice(0, 3).map((t) => texto_(t, 120)).filter(Boolean),
-    otras, nota: texto_(res.nota, 200), quedan: cupo.quedan,
+    otras, nota: texto_(res.nota, 200), quedan: id ? cupo.quedan : sinCobro(cupo), cobrado: !!id,
   });
 }
 
@@ -1521,8 +1527,37 @@ async function comidaTexto(req, env, u) {
   if (t.length < 3) throw fallo('Escribe qué comiste.');
   const cupo = await cupoIA(env, u, 't', 'consultas escritas');
   const res = jsonDe(await llamarClaude(env, PROMPT_TEXTO, [{ type: 'text', text: t }], 900, true));
+  const alimentos = alimentosIA(res.alimentos);
+  if (!alimentos.length) return json({ alimentos, nota: texto_(res.nota, 200), quedan: sinCobro(cupo), cobrado: false });
   await cupo.contar();
-  return json({ alimentos: alimentosIA(res.alimentos), nota: texto_(res.nota, 200), quedan: cupo.quedan });
+  return json({ alimentos, nota: texto_(res.nota, 200), quedan: cupo.quedan, cobrado: true });
+}
+// ---------- corregir un resultado de comida ("eran 2 huevos, sin aceite") (v2.64.0)
+const PROMPT_CORREGIR = `Eres nutricionista. Te doy en JSON la lista de alimentos que estimaste antes y la correccion que escribe la persona.
+Aplica la correccion (cantidades, alimentos que sobran o faltan, forma de preparacion) y devuelve la lista completa corregida; lo que no menciona, dejalo igual.
+${FORMATO_ALIMENTOS}`;
+async function corregirIA(req, env, u) {
+  const b = await leerJSON(req);
+  const corr = texto_(b.correccion, 300), previo = alimentosIA(b.alimentos);
+  if (corr.length < 3) throw fallo('Escribe qué está mal.');
+  if (!previo.length) throw fallo('No hay nada que corregir.');
+  if (!env.ANTHROPIC_API_KEY) throw fallo('Esta función con IA estará disponible muy pronto.', 503);
+  const hoy = diaEc(Date.now()), dia = `${hoy}:k`;
+  const usadas = await env.DB.prepare('SELECT n FROM uso_ia WHERE usuario = ?1 AND dia = ?2').bind(u.id, dia).first();
+  const gratis = !!b.gratis && (!usadas || usadas.n < CORRECCIONES_GRATIS_DIA);
+  let cupo;
+  if (gratis) { // sin crédito, pero con los topes generales (total de la app y por persona)
+    const tot = await env.DB.prepare("SELECT coalesce(sum(n), 0) AS n FROM uso_ia WHERE substr(dia, 1, 10) = ?1").bind(hoy).first();
+    if (tot && tot.n >= LIMITE_IA_TOTAL) throw fallo('Las funciones con IA llegaron a su límite de hoy. Inténtalo mañana.', 429);
+    const yo = await env.DB.prepare('SELECT coalesce(sum(n), 0) AS n FROM uso_ia WHERE usuario = ?1 AND substr(dia, 1, 10) = ?2').bind(u.id, hoy).first();
+    if (yo && yo.n >= IA_DIA_PERSONA) throw fallo(`Ya usaste ${IA_DIA_PERSONA} funciones con IA hoy. Mañana podrás seguir.`, 429);
+    cupo = { quedan: undefined, contar: () => env.DB.prepare('INSERT INTO uso_ia (usuario, dia, n) VALUES (?1, ?2, 1) ON CONFLICT(usuario, dia) DO UPDATE SET n = n + 1').bind(u.id, dia).run() };
+  } else cupo = await cupoIA(env, u, 'k', 'correcciones');
+  const res = jsonDe(await llamarClaude(env, PROMPT_CORREGIR, [{ type: 'text', text: JSON.stringify({ antes: previo.map(({ x, y, ...a }) => a), correccion: corr }) }], 900, false));
+  const alimentos = alimentosIA(res.alimentos);
+  if (!alimentos.length) return json({ alimentos, nota: texto_(res.nota, 200), gratis, cobrado: false });
+  await cupo.contar();
+  return json({ alimentos, nota: texto_(res.nota, 200), gratis, cobrado: !gratis, ...(cupo.quedan !== undefined ? { quedan: cupo.quedan } : {}) });
 }
 
 // ---------- Nutricionista IA (v2.45.0): menu de un dia que cumple las metas de la persona, con comida de la region
@@ -1569,10 +1604,11 @@ async function etiquetaIA(req, env, u) {
   const cupo = await cupoIA(env, u, 'e', 'lecturas de etiquetas con IA');
   const img = fotoValida((await leerJSON(req)).imagen);
   const r = jsonDe(await llamarClaude(env, PROMPT_ETIQUETA, [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } }, { type: 'text', text: 'Lee la tabla y responde solo con el JSON.' }], 400));
-  await cupo.contar();
   const n = (x, max) => (x == null || x === '' ? null : numIA(x, max));
+  const leyo = n(r.kcal, 2000) != null; // v2.64.0 si no vio la tabla no se cobra
+  if (leyo) await cupo.contar();
   return json({ porcion: n(r.porcion, 2000), por100: r.base === '100g', kcal: n(r.kcal, 2000), p: n(r.p, 100), c: n(r.c, 100), g: n(r.g, 100),
-    nombre: texto_(r.nombre, 60), marca: texto_(r.marca, 40), nota: texto_(r.nota, 200), quedan: cupo.quedan });
+    nombre: texto_(r.nombre, 60), marca: texto_(r.marca, 40), nota: texto_(r.nota, 200), quedan: leyo ? cupo.quedan : sinCobro(cupo), cobrado: leyo });
 }
 
 // ---------- entrenador IA: resumen de la semana con los datos del propio usuario (los arma la app, sin nombres)

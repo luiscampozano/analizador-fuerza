@@ -29,7 +29,7 @@ import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 
-const VERSION = '2.63.0';
+const VERSION = '2.64.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -47,6 +47,9 @@ let ej = POR_ID[leer('af_ej')] || POR_ID.remo_riel;
 let grupo = 'Todos';
 let seccEj = null; // v2.52.0 pestaña del selector: gym | cardio | deportes (null = la del ejercicio elegido)
 let archivo = null;
+// v2.64.0 «Analizar de nuevo · gratis»: 1 vez por video (mismo archivo cargado), sin contar en el plan
+let gratisPara = null, ultimoAnalizado = null, fresco = false; // fresco: los resultados en pantalla son del análisis recién hecho
+const reanalizados = new WeakSet();
 let cancelar = false;
 
 // ------------------------------------------------------------------ navegacion
@@ -448,7 +451,9 @@ async function analizarArchivo() {
   if (!reinicioRapido && !(await salud.asegurar())) return; // v2.62.0 permiso de datos de salud (LOPDP), antes de guardar estatura y peso
   const d = leerDatos(); if (!d) return;
   const esReinicio = reinicioRapido; reinicioRapido = false; // v2.61.0 el reinicio en modo Rápido no vuelve a revisar el cupo
-  if (!esReinicio && !(await plan.puedeAnalizar())) return; // cupo de analisis del plan (v2.33.0)
+  const gratisAhora = !!archivo && gratisPara === archivo; // v2.64.0 re-análisis gratis del mismo video
+  if (!esReinicio && !gratisAhora && !(await plan.puedeAnalizar())) return; // cupo de analisis del plan (v2.33.0)
+  ultimoAnalizado = archivo;
   const { peso, pc, altura, alfa, relacion, carga, masa } = d;
   cancelar = false; pasarARapida = false; cancelUsuario = false; pasoActual = -1; vista('v-progreso'); $('p-lento').style.display = 'none';
   // v2.59.0 «Automática»: empieza con la precisión Normal y, si el celular va lento, cambia sola a Rápida en este video
@@ -506,7 +511,7 @@ async function analizarArchivo() {
     // terminó la detección: el aviso de modo Rápido ya no aplica (cambiar ahora duplicaría la serie, que se guarda antes del video)
     $('p-lento').style.display = 'none';
     if (cancelar) throw new Error('cancelado');
-    if (ej.cardio) { await analizarActividadVideo(frames, video, d, detBalon ? frames.map((f) => balonT.get(f.t) || null) : null); plan.contarAnalisis(); if (autoBaja) aviso('⚡ Tu celular iba lento con este video, así que se analizó en modo Rápido (un poquito menos preciso).', true); return; }
+    if (ej.cardio) { await analizarActividadVideo(frames, video, d, detBalon ? frames.map((f) => balonT.get(f.t) || null) : null); contarVideo(); if (autoBaja) aviso('⚡ Tu celular iba lento con este video, así que se analizó en modo Rápido (un poquito menos preciso).', true); return; }
     progreso(2, 0.2, 'Calculando la física…');
     const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
     d.ini = ini > 0 ? ini : null; d.fin = fin > 0 ? fin : null;
@@ -547,7 +552,7 @@ async function analizarArchivo() {
       for (const x of infs) await almacen.guardarVideo(x.id, salida);
     }
     mostrarInforme(inf, { video: salida, nuevo: true });
-    plan.contarAnalisis();
+    contarVideo();
     // un solo aviso con todo lo que haya que decir (cada aviso nuevo tapaba al anterior)
     const msgs = [];
     if (serie.calidadBaja) msgs.push('⚠️ La IA no vio bien el movimiento en este video: revisa que el conteo de reps sea correcto (detalles en Interpretación).');
@@ -610,11 +615,12 @@ async function analizarActividadVideo(frames, video, d, balon = null) {
   const enEntreno = entrenar.vincularActividad(act);
   if (enEntreno) aviso('');
   nube.sincronizar && nube.sincronizar();
-  mostrarActividad(act, { video: salida, desde: enEntreno ? 'v-entrenar' : 'v-form' });
+  mostrarActividad(act, { video: salida, desde: enEntreno ? 'v-entrenar' : 'v-form', nuevo: true });
 }
 let actActual = null, actDesde = 'v-form', actVideo = null;
-function mostrarActividad(a, { video = null, desde = 'v-form' } = {}) {
+function mostrarActividad(a, { video = null, desde = 'v-form', nuevo = false } = {}) {
   actActual = a; actDesde = desde; actVideo = video;
+  pintarReanalizar('act-reanalizar', nuevo && desde === 'v-form');
   vista3d.preparar($('act-3d'), a.id);
   $('act-titulo').textContent = `${a.icono || '🏃'} ${a.nombre}`;
   $('act-sub').textContent = `${new Date(a.fecha).toLocaleString('es-EC', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${fmt(a.dur, 0)} s de video`;
@@ -956,11 +962,33 @@ function pintarPierna(inf, desde) {
     mostrarInforme(inf, { video: videoActual, desde });
   };
 }
+function contarVideo() { // v2.64.0 el re-análisis gratis no se cuenta en el plan
+  if (gratisPara && gratisPara === archivo) { gratisPara = null; return; }
+  plan.contarAnalisis();
+}
+function pintarReanalizar(id, puede) {
+  const c = $(id); if (!c) return;
+  const si = puede && archivo && archivo === ultimoAnalizado && !reanalizados.has(archivo);
+  c.style.display = si ? '' : 'none'; if (!si) return;
+  c.innerHTML = `<b>🔄 ¿Elegiste otro ejercicio o salió muy mal?</b>
+    <p class="hint">Vuelve a analizar este mismo video: puedes cambiar el ejercicio, recortarlo o usar calidad Máxima.</p>
+    <button type="button" class="btn-sec en-terminar" data-reanalizar>Analizar de nuevo · gratis</button>
+    <p class="hint">1 vez gratis por video. El conteo y el peso se siguen corrigiendo sin volver a analizar.</p>`;
+  c.querySelector('[data-reanalizar]').onclick = () => {
+    if (!archivo || archivo !== ultimoAnalizado) { c.style.display = 'none'; return; }
+    reanalizados.add(archivo); gratisPara = archivo;
+    $('r-reanalizar').style.display = $('act-reanalizar').style.display = 'none';
+    vista('v-form');
+    aviso('🔄 El mismo video sigue cargado: cambia el ejercicio, recórtalo o la calidad y toca Analizar. Este análisis no se cuenta en tu plan.', true);
+  };
+}
 function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } = {}) {
   informeActual = inf; videoActual = video; vistaPrevia = desde;
   vista3d.preparar($('btn-3d'), inf.id);
   const { ej: e, s, datos: d } = inf, corporal = e.perfil === 'corporal';
   $('btn-nueva').textContent = nuevo ? '← Nueva serie' : '← Volver';
+  if (nuevo) fresco = true;
+  pintarReanalizar('r-reanalizar', fresco && desde === 'v-form');
   $('r-guardado').textContent = nuevo ? '✓ Guardado en historial' : 'Serie del historial';
   $('r-titulo').textContent = `${e.nombre}${ladoDe(inf.datos) ? ` · ${ladoDe(inf.datos)}` : ''} · ${textoCarga(inf)} · ${new Date(inf.fecha || Date.now()).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}`;
   pintarPierna(inf, desde);
@@ -1065,6 +1093,7 @@ async function abrirSerie(id, desde) {
   const inf = (await almacen.leerInforme(id)) || informeDesdeRegistro(r);
   inf.id = id; inf.fecha = r.fecha;
   const video = await almacen.leerVideo(id);
+  fresco = false;
   mostrarInforme(inf, { video, desde });
 }
 $('btn-borrar-serie').onclick = () => {

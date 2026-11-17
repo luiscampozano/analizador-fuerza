@@ -16,10 +16,13 @@ async function reducir(archivo, lado = 768) {
 
 // caja: dónde se pinta; ejercicios: biblioteca (deps.ejercicios); porId: deps.porId;
 // alAgregar(id, nombre): agrega el ejercicio; alVolver(): vuelve a la lista del buscador.
-export async function identificar(archivo, { caja, ejercicios, porId, alAgregar, alVolver }) {
+export async function identificar(archivo, ops) {
+  const { caja, ejercicios, porId, alAgregar, alVolver } = ops;
   const mio = ++turno, vigente = () => mio === turno && caja.isConnected && caja.offsetParent !== null;
   const volver = '<button type="button" class="btn-sec mq-volver">‹ Volver a la lista</button>';
-  const enlazar = () => { const b = caja.querySelector('.mq-volver'); if (b) b.onclick = alVolver; };
+  // v2.64.0 «Intentar de nuevo» con la misma foto (si falló o no reconoció nada, no se cobró)
+  const otraVez = '<button type="button" class="btn-sec en-terminar mq-otravez">🔄 Intentar de nuevo</button>';
+  const enlazar = () => { const b = caja.querySelector('.mq-volver'); if (b) b.onclick = alVolver; const o = caja.querySelector('.mq-otravez'); if (o) o.onclick = () => identificar(archivo, ops); };
   if (!nube.conectado()) { caja.innerHTML = `<div class="mq-caja"><p class="hint">Inicia sesión en Perfil para usar la IA que reconoce máquinas.</p>${volver}</div>`; enlazar(); return; }
   let img;
   try { img = await reducir(archivo); } catch { if (!vigente()) return; caja.innerHTML = `<div class="mq-caja"><p class="hint">No pude leer la foto. Prueba con otra.</p>${volver}</div>`; enlazar(); return; }
@@ -30,7 +33,7 @@ export async function identificar(archivo, { caja, ejercicios, porId, alAgregar,
   const lista = ejercicios.filter((e) => !e.cardio).map((e) => ({ id: e.id, nombre: [e.nombre, e.equipo].filter(Boolean).join(' · ') }));
   let r;
   try { r = await nube.api('POST', '/api/ia/maquina', { imagen: img, lista }); }
-  catch (e) { if (!vigente()) return; caja.innerHTML = `<div class="mq-caja"><p class="hint">${esc(e.message || e)}</p>${volver}</div>`; enlazar(); return; }
+  catch (e) { if (!vigente()) return; caja.innerHTML = `<div class="mq-caja"><p class="hint">${esc(e.message || e)}</p><div class="mq-pie">${volver}${/límite|Ya usaste|aceptar/.test(e.message || '') ? '' : otraVez}</div></div>`; enlazar(); return; }
   if (!vigente()) return; // la persona escribió en el buscador o lo cerró mientras la IA respondía
   const def = r.id && porId[r.id];
   const opciones = (r.otras || []).filter((id) => porId[id]);
@@ -42,9 +45,9 @@ export async function identificar(archivo, { caja, ejercicios, porId, alAgregar,
       ${(r.consejos || []).length ? `<ul>${r.consejos.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
     </div>
     <button type="button" class="btn-primary mq-agregar" data-ej="${esc(r.id)}">＋ Agregar «${esc(def.nombre)}»</button>`
-    : `<div class="mq-foto"><img src="${foto}" alt="Foto de la máquina"></div><p class="hint">${esc(r.nota || 'No pude reconocer la máquina.')} Prueba con una foto de lado, con toda la máquina a la vista.</p>`}
+    : `<div class="mq-foto"><img src="${foto}" alt="Foto de la máquina"></div><p class="hint">${esc(r.nota || 'No pude reconocer la máquina.')} Prueba con una foto de lado, con toda la máquina a la vista.</p>${r.cobrado === false ? '<p class="nu-ia-gratis">✅ No se descontó tu crédito.</p>' : ''}`}
     ${opciones.length ? `<p class="hint mq-otras">${def ? '¿No es esta? Quizás sea:' : 'Quizás sea:'}</p><div class="mq-chips">${opciones.map(chip).join('')}</div>` : ''}
-    <div class="mq-pie">${volver}${r.quedan != null ? `<small>Te quedan ${esc(r.quedan)} usos de IA.</small>` : ''}</div>
+    <div class="mq-pie">${volver}${def ? '' : otraVez}${r.quedan != null ? `<small>Te quedan ${esc(r.quedan)} usos de IA.</small>` : ''}</div>
     <p class="hint" style="margin:6px 0 0">La IA puede equivocarse: revisa que sea tu máquina. <a href="fuentes.html" target="_blank" rel="noopener">📚 Fuentes</a></p>
   </div>`;
   enlazar();
