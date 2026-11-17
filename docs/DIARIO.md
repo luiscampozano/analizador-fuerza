@@ -8,6 +8,15 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-17
 
+### 11:45 · Política de privacidad — puntos de la LOPDP (sin cambio de versión de la app)
+- **Pidió:** un amigo preguntó por la Ley Orgánica de Protección de Datos Personales; Luis pidió completar los puntos 1-4.
+- **Hecho (privacidad.html, 17 nov):** base legal de cada uso (contrato, consentimiento, interés legítimo, obligación
+  legal); transferencia internacional (proveedores en EE. UU./UE, cifrado, compromisos contractuales); cuánto tiempo se
+  guardan los datos; lista completa de derechos de la LOPDP (información, acceso, rectificación, eliminación, oposición
+  y suspensión, portabilidad, decisiones automatizadas, reclamo ante la Superintendencia de Protección de Datos).
+- **Pendiente:** consentimiento explícito y separado para datos de salud (peso, medidas, alergias); revisión por un
+  abogado de protección de datos.
+
 ### 11:25 · v2.61.0 — Pedir cuenta después de 1 análisis sin cuenta
 - **Contexto:** planes activados hoy (11:15); App Store publicada (1.0, ~10:20); regalos a testers hechos por Luis.
 - **Pidió:** que quien usa la app sin cuenta pueda analizar solo 1 video y luego deba crear su cuenta (y pagar si
