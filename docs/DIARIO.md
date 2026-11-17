@@ -16,6 +16,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
   1.000 usos/día (antes 600). /api/plan devuelve `regalo.desde` (columna `actualizado` de planes). Avisos de una sola
   vez (af_regalo_visto, af_aviso_planes): regalo con días y fecha; llegada de los planes solo para Gratis, con enlaces a
   las tiendas en la web. Precios sin cambios. En modo «prueba» solo el administrador los ve.
+- **Revisión (otro Claude):** se agregó un freno de 60 usos de IA por persona y día con los planes activos (para que
+  nadie agote el tope de toda la app), el aviso espera si están abiertos el tour o la bienvenida, texto de la prueba de
+  Pro mensual, regalo sin fecha de inicio y prueba de servidor para la fecha del regalo.
 - **Pendiente:** Google Play en producción (cambiar PLAY_LISTA a true en js/plan.js).
 
 ## 2026-11-16

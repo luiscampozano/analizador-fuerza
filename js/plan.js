@@ -29,13 +29,16 @@ const ponerLS = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* n
 const fechaCorta = (t) => new Date(t).toLocaleDateString('es-EC', { day: 'numeric', month: 'long' });
 // v2.60.0 avisos que salen una sola vez al abrir la app: el regalo de un plan (solo a quien lo recibe) y la llegada de los planes
 export function avisos() {
-  const e = estado; if (!e || !e.aplica || document.querySelector('.modal[style*="flex"]')) return;
+  const e = estado; if (!e || !e.aplica) return;
+  // si hay otra ventana, el tour o la bienvenida abiertos, se intenta de nuevo en unos segundos
+  if (document.querySelector('.modal[style*="flex"], .tour, #bienvenida[style*="flex"]')) { if ((avisos.n = (avisos.n || 0) + 1) < 40) setTimeout(avisos, 4000); return; }
   let html = '';
   if (e.regalo && e.plan !== 'gratis' && leerLS('af_regalo_visto') !== String(e.regalo.desde)) {
     ponerLS('af_regalo_visto', String(e.regalo.desde)); ponerLS('af_aviso_planes', '1');
     const dias = e.hasta && e.regalo.desde ? Math.round((e.hasta - e.regalo.desde) / 86400000) : null;
+    const cuanto = dias ? `por <b>${dias} días</b> (hasta el ${esc(fechaCorta(e.hasta))})` : e.hasta ? `hasta el <b>${esc(fechaCorta(e.hasta))}</b>` : '<b>sin fecha de fin</b>';
     html = `<h3 class="en-det-titulo">🎁 ¡Tienes un regalo!</h3>
-      <p>Luis Campozano, creador de FuerzaPro, te regaló el <b>plan ${esc(e.nombre)}</b> ${dias ? `por <b>${dias} días</b> (hasta el ${esc(fechaCorta(e.hasta))})` : '<b>sin fecha de fin</b>'}.</p>
+      <p>Luis Campozano, creador de FuerzaPro, te regaló el <b>plan ${esc(e.nombre)}</b> ${cuanto}.</p>
       <p class="hint">Gracias por ayudar a probar FuerzaPro. Puedes ver lo que incluye tu plan en Perfil.</p>`;
   } else if (!leerLS('af_aviso_planes')) {
     ponerLS('af_aviso_planes', '1');
@@ -45,12 +48,12 @@ export function avisos() {
     html = `<h3 class="en-det-titulo">⭐ Llegaron los planes de FuerzaPro</h3>
       <p>Registrar entrenamientos y comidas sigue <b>gratis y sin límite</b>. Con tu plan Gratis tienes cada mes:</p>
       ${g ? `<ul class="plan-aviso-lista"><li>${g.video} análisis de video</li><li>${g.ia} créditos de IA (foto del plato, máquina, explicaciones…)</li><li>${g.coach[0]} consejo del entrenador IA</li></ul>` : ''}
-      <p class="hint">Si quieres más, Plus, Pro y Pro Max te dan muchos más análisis y créditos de IA. Pro trae 7 días de prueba gratis.</p>
+      <p class="hint">Si quieres más, Plus, Pro y Pro Max te dan muchos más análisis y créditos de IA. Pro mensual incluye 7 días de prueba gratis para nuevos suscriptores.</p>
       ${web ? `<p class="hint" style="margin-bottom:4px">Para suscribirte, baja la app:</p>${descargar()}` : ''}
       <button type="button" class="btn-sec" id="plan-aviso-ver" style="width:100%;margin-top:6px">Ver planes</button>`;
   } else return;
   const m = document.createElement('div');
-  m.className = 'modal plan-modal'; m.style.display = 'flex'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
+  m.className = 'modal plan-modal'; m.style.display = 'flex'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', html.includes('regalo') ? 'Tienes un regalo' : 'Llegaron los planes');
   m.innerHTML = `<div class="plan-caja plan-aviso">${html}<button type="button" class="btn-primary" id="plan-aviso-ok" style="width:100%;margin-top:8px">Entendido</button></div>`;
   document.body.appendChild(m);
   const cerrar = () => m.remove();
@@ -175,7 +178,7 @@ async function pintarCompra() {
   if (!nube.conectado()) { caja.innerHTML = '<p class="plan-compra-msg">Inicia sesión en Perfil para suscribirte (tu plan queda en tu cuenta).</p>'; return; }
   const precios = await leerPrecios();
   if (!precios || !Object.keys(precios).length) {
-    caja.innerHTML = `<p class="plan-compra-msg">Para suscribirte usa la app de FuerzaPro:</p>${descargar()}`; return;
+    caja.innerHTML = servicio ? '<p class="plan-compra-msg">No pude leer los precios de Google Play. Revisa tu conexión e inténtalo otra vez.</p>' : `<p class="plan-compra-msg">Para suscribirte usa la app de FuerzaPro:</p>${descargar()}`; return;
   }
   const e = estado || {}, nombres = { plus: 'Plus', pro: 'Pro', promax: 'Pro Max' };
   const boton = (sku, txt) => { const d = precios[sku]; if (!d) return '';

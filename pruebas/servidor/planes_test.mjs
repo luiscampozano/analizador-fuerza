@@ -35,6 +35,7 @@ for(let i=0;i<10;i++) await call(L,'POST',['ia/texto','ia/texto','ia/texto'][0],
 [s,r]=await call(L,'POST','mod/plan_usuario',{quien:'nadie',plan:'pro'}); ok(s===404,'persona inexistente');
 [s,r]=await call(L,'GET','mod/planes'); ok(s===200&&r.modo==='prueba'&&r.usuarios.length===2,'Moderación lista los planes vigentes');
 [s,r]=await call(L,'POST','mod/planes',{modo:'activo'});
+[s,r]=await call(A,'GET','plan'); ok(r.plan==='promax'&&r.regalo&&Math.round((r.hasta-r.regalo.desde)/864e5)===30&&r.planes.pro.ia===300,'v2.60.0 el regalo trae su fecha (30 días) y Pro tiene 300 créditos');
 [s,r]=await call(A,'GET','plan'); ok(r.aplica&&r.plan==='promax'&&r.limites.video.lim===null,'activo: Ana con Pro Max tiene video ilimitado');
 for(let i=0;i<45;i++) await call(A,'POST','plan/usar',{tipo:'video'});
 [s,r]=await call(A,'POST','plan/usar',{tipo:'video'}); ok(s===200,'Pro Max: sin tope de videos');

@@ -1118,6 +1118,7 @@ async function reportarAlimento(env, u, codigo) {
 // La app nunca ve la clave: el servidor llama a la API de Claude con el secreto ANTHROPIC_API_KEY. Cada funcion tiene
 // su limite por persona y por dia (tabla uso_ia; el "dia" lleva un sufijo por funcion: "2026-11-01" = foto del plato,
 // "2026-11-01:t" = texto, ":e" = etiqueta, ":c" = entrenador), y hay un tope general diario para todas. (v2.22-2.23)
+const IA_DIA_PERSONA = 60; // v2.60.0 máximo de usos de IA por persona y día con los planes activos
 const LIMITE_IA_USUARIO = 10, LIMITE_IA_TOTAL = 1000, MAX_FOTO = 400_000; // caracteres base64 (~300 KB)
 const LIMITES_IA = { '': 10, t: 20, e: 10, c: 3, s: 10, m: 5, q: 10 }; // plato, texto, etiqueta, entrenador, explicar una serie, menu del nutricionista IA, maquina (v2.55.0)
 const MODELO_IA = 'claude-haiku-5-5';
@@ -1135,6 +1136,9 @@ async function cupoIA(env, u, tipo, queHace) {
     const clave = tipo === 'c' ? 'coach' : 'ia', { lim, per } = limiteDe(pl.plan, clave);
     const usado = await usoDe(env, u.id, clave, per);
     if (lim != null && usado >= lim) throw fallo(mensajeLimite(pl.plan, clave), 429, { plan: pl.plan, limite: clave });
+    // v2.60.0 freno diario por persona: que nadie gaste en un día el tope de IA de toda la app
+    const hoyYo = await env.DB.prepare('SELECT coalesce(sum(n), 0) AS n FROM uso_ia WHERE usuario = ?1 AND substr(dia, 1, 10) = ?2').bind(u.id, hoy).first();
+    if (hoyYo && hoyYo.n >= IA_DIA_PERSONA) throw fallo(`Ya usaste ${IA_DIA_PERSONA} funciones con IA hoy. Mañana podrás seguir.`, 429);
     return { dia, quedan: lim == null ? null : lim - usado - 1, contar: async () => { await stat(); await sumarUso(env, u.id, clave, per); } };
   }
   const lim = LIMITES_IA[tipo];
@@ -1191,8 +1195,8 @@ async function planDe(env, u) {
   let p = await env.DB.prepare('SELECT plan, hasta, origen, actualizado FROM planes WHERE usuario = ?1').bind(u.id).first();
   // plan de Google Play (v2.37.0) o de Apple (v2.49.0) vencido: ¿se renovo?
   if (p && (p.origen === 'play' || p.origen === 'apple') && p.hasta != null && p.hasta <= Date.now()) {
-    try { if (await renovarPlay(env, u.id)) p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(u.id).first(); } catch (e) { /* sin tabla compras aun */ }
-    try { if (await renovarApple(env, u.id)) p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(u.id).first(); } catch (e) { /* sin tabla compras aun */ }
+    try { if (await renovarPlay(env, u.id)) p = await env.DB.prepare('SELECT plan, hasta, origen, actualizado FROM planes WHERE usuario = ?1').bind(u.id).first(); } catch (e) { /* sin tabla compras aun */ }
+    try { if (await renovarApple(env, u.id)) p = await env.DB.prepare('SELECT plan, hasta, origen, actualizado FROM planes WHERE usuario = ?1').bind(u.id).first(); } catch (e) { /* sin tabla compras aun */ }
   }
   const vigente = p && PLANES[p.plan] && (p.hasta == null || p.hasta > Date.now());
   // v2.60.0 regalo: cuándo se dio (para mostrar el aviso una sola vez por regalo y calcular los días)

@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 16 de noviembre de 2026 · **Versión en producción:** v2.60.0
+**Actualizado:** 17 de noviembre de 2026 · **Versión en producción:** v2.60.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -436,7 +436,7 @@ combinado es 41/59. Detalle en `docs/DIARIO.md`.
 | Pro Max | $19.99/mes |
 
 - Anual = 2 meses gratis. 7 días de prueba de Pro.
-- Qué incluye cada plan (acordado 03/11/2026): video al mes 3/20/40/ilimitado; créditos IA para nutrición al mes 10/30/90/300 (bolsa:
+- Qué incluye cada plan (acordado 03/11/2026): video al mes 3/20/40/ilimitado; créditos IA al mes 10/30/90/300 (desde v2.60.0: 10/90/300/900, máx. 60 al día por persona) (bolsa:
   foto del plato, comida escrita, etiqueta); entrenador IA 1/mes, 1/semana, 3/semana, diario; PDF de muestra en Gratis;
   video en comunidad desde Plus; progreso de velocidad 1 mes en Gratis; Excel/respaldo desde Plus; Pro Max = atleta
   serio + entrenadores con alumnos (futuro).
