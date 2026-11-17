@@ -17,6 +17,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
   caja «✏️ ¿Algo está mal? Corrígelo» en foto del plato y comida escrita. Video: «Analizar de nuevo · gratis» bajo los
   resultados (fuerza y deportes): vuelve al formulario con el mismo video; ese análisis no cuenta en el plan; 1 vez por
   video (si se cierra la app o se elige otro video se pierde). Pruebas: servidor (ia_test) y recorrido analizar ampliados.
+- **Revisión (otro Claude):** se corrigió: los resultados vacíos quedan anotados (":v") y pasado el tope de 20 al día se
+  cobran; «¿Qué máquina es?» cobra si describe la máquina; la corrección gratis necesita un vale de un solo uso que da un
+  resultado cobrado (fila n = 0 en uso_ia); se corrige solo lo marcado; tras el re-análisis gratis se ofrece borrar la serie anterior.
 
 ### 17:05 · v2.63.0 — Lista de usuarios con plan (Moderación)
 - **Pidió:** Luis: la lista de planes regalados en una sola línea no servirá con más usuarios. Aprobó el boceto.

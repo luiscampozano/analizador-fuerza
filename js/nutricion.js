@@ -286,7 +286,7 @@ async function fotoPlato(archivo) {
   catch (e) { const m = e.message || String(e); if (esLimite(m)) $('nu-off').innerHTML = `<p class="hint">${esc(m)}</p>`; else reintentoIA($('nu-off'), m, true, () => fotoPlato(archivo), otraFoto); return; }
   $('nu-off').innerHTML = '';
   if (!r.alimentos.length) { reintentoIA($('nu-off'), `${r.nota || 'No reconocí alimentos en la foto.'} Prueba con otra foto, desde arriba y con buena luz.`, r.cobrado === false, () => fotoPlato(archivo), otraFoto); return; }
-  listaIA(r, '📸 Tu plato', `Te quedan ${r.quedan} fotos hoy.`, null, null, 'data:image/jpeg;base64,' + img, { gratis: true });
+  listaIA(r, '📸 Tu plato', `Te quedan ${r.quedan} fotos hoy.`, null, null, 'data:image/jpeg;base64,' + img, { gratis: !!r.vale, vale: r.vale });
 }
 
 // comida escrita: "arroz con menestra, carne asada y un jugo de mora" -> lista editable igual que la foto (v2.23.0)
@@ -306,7 +306,7 @@ function comidaEscrita(previo = '') {
     try { r = await nube.api('POST', '/api/ia/texto', { texto: t }); }
     catch (e) { $('nu-texto-ok').disabled = false; $('nu-texto-ok').textContent = esLimite(e.message) ? 'Calcular' : '🔄 Intentar de nuevo'; $('nu-texto-txt').textContent = (e.message || String(e)) + (esLimite(e.message) ? '' : ' No se descontó tu crédito.'); return; }
     if (!r.alimentos.length) { $('nu-texto-ok').disabled = false; $('nu-texto-txt').textContent = (r.nota || 'No entendí qué comiste.') + ' Prueba escribiéndolo de otra forma.' + (r.cobrado === false ? ' ✅ No se descontó tu crédito.' : ''); return; }
-    listaIA(r, '✍️ Lo que comiste', `Te quedan ${r.quedan} consultas escritas hoy.`, () => comidaEscrita(t), null, null, { gratis: true });
+    listaIA(r, '✍️ Lo que comiste', `Te quedan ${r.quedan} consultas escritas hoy.`, () => comidaEscrita(t), null, null, { gratis: !!r.vale, vale: r.vale });
   };
 }
 
@@ -329,13 +329,15 @@ function listaIA(r, titulo, pie, volver = null, intro = null, foto = null, corr 
       <p class="hint" style="margin:6px 0 0">${corr.gratis ? 'La primera corrección es gratis; las siguientes usan 1 crédito.' : 'Esta corrección usa 1 crédito.'}</p></div>` : ''}
     <div class="en-det-botones"><button type="button" class="btn-sec" id="nu-volver">‹ Volver</button><button type="button" class="btn-sec en-terminar" id="nu-ok">Agregar</button></div>`;
   if (corr) $('nu-corr-ok').onclick = async () => { // v2.64.0 la IA corrige su resultado con lo que escribe la persona
+    total(); // lee los gramos y lo marcado justo ahora
     const t = $('nu-corr-txt').value.trim(); if (t.length < 3) return alert('Escribe qué está mal. Ej.: «eran 2 huevos».');
+    if (!items.some((a) => a.usar && a.gramos > 0)) return alert('Marca al menos un alimento para corregir.');
     const b = $('nu-corr-ok'); b.disabled = true; $('nu-corr-msg').textContent = '🤖 Corrigiendo… (unos segundos)';
     let r2;
-    try { r2 = await nube.api('POST', '/api/ia/corregir', { alimentos: items.map((a) => ({ ...a, kcal: a.base.kcal * a.gramos / 100, p: a.base.p * a.gramos / 100, c: a.base.c * a.gramos / 100, g: a.base.g * a.gramos / 100 })), correccion: t, gratis: corr.gratis }); }
+    try { r2 = await nube.api('POST', '/api/ia/corregir', { alimentos: items.filter((a) => a.usar && a.gramos > 0).map((a) => ({ ...a, kcal: a.base.kcal * a.gramos / 100, p: a.base.p * a.gramos / 100, c: a.base.c * a.gramos / 100, g: a.base.g * a.gramos / 100 })), correccion: t, vale: corr.gratis ? corr.vale : null }); }
     catch (e) { b.disabled = false; $('nu-corr-msg').textContent = (e.message || String(e)) + (esLimite(e.message) ? '' : ' No se descontó tu crédito.'); return; }
     if (!r2.alimentos.length) { b.disabled = false; $('nu-corr-msg').textContent = 'No entendí la corrección. Escríbela de otra forma. ✅ No se descontó tu crédito.'; return; }
-    listaIA({ ...r2, nota: '' }, titulo, r2.gratis ? 'Corrección gratis.' : r2.quedan != null ? `Te quedan ${r2.quedan} correcciones o créditos.` : '', volver, null, foto, { gratis: false });
+    listaIA({ ...r2, nota: '' }, titulo, r2.gratis ? 'Corrección gratis.' : r2.quedan != null ? `Te quedan ${r2.quedan} correcciones o créditos.` : '', volver, null, foto, { gratis: false, vale: null });
   };
   const total = () => {
     let t = { kcal: 0, p: 0, c: 0, g: 0 }, n = 0;

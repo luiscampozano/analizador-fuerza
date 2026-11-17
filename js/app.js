@@ -48,7 +48,7 @@ let grupo = 'Todos';
 let seccEj = null; // v2.52.0 pestaña del selector: gym | cardio | deportes (null = la del ejercicio elegido)
 let archivo = null;
 // v2.64.0 «Analizar de nuevo · gratis»: 1 vez por video (mismo archivo cargado), sin contar en el plan
-let gratisPara = null, ultimoAnalizado = null, fresco = false; // fresco: los resultados en pantalla son del análisis recién hecho
+let gratisPara = null, ultimoAnalizado = null, fresco = false, anteriores = []; // fresco: los resultados en pantalla son del análisis recién hecho
 const reanalizados = new WeakSet();
 let cancelar = false;
 
@@ -511,7 +511,7 @@ async function analizarArchivo() {
     // terminó la detección: el aviso de modo Rápido ya no aplica (cambiar ahora duplicaría la serie, que se guarda antes del video)
     $('p-lento').style.display = 'none';
     if (cancelar) throw new Error('cancelado');
-    if (ej.cardio) { await analizarActividadVideo(frames, video, d, detBalon ? frames.map((f) => balonT.get(f.t) || null) : null); contarVideo(); if (autoBaja) aviso('⚡ Tu celular iba lento con este video, así que se analizó en modo Rápido (un poquito menos preciso).', true); return; }
+    if (ej.cardio) { await analizarActividadVideo(frames, video, d, detBalon ? frames.map((f) => balonT.get(f.t) || null) : null); contarVideo(gratisAhora); if (autoBaja) aviso('⚡ Tu celular iba lento con este video, así que se analizó en modo Rápido (un poquito menos preciso).', true); return; }
     progreso(2, 0.2, 'Calculando la física…');
     const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
     d.ini = ini > 0 ? ini : null; d.fin = fin > 0 ? fin : null;
@@ -552,7 +552,7 @@ async function analizarArchivo() {
       for (const x of infs) await almacen.guardarVideo(x.id, salida);
     }
     mostrarInforme(inf, { video: salida, nuevo: true });
-    contarVideo();
+    contarVideo(gratisAhora);
     // un solo aviso con todo lo que haya que decir (cada aviso nuevo tapaba al anterior)
     const msgs = [];
     if (serie.calidadBaja) msgs.push('⚠️ La IA no vio bien el movimiento en este video: revisa que el conteo de reps sea correcto (detalles en Interpretación).');
@@ -962,9 +962,14 @@ function pintarPierna(inf, desde) {
     mostrarInforme(inf, { video: videoActual, desde });
   };
 }
-function contarVideo() { // v2.64.0 el re-análisis gratis no se cuenta en el plan
-  if (gratisPara && gratisPara === archivo) { gratisPara = null; return; }
-  plan.contarAnalisis();
+function contarVideo(gratis) { // v2.64.0 el re-análisis gratis no se cuenta en el plan
+  if (!gratis) { plan.contarAnalisis(); return; }
+  gratisPara = null;
+  // la serie que salió mal se puede borrar para que no quede repetida en el historial
+  const malas = anteriores.filter((id) => hist.leer().some((x) => x.id === id)); anteriores = [];
+  if (malas.length) setTimeout(() => {
+    if (confirm('¿Borrar la serie anterior (la que salió mal)? Así no queda repetida en tu historial.')) malas.forEach((id) => { hist.borrar(id); almacen.borrarSerie(id); });
+  }, 600);
 }
 function pintarReanalizar(id, puede) {
   const c = $(id); if (!c) return;
@@ -977,6 +982,7 @@ function pintarReanalizar(id, puede) {
   c.querySelector('[data-reanalizar]').onclick = () => {
     if (!archivo || archivo !== ultimoAnalizado) { c.style.display = 'none'; return; }
     reanalizados.add(archivo); gratisPara = archivo;
+    anteriores = id === 'r-reanalizar' && informeActual ? [informeActual.id, informeActual.pareja].filter(Boolean) : [];
     $('r-reanalizar').style.display = $('act-reanalizar').style.display = 'none';
     vista('v-form');
     aviso('🔄 El mismo video sigue cargado: cambia el ejercicio, recórtalo o la calidad y toca Analizar. Este análisis no se cuenta en tu plan.', true);
