@@ -141,7 +141,7 @@ export async function iniciar(d) {
   $('en-archivo').onchange = importarArchivo;
   $('en-plantilla').onclick = () => compartir(plantilla(), 'plantilla-entrenamientos.xlsx');
   $('en-exportar').onclick = () => { if (!plan.permiso('excel')) return plan.mostrarMejora('Exportar a Excel es parte de Plus.'); if (!lista.length) return alert('Todavía no hay entrenamientos.'); compartir(exportar(), `entrenamientos-${new Date().toISOString().slice(0, 10)}.xlsx`); };
-  $('en-terminar').onclick = terminar;
+  $('en-terminar').onclick = async () => { if (await salud.asegurar()) terminar(); }; // v2.62.0 (borrador de antes del permiso)
   $('en-descartar').onclick = () => {
     if (activo.editando) { // editar un entreno guardado: se sale sin cambiar nada y vuelve a su detalle
       if (!confirm('¿Salir sin guardar los cambios?')) return;
@@ -149,7 +149,7 @@ export async function iniciar(d) {
     }
     if (confirm(activo.rutina ? '¿Salir sin guardar los cambios de la rutina?' : '¿Descartar este entrenamiento? Se pierde lo registrado.')) cerrarActivo();
   };
-  $('en-agregar').onclick = () => abrirSelector();
+  $('en-agregar').onclick = async () => { if (await salud.asegurar()) abrirSelector(); };
   $('en-titulo').oninput = () => { activo.titulo = $('en-titulo').value; guardarBorrador(); };
   $('en-descanso').value = leerLS('af_descanso') || '120';
   $('en-descanso').onchange = () => guardarLS('af_descanso', $('en-descanso').value);
@@ -609,7 +609,8 @@ function abrirGuardar(d) {
 const resumenGuardar = (en) => ({ volumen: volumen(en), series: seriesHechas(en), nEj: en.ejercicios.length });
 // Editar un entrenamiento guardado (v2.27.0): se abre en la misma pantalla del entreno en curso para cambiar
 // ejercicios, series, peso y reps; al tocar «Guardar» sale la ventana de nombre, foto, fecha y duracion.
-function editarEntreno(en) {
+async function editarEntreno(en) {
+  if (!(await salud.asegurar())) return; // v2.62.0
   if (activo && !(activo.editando && activo.id === en.id)) return alert('Tienes un entrenamiento en curso. Termínalo o descártalo antes de editar otro.');
   $('en-detalle').style.display = 'none';
   if (!activo) {
@@ -1321,6 +1322,7 @@ export function vincular(registro) {
 async function importarArchivo() {
   const f = $('en-archivo').files[0]; $('en-archivo').value = '';
   if (!f) return;
+  if (!(await salud.asegurar())) return; // v2.62.0 importar = registrar entrenamientos
   try {
     const tablas = await leerArchivo(f);
     const r = convertir(tablas, deps.ejercicios, { unidad: $('en-unidad').value });

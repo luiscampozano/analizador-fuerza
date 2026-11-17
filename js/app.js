@@ -445,10 +445,10 @@ let origen = 'video';
 $('btn-analizar').onclick = () => analizarArchivo();
 async function analizarArchivo() {
   if (!archivo) return alert('Primero graba o elige el video de la serie.');
+  if (!reinicioRapido && !(await salud.asegurar())) return; // v2.62.0 permiso de datos de salud (LOPDP), antes de guardar estatura y peso
   const d = leerDatos(); if (!d) return;
   const esReinicio = reinicioRapido; reinicioRapido = false; // v2.61.0 el reinicio en modo Rápido no vuelve a revisar el cupo
   if (!esReinicio && !(await plan.puedeAnalizar())) return; // cupo de analisis del plan (v2.33.0)
-  if (!esReinicio && !(await salud.asegurar())) return; // v2.62.0 permiso de datos de salud (LOPDP)
   const { peso, pc, altura, alfa, relacion, carga, masa } = d;
   cancelar = false; pasarARapida = false; cancelUsuario = false; pasoActual = -1; vista('v-progreso'); $('p-lento').style.display = 'none';
   // v2.59.0 «Automática»: empieza con la precisión Normal y, si el celular va lento, cambia sola a Rápida en este video

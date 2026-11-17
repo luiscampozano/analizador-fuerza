@@ -34,7 +34,7 @@ export function iniciar() {
   $('nu-ant').onclick = () => { dia = sumarDias(dia, -1); pintar(); };
   $('nu-sig').onclick = () => { dia = sumarDias(dia, 1); pintar(); };
   $('nu-hoy').onclick = () => { dia = fechaISO(new Date()); pintar(); };
-  $('nu-btn-metas').onclick = async () => { if (await salud.asegurar()) abrirMetas(); };
+  $('nu-btn-metas').onclick = abrirMetas;
   $('nu-cerrar').onclick = cerrarHoja;
   $('nu-buscar').oninput = () => pintarResultados();
   $('nu-buscar').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarInternet(); } };
@@ -116,6 +116,7 @@ async function pintarSemana() {
 }
 
 async function copiarAyer() {
+  if (!(await salud.asegurar())) return; // v2.62.0
   const ayer = await almacen.leerComidas(sumarDias(dia, -1));
   if (!ayer.length) return alert('El día anterior no tiene comidas registradas.');
   const t = Date.now();
@@ -473,7 +474,9 @@ function formularioPropio(codigo = null) {
 }
 
 // ------------------------------------------------------------------ metas
-function abrirMetas() {
+// v2.62.0 las metas usan sexo, edad y peso: primero el permiso de datos de salud
+async function abrirMetas() { if (await salud.asegurar()) abrirMetasYa(); }
+function abrirMetasYa() {
   const m = metas || {}, perfil = leerLS('af_nutri_perfil', {});
   const pc = perfil.peso || parseFloat(localStorage.getItem('af_pc')) || '', alt = perfil.altura || Math.round((parseFloat(localStorage.getItem('af_altura')) || 0) * 100) || '';
   $('nu-hoja-titulo').textContent = '🎯 Metas diarias';
@@ -554,7 +557,8 @@ function pintarNutriIA() {
       ${aj.nuevas ? `<button type="button" class="btn-sec" id="nu-ia-aplicar" style="width:100%">${aj.delta > 0 ? '⬆️ Subir' : '⬇️ Bajar'} a ${fmt(aj.nuevas.kcal)} kcal al día</button>` : ''}</div>
     <button type="button" class="btn-primary" id="nu-ia-menu" style="width:100%;margin-top:10px">🍽️ Armar mi menú de hoy con IA</button>
     ${menu ? `<button type="button" class="btn-sec" id="nu-ia-ultimo" style="width:100%;margin-top:8px">📋 Ver mi último menú (${esc(menu.fecha === fechaISO(new Date()) ? 'hoy' : menu.fecha)})</button>` : ''}`;
-  if ($('nu-ia-aplicar')) $('nu-ia-aplicar').onclick = () => {
+  if ($('nu-ia-aplicar')) $('nu-ia-aplicar').onclick = async () => {
+    if (!(await salud.asegurar())) return; // v2.62.0
     if (!confirm(`¿Cambiar tu meta diaria de ${fmt(metas.kcal)} a ${fmt(aj.nuevas.kcal)} kcal? (los carbohidratos se ajustan; la proteína no cambia)`)) return;
     metas = aj.nuevas; guardarLS('af_nutri_metas', metas); guardarLS('af_nutri_ajuste', fechaISO(new Date())); pintar();
   };

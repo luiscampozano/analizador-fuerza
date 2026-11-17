@@ -25,7 +25,7 @@ export function asegurar() {
       </ul>
       <p><b>Para qué:</b> calcular fuerza, RIR, 1RM, calorías y macros, y mostrarte tu progreso. Se guardan en tu teléfono y, si inicias sesión, en tu copia en la nube. <b>No se venden ni se usan para publicidad.</b>
         <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>
-      <p class="hint">Puedes retirar este permiso cuando quieras en Perfil. Sin él puedes explorar la app, pero no analizar series ni registrar entrenamientos o comidas.</p>
+      <p class="hint">Puedes retirar este permiso cuando quieras en Perfil. Sin él puedes explorar la app, pero no analizar series ni registrar entrenamientos, comidas o medidas.</p>
       <button type="button" class="btn-primary" id="salud-si" style="width:100%">Acepto el uso de mis datos de salud</button>
       <button type="button" class="btn-sec" id="salud-no" style="width:100%;margin-top:8px">Ahora no</button>
     </div>`;

@@ -124,7 +124,7 @@ export async function pintar() {
   const bIA = $('pf-ia-retirar'); // v2.54.3 retirar el permiso de las funciones con IA
   if (bIA) { bIA.style.display = consentia.tienePermiso() ? '' : 'none'; bIA.onclick = () => { consentia.retirar(); bIA.style.display = 'none'; alert('Listo: la próxima vez que uses una función con IA te volveremos a pedir permiso.'); }; }
   const bSa = $('pf-salud-retirar'); // v2.62.0 retirar el permiso de datos de salud (opción A: los datos se quedan, la app deja de usarlos)
-  if (bSa) { bSa.style.display = salud.tienePermiso() ? '' : 'none'; bSa.onclick = () => { if (!confirm('¿Retirar el permiso de datos de salud? Tus datos se quedan guardados, pero no podrás analizar series ni registrar entrenamientos, comidas o medidas hasta que lo vuelvas a aceptar. Para borrarlos usa «Eliminar cuenta».')) return; salud.retirar(); bSa.style.display = 'none'; }; }
+  if (bSa) { bSa.style.display = salud.tienePermiso() ? '' : 'none'; bSa.onclick = () => { if (!confirm('¿Retirar el permiso de datos de salud? Tus datos se quedan guardados, pero no podrás analizar series ni registrar entrenamientos, comidas o medidas hasta que lo vuelvas a aceptar. Para borrarlos: «Eliminar cuenta y datos de la nube» borra tu copia en la nube; en el teléfono, desinstala la app o borra los datos del sitio.')) return; salud.retirar(); bSa.style.display = 'none'; }; }
   const rp = plan.resumen(), cp = $('pf-plan');
   if (cp) {
     // v2.54.1 en iPhone/iPad los planes y suscripciones siempre se ven aquí (Apple pide que se puedan encontrar)
@@ -368,13 +368,14 @@ function editar() {
     try { foto = await reducirFoto(f); $('pf-foto-prev').innerHTML = `<img src="${foto}" alt="">`; } catch (e) { alert('No pude abrir esa imagen.'); }
   };
   $('pf-cancelar').onclick = () => { $('pf-modal').style.display = 'none'; };
+  const saludIni = () => ['pf-sexo', 'pf-edad', 'pf-alt'].map((id) => $(id).value).join('|'), ini = saludIni();
   $('pf-guardar').onclick = async () => {
-    // v2.62.0 sexo, edad y estatura son datos de salud: si se llenan, primero el permiso
-    if (($('pf-sexo').value || $('pf-edad').value || $('pf-alt').value) && !(await salud.asegurar())) return;
+    // v2.62.0 sexo, edad y estatura son datos de salud: si cambian, primero el permiso; sin él se guarda solo lo demás
+    const conSalud = saludIni() === ini || await salud.asegurar();
     const ok = guardarJ('af_perfil', { nombre: $('pf-nombre').value.trim(), gimnasio: $('pf-gim').value.trim(), categoria: $('pf-cat').value.trim(), bio: $('pf-bio').value.trim(), foto });
     if (!ok) return alert('No hay espacio para guardar la foto. Prueba con otra imagen.');
-    const alt2 = +$('pf-alt').value;
-    guardarJ('af_nutri_perfil', { ...perfilCuerpo(), sexo: $('pf-sexo').value, edad: +$('pf-edad').value || undefined, altura: alt2 || undefined });
+    const alt2 = conSalud ? +$('pf-alt').value : 0;
+    if (conSalud) guardarJ('af_nutri_perfil', { ...perfilCuerpo(), sexo: $('pf-sexo').value, edad: +$('pf-edad').value || undefined, altura: alt2 || undefined });
     if (alt2 > 120 && alt2 < 240) try { localStorage.setItem('af_altura', String(alt2 / 100)); } catch (e) { /* nada */ }
     try { localStorage.setItem('af_descanso', $('pf-desc').value); } catch (e) { /* nada */ }
     $('pf-modal').style.display = 'none'; pintar();
