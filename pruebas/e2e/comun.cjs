@@ -26,7 +26,7 @@ async function abrir(nombre, prep = {}) {
   const errores = [];
   p.on('pageerror', (e) => errores.push(e.message));
   const avisos = []; p.on('dialog', (d) => { avisos.push(d.message()); d.accept(); });
-  await p.addInitScript((prep) => { localStorage.setItem('af_bienvenida', 'omitida'); localStorage.setItem('af_tour', '1'); for (const [k, v] of Object.entries(prep)) localStorage.setItem(k, v); }, prep);
+  await p.addInitScript((prep) => { localStorage.setItem('af_bienvenida', 'omitida'); localStorage.setItem('af_tour', '1'); localStorage.setItem('af_salud_permiso', '2026-01-01T00:00:00.000Z'); for (const [k, v] of Object.entries(prep)) localStorage.setItem(k, v); }, prep);
   await p.goto(base + '/index.html'); await p.waitForTimeout(1200);
   let fallos = 0;
   const ok = (cond, txt) => { console.log((cond ? 'OK   ' : 'FALLA ') + txt); if (!cond) fallos++; };

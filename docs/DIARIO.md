@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-17
 
+### 11:55 · v2.62.0 — Permiso de datos de salud (LOPDP punto 5)
+- **Pidió:** Luis aprobó el texto del aviso y la opción A (al retirar el permiso los datos se quedan, la app deja de usarlos).
+- **Hecho:** nuevo `js/salud.js` con el aviso «❤️ Tus datos de salud» (Acepto / Ahora no). Se pide antes de: analizar un
+  video, modo en vivo, empezar o repetir un entrenamiento o rutina, agregar comida, metas de nutrición, peso y medidas,
+  y al guardar sexo/edad/estatura en el perfil. Botón «❤️ Retirar el permiso de datos de salud» en Perfil.
+  privacidad.html: los datos de salud pasan a la base «consentimiento expreso» y se explica cómo retirarlo.
+- **Pendiente:** revisión por un abogado de protección de datos.
+
 ### 11:45 · Política de privacidad — puntos de la LOPDP (sin cambio de versión de la app)
 - **Pidió:** un amigo preguntó por la Ley Orgánica de Protección de Datos Personales; Luis pidió completar los puntos 1-4.
 - **Hecho (privacidad.html, 17 nov):** base legal de cada uso (contrato, consentimiento, interés legítimo, obligación

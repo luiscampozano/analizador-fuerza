@@ -2,6 +2,7 @@
 // rutinas, records personales, progreso por ejercicio, cargas sugeridas por RPE y calculadora de discos,
 // con enlace opcional al analisis por video de cada serie e importacion desde Hevy, Strong o Excel.
 import * as tarjetas from './tarjetas.js';
+import * as salud from './salud.js';
 import * as plan from './plan.js';
 import * as maquina from './maquina.js';
 import { icono as figIcono, animacion } from './figura.js';
@@ -528,7 +529,9 @@ function editarRutina(r) {
 }
 
 // ------------------------------------------------------------------ entrenamiento en curso
-function empezar(base = null) {
+// v2.62.0 empezar un entrenamiento usa datos de salud: primero el permiso (LOPDP)
+async function empezar(base = null) { if (await salud.asegurar()) empezarYa(base); }
+function empezarYa(base = null) {
   const h = new Date().getHours();
   activo = { id: 'e-' + Date.now(), inicio: new Date().toISOString(), origen: 'app', rutinaId: base?.rutinaId || null,
     rutinaOriginal: base?.rutinaOriginal || (base?.rutinaId ? rutinas.find((x) => x.id === base.rutinaId) : null),

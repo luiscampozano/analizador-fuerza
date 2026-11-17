@@ -2,6 +2,7 @@
 // (base local + base de la comunidad FuerzaPro + Open Food Facts) y escaner de codigo de barras. Todo se guarda en el
 // telefono; los productos con codigo que crea el usuario pueden compartirse con la comunidad (v2.19.0).
 import * as almacen from './almacen.js';
+import * as salud from './salud.js';
 import * as nube from './nube.js';
 import * as macros3d from './macros3d.js';
 import { ALIMENTOS } from './alimentos.js';
@@ -33,7 +34,7 @@ export function iniciar() {
   $('nu-ant').onclick = () => { dia = sumarDias(dia, -1); pintar(); };
   $('nu-sig').onclick = () => { dia = sumarDias(dia, 1); pintar(); };
   $('nu-hoy').onclick = () => { dia = fechaISO(new Date()); pintar(); };
-  $('nu-btn-metas').onclick = abrirMetas;
+  $('nu-btn-metas').onclick = async () => { if (await salud.asegurar()) abrirMetas(); };
   $('nu-cerrar').onclick = cerrarHoja;
   $('nu-buscar').oninput = () => pintarResultados();
   $('nu-buscar').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarInternet(); } };
@@ -124,6 +125,7 @@ async function copiarAyer() {
 
 // ------------------------------------------------------------------ agregar alimentos
 async function abrirHoja(comida) {
+  if (!(await salud.asegurar())) return; // v2.62.0 permiso de datos de salud (LOPDP)
   comidaSel = comida; elegido = null; editando = null;
   $('nu-hoja-titulo').textContent = `Agregar a ${COMIDAS.find(([k]) => k === comida)[1].replace(/^\S+\s/, '')}`;
   $('nu-buscar').value = ''; $('nu-off').innerHTML = '';

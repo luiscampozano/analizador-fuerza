@@ -8,6 +8,7 @@ import * as hist from './historial.js';
 import * as plan from './plan.js';
 import { icono as figIcono } from './figura.js';
 import * as consentia from './consentia.js';
+import * as salud from './salud.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -37,7 +38,7 @@ function pesoActual() {
 export function iniciar(d) {
   deps = d;
   $('pf-editar').onclick = editar;
-  $('pf-peso-ok').onclick = registrarPeso;
+  $('pf-peso-ok').onclick = async () => { if (await salud.asegurar()) registrarPeso(); };
   $('pf-ir-historial').onclick = () => deps.vista('v-historial');
   $('pf-ir-guia').onclick = () => deps.vista('v-guia');
   $('pf-opinar').onclick = opinar;
@@ -54,7 +55,7 @@ export function iniciar(d) {
   $('pf-ir-estad').onclick = () => deps.abrirEstadisticas();
   $('pf-musc').onclick = () => deps.abrirEstadisticas(7);
   $('pf-ir-ejs').onclick = () => deps.abrirEjercicios();
-  $('pf-ir-medidas').onclick = () => { abrir('pf-medidas'); pintarPeso(); };
+  $('pf-ir-medidas').onclick = async () => { if (!(await salud.asegurar())) return; abrir('pf-medidas'); pintarPeso(); };
   for (const id of ['pf-estad', 'pf-medidas', 'pf-ajustes-modal']) $(id + '-cerrar').onclick = cerrar(id);
 }
 
@@ -122,6 +123,8 @@ export async function pintar() {
   // plan de suscripcion (solo cuando los limites aplican a esta cuenta)
   const bIA = $('pf-ia-retirar'); // v2.54.3 retirar el permiso de las funciones con IA
   if (bIA) { bIA.style.display = consentia.tienePermiso() ? '' : 'none'; bIA.onclick = () => { consentia.retirar(); bIA.style.display = 'none'; alert('Listo: la próxima vez que uses una función con IA te volveremos a pedir permiso.'); }; }
+  const bSa = $('pf-salud-retirar'); // v2.62.0 retirar el permiso de datos de salud (opción A: los datos se quedan, la app deja de usarlos)
+  if (bSa) { bSa.style.display = salud.tienePermiso() ? '' : 'none'; bSa.onclick = () => { if (!confirm('¿Retirar el permiso de datos de salud? Tus datos se quedan guardados, pero no podrás analizar series ni registrar entrenamientos, comidas o medidas hasta que lo vuelvas a aceptar. Para borrarlos usa «Eliminar cuenta».')) return; salud.retirar(); bSa.style.display = 'none'; }; }
   const rp = plan.resumen(), cp = $('pf-plan');
   if (cp) {
     // v2.54.1 en iPhone/iPad los planes y suscripciones siempre se ven aquí (Apple pide que se puedan encontrar)
@@ -365,7 +368,9 @@ function editar() {
     try { foto = await reducirFoto(f); $('pf-foto-prev').innerHTML = `<img src="${foto}" alt="">`; } catch (e) { alert('No pude abrir esa imagen.'); }
   };
   $('pf-cancelar').onclick = () => { $('pf-modal').style.display = 'none'; };
-  $('pf-guardar').onclick = () => {
+  $('pf-guardar').onclick = async () => {
+    // v2.62.0 sexo, edad y estatura son datos de salud: si se llenan, primero el permiso
+    if (($('pf-sexo').value || $('pf-edad').value || $('pf-alt').value) && !(await salud.asegurar())) return;
     const ok = guardarJ('af_perfil', { nombre: $('pf-nombre').value.trim(), gimnasio: $('pf-gim').value.trim(), categoria: $('pf-cat').value.trim(), bio: $('pf-bio').value.trim(), foto });
     if (!ok) return alert('No hay espacio para guardar la foto. Prueba con otra imagen.');
     const alt2 = +$('pf-alt').value;

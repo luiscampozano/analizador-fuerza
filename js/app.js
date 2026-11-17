@@ -27,8 +27,9 @@ import { tipoActividad, analizarActividad, dibujoActividad, CONSEJO, CON_BALON }
 import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
+import * as salud from './salud.js';
 
-const VERSION = '2.61.0';
+const VERSION = '2.62.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -447,6 +448,7 @@ async function analizarArchivo() {
   const d = leerDatos(); if (!d) return;
   const esReinicio = reinicioRapido; reinicioRapido = false; // v2.61.0 el reinicio en modo Rápido no vuelve a revisar el cupo
   if (!esReinicio && !(await plan.puedeAnalizar())) return; // cupo de analisis del plan (v2.33.0)
+  if (!esReinicio && !(await salud.asegurar())) return; // v2.62.0 permiso de datos de salud (LOPDP)
   const { peso, pc, altura, alfa, relacion, carga, masa } = d;
   cancelar = false; pasarARapida = false; cancelUsuario = false; pasoActual = -1; vista('v-progreso'); $('p-lento').style.display = 'none';
   // v2.59.0 «Automática»: empieza con la precisión Normal y, si el celular va lento, cambia sola a Rápida en este video
@@ -1453,8 +1455,9 @@ $('h-archivo').onchange = async () => {
 };
 
 // ------------------------------------------------------------------ modo en vivo
-$('btn-vivo').onclick = (e) => {
+$('btn-vivo').onclick = async (e) => {
   e.stopPropagation();
+  if (!(await salud.asegurar())) return; // v2.62.0
   const d = leerDatos(); if (!d) return;
   vista('v-vivo');
   vivo.abrir({ ej, datos: d, calidad: $('in-calidad').value, alTerminar: (archivoGrabado) => {
