@@ -18,7 +18,7 @@ export async function actualizar() {
 export const actual = () => estado;
 
 // v2.60.0 enlaces para bajar la app (en la web no se puede pagar: se paga en la app de la tienda)
-const APP_STORE = ''; // 'https://apps.apple.com/app/id…' (ID de Apple de FuerzaPro en App Store Connect)
+const APP_STORE = 'https://apps.apple.com/app/id6832380426'; // ID de Apple de FuerzaPro (App Store Connect)
 const PLAY_LISTA = false; // true cuando FuerzaPro esté en producción en Google Play
 function descargar() {
   return `<div class="plan-tiendas">${APP_STORE ? `<a class="btn-sec" href="${APP_STORE}" target="_blank" rel="noopener"> App Store (iPhone)</a>` : ''}

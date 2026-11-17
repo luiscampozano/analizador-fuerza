@@ -6,6 +6,18 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-17
+
+### 09:20 · v2.60.0 — Planes para el lanzamiento: más IA, avisos de planes y regalos
+- **Pidió:** revisar los planes (más funciones de IA que antes), un aviso cuando se activen los planes, un aviso solo
+  para quien recibe un plan de regalo (con sus días) y el enlace de la App Store para la gente de la web.
+- **Costos (Haiku 5.5: USD 0,10 / 0,50 por millón de tokens):** 0,02-0,18 centavos por uso; peor caso 0,2 centavos.
+- **Hecho:** créditos IA al mes Gratis 10, Plus 90, Pro 300, Pro Max 900 (antes 10/30/90/300); tope global de IA
+  1.000 usos/día (antes 600). /api/plan devuelve `regalo.desde` (columna `actualizado` de planes). Avisos de una sola
+  vez (af_regalo_visto, af_aviso_planes): regalo con días y fecha; llegada de los planes solo para Gratis, con enlaces a
+  las tiendas en la web. Precios sin cambios. En modo «prueba» solo el administrador los ve.
+- **Pendiente:** Google Play en producción (cambiar PLAY_LISTA a true en js/plan.js).
+
 ## 2026-11-16
 
 ### 20:20 · v2.59.0 — Precisión «Automática»
