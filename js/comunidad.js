@@ -452,6 +452,53 @@ async function pintarActividad() {
 }
 
 // ------------------------------------------------------------------ moderacion (solo administradores)
+// v2.63.0 lista de usuarios con plan: resumen por plan, buscador, filtros y 10 filas con «Ver más»
+const planActivo = (x) => x.plan && x.plan !== 'gratis';
+const diasPara = (t) => Math.ceil((t - Date.now()) / 86_400_000);
+function listaPlanesHtml(pl, NOMP) {
+  const con = pl.usuarios.filter(planActivo), cuenta = (k) => con.filter((x) => x.plan === k).length;
+  const regalo = con.filter((x) => x.origen === 'regalo').length, pagados = con.filter((x) => x.origen === 'play' || x.origen === 'apple').length;
+  const FIL = [['todos', 'Todos'], ['promax', 'Pro Max'], ['pro', 'Pro'], ['plus', 'Plus'], ['regalo', '🎁 Regalados'], ['pago', '💳 Pagados'], ['vence', '⏳ Vencen en 30 días']];
+  return `<div class="pl-res">${['promax', 'pro', 'plus'].map((k) => `<div class="uso-caja"><b>${cuenta(k)}</b><span>${NOMP[k]}</span></div>`).join('')}<div class="uso-caja"><b>${Math.max(0, pl.totalUsuarios - con.length)}</b><span>Gratis</span></div></div>
+    <p class="hint">${pl.totalUsuarios} cuentas · ${con.length} con plan (${regalo} regalado${regalo === 1 ? '' : 's'}, ${pagados} pagado${pagados === 1 ? '' : 's'})</p>
+    ${con.length ? `<input id="pl-buscar" class="pl-buscar" type="search" placeholder="🔎 Buscar @alias o correo" aria-label="Buscar usuario">
+    <div class="chips" id="pl-filtros">${FIL.map(([k, n], i) => `<button type="button" class="chip${i ? '' : ' active'}" data-plf="${k}">${n}</button>`).join('')}</div>
+    <div class="card pl-lista" id="pl-lista"></div><p class="hint">Toca a una persona para cambiarle el plan o los días (se llena el formulario de «Regalar»).</p>` : ''}`;
+}
+function conectarListaPlanes(pl, NOMP) {
+  const caja = $('pl-lista'); if (!caja) return;
+  const con = pl.usuarios.filter(planActivo).sort((a, b) => (a.usuario === pl.yo ? -1 : b.usuario === pl.yo ? 1 : (a.hasta || Infinity) - (b.hasta || Infinity)));
+  let filtro = 'todos', mostrar = 10;
+  const nombreDe = (x) => (x.alias ? '@' + x.alias : x.email || 'usuario');
+  const CL = { promax: 'pl-pm', pro: 'pl-pr', plus: 'pl-pl' };
+  const pintarL = () => {
+    const q = ($('pl-buscar').value || '').trim().toLowerCase().replace(/^@/, '');
+    const vis = con.filter((x) => {
+      if (q && !((x.alias || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q))) return false;
+      if (filtro === 'regalo') return x.origen === 'regalo';
+      if (filtro === 'pago') return x.origen === 'play' || x.origen === 'apple';
+      if (filtro === 'vence') return x.hasta && diasPara(x.hasta) <= 30;
+      return filtro === 'todos' || x.plan === filtro;
+    });
+    caja.innerHTML = vis.length ? vis.slice(0, mostrar).map((x) => {
+      const d = x.hasta ? diasPara(x.hasta) : null, ori = x.usuario === pl.yo ? 'Creador' : x.origen === 'regalo' ? '🎁 Regalo' : x.origen === 'apple' ? '💳 App Store' : x.origen === 'play' ? '💳 Google Play' : esc(x.origen || '');
+      const fin = d == null ? 'sin fin' : `${x.origen === 'regalo' ? 'vence' : 'renueva'} ${new Date(x.hasta).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })} (en ${d} día${d === 1 ? '' : 's'})`;
+      return `<button type="button" class="pl-fila" data-plq="${esc(x.alias ? '@' + x.alias : x.email || '')}" data-plp="${esc(x.plan)}"><span class="pl-av">${esc(nombreDe(x).replace('@', '').charAt(0).toUpperCase())}</span>
+        <span class="pl-q"><b>${esc(nombreDe(x))}</b><small${d != null && d <= 30 ? ' class="pl-ya"' : ''}>${ori} · ${fin}</small></span><span class="pl-b ${CL[x.plan] || ''}">${esc(NOMP[x.plan] || x.plan)}</span></button>`;
+    }).join('') + (vis.length > mostrar ? `<button type="button" class="pl-mas" id="pl-mas">Ver ${vis.length - mostrar} más</button>` : '') : '<p class="hint" style="padding:10px 12px;margin:0">Nadie con ese filtro.</p>';
+    if ($('pl-mas')) $('pl-mas').onclick = () => { mostrar += 20; pintarL(); };
+    caja.querySelectorAll('.pl-fila').forEach((b) => (b.onclick = () => {
+      if (!b.dataset.plq) return;
+      $('co-reg-quien').value = b.dataset.plq; $('co-reg-plan').value = b.dataset.plp; $('co-reg-dias').value = '';
+      $('co-reg-quien').scrollIntoView({ block: 'center', behavior: 'smooth' }); $('co-reg-dias').focus({ preventScroll: true });
+    }));
+  };
+  $('pl-buscar').oninput = () => { mostrar = 10; pintarL(); };
+  $('pl-filtros').querySelectorAll('[data-plf]').forEach((b) => (b.onclick = () => {
+    filtro = b.dataset.plf; mostrar = 10; $('pl-filtros').querySelectorAll('.chip').forEach((c) => c.classList.toggle('active', c === b)); pintarL();
+  }));
+  pintarL();
+}
 async function moderar() {
   modal('<p class="hint co-cargando">Cargando…</p>');
   try {
@@ -470,8 +517,8 @@ async function moderar() {
         <p class="hint" style="margin-top:8px">Regalar un plan (escribe su @alias de la comunidad o su correo):</p>
         <div class="co-regalo"><input id="co-reg-quien" placeholder="@alias o correo"><select id="co-reg-plan">${Object.entries(NOMP).map(([k, n]) => `<option value="${k}"${k === 'plus' ? ' selected' : ''}>${n}</option>`).join('')}</select>
           <input id="co-reg-dias" type="number" inputmode="numeric" placeholder="días (vacío = sin fin)"><button type="button" class="btn-sec" id="co-reg-ok">Regalar</button></div>
-        ${pl.usuarios.length ? `<p class="hint">${pl.usuarios.map((x) => `${esc(x.alias ? '@' + x.alias : x.email || 'usuario')}: <b>${NOMP[x.plan] || x.plan}</b>${x.hasta ? ` hasta ${new Date(x.hasta).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })}` : ''}`).join(' · ')}</p>` : ''}
-        <p class="hint">${pl.totalUsuarios} cuentas en total. Las compras con Google Play se activan solas; aquí puedes regalar planes.</p>`;
+        ${listaPlanesHtml(pl, NOMP)}
+        <p class="hint">Las compras con Google Play y App Store se activan solas; aquí puedes regalar planes.</p>`;
     // uso de la foto del plato (IA): fotos por dia de los ultimos 7 dias
     const iaHtml = ia ? `<h4>🤖 Funciones con IA</h4><p class="hint">${ia.configurada ? `Activa · límite ${ia.limite} fotos por persona al día.` : '⚠️ Falta la clave ANTHROPIC_API_KEY en Cloudflare.'}
       ${ia.dias.length ? ia.dias.map((d) => `${d.dia.slice(5)}: <b>${d.fotos}</b> fotos${d.textos ? ` · ${d.textos} escritas` : ''}${d.etiquetas ? ` · ${d.etiquetas} etiquetas` : ''}${d.entrenador ? ` · ${d.entrenador} entrenador` : ''}${d.series ? ` · ${d.series} explicaciones` : ''} (${d.usuarios} persona${d.usuarios > 1 ? 's' : ''})`).join(' · ') : 'Sin uso todavía.'}</p>` : '';
@@ -524,6 +571,7 @@ async function moderar() {
       const quien = $('co-reg-quien').value.trim(); if (!quien) return alert('Escribe el @alias o el correo.');
       try { await nube.api('POST', '/api/mod/plan_usuario', { quien, plan: $('co-reg-plan').value, dias: +$('co-reg-dias').value || null, nota: 'regalo' }); alert('Listo.'); recargar(); } catch (e) { error(e); }
     };
+    if (pl && pl.usuarios) conectarListaPlanes(pl, NOMP);
     // descargar un fallo (puntos del cuerpo + correccion) como archivo .json.gz con el formato del banco de pruebas
     $('co-modal-cuerpo').querySelectorAll('[data-bajar]').forEach((b) => (b.onclick = async () => {
       b.disabled = true;

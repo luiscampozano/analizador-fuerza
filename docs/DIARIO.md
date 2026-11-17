@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-17
 
+### 17:05 · v2.63.0 — Lista de usuarios con plan (Moderación)
+- **Pidió:** Luis: la lista de planes regalados en una sola línea no servirá con más usuarios. Aprobó el boceto.
+- **Hecho:** resumen por plan, buscador por @alias o correo, filtros (Pro Max, Pro, Plus, regalados, pagados, vencen en
+  30 días; amarillo si vence en ≤ 30 días), 10 filas con «Ver más»; tocar a alguien llena el formulario «Regalar».
+  _worker.js: /api/mod/planes devuelve hasta 5000 (antes 100).
+- **Tarjetas lentas (~30 s, reporte de Luis):** medido en Chromium con CPU 4× más lenta: 1,3 s en total; esperas de red
+  con tope de 4 s. Probable internet lento (2 kB/s en su captura) o la descarga de la versión nueva. Si se repite, medir por pasos.
+
 ### 11:55 · v2.62.0 — Permiso de datos de salud (LOPDP punto 5)
 - **Pidió:** Luis aprobó el texto del aviso y la opción A (al retirar el permiso los datos se quedan, la app deja de usarlos).
 - **Hecho:** nuevo `js/salud.js` con el aviso «❤️ Tus datos de salud» (Acepto / Ahora no). Se pide antes de: analizar un

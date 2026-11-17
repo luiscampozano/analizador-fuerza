@@ -900,7 +900,7 @@ async function moderacion(req, env, u, r, m) {
     if (!(await tablasPlan(env))) return json({ sinTablas: true });
     const modo = await modoLimites(env), ahora = Date.now();
     const lista = await DB.prepare(`SELECT p.usuario, p.plan, p.hasta, p.origen, p.nota, p.actualizado, pf.alias, us.email FROM planes p
-      LEFT JOIN perfiles pf ON pf.usuario = p.usuario LEFT JOIN usuarios us ON us.id = p.usuario WHERE p.hasta IS NULL OR p.hasta > ?1 ORDER BY p.actualizado DESC LIMIT 100`).bind(ahora).all();
+      LEFT JOIN perfiles pf ON pf.usuario = p.usuario LEFT JOIN usuarios us ON us.id = p.usuario WHERE p.hasta IS NULL OR p.hasta > ?1 ORDER BY p.actualizado DESC LIMIT 5000`).bind(ahora).all();
     const total = await DB.prepare('SELECT count(*) AS n FROM usuarios').first();
     return json({ modo, usuarios: lista.results || [], totalUsuarios: total ? total.n : 0, yo: u.id });
   }

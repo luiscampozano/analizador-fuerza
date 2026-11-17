@@ -1310,6 +1310,20 @@ body.buscando .action-footer { display: none; }
 .tostada.ver { opacity: 1; transform: translate(-50%, 0); }
 /* v2.40.0 panel de uso en Moderación */
 .uso-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0; }
+/* v2.63.0 lista de usuarios con plan (moderación) */
+.pl-res { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 4px; }
+.pl-buscar { width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 9px 10px; margin: 6px 0 2px; }
+.pl-lista { padding: 0; margin-top: 6px; overflow: hidden; }
+.pl-fila { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; background: none; border: 0; border-top: 1px solid var(--border-color); color: var(--text-main); text-align: left; font: inherit; cursor: pointer; }
+.pl-fila:first-child { border-top: 0; }
+.pl-av { width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, .08); display: grid; place-items: center; font-weight: 700; flex: none; }
+.pl-q { flex: 1; min-width: 0; }
+.pl-q b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .9rem; }
+.pl-q small { color: var(--text-muted); font-size: .75rem; }
+.pl-q small.pl-ya { color: #fbbf24; }
+.pl-b { font-size: .75rem; font-weight: 700; border-radius: 8px; padding: 3px 8px; flex: none; background: rgba(255, 255, 255, .08); }
+.pl-pm { background: #3b2a6e; color: #cbb8ff; } .pl-pr { background: #123a4a; color: #7fdcff; } .pl-pl { background: #173d2a; color: #8be3a6; }
+.pl-mas { display: block; width: 100%; background: none; border: 0; border-top: 1px solid var(--border-color); color: var(--primary, #7c5cff); padding: 10px; font-weight: 700; cursor: pointer; }
 .uso-caja { background: rgba(124, 92, 255, .12); border-radius: var(--radius-md); padding: 10px 6px; text-align: center; }
 .uso-caja b { display: block; font-size: 1.5rem; }
 .uso-caja span { font-size: .78rem; color: var(--text-muted); }
