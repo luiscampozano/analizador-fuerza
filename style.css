@@ -1477,3 +1477,9 @@ html.ios body::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 .p-lento p { margin: 0 0 8px; font-weight: 600; }
 .p-lento button { width: 100%; }
 .p-lento small { display: block; margin-top: 8px; color: var(--text-muted); line-height: 1.35; }
+
+/* v2.60.0 avisos de planes y regalos; enlaces a las tiendas */
+.plan-aviso p { margin: 8px 0; line-height: 1.45; }
+.plan-aviso-lista { margin: 6px 0 8px; padding-left: 20px; line-height: 1.6; }
+.plan-tiendas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin: 8px 0; }
+.plan-tiendas a { text-decoration: none; }

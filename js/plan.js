@@ -16,6 +16,49 @@ export async function actualizar() {
   return estado;
 }
 export const actual = () => estado;
+
+// v2.60.0 enlaces para bajar la app (en la web no se puede pagar: se paga en la app de la tienda)
+const APP_STORE = ''; // 'https://apps.apple.com/app/id…' (ID de Apple de FuerzaPro en App Store Connect)
+const PLAY_LISTA = false; // true cuando FuerzaPro esté en producción en Google Play
+function descargar() {
+  return `<div class="plan-tiendas">${APP_STORE ? `<a class="btn-sec" href="${APP_STORE}" target="_blank" rel="noopener"> App Store (iPhone)</a>` : ''}
+    ${PLAY_LISTA ? '<a class="btn-sec" href="https://play.google.com/store/apps/details?id=com.fuerzapro.app" target="_blank" rel="noopener">▶ Google Play (Android)</a>' : '<span class="hint">Android: muy pronto en Google Play.</span>'}</div>`;
+}
+const leerLS = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const ponerLS = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* nada */ } };
+const fechaCorta = (t) => new Date(t).toLocaleDateString('es-EC', { day: 'numeric', month: 'long' });
+// v2.60.0 avisos que salen una sola vez al abrir la app: el regalo de un plan (solo a quien lo recibe) y la llegada de los planes
+export function avisos() {
+  const e = estado; if (!e || !e.aplica || document.querySelector('.modal[style*="flex"]')) return;
+  let html = '';
+  if (e.regalo && e.plan !== 'gratis' && leerLS('af_regalo_visto') !== String(e.regalo.desde)) {
+    ponerLS('af_regalo_visto', String(e.regalo.desde)); ponerLS('af_aviso_planes', '1');
+    const dias = e.hasta && e.regalo.desde ? Math.round((e.hasta - e.regalo.desde) / 86400000) : null;
+    html = `<h3 class="en-det-titulo">🎁 ¡Tienes un regalo!</h3>
+      <p>Luis Campozano, creador de FuerzaPro, te regaló el <b>plan ${esc(e.nombre)}</b> ${dias ? `por <b>${dias} días</b> (hasta el ${esc(fechaCorta(e.hasta))})` : '<b>sin fecha de fin</b>'}.</p>
+      <p class="hint">Gracias por ayudar a probar FuerzaPro. Puedes ver lo que incluye tu plan en Perfil.</p>`;
+  } else if (!leerLS('af_aviso_planes')) {
+    ponerLS('af_aviso_planes', '1');
+    if (e.plan !== 'gratis') return; // ya tiene un plan pagado: no hace falta presentarle los planes
+    const g = e.planes && e.planes.gratis;
+    const web = !nube.esIOS() && !servicio;
+    html = `<h3 class="en-det-titulo">⭐ Llegaron los planes de FuerzaPro</h3>
+      <p>Registrar entrenamientos y comidas sigue <b>gratis y sin límite</b>. Con tu plan Gratis tienes cada mes:</p>
+      ${g ? `<ul class="plan-aviso-lista"><li>${g.video} análisis de video</li><li>${g.ia} créditos de IA (foto del plato, máquina, explicaciones…)</li><li>${g.coach[0]} consejo del entrenador IA</li></ul>` : ''}
+      <p class="hint">Si quieres más, Plus, Pro y Pro Max te dan muchos más análisis y créditos de IA. Pro trae 7 días de prueba gratis.</p>
+      ${web ? `<p class="hint" style="margin-bottom:4px">Para suscribirte, baja la app:</p>${descargar()}` : ''}
+      <button type="button" class="btn-sec" id="plan-aviso-ver" style="width:100%;margin-top:6px">Ver planes</button>`;
+  } else return;
+  const m = document.createElement('div');
+  m.className = 'modal plan-modal'; m.style.display = 'flex'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
+  m.innerHTML = `<div class="plan-caja plan-aviso">${html}<button type="button" class="btn-primary" id="plan-aviso-ok" style="width:100%;margin-top:8px">Entendido</button></div>`;
+  document.body.appendChild(m);
+  const cerrar = () => m.remove();
+  m.querySelector('#plan-aviso-ok').onclick = cerrar;
+  m.onclick = (ev) => { if (ev.target === m) cerrar(); };
+  const ver = m.querySelector('#plan-aviso-ver'); if (ver) ver.onclick = () => { cerrar(); mostrarMejora(); };
+  m.querySelector('#plan-aviso-ok').focus();
+}
 export const aplica = () => !!(estado && estado.aplica);
 // permisos: pdf, videoComunidad, excel, historialDias
 export const permiso = (k) => (aplica() ? estado.permisos[k] : k === 'historialDias' ? null : true);
@@ -132,7 +175,7 @@ async function pintarCompra() {
   if (!nube.conectado()) { caja.innerHTML = '<p class="plan-compra-msg">Inicia sesión en Perfil para suscribirte (tu plan queda en tu cuenta).</p>'; return; }
   const precios = await leerPrecios();
   if (!precios || !Object.keys(precios).length) {
-    caja.innerHTML = '<p class="plan-compra-msg">Para suscribirte usa la app de FuerzaPro instalada desde Google Play.</p>'; return;
+    caja.innerHTML = `<p class="plan-compra-msg">Para suscribirte usa la app de FuerzaPro:</p>${descargar()}`; return;
   }
   const e = estado || {}, nombres = { plus: 'Plus', pro: 'Pro', promax: 'Pro Max' };
   const boton = (sku, txt) => { const d = precios[sku]; if (!d) return '';

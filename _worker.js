@@ -1118,7 +1118,7 @@ async function reportarAlimento(env, u, codigo) {
 // La app nunca ve la clave: el servidor llama a la API de Claude con el secreto ANTHROPIC_API_KEY. Cada funcion tiene
 // su limite por persona y por dia (tabla uso_ia; el "dia" lleva un sufijo por funcion: "2026-11-01" = foto del plato,
 // "2026-11-01:t" = texto, ":e" = etiqueta, ":c" = entrenador), y hay un tope general diario para todas. (v2.22-2.23)
-const LIMITE_IA_USUARIO = 10, LIMITE_IA_TOTAL = 600, MAX_FOTO = 400_000; // caracteres base64 (~300 KB)
+const LIMITE_IA_USUARIO = 10, LIMITE_IA_TOTAL = 1000, MAX_FOTO = 400_000; // caracteres base64 (~300 KB)
 const LIMITES_IA = { '': 10, t: 20, e: 10, c: 3, s: 10, m: 5, q: 10 }; // plato, texto, etiqueta, entrenador, explicar una serie, menu del nutricionista IA, maquina (v2.55.0)
 const MODELO_IA = 'claude-haiku-5-5';
 const texto_ = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, max) : '');
@@ -1149,9 +1149,9 @@ async function cupoIA(env, u, tipo, queHace) {
 // planes pagados se asignan desde Moderacion (regalos y pruebas).
 const PLANES = {
   gratis: { nombre: 'Gratis', video: 3, ia: 10, coach: [1, 'mes'], pdf: false, videoComunidad: false, excel: false, historialDias: 30 },
-  plus: { nombre: 'Plus', video: 20, ia: 30, coach: [1, 'semana'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
-  pro: { nombre: 'Pro', video: 40, ia: 90, coach: [3, 'semana'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
-  promax: { nombre: 'Pro Max', video: null, ia: 300, coach: [1, 'dia'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
+  plus: { nombre: 'Plus', video: 20, ia: 90, coach: [1, 'semana'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
+  pro: { nombre: 'Pro', video: 40, ia: 300, coach: [3, 'semana'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
+  promax: { nombre: 'Pro Max', video: null, ia: 900, coach: [1, 'dia'], pdf: true, videoComunidad: true, excel: true, historialDias: null },
 };
 const PRECIOS = { plus: 3.99, pro: 8.99, promax: 19.99 };
 // periodo en hora de Ecuador: mes '2026-11', semana '2026-S45' (lunes a domingo), dia '2026-11-03'
@@ -1188,14 +1188,16 @@ async function modoLimites(env) {
 async function planDe(env, u) {
   const modo = await modoLimites(env);
   if (modo === 'apagado') return { modo, aplica: false, plan: 'gratis' };
-  let p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(u.id).first();
+  let p = await env.DB.prepare('SELECT plan, hasta, origen, actualizado FROM planes WHERE usuario = ?1').bind(u.id).first();
   // plan de Google Play (v2.37.0) o de Apple (v2.49.0) vencido: ¿se renovo?
   if (p && (p.origen === 'play' || p.origen === 'apple') && p.hasta != null && p.hasta <= Date.now()) {
     try { if (await renovarPlay(env, u.id)) p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(u.id).first(); } catch (e) { /* sin tabla compras aun */ }
     try { if (await renovarApple(env, u.id)) p = await env.DB.prepare('SELECT plan, hasta, origen FROM planes WHERE usuario = ?1').bind(u.id).first(); } catch (e) { /* sin tabla compras aun */ }
   }
   const vigente = p && PLANES[p.plan] && (p.hasta == null || p.hasta > Date.now());
-  return { modo, aplica: modo === 'activo' || (modo === 'prueba' && (esAdmin(env, u) || esProbador(env, u))), plan: vigente ? p.plan : 'gratis', hasta: vigente ? p.hasta : null };
+  // v2.60.0 regalo: cuándo se dio (para mostrar el aviso una sola vez por regalo y calcular los días)
+  return { modo, aplica: modo === 'activo' || (modo === 'prueba' && (esAdmin(env, u) || esProbador(env, u))), plan: vigente ? p.plan : 'gratis', hasta: vigente ? p.hasta : null,
+    regalo: vigente && p.origen === 'regalo' ? { desde: p.actualizado || null } : null };
 }
 async function usoDe(env, uid, clave, per) {
   const r = await env.DB.prepare('SELECT n FROM uso_plan WHERE usuario = ?1 AND periodo = ?2 AND tipo = ?3').bind(uid, periodo(per), clave).first();
@@ -1205,7 +1207,7 @@ const sumarUso = (env, uid, clave, per) => env.DB.prepare('INSERT INTO uso_plan 
   .bind(uid, periodo(per), clave).run();
 async function estadoPlan(env, u) {
   const pl = await planDe(env, u), p = PLANES[pl.plan];
-  const out = { modo: pl.modo, aplica: pl.aplica, plan: pl.plan, nombre: p.nombre, hasta: pl.hasta || null, precios: PRECIOS, planes: PLANES,
+  const out = { modo: pl.modo, aplica: pl.aplica, plan: pl.plan, nombre: p.nombre, hasta: pl.hasta || null, regalo: pl.regalo || null, precios: PRECIOS, planes: PLANES,
     permisos: { pdf: !pl.aplica || p.pdf, videoComunidad: !pl.aplica || p.videoComunidad, excel: !pl.aplica || p.excel, historialDias: pl.aplica ? p.historialDias : null } };
   if (pl.aplica) {
     out.limites = {}; out.usos = {};

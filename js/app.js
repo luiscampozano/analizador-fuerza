@@ -28,7 +28,7 @@ import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 
-const VERSION = '2.59.0';
+const VERSION = '2.60.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -1528,9 +1528,9 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
     });
     // primera vez sin cuenta: pantalla de bienvenida (Google, correo o explorar sin cuenta)
     const repintar = () => { perfil.pintar(); if ($('v-comunidad').classList.contains('active')) comunidad.pintar(); };
-    window.addEventListener('af-sesion', () => { repintar(); plan.actualizar().then(() => perfil.pintar()); });
+    window.addEventListener('af-sesion', () => { repintar(); plan.actualizar().then(() => { perfil.pintar(); setTimeout(plan.avisos, 1500); }); });
     window.addEventListener('af-plan', () => perfil.pintar()); // compra con Google Play (v2.37.0)
-    plan.actualizar().then(() => perfil.pintar()); // plan de suscripcion (v2.33.0)
+    plan.actualizar().then(() => { perfil.pintar(); setTimeout(plan.avisos, 1500); }); // plan de suscripcion (v2.33.0); v2.60.0 avisos de planes y regalos
     bienvenida.iniciar({ alTerminar: () => { repintar(); setTimeout(() => tour.iniciar(), 400); } });
     // v2.41.0 tour de la app la primera vez (si la bienvenida está abierta, el tour sale al cerrarla)
     if ($('bienvenida').style.display !== 'flex') setTimeout(() => tour.iniciar(), 900);
