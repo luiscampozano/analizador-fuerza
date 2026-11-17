@@ -418,7 +418,7 @@ function progreso(paso, frac, msg) {
 $('btn-cancelar').onclick = () => { cancelar = true; };
 // v2.58.0 «Seguir en modo Rápido»: se cancela este análisis y se vuelve a empezar con la precisión Rápida
 let pasarARapida = false;
-$('btn-rapida').onclick = () => { pasarARapida = true; cancelar = true; $('p-lento').style.display = 'none'; };
+$('btn-rapida').onclick = () => { if (pasoActual !== 1) return; pasarARapida = true; cancelar = true; $('p-lento').style.display = 'none'; };
 const minutos = (s) => (s === null ? '' : s < 60 ? ` · faltan ~${Math.ceil(s)} s` : ` · faltan ~${Math.ceil(s / 60)} min`);
 
 // ------------------------------------------------------------------ analisis
@@ -469,6 +469,7 @@ async function analizarArchivo() {
     let rango = rIni > 0 || (rFin > 0 && rFin < video.duration) ? [Math.max(0, (rIni > 0 ? rIni : 0) - 3), rFin > 0 ? rFin + 3 : video.duration] : null;
     if (rango && !(rango[1] > rango[0] + 0.5 && rango[0] < video.duration)) rango = null; // recorte escrito mal: se mira todo el video
     const intentos = [{}, { soloCPU: true }, { soloCPU: true, conReproductor: true }];
+    let lentas = 0; // estimaciones seguidas de más de 40 s
     let frames = [], delegado = '', diag = [];
     for (let k = 0; k < intentos.length; k++) {
       const op = intentos[k];
@@ -479,7 +480,9 @@ async function analizarArchivo() {
         alAvanzar: (f, resta, del) => {
           progreso(1, f, `${k ? 'Reintentando con otro método · ' : ''}Detectando ${detBalon ? 'pose y balón (más lento)' : 'pose'} (${del === 'GPU' ? 'GPU' : 'CPU'})${minutos(resta)}`);
           // a pedido de Luis: si va a tardar más de 40 s se ofrece (no se impone) la IA liviana
-          if (calidad !== 'rapida' && resta > 40) { $('p-lento-txt').textContent = `🐢 Este análisis va a tardar ${resta < 90 ? `unos ${Math.ceil(resta / 10) * 10} segundos` : `unos ${Math.ceil(resta / 60)} minutos`} en tu celular.`; $('p-lento').style.display = ''; }
+          // se muestra una vez (cuando dos estimaciones seguidas pasan de 40 s) y no se reescribe, para no repetir el anuncio
+          lentas = calidad !== 'rapida' && resta > 40 ? lentas + 1 : 0;
+          if (lentas >= 2 && $('p-lento').style.display === 'none') { $('p-lento-txt').textContent = `🐢 Este análisis va a tardar ${resta < 90 ? 'casi un minuto o más' : `unos ${Math.ceil(resta / 60)} minutos`} en tu celular.`; $('p-lento').style.display = ''; }
         },
       });
       frames = r.frames; delegado = r.delegado;
@@ -493,6 +496,9 @@ async function analizarArchivo() {
         throw e;
       }
     }
+    // terminó la detección: el aviso de modo Rápido ya no aplica (cambiar ahora duplicaría la serie, que se guarda antes del video)
+    $('p-lento').style.display = 'none';
+    if (cancelar) throw new Error('cancelado');
     if (ej.cardio) { await analizarActividadVideo(frames, video, d, detBalon ? frames.map((f) => balonT.get(f.t) || null) : null); plan.contarAnalisis(); return; }
     progreso(2, 0.2, 'Calculando la física…');
     const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
@@ -539,12 +545,12 @@ async function analizarArchivo() {
     if (serie.calidadBaja) aviso('⚠️ La IA no vio bien el movimiento en este video: revisa que el conteo de reps sea correcto (detalles en Interpretación).');
   } catch (e) {
     console.error(e);
+    if (e && e.message === 'cancelado' && pasarARapida) { // se reinicia en modo Rápido sin volver al formulario y conservando el origen (video o en vivo)
+      pasarARapida = false; $('in-calidad').value = 'rapida'; progreso(0, 0, 'Cambiando a modo Rápido…'); return analizarArchivo();
+    }
     origen = 'video';
     vista('v-form');
-    if (e && e.message === 'cancelado') {
-      if (pasarARapida) { pasarARapida = false; $('in-calidad').value = 'rapida'; return analizarArchivo(); }
-      return;
-    }
+    if (e && e.message === 'cancelado') return;
     alert((e && e.message) || (typeof Event !== 'undefined' && e instanceof Event ? 'No pude cargar un archivo necesario para el análisis. Revisa tu conexión y vuelve a intentarlo.' : String(e)));
     // la IA no vio a la persona: con permiso, se envian los datos tecnicos (sin el video) para encontrar la causa
     if (e && e.diagnostico && nube.conectado() && confirm('¿Enviar un diagnóstico técnico al equipo de FuerzaPro para revisar por qué falló? Solo se envían datos del celular y del análisis, nunca el video.')) {
