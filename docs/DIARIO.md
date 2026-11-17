@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-16
 
+### 19:15 · v2.57.0 — Perfil: músculos de la semana y accesos arriba
+- **Pidió:** subir «Información» (Estadísticas, Ejercicios, Medidas, Análisis de video) debajo del nombre y mostrar el
+  cuerpo de los músculos trabajados en pequeño (idea de una usuaria que viene de Hevy).
+- **Hecho:** tarjeta «💪 Músculos · últimos 7 días» debajo del nombre (misma cuenta que Estadísticas; al tocarla abre
+  Estadísticas en 7 días) y la sección Información justo después. Nada más cambió de lugar.
+
 ### 19:30 · v2.56.0 — Músculos del entrenamiento (como Hevy) y análisis más rápido
 - **Pidió:** una usuaria usa mucho la «distribución muscular» de Hevy durante el entrenamiento; además el análisis de
   un video de ~1 min tardaba 5-9 min en un Poco X8 Pro.
