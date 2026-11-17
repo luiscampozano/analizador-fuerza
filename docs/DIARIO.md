@@ -16,6 +16,8 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
   mes por teléfono (af_sin_cuenta); al segundo sale «👤 Crea tu cuenta gratis» con botones Crear cuenta (va a Perfil →
   Cuenta y nube), Ver planes y Ahora no; en el navegador agrega los enlaces de las tiendas. Sin internet o con límites
   apagados se deja analizar. Con cuenta aplica el plan de la cuenta (Gratis = 3 al mes).
+- **Revisión (otro Claude):** el reinicio en modo Rápido ya no vuelve a revisar el cupo (podía quedar atascado en la
+  pantalla de progreso), tiempo límite de 5 s al consultar el modo y en iPhone el texto dice «Apple o tu correo».
 
 ### 09:20 · v2.60.0 — Planes para el lanzamiento: más IA, avisos de planes y regalos
 - **Pidió:** revisar los planes (más funciones de IA que antes), un aviso cuando se activen los planes, un aviso solo

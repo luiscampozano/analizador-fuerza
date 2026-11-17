@@ -417,7 +417,7 @@ function progreso(paso, frac, msg) {
 }
 $('btn-cancelar').onclick = () => { cancelar = true; cancelUsuario = true; };
 // v2.58.0 «Seguir en modo Rápido»: se cancela este análisis y se vuelve a empezar con la precisión Rápida
-let pasarARapida = false, reinicioAuto = false, cancelUsuario = false; // reinicioAuto: «Automática» pasó sola a Rápida en este video
+let pasarARapida = false, reinicioAuto = false, cancelUsuario = false, reinicioRapido = false; // reinicioAuto: «Automática» pasó sola a Rápida en este video
 $('btn-rapida').onclick = () => { if (pasoActual !== 1) return; pasarARapida = true; cancelar = true; $('p-lento').style.display = 'none'; };
 const minutos = (s) => (s === null ? '' : s < 60 ? ` · faltan ~${Math.ceil(s)} s` : ` · faltan ~${Math.ceil(s / 60)} min`);
 
@@ -445,7 +445,8 @@ $('btn-analizar').onclick = () => analizarArchivo();
 async function analizarArchivo() {
   if (!archivo) return alert('Primero graba o elige el video de la serie.');
   const d = leerDatos(); if (!d) return;
-  if (!(await plan.puedeAnalizar())) return; // cupo de analisis del plan (v2.33.0)
+  const esReinicio = reinicioRapido; reinicioRapido = false; // v2.61.0 el reinicio en modo Rápido no vuelve a revisar el cupo
+  if (!esReinicio && !(await plan.puedeAnalizar())) return; // cupo de analisis del plan (v2.33.0)
   const { peso, pc, altura, alfa, relacion, carga, masa } = d;
   cancelar = false; pasarARapida = false; cancelUsuario = false; pasoActual = -1; vista('v-progreso'); $('p-lento').style.display = 'none';
   // v2.59.0 «Automática»: empieza con la precisión Normal y, si el celular va lento, cambia sola a Rápida en este video
@@ -555,7 +556,7 @@ async function analizarArchivo() {
     console.error(e);
     if (cancelar && pasarARapida && !cancelUsuario) { // se reinicia en modo Rápido sin volver al formulario y conservando el origen (video o en vivo)
       pasarARapida = false; if (!reinicioAuto) $('in-calidad').value = 'rapida';
-      progreso(0, 0, reinicioAuto ? 'Tu celular va lento con este video: cambiando solo a modo Rápido…' : 'Cambiando a modo Rápido…'); return analizarArchivo();
+      progreso(0, 0, reinicioAuto ? 'Tu celular va lento con este video: cambiando solo a modo Rápido…' : 'Cambiando a modo Rápido…'); reinicioRapido = true; return analizarArchivo();
     }
     reinicioAuto = false; pasarARapida = false; // no se reinicia: que no afecte al próximo análisis
     origen = 'video';

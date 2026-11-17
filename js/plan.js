@@ -73,7 +73,7 @@ const SIN_CUENTA = 1; // Luis: sin cuenta, solo 1 análisis de prueba
 const mesActual = () => new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 7);
 const usosSinCuenta = () => { try { const x = JSON.parse(leerLS('af_sin_cuenta') || 'null'); return x && x.mes === mesActual() ? x.n : 0; } catch (e) { return 0; } };
 async function modoPublico() {
-  try { const d = await (await fetch('/api/planes', { cache: 'no-store' })).json(); if (d && d.planes) publicos = d; return d && d.modo; } catch (e) { return publicos && publicos.modo; }
+  try { const d = await (await fetch('/api/planes', { cache: 'no-store', signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined })).json(); if (d && d.planes) publicos = d; return d && d.modo; } catch (e) { return publicos && publicos.modo; }
 }
 async function pedirCuenta() {
   const web = !nube.esIOS() && !(await play()); // navegador: no es la app de iPhone ni la de Google Play
@@ -81,7 +81,7 @@ async function pedirCuenta() {
   m.className = 'modal plan-modal'; m.style.display = 'flex'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'Crea tu cuenta gratis');
   m.innerHTML = `<div class="plan-caja plan-aviso"><h3 class="en-det-titulo">👤 Crea tu cuenta gratis</h3>
     <p>Ya usaste tu <b>análisis de video de prueba</b> sin cuenta.</p>
-    <p>Crea tu cuenta gratis con ${nube.esIOS() ? 'Apple, Google' : 'Google'} o tu correo para seguir analizando. Además tus entrenamientos y comidas quedan guardados en la nube y no se pierden si cambias de celular.</p>
+    <p>Crea tu cuenta gratis con ${nube.esIOS() ? 'Apple' : 'Google'} o tu correo para seguir analizando. Además tus entrenamientos y comidas quedan guardados en la nube y no se pierden si cambias de celular.</p>
     <button type="button" class="btn-primary" id="sc-cuenta" style="width:100%;margin-top:6px">Crear mi cuenta gratis</button>
     ${web ? `<p class="hint" style="margin:12px 0 0;text-align:center">¿Usas FuerzaPro en el navegador? Baja la app:</p>${descargar()}` : ''}
     <button type="button" class="btn-sec" id="sc-planes" style="width:100%;margin-top:8px">Ver planes</button>
