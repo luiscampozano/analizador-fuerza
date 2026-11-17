@@ -477,18 +477,19 @@ function conectarListaPlanes(pl, NOMP) {
       if (q && !((x.alias || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q))) return false;
       if (filtro === 'regalo') return x.origen === 'regalo';
       if (filtro === 'pago') return x.origen === 'play' || x.origen === 'apple';
-      if (filtro === 'vence') return x.hasta && diasPara(x.hasta) <= 30;
+      if (filtro === 'vence') return x.origen === 'regalo' && x.hasta && diasPara(x.hasta) <= 30; // los pagos se renuevan solos
       return filtro === 'todos' || x.plan === filtro;
     });
     caja.innerHTML = vis.length ? vis.slice(0, mostrar).map((x) => {
-      const d = x.hasta ? diasPara(x.hasta) : null, ori = x.usuario === pl.yo ? 'Creador' : x.origen === 'regalo' ? '🎁 Regalo' : x.origen === 'apple' ? '💳 App Store' : x.origen === 'play' ? '💳 Google Play' : esc(x.origen || '');
+      const d = x.hasta ? diasPara(x.hasta) : null, ori = x.usuario === pl.yo ? 'Tú' : x.origen === 'regalo' ? '🎁 Regalo' : x.origen === 'apple' ? '💳 App Store' : x.origen === 'play' ? '💳 Google Play' : esc(x.origen || '');
       const fin = d == null ? 'sin fin' : `${x.origen === 'regalo' ? 'vence' : 'renueva'} ${new Date(x.hasta).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })} (en ${d} día${d === 1 ? '' : 's'})`;
-      return `<button type="button" class="pl-fila" data-plq="${esc(x.alias ? '@' + x.alias : x.email || '')}" data-plp="${esc(x.plan)}"><span class="pl-av">${esc(nombreDe(x).replace('@', '').charAt(0).toUpperCase())}</span>
-        <span class="pl-q"><b>${esc(nombreDe(x))}</b><small${d != null && d <= 30 ? ' class="pl-ya"' : ''}>${ori} · ${fin}</small></span><span class="pl-b ${CL[x.plan] || ''}">${esc(NOMP[x.plan] || x.plan)}</span></button>`;
-    }).join('') + (vis.length > mostrar ? `<button type="button" class="pl-mas" id="pl-mas">Ver ${vis.length - mostrar} más</button>` : '') : '<p class="hint" style="padding:10px 12px;margin:0">Nadie con ese filtro.</p>';
+      return `<button type="button" class="pl-fila" data-plq="${esc(x.alias ? '@' + x.alias : x.email || '')}" data-plp="${esc(x.plan)}" data-plpago="${x.origen === 'play' || x.origen === 'apple' ? 1 : ''}"${x.alias || x.email ? '' : ' disabled'}><span class="pl-av">${esc(nombreDe(x).replace('@', '').charAt(0).toUpperCase())}</span>
+        <span class="pl-q"><b>${esc(nombreDe(x))}</b><small${x.origen === 'regalo' && d != null && d <= 30 ? ' class="pl-ya"' : ''}>${ori} · ${fin}</small></span><span class="pl-b ${CL[x.plan] || ''}">${esc(NOMP[x.plan] || x.plan)}</span></button>`;
+    }).join('') + (vis.length > mostrar ? `<button type="button" class="pl-mas" id="pl-mas">Ver ${Math.min(20, vis.length - mostrar)} más de ${vis.length - mostrar}</button>` : '') : '<p class="hint" style="padding:10px 12px;margin:0">Nadie con ese filtro.</p>';
     if ($('pl-mas')) $('pl-mas').onclick = () => { mostrar += 20; pintarL(); };
     caja.querySelectorAll('.pl-fila').forEach((b) => (b.onclick = () => {
       if (!b.dataset.plq) return;
+      if (b.dataset.plpago && !confirm('Esta persona paga su plan en la tienda. Si le regalas un plan, su suscripción dejará de revisarse aquí (y sin días quedaría para siempre). ¿Llenar el formulario igual?')) return;
       $('co-reg-quien').value = b.dataset.plq; $('co-reg-plan').value = b.dataset.plp; $('co-reg-dias').value = '';
       $('co-reg-quien').scrollIntoView({ block: 'center', behavior: 'smooth' }); $('co-reg-dias').focus({ preventScroll: true });
     }));

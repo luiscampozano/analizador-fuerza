@@ -1312,7 +1312,7 @@ body.buscando .action-footer { display: none; }
 .uso-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0; }
 /* v2.63.0 lista de usuarios con plan (moderación) */
 .pl-res { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 4px; }
-.pl-buscar { width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 9px 10px; margin: 6px 0 2px; }
+.pl-buscar { width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 9px 10px; font-size: 16px; margin: 6px 0 2px; }
 .pl-lista { padding: 0; margin-top: 6px; overflow: hidden; }
 .pl-fila { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; background: none; border: 0; border-top: 1px solid var(--border-color); color: var(--text-main); text-align: left; font: inherit; cursor: pointer; }
 .pl-fila:first-child { border-top: 0; }

@@ -12,7 +12,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 - **Pidió:** Luis: la lista de planes regalados en una sola línea no servirá con más usuarios. Aprobó el boceto.
 - **Hecho:** resumen por plan, buscador por @alias o correo, filtros (Pro Max, Pro, Plus, regalados, pagados, vencen en
   30 días; amarillo si vence en ≤ 30 días), 10 filas con «Ver más»; tocar a alguien llena el formulario «Regalar».
-  _worker.js: /api/mod/planes devuelve hasta 5000 (antes 100).
+  _worker.js: /api/mod/planes devuelve hasta 5000 (antes 100). Revisión: tocar a alguien que paga pide confirmación;
+  «Vencen» solo cuenta regalos; «Ver 20 más de N». Pendiente menor: un suscriptor que renovó pero no ha abierto la app
+  sale como Gratis hasta que entre (la renovación se revisa al abrir).
 - **Tarjetas lentas (~30 s, reporte de Luis):** medido en Chromium con CPU 4× más lenta: 1,3 s en total; esperas de red
   con tope de 4 s. Probable internet lento (2 kB/s en su captura) o la descarga de la versión nueva. Si se repite, medir por pasos.
 
