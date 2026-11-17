@@ -8,6 +8,17 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-16
 
+### 19:50 · v2.58.0 — Botón «Seguir en modo Rápido» para celulares lentos
+- **Pidió:** probar la imagen pequeña y, si no garantiza la calidad, separar métodos: precisión normal por defecto y,
+  si el análisis tarda más de 40 s, ofrecer la opción rápida avisando que es un poco menos precisa.
+- **Prueba de la imagen de 960 px (MediaPipe en Python, mismo modelo, 5 videos con conteo real):** reps exactas 2/5 vs
+  3/5 con la imagen normal; velocidad media hasta ±16 %; en el remo de 130 kg el RPE pasó de 5 a 10. Se descarta
+  (LADO_POSE sigue en 0).
+- **Hecho:** durante la detección, si el tiempo restante estimado pasa de 40 s y no está en «Rápida», aparece el aviso
+  «🐢 Este análisis va a tardar…» con «⚡ Seguir en modo Rápido»: cancela y vuelve a empezar con la IA liviana (15 Hz),
+  y deja «Rápida» elegida (se puede cambiar en Precisión de la IA). No se detecta el modelo del celular: se mide el
+  tiempo real.
+
 ### 19:15 · v2.57.0 — Perfil: músculos de la semana y accesos arriba
 - **Pidió:** subir «Información» (Estadísticas, Ejercicios, Medidas, Análisis de video) debajo del nombre y mostrar el
   cuerpo de los músculos trabajados en pequeño (idea de una usuaria que viene de Hevy).

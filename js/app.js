@@ -28,7 +28,7 @@ import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 
-const VERSION = '2.57.0';
+const VERSION = '2.58.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -416,6 +416,9 @@ function progreso(paso, frac, msg) {
   }
 }
 $('btn-cancelar').onclick = () => { cancelar = true; };
+// v2.58.0 «Seguir en modo Rápido»: se cancela este análisis y se vuelve a empezar con la precisión Rápida
+let pasarARapida = false;
+$('btn-rapida').onclick = () => { pasarARapida = true; cancelar = true; $('p-lento').style.display = 'none'; };
 const minutos = (s) => (s === null ? '' : s < 60 ? ` · faltan ~${Math.ceil(s)} s` : ` · faltan ~${Math.ceil(s / 60)} min`);
 
 // ------------------------------------------------------------------ analisis
@@ -444,7 +447,7 @@ async function analizarArchivo() {
   const d = leerDatos(); if (!d) return;
   if (!(await plan.puedeAnalizar())) return; // cupo de analisis del plan (v2.33.0)
   const { peso, pc, altura, alfa, relacion, carga, masa } = d;
-  cancelar = false; pasoActual = -1; vista('v-progreso');
+  cancelar = false; pasarARapida = false; pasoActual = -1; vista('v-progreso'); $('p-lento').style.display = 'none';
   try {
     progreso(0, 0, 'Cargando la IA de pose (la primera vez descarga ~10 MB)…');
     await cargarModelo($('in-calidad').value);
@@ -473,7 +476,11 @@ async function analizarArchivo() {
       const r = await detectarPose(video, {
         calidad, hz, cancelado: () => cancelar, soloCPU: !!op.soloCPU, rango,
         alCuadro: seguidor && k === 0 ? (img, t) => seguidor.procesar(img, t) : detBalon ? (img, t) => balonT.set(t, detBalon(img, video.videoWidth, video.videoHeight)) : null,
-        alAvanzar: (f, resta, del) => progreso(1, f, `${k ? 'Reintentando con otro método · ' : ''}Detectando ${detBalon ? 'pose y balón (más lento)' : 'pose'} (${del === 'GPU' ? 'GPU' : 'CPU'})${minutos(resta)}`),
+        alAvanzar: (f, resta, del) => {
+          progreso(1, f, `${k ? 'Reintentando con otro método · ' : ''}Detectando ${detBalon ? 'pose y balón (más lento)' : 'pose'} (${del === 'GPU' ? 'GPU' : 'CPU'})${minutos(resta)}`);
+          // a pedido de Luis: si va a tardar más de 40 s se ofrece (no se impone) la IA liviana
+          if (calidad !== 'rapida' && resta > 40) { $('p-lento-txt').textContent = `🐢 Este análisis va a tardar ${resta < 90 ? `unos ${Math.ceil(resta / 10) * 10} segundos` : `unos ${Math.ceil(resta / 60)} minutos`} en tu celular.`; $('p-lento').style.display = ''; }
+        },
       });
       frames = r.frames; delegado = r.delegado;
       const mirados = rango ? frames.filter((f) => f.t >= rango[0] && f.t <= rango[1]) : frames; // solo los cuadros que vio la IA
@@ -534,7 +541,10 @@ async function analizarArchivo() {
     console.error(e);
     origen = 'video';
     vista('v-form');
-    if (e && e.message === 'cancelado') return;
+    if (e && e.message === 'cancelado') {
+      if (pasarARapida) { pasarARapida = false; $('in-calidad').value = 'rapida'; return analizarArchivo(); }
+      return;
+    }
     alert((e && e.message) || (typeof Event !== 'undefined' && e instanceof Event ? 'No pude cargar un archivo necesario para el análisis. Revisa tu conexión y vuelve a intentarlo.' : String(e)));
     // la IA no vio a la persona: con permiso, se envian los datos tecnicos (sin el video) para encontrar la causa
     if (e && e.diagnostico && nube.conectado() && confirm('¿Enviar un diagnóstico técnico al equipo de FuerzaPro para revisar por qué falló? Solo se envían datos del celular y del análisis, nunca el video.')) {
@@ -687,7 +697,7 @@ async function rehacerVideo(inf, arch) {
   const pose = await almacen.leerPose(inf.id), e = POR_ID[inf.ej.id];
   if (!pose || !e || !inf.datos) return alert('Esta serie no guardó los puntos del cuerpo: no se puede rehacer el video.');
   const desde = vistaPrevia;
-  cancelar = false; pasoActual = -1; vista('v-progreso');
+  cancelar = false; pasoActual = -1; vista('v-progreso'); $('p-lento').style.display = 'none';
   try {
     progreso(0, 1); progreso(1, 1); progreso(2, 0.5, 'Recalculando con el conteo corregido…');
     const d = { ...inf.datos }, cor = inf.corregida || {};
