@@ -14,6 +14,10 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
   legal); transferencia internacional (proveedores en EE. UU./UE, cifrado, compromisos contractuales); cuánto tiempo se
   guardan los datos; lista completa de derechos de la LOPDP (información, acceso, rectificación, eliminación, oposición
   y suspensión, portabilidad, decisiones automatizadas, reclamo ante la Superintendencia de Protección de Datos).
+- **Revisión (otro Claude, contra el código):** se corrigió: las compras y los reportes se borran con la cuenta (no se
+  guardan por ley); el conteo de uso es seudónimo por teléfono y día (no solo totales); el resultado de la IA sí se
+  guarda con tus datos (y Anthropic borra en ≤ 30 días); proveedores (jsDelivr, Open Food Facts sin contrato); portabilidad
+  exacta; decisiones «única o parcialmente» automatizadas; derecho de consulta; plazo de 15 días; comentarios enviados.
 - **Pendiente:** consentimiento explícito y separado para datos de salud (peso, medidas, alergias); revisión por un
   abogado de protección de datos.
 
