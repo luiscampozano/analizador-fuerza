@@ -471,7 +471,8 @@ async function analizarArchivo() {
     let rango = rIni > 0 || (rFin > 0 && rFin < video.duration) ? [Math.max(0, (rIni > 0 ? rIni : 0) - 3), rFin > 0 ? rFin + 3 : video.duration] : null;
     if (rango && !(rango[1] > rango[0] + 0.5 && rango[0] < video.duration)) rango = null; // recorte escrito mal: se mira todo el video
     const intentos = [{}, { soloCPU: true }, { soloCPU: true, conReproductor: true }];
-    let lentas = 0; // estimaciones seguidas de más de 40 s
+    const LENTO_S = 70; // v2.59.0 Luis: se considera lento si faltan más de 70 s (antes 40)
+    let lentas = 0; // estimaciones seguidas de más de LENTO_S
     let frames = [], delegado = '', diag = [];
     for (let k = 0; k < intentos.length; k++) {
       const op = intentos[k];
@@ -481,11 +482,11 @@ async function analizarArchivo() {
         alCuadro: seguidor && k === 0 ? (img, t) => seguidor.procesar(img, t) : detBalon ? (img, t) => balonT.set(t, detBalon(img, video.videoWidth, video.videoHeight)) : null,
         alAvanzar: (f, resta, del) => {
           progreso(1, f, `${k ? 'Reintentando con otro método · ' : ''}Detectando ${detBalon ? 'pose y balón (más lento)' : 'pose'} (${del === 'GPU' ? 'GPU' : 'CPU'})${minutos(resta)}`);
-          // a pedido de Luis: si va a tardar más de 40 s se ofrece (no se impone) la IA liviana
-          // se muestra una vez (cuando dos estimaciones seguidas pasan de 40 s) y no se reescribe, para no repetir el anuncio
-          lentas = calidad !== 'rapida' && resta > 40 ? lentas + 1 : 0;
+          // a pedido de Luis: si va a tardar más de LENTO_S se ofrece la IA liviana (o, en Automática, se cambia sola)
+          // se muestra una vez (cuando dos estimaciones seguidas pasan de LENTO_S) y no se reescribe, para no repetir el anuncio
+          lentas = calidad !== 'rapida' && resta > LENTO_S ? lentas + 1 : 0;
           if (lentas >= 2 && elegida === 'auto' && !cancelar) { pasarARapida = true; reinicioAuto = true; cancelar = true; return; } // Automática: cambia sola
-          if (lentas >= 2 && $('p-lento').style.display === 'none') { $('p-lento-txt').textContent = `🐢 Este análisis va a tardar ${resta < 90 ? 'casi un minuto o más' : `unos ${Math.ceil(resta / 60)} minutos`} en tu celular.`; $('p-lento').style.display = ''; }
+          if (lentas >= 2 && $('p-lento').style.display === 'none') { $('p-lento-txt').textContent = `🐢 Este análisis va a tardar ${resta < 120 ? 'más de un minuto' : `unos ${Math.ceil(resta / 60)} minutos`} en tu celular.`; $('p-lento').style.display = ''; }
         },
       });
       frames = r.frames; delegado = r.delegado;
