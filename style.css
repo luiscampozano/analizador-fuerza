@@ -1464,3 +1464,6 @@ html.ios body::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 .en-mh-fila i { display: block; height: 12px; background: var(--bg-input, #1c1c2a); border-radius: 999px; overflow: hidden; }
 .en-mh-fila i b { display: block; height: 100%; border-radius: 999px; }
 .en-mh-fila strong { text-align: right; }
+
+/* v2.56.1 Información debajo del nombre en Perfil */
+.pf-info-arriba { margin-top: 4px; }
