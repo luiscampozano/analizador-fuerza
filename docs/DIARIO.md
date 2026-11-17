@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-16
 
+### 20:20 · v2.59.0 — Precisión «Automática»
+- **Pidió:** una 4.ª opción en Precisión de la IA (eligió la idea A: que se adapte sola al celular).
+- **Hecho:** «Automática · recomendada» queda por defecto. Empieza con la IA Normal; si dos estimaciones seguidas dicen
+  que faltan más de 40 s, reinicia sola ese video en Rápida (mensaje «cambiando solo a modo Rápido») y al final avisa
+  que se analizó en Rápida (un poquito menos preciso). La opción sigue en Automática para el próximo video. Quien tenía
+  «Normal» guardada (la de antes por defecto) pasa una sola vez a Automática (clave nueva af_calidad_auto); Rápida y
+  Máxima no se tocan. Normal sigue disponible («siempre la precisión completa»).
+
 ### 19:50 · v2.58.0 — Botón «Seguir en modo Rápido» para celulares lentos
 - **Pidió:** probar la imagen pequeña y, si no garantiza la calidad, separar métodos: precisión normal por defecto y,
   si el análisis tarda más de 40 s, ofrecer la opción rápida avisando que es un poco menos precisa.

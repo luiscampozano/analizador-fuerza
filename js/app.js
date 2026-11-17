@@ -28,7 +28,7 @@ import { EQUIPO, valoresEquipo, tieneEquipo } from './equipo.js';
 import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 
-const VERSION = '2.58.0';
+const VERSION = '2.59.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -417,7 +417,7 @@ function progreso(paso, frac, msg) {
 }
 $('btn-cancelar').onclick = () => { cancelar = true; };
 // v2.58.0 «Seguir en modo Rápido»: se cancela este análisis y se vuelve a empezar con la precisión Rápida
-let pasarARapida = false;
+let pasarARapida = false, reinicioAuto = false; // reinicioAuto: «Automática» pasó sola a Rápida en este video
 $('btn-rapida').onclick = () => { if (pasoActual !== 1) return; pasarARapida = true; cancelar = true; $('p-lento').style.display = 'none'; };
 const minutos = (s) => (s === null ? '' : s < 60 ? ` · faltan ~${Math.ceil(s)} s` : ` · faltan ~${Math.ceil(s / 60)} min`);
 
@@ -448,12 +448,14 @@ async function analizarArchivo() {
   if (!(await plan.puedeAnalizar())) return; // cupo de analisis del plan (v2.33.0)
   const { peso, pc, altura, alfa, relacion, carga, masa } = d;
   cancelar = false; pasarARapida = false; pasoActual = -1; vista('v-progreso'); $('p-lento').style.display = 'none';
+  // v2.59.0 «Automática»: empieza con la precisión Normal y, si el celular va lento, cambia sola a Rápida en este video
+  const elegida = $('in-calidad').value, autoBaja = reinicioAuto; reinicioAuto = false;
+  const calidad = autoBaja ? 'rapida' : elegida === 'auto' ? 'normal' : elegida;
   try {
     progreso(0, 0, 'Cargando la IA de pose (la primera vez descarga ~10 MB)…');
-    await cargarModelo($('in-calidad').value);
+    await cargarModelo(calidad);
     let video = await abrirVideo(archivo);
     progreso(0, 1);
-    const calidad = $('in-calidad').value;
     let hz = { rapida: 15, normal: 30, maxima: 60 }[calidad] || 30;
     // v2.36.0 boxeo y deportes son muy rápidos: si el video es de 60 fps (o más) se analiza a 60 Hz aunque la
     // precisión sea Normal; así no se pierde el golpe (antes se tomaba solo 1 de cada 2 cuadros)
@@ -482,6 +484,7 @@ async function analizarArchivo() {
           // a pedido de Luis: si va a tardar más de 40 s se ofrece (no se impone) la IA liviana
           // se muestra una vez (cuando dos estimaciones seguidas pasan de 40 s) y no se reescribe, para no repetir el anuncio
           lentas = calidad !== 'rapida' && resta > 40 ? lentas + 1 : 0;
+          if (lentas >= 2 && elegida === 'auto' && !cancelar) { pasarARapida = true; reinicioAuto = true; cancelar = true; return; } // Automática: cambia sola
           if (lentas >= 2 && $('p-lento').style.display === 'none') { $('p-lento-txt').textContent = `🐢 Este análisis va a tardar ${resta < 90 ? 'casi un minuto o más' : `unos ${Math.ceil(resta / 60)} minutos`} en tu celular.`; $('p-lento').style.display = ''; }
         },
       });
@@ -499,7 +502,7 @@ async function analizarArchivo() {
     // terminó la detección: el aviso de modo Rápido ya no aplica (cambiar ahora duplicaría la serie, que se guarda antes del video)
     $('p-lento').style.display = 'none';
     if (cancelar) throw new Error('cancelado');
-    if (ej.cardio) { await analizarActividadVideo(frames, video, d, detBalon ? frames.map((f) => balonT.get(f.t) || null) : null); plan.contarAnalisis(); return; }
+    if (ej.cardio) { await analizarActividadVideo(frames, video, d, detBalon ? frames.map((f) => balonT.get(f.t) || null) : null); plan.contarAnalisis(); if (autoBaja) aviso('⚡ Tu celular iba lento con este video, así que se analizó en modo Rápido (un poquito menos preciso).', true); return; }
     progreso(2, 0.2, 'Calculando la física…');
     const ini = parseFloat($('in-ini').value), fin = parseFloat($('in-fin').value);
     d.ini = ini > 0 ? ini : null; d.fin = fin > 0 ? fin : null;
@@ -541,12 +544,14 @@ async function analizarArchivo() {
     }
     mostrarInforme(inf, { video: salida, nuevo: true });
     plan.contarAnalisis();
+    if (autoBaja) aviso('⚡ Tu celular iba lento con este video, así que se analizó en modo Rápido (un poquito menos preciso).', true);
     if (infs.length === 2) aviso(`↔️ Detecté los dos lados en el video: se guardaron como 2 series (${infs[0].datos.lado} y ${infs[1].datos.lado}). Arriba puedes cambiar de lado; el PDF trae la comparación.`, true);
     if (serie.calidadBaja) aviso('⚠️ La IA no vio bien el movimiento en este video: revisa que el conteo de reps sea correcto (detalles en Interpretación).');
   } catch (e) {
     console.error(e);
     if (e && e.message === 'cancelado' && pasarARapida) { // se reinicia en modo Rápido sin volver al formulario y conservando el origen (video o en vivo)
-      pasarARapida = false; $('in-calidad').value = 'rapida'; progreso(0, 0, 'Cambiando a modo Rápido…'); return analizarArchivo();
+      pasarARapida = false; if (!reinicioAuto) $('in-calidad').value = 'rapida';
+      progreso(0, 0, reinicioAuto ? 'Tu celular va lento con este video: cambiando solo a modo Rápido…' : 'Cambiando a modo Rápido…'); return analizarArchivo();
     }
     origen = 'video';
     vista('v-form');
@@ -1472,6 +1477,9 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
 (function iniciar() {
   if (leer('af_altura')) $('in-altura').value = leer('af_altura');
   if (leer('af_pc')) $('in-pc').value = leer('af_pc');
+  // v2.59.0 una sola vez: quien tenía «Normal» (la de antes por defecto) pasa a «Automática»
+  if (leer('af_calidad') === 'normal' && !leer('af_calidad_auto')) guardar('af_calidad', 'auto');
+  guardar('af_calidad_auto', 1);
   if (leer('af_calidad')) $('in-calidad').value = leer('af_calidad');
   $('buscar-ej').oninput = pintarLista;
   $('buscar-ej').onfocus = () => { document.body.classList.add('buscando'); subirBuscador(); };
