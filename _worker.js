@@ -1522,8 +1522,9 @@ async function fotoMaquina(req, env, u) {
     { type: 'text', text: `Lista de ejercicios (id|nombre):\n${lista.map((x) => `${x.id}|${x.nombre}`).join('\n')}\n\nResponde solo con el JSON.` }], 600, false));
   const id = ids.has(res.id) ? res.id : '';
   // v2.64.0 si no reconoció nada (ni ejercicio ni máquina) no se cobra; si describe la máquina, sí
-  const gratis = !id && !texto_(res.maquina, 40) && (await noCobrar(env, u, cupo));
-  if (!gratis) await cupo.contar();
+  const vacio = !id && !texto_(res.maquina, 40);
+  const gratis = vacio && (await noCobrar(env, u, cupo)); // pasado el tope, noCobrar ya cobró
+  if (!vacio) await cupo.contar();
   const otras = [...new Set((Array.isArray(res.otras) ? res.otras : []).filter((x) => typeof x === 'string' && ids.has(x) && x !== id))].slice(0, 3);
   return json({
     id, confianza: ['alta', 'media', 'baja'].includes(res.confianza) && id ? res.confianza : 'baja',
@@ -1568,12 +1569,18 @@ async function corregirIA(req, env, u) {
     if (tot && tot.n >= LIMITE_IA_TOTAL) throw fallo('Las funciones con IA llegaron a su límite de hoy. Inténtalo mañana.', 429);
     const yo = await env.DB.prepare('SELECT coalesce(sum(n), 0) AS n FROM uso_ia WHERE usuario = ?1 AND substr(dia, 1, 10) = ?2').bind(u.id, hoy).first();
     if (yo && yo.n >= IA_DIA_PERSONA) throw fallo(`Ya usaste ${IA_DIA_PERSONA} funciones con IA hoy. Mañana podrás seguir.`, 429);
-    cupo = { quedan: undefined, contar: () => env.DB.prepare('UPDATE uso_ia SET n = 1 WHERE usuario = ?1 AND dia = ?2 AND n = 0').bind(u.id, vale).run() };
+    // se reserva el vale ANTES de llamar a la IA (dos pedidos a la vez con el mismo vale: solo uno pasa gratis)
+    const rr = await env.DB.prepare('UPDATE uso_ia SET n = 1 WHERE usuario = ?1 AND dia = ?2 AND n = 0').bind(u.id, vale).run();
+    if (rr && rr.meta && rr.meta.changes !== 1) throw fallo('Esa corrección gratis ya se usó.', 409);
+    cupo = { quedan: undefined, contar: async () => {} };
   } else cupo = await cupoIA(env, u, 'k', 'correcciones');
-  const res = jsonDe(await llamarClaude(env, PROMPT_CORREGIR, [{ type: 'text', text: JSON.stringify({ antes: previo.map(({ x, y, ...a }) => a), correccion: corr }) }], 900, false));
+  const devolverVale = () => (gratis ? env.DB.prepare('UPDATE uso_ia SET n = 0 WHERE usuario = ?1 AND dia = ?2').bind(u.id, vale).run() : null);
+  let res;
+  try { res = jsonDe(await llamarClaude(env, PROMPT_CORREGIR, [{ type: 'text', text: JSON.stringify({ antes: previo.map(({ x, y, ...a }) => a), correccion: corr }) }], 900, false)); }
+  catch (e) { await devolverVale(); throw e; } // falló la IA: el vale sigue sirviendo
   const alimentos = alimentosIA(res.alimentos);
-  if (!alimentos.length && (await noCobrar(env, u, cupo))) return json({ alimentos, nota: texto_(res.nota, 200), gratis, cobrado: false });
-  await cupo.contar();
+  if (!alimentos.length && (await noCobrar(env, u, cupo))) { await devolverVale(); return json({ alimentos, nota: texto_(res.nota, 200), gratis, cobrado: false }); }
+  if (alimentos.length) await cupo.contar(); // pasado el tope de vacíos, noCobrar ya cobró
   return json({ alimentos, nota: texto_(res.nota, 200), gratis, cobrado: !gratis, ...(cupo.quedan !== undefined ? { quedan: cupo.quedan } : {}) });
 }
 
