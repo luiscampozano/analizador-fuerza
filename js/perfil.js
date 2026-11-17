@@ -52,6 +52,7 @@ export function iniciar(d) {
   const cerrar = (id) => () => { $(id).style.display = 'none'; };
   $('pf-ajustes').onclick = () => abrir('pf-ajustes-modal');
   $('pf-ir-estad').onclick = () => deps.abrirEstadisticas();
+  $('pf-musc').onclick = () => deps.abrirEstadisticas(7);
   $('pf-ir-ejs').onclick = () => deps.abrirEjercicios();
   $('pf-ir-medidas').onclick = () => { abrir('pf-medidas'); pintarPeso(); };
   for (const id of ['pf-estad', 'pf-medidas', 'pf-ajustes-modal']) $(id + '-cerrar').onclick = cerrar(id);
@@ -159,6 +160,9 @@ export async function pintar() {
     <div class="kpi-card"><div class="kpi-label">Volumen del mes</div><div class="kpi-value">${fmt(mes.reduce((a, e) => a + vol(e), 0) / 1000, 1)}</div><div class="kpi-sub">toneladas</div></div>
     <div class="kpi-card"><div class="kpi-label">Análisis de video</div><div class="kpi-value">${nAnalisis}</div><div class="kpi-sub">series medidas</div></div>`;
 
+  // v2.57.0 cuerpo pequeño con los músculos de la semana
+  const top = deps.miniMusculos ? deps.miniMusculos($('pf-musc-graf')) : [];
+  $('pf-musc-txt').textContent = top.length ? `Lo que más trabajaste: ${top.join(', ')}.` : 'Esta semana aún no hay series marcadas con ✓.';
   pintarSemanas(lista);
   pintarVideo();
   pintarCoach(lista);

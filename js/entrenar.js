@@ -287,7 +287,15 @@ const PERIODOS = { 7: '7 días', 30: '1 mes', 90: '3 meses', 365: '1 año' };
 let periodoEst = +leerLS('af_est_periodo') || 7;
 const desdePeriodo = () => new Date(Date.now() - periodoEst * 86400000);
 const textoPeriodo = () => (periodoEst === 7 ? 'últimos 7 días' : `último${periodoEst === 365 ? ' año' : periodoEst === 30 ? ' mes' : 's 3 meses'}`);
-export function abrirEstadisticas() {
+// v2.57.0 Perfil: cuerpo pequeño con los músculos de los últimos 7 días (la misma cuenta que Estadísticas)
+export function pintarMiniMusculos(canvas) {
+  const desde = new Date(Date.now() - 7 * 86400000);
+  const carga = cargaDe(lista.filter((en) => new Date(en.inicio) >= desde).flatMap((en) => en.ejercicios)), max = Math.max(0, ...Object.values(carga));
+  pintarCuerpo(canvas, (k) => colorCarga(carga[k] || 0, max));
+  return Object.entries(carga).sort((a, b) => b[1] - a[1]).map(([k]) => tarjetas.NOMBRES_MUSC[k] || k).filter((x, i, a) => a.indexOf(x) === i).slice(0, 3);
+}
+export function abrirEstadisticas(dias = null) {
+  if (dias && PERIODOS[dias]) periodoEst = dias;
   $('pf-estad').style.display = 'flex';
   pintarEstadisticas();
 }

@@ -481,6 +481,11 @@
       <section class="card pf-cab"><div id="pf-cabecera" class="pf-cabecera"></div><button type="button" class="btn-sec" id="pf-editar">Editar</button>
         <button type="button" class="btn-sec pf-engrane" id="pf-ajustes" aria-label="Ajustes, cuenta y respaldo">⚙️</button>
         <div id="pf-social" class="pf-social"></div></section>
+      <!-- v2.57.0 músculos de la semana en pequeño; al tocar se abre Estadísticas en 7 días -->
+      <button type="button" class="card pf-musc" id="pf-musc" aria-label="Músculos trabajados en los últimos 7 días: ver estadísticas">
+        <span class="pf-musc-cab"><b>💪 Músculos · últimos 7 días</b><small>Ver ›</small></span>
+        <canvas id="pf-musc-graf" class="en-musc-graf" data-alto="150" style="height:150px"></canvas>
+        <small id="pf-musc-txt" class="pf-musc-txt"></small></button>
       <!-- v2.56.1 Información sube debajo del nombre para que se vea sin bajar -->
       <section class="section pf-info-arriba"><label class="section-title">Información</label>
         <div class="pf-info">

@@ -1467,3 +1467,7 @@ html.ios body::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 
 /* v2.56.1 Información debajo del nombre en Perfil */
 .pf-info-arriba { margin-top: 4px; }
+.pf-musc { display: block; width: 100%; text-align: left; color: var(--text-main); font: inherit; cursor: pointer; padding: 12px 14px; margin-bottom: 0; }
+.pf-musc-cab { display: flex; justify-content: space-between; align-items: center; }
+.pf-musc-cab small { color: var(--accent-blue); font-weight: 600; }
+.pf-musc-txt { display: block; color: var(--text-muted); text-align: center; margin-top: 2px; }
