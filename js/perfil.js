@@ -161,7 +161,7 @@ export async function pintar() {
     <div class="kpi-card"><div class="kpi-label">Análisis de video</div><div class="kpi-value">${nAnalisis}</div><div class="kpi-sub">series medidas</div></div>`;
 
   // v2.57.0 cuerpo pequeño con los músculos de la semana
-  const top = deps.miniMusculos ? deps.miniMusculos($('pf-musc-graf')) : [];
+  let top = []; try { top = (deps.miniMusculos && deps.miniMusculos($('pf-musc-graf'))) || []; } catch (e) { console.warn(e); }
   $('pf-musc-txt').textContent = top.length ? `Lo que más trabajaste: ${top.join(', ')}.` : 'Esta semana aún no hay series marcadas con ✓.';
   pintarSemanas(lista);
   pintarVideo();

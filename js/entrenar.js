@@ -295,7 +295,7 @@ export function pintarMiniMusculos(canvas) {
   return Object.entries(carga).sort((a, b) => b[1] - a[1]).map(([k]) => tarjetas.NOMBRES_MUSC[k] || k).filter((x, i, a) => a.indexOf(x) === i).slice(0, 3);
 }
 export function abrirEstadisticas(dias = null) {
-  if (dias && PERIODOS[dias]) periodoEst = dias;
+  periodoEst = dias && PERIODOS[dias] ? +dias : (+leerLS('af_est_periodo') || 7); // desde Perfil abre en 7 días sin cambiar lo guardado
   $('pf-estad').style.display = 'flex';
   pintarEstadisticas();
 }
