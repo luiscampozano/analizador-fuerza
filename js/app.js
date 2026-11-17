@@ -415,9 +415,9 @@ function progreso(paso, frac, msg) {
     pasoActual = paso;
   }
 }
-$('btn-cancelar').onclick = () => { cancelar = true; };
+$('btn-cancelar').onclick = () => { cancelar = true; cancelUsuario = true; };
 // v2.58.0 «Seguir en modo Rápido»: se cancela este análisis y se vuelve a empezar con la precisión Rápida
-let pasarARapida = false, reinicioAuto = false; // reinicioAuto: «Automática» pasó sola a Rápida en este video
+let pasarARapida = false, reinicioAuto = false, cancelUsuario = false; // reinicioAuto: «Automática» pasó sola a Rápida en este video
 $('btn-rapida').onclick = () => { if (pasoActual !== 1) return; pasarARapida = true; cancelar = true; $('p-lento').style.display = 'none'; };
 const minutos = (s) => (s === null ? '' : s < 60 ? ` · faltan ~${Math.ceil(s)} s` : ` · faltan ~${Math.ceil(s / 60)} min`);
 
@@ -447,7 +447,7 @@ async function analizarArchivo() {
   const d = leerDatos(); if (!d) return;
   if (!(await plan.puedeAnalizar())) return; // cupo de analisis del plan (v2.33.0)
   const { peso, pc, altura, alfa, relacion, carga, masa } = d;
-  cancelar = false; pasarARapida = false; pasoActual = -1; vista('v-progreso'); $('p-lento').style.display = 'none';
+  cancelar = false; pasarARapida = false; cancelUsuario = false; pasoActual = -1; vista('v-progreso'); $('p-lento').style.display = 'none';
   // v2.59.0 «Automática»: empieza con la precisión Normal y, si el celular va lento, cambia sola a Rápida en este video
   const elegida = $('in-calidad').value, autoBaja = reinicioAuto; reinicioAuto = false;
   const calidad = autoBaja ? 'rapida' : elegida === 'auto' ? 'normal' : elegida;
@@ -544,15 +544,19 @@ async function analizarArchivo() {
     }
     mostrarInforme(inf, { video: salida, nuevo: true });
     plan.contarAnalisis();
-    if (autoBaja) aviso('⚡ Tu celular iba lento con este video, así que se analizó en modo Rápido (un poquito menos preciso).', true);
-    if (infs.length === 2) aviso(`↔️ Detecté los dos lados en el video: se guardaron como 2 series (${infs[0].datos.lado} y ${infs[1].datos.lado}). Arriba puedes cambiar de lado; el PDF trae la comparación.`, true);
-    if (serie.calidadBaja) aviso('⚠️ La IA no vio bien el movimiento en este video: revisa que el conteo de reps sea correcto (detalles en Interpretación).');
+    // un solo aviso con todo lo que haya que decir (cada aviso nuevo tapaba al anterior)
+    const msgs = [];
+    if (serie.calidadBaja) msgs.push('⚠️ La IA no vio bien el movimiento en este video: revisa que el conteo de reps sea correcto (detalles en Interpretación).');
+    if (infs.length === 2) msgs.push(`↔️ Detecté los dos lados en el video: se guardaron como 2 series (${infs[0].datos.lado} y ${infs[1].datos.lado}). Arriba puedes cambiar de lado; el PDF trae la comparación.`);
+    if (autoBaja) msgs.push('⚡ Tu celular iba lento con este video, así que se analizó en modo Rápido (un poquito menos preciso).');
+    if (msgs.length) aviso(msgs.join(' · '), !serie.calidadBaja);
   } catch (e) {
     console.error(e);
-    if (e && e.message === 'cancelado' && pasarARapida) { // se reinicia en modo Rápido sin volver al formulario y conservando el origen (video o en vivo)
+    if (cancelar && pasarARapida && !cancelUsuario) { // se reinicia en modo Rápido sin volver al formulario y conservando el origen (video o en vivo)
       pasarARapida = false; if (!reinicioAuto) $('in-calidad').value = 'rapida';
       progreso(0, 0, reinicioAuto ? 'Tu celular va lento con este video: cambiando solo a modo Rápido…' : 'Cambiando a modo Rápido…'); return analizarArchivo();
     }
+    reinicioAuto = false; pasarARapida = false; // no se reinicia: que no afecte al próximo análisis
     origen = 'video';
     vista('v-form');
     if (e && e.message === 'cancelado') return;
