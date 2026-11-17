@@ -8,6 +8,15 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-17
 
+### 11:25 · v2.61.0 — Pedir cuenta después de 1 análisis sin cuenta
+- **Contexto:** planes activados hoy (11:15); App Store publicada (1.0, ~10:20); regalos a testers hechos por Luis.
+- **Pidió:** que quien usa la app sin cuenta pueda analizar solo 1 video y luego deba crear su cuenta (y pagar si
+  quiere más); en la web, mostrar que puede bajar la app (App Store, Google Play muy pronto).
+- **Hecho:** con el modo «activo» (GET /api/planes ahora devuelve `modo`), sin sesión se permite 1 análisis de video al
+  mes por teléfono (af_sin_cuenta); al segundo sale «👤 Crea tu cuenta gratis» con botones Crear cuenta (va a Perfil →
+  Cuenta y nube), Ver planes y Ahora no; en el navegador agrega los enlaces de las tiendas. Sin internet o con límites
+  apagados se deja analizar. Con cuenta aplica el plan de la cuenta (Gratis = 3 al mes).
+
 ### 09:20 · v2.60.0 — Planes para el lanzamiento: más IA, avisos de planes y regalos
 - **Pidió:** revisar los planes (más funciones de IA que antes), un aviso cuando se activen los planes, un aviso solo
   para quien recibe un plan de regalo (con sus días) y el enlace de la App Store para la gente de la web.

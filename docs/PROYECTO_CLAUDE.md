@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 17 de noviembre de 2026 · **Versión en producción:** v2.60.0
+**Actualizado:** 17 de noviembre de 2026 · **Versión en producción:** v2.61.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -338,6 +338,7 @@ bloqueos, reportes, fallos.
 | v2.54.1 | Rechazo de Apple: página de fuentes científicas con enlaces en toda la app y planes siempre visibles en iPhone/iPad (GET /api/planes público). |
 | v2.54.2 | El cronómetro editable del entrenamiento va dentro de un cuadro con borde (más visible). |
 | v2.54.3 | Permiso explícito antes de enviar datos a la IA (Anthropic), retirable en Perfil (App Store 5.1.2(i)). |
+| v2.61.0 | Sin cuenta y con los planes activos: 1 análisis de video de prueba al mes por teléfono (af_sin_cuenta); después «Crea tu cuenta gratis» (en la web, con enlaces a App Store y Google Play muy pronto). /api/planes devuelve el modo. |
 | v2.60.0 | Créditos IA por mes 10/90/300/900 y tope global 1.000/día. Avisos una sola vez: 🎁 regalo de plan (con sus días) y ⭐ llegada de los planes (solo a Gratis). En la web, enlaces a App Store (id6832380426) y «Google Play muy pronto». |
 | v2.59.0 | Precisión «Automática · recomendada» (nueva por defecto): empieza en Normal y, si el análisis va a tardar más de 70 s (límite también del botón manual), pasa sola a Rápida en ese video y avisa. Quien tenía «Normal» guardada pasa una vez a Automática (af_calidad_auto). |
 | v2.58.0 | Si el análisis va a tardar más de 40 s aparece «⚡ Seguir en modo Rápido» (reinicia con la IA liviana y la deja elegida). La imagen de 960 px se descartó (banco: 2/5 vs 3/5 reps, velocidades hasta ±16 %). |

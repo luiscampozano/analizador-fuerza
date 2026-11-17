@@ -67,8 +67,42 @@ export const aplica = () => !!(estado && estado.aplica);
 export const permiso = (k) => (aplica() ? estado.permisos[k] : k === 'historialDias' ? null : true);
 
 // antes de analizar: ¿le quedan analisis este mes? (no descuenta; se descuenta cuando el analisis sale bien)
+// v2.61.0 sin cuenta: con los planes activos, 1 análisis de video al mes en este teléfono; después hay que crear la cuenta
+// gratis (y ahí aplica el plan de la cuenta). Se cuenta en el teléfono (af_sin_cuenta = { mes, n }).
+const SIN_CUENTA = 1; // Luis: sin cuenta, solo 1 análisis de prueba
+const mesActual = () => new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 7);
+const usosSinCuenta = () => { try { const x = JSON.parse(leerLS('af_sin_cuenta') || 'null'); return x && x.mes === mesActual() ? x.n : 0; } catch (e) { return 0; } };
+async function modoPublico() {
+  try { const d = await (await fetch('/api/planes', { cache: 'no-store' })).json(); if (d && d.planes) publicos = d; return d && d.modo; } catch (e) { return publicos && publicos.modo; }
+}
+async function pedirCuenta() {
+  const web = !nube.esIOS() && !(await play()); // navegador: no es la app de iPhone ni la de Google Play
+  const m = document.createElement('div');
+  m.className = 'modal plan-modal'; m.style.display = 'flex'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'Crea tu cuenta gratis');
+  m.innerHTML = `<div class="plan-caja plan-aviso"><h3 class="en-det-titulo">👤 Crea tu cuenta gratis</h3>
+    <p>Ya usaste tu <b>análisis de video de prueba</b> sin cuenta.</p>
+    <p>Crea tu cuenta gratis con ${nube.esIOS() ? 'Apple, Google' : 'Google'} o tu correo para seguir analizando. Además tus entrenamientos y comidas quedan guardados en la nube y no se pierden si cambias de celular.</p>
+    <button type="button" class="btn-primary" id="sc-cuenta" style="width:100%;margin-top:6px">Crear mi cuenta gratis</button>
+    ${web ? `<p class="hint" style="margin:12px 0 0;text-align:center">¿Usas FuerzaPro en el navegador? Baja la app:</p>${descargar()}` : ''}
+    <button type="button" class="btn-sec" id="sc-planes" style="width:100%;margin-top:8px">Ver planes</button>
+    <button type="button" class="btn-sec" id="sc-cerrar" style="width:100%;margin-top:8px">Ahora no</button></div>`;
+  document.body.appendChild(m);
+  const cerrar = () => m.remove();
+  m.onclick = (ev) => { if (ev.target === m) cerrar(); };
+  m.querySelector('#sc-cerrar').onclick = cerrar;
+  m.querySelector('#sc-planes').onclick = () => { cerrar(); mostrarMejora(); };
+  m.querySelector('#sc-cuenta').onclick = () => { cerrar(); const b = document.querySelector('[data-vista="v-perfil"]'); if (b) b.click(); setTimeout(() => { const c = document.getElementById('pf-nube'); if (c) c.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 300); };
+  m.querySelector('#sc-cuenta').focus();
+}
+export function contarSinCuenta() { if (!nube.conectado()) ponerLS('af_sin_cuenta', JSON.stringify({ mes: mesActual(), n: usosSinCuenta() + 1 })); }
+
 export async function puedeAnalizar() {
   await actualizar();
+  if (!nube.conectado()) {
+    if (usosSinCuenta() < SIN_CUENTA) return true;
+    if ((await modoPublico()) !== 'activo') return true; // sin internet o límites apagados: se deja analizar
+    await pedirCuenta(); return false;
+  }
   if (!aplica()) return true;
   const { lim } = estado.limites.video;
   if (lim == null || estado.usos.video < lim) return true;
@@ -76,6 +110,7 @@ export async function puedeAnalizar() {
   return false;
 }
 export async function contarAnalisis() {
+  contarSinCuenta();
   if (!aplica()) return;
   try { await nube.api('POST', '/api/plan/usar', { tipo: 'video' }); estado.usos.video++; guardar(estado); } catch (e) { /* ya se mostro el aviso */ }
 }

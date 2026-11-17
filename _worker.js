@@ -63,7 +63,7 @@ async function api(req, env, url) {
   if (/^\/api\/vid\/pub\/p[A-Za-z0-9_-]{6,40}$/.test(ruta) && m === 'GET') return videoPub(req, env, ruta.slice(13));
   if (ruta.startsWith('/api/alimentos') && m === 'GET') return leerAlimentos(env, ruta.slice(14), url); // publico: sin sesion
   if (ruta === '/api/visita' && m === 'POST') return registrarVisita(req, env); // publico: conteo anonimo (v2.40.0)
-  if (ruta === '/api/planes' && m === 'GET') return json({ planes: PLANES, precios: PRECIOS }); // v2.54.1 publico: la tabla de planes sin iniciar sesion (revision de Apple)
+  if (ruta === '/api/planes' && m === 'GET') { let modo = 'apagado'; try { modo = await modoLimites(env); } catch (e) { /* sin tablas */ } return json({ planes: PLANES, precios: PRECIOS, modo }); } // v2.54.1 publico (revision de Apple); v2.61.0 + modo, para el limite sin cuenta
   const u = await sesion(req, env);
   if (ruta === '/api/alimentos' && m === 'POST') return crearAlimento(req, env, u);
   if (ruta === '/api/ia/plato' && m === 'POST') return fotoPlato(req, env, u);
