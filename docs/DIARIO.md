@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-18
 
+### 12:30 · Compilación 1.1 de iPhone y plan de la 1.2
+- **Hecho:** Luis activó HealthKit, regeneró el perfil y compiló en Codemagic (build 7, versión 1.1, todo en verde).
+  Aviso de Apple ITMS-90725 (Xcode 27 obligatorio desde abril 2027): solo aviso; codemagic usa `xcode: latest`.
+- **Anotado para la 1.2 (semana del 23 nov):** inglés por etapas y cámara nativa (0,5×, 60 fps, pantalla encendida,
+  enfoque/exposición). Ver PROYECTO_CLAUDE.md §9.
+- **Pendiente (Luis):** probar la 1.1 en TestFlight; App Store Connect (privacidad Salud/Estado físico, palabras clave,
+  novedades, notas para el revisor) y enviar a revisión.
+
 ### 12:30 · v2.66.0 — Versión 1.1 de iPhone: avisos de descanso, vibración, compartir y Apple Salud
 - **Pidió:** Luis: hacer hoy toda la 1.1 (si se demora, en la noche o mañana). Aprobó el plan; boceto enviado.
 - **Hecho:** complementos @capacitor/local-notifications, haptics, share y filesystem; complemento propio

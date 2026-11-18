@@ -430,6 +430,14 @@ combinado es 41/59. Detalle en `docs/DIARIO.md`.
 5. Posible: imagen de la tarjeta dentro de las publicaciones de la Comunidad.
 6. Cardio (hecho en v2.11.0). Posibles mejoras: récords de cardio al terminar, calorías estimadas, distancia en metros para natación.
 
+**Versión 1.2 de iPhone (empezar la semana del 23 nov, después de que Apple apruebe la 1.1; pedido de Luis 18 nov):**
+- Inglés por etapas: (1) base de dos idiomas + selector en Ajustes y pantallas principales; (2) ejercicios, tarjetas,
+  IA en inglés y libras/pies; (3) guía, tour y páginas legales; (4) ficha de la App Store en inglés y compilación que
+  declare inglés. Antes: boceto del selector (celular y computadora). Revisar leyes de privacidad de EE. UU./UE.
+- Cámara nativa para el análisis (sobre todo en vivo): lente gran angular 0,5×, 60 cuadros por segundo, pantalla
+  siempre encendida, bloqueo de enfoque y exposición. Luego lo mismo en Android al pasarla a Capacitor.
+- Después de Google Play: Android a Capacitor + Health Connect + aviso de descanso con la pantalla apagada.
+
 **Después (solo cuando Luis lo pida):**
 
 *Suscripciones*
