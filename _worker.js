@@ -69,6 +69,7 @@ async function api(req, env, url) {
   if (ruta === '/api/ia/plato' && m === 'POST') return fotoPlato(req, env, u);
   if (ruta === '/api/ia/maquina' && m === 'POST') return fotoMaquina(req, env, u); // v2.55.0
   if (ruta === '/api/ia/texto' && m === 'POST') return comidaTexto(req, env, u);
+  if (ruta === '/api/yo/plataforma' && m === 'POST') return guardarPlataforma(req, env, u); // v2.65.0
   if (ruta === '/api/ia/corregir' && m === 'POST') return corregirIA(req, env, u); // v2.64.0
   if (ruta === '/api/ia/etiqueta' && m === 'POST') return etiquetaIA(req, env, u);
   if (ruta === '/api/ia/entrenador' && m === 'POST') return entrenadorIA(req, env, u);
@@ -429,6 +430,7 @@ async function borrarCuenta(env, u) {
     env.DB.prepare('DELETE FROM items WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM fallos WHERE usuario = ?1').bind(u.id),
     env.DB.prepare('DELETE FROM uso_ia WHERE usuario = ?1').bind(u.id),
+    ...(await tablaExiste(env, 'plataformas') ? [env.DB.prepare('DELETE FROM plataformas WHERE usuario = ?1').bind(u.id)] : []), // v2.65.0
     ...(await tablasPlan(env) ? [env.DB.prepare('DELETE FROM uso_plan WHERE usuario = ?1').bind(u.id), env.DB.prepare('DELETE FROM planes WHERE usuario = ?1').bind(u.id)] : []),
     ...(await tablaCompras(env) ? [env.DB.prepare('DELETE FROM compras WHERE usuario = ?1').bind(u.id)] : []), // la suscripcion de Play o Apple queda libre para otra cuenta
     ...(await tablaOpiniones(env) ? [env.DB.prepare('DELETE FROM opiniones WHERE usuario = ?1').bind(u.id)] : []),
@@ -903,7 +905,15 @@ async function moderacion(req, env, u, r, m) {
     const lista = await DB.prepare(`SELECT p.usuario, p.plan, p.hasta, p.origen, p.nota, p.actualizado, pf.alias, us.email FROM planes p
       LEFT JOIN perfiles pf ON pf.usuario = p.usuario LEFT JOIN usuarios us ON us.id = p.usuario WHERE p.hasta IS NULL OR p.hasta > ?1 ORDER BY p.actualizado DESC LIMIT 5000`).bind(ahora).all();
     const total = await DB.prepare('SELECT count(*) AS n FROM usuarios').first();
-    return json({ modo, usuarios: lista.results || [], totalUsuarios: total ? total.n : 0, yo: u.id });
+    // v2.65.0 desde dónde usa la app cada cuenta (todas) y la de cada persona con plan
+    let plataformas = null, usuarios = lista.results || [];
+    if (await tablaExiste(env, 'plataformas')) {
+      const pl = (await DB.prepare('SELECT pl.plataforma, count(*) AS n FROM plataformas pl JOIN usuarios us ON us.id = pl.usuario GROUP BY pl.plataforma').all()).results || [];
+      plataformas = Object.fromEntries(pl.map((x) => [x.plataforma, x.n]));
+      const mapa = new Map(((await DB.prepare('SELECT usuario, plataforma FROM plataformas').all()).results || []).map((x) => [x.usuario, x.plataforma]));
+      usuarios = usuarios.map((x) => ({ ...x, plataforma: mapa.get(x.usuario) || null }));
+    }
+    return json({ modo, usuarios, totalUsuarios: total ? total.n : 0, yo: u.id, plataformas });
   }
   if (r === 'planes' && m === 'POST') {
     if (!(await tablasPlan(env))) throw fallo('Primero crea las tablas de planes en D1.', 409);
@@ -1016,6 +1026,22 @@ async function reportarFallo(req, env, u) {
 // (app de Play, web o iPhone) y si tiene sesion. Sirve para saber cuantas personas usan la app, con o sin cuenta.
 const diaEc = (ms) => new Date(ms - 5 * 3600_000).toISOString().slice(0, 10); // dia en hora de Ecuador
 let visitasOk = null;
+// v2.65.0 desde dónde usa la app cada cuenta (para el panel de suscripciones); una vez al día, solo el tipo
+async function guardarPlataforma(req, env, u) {
+  const p = (await leerJSON(req)).plataforma;
+  const plataforma = ['play', 'web', 'ios'].includes(p) ? p : 'web';
+  try {
+    await env.DB.prepare('INSERT INTO plataformas (usuario, plataforma, actualizado) VALUES (?1, ?2, ?3) ON CONFLICT(usuario) DO UPDATE SET plataforma = excluded.plataforma, actualizado = excluded.actualizado')
+      .bind(u.id, plataforma, Date.now()).run();
+  } catch (e) { return json({ ok: false }); } // sin la tabla todavía: no pasa nada
+  return json({ ok: true });
+}
+const tablasOpc = {}; // v2.65.0 tabla opcional: ¿ya se creó en D1?
+async function tablaExiste(env, t) {
+  if (tablasOpc[t]) return true;
+  try { await env.DB.prepare(`SELECT 1 FROM ${t} LIMIT 1`).first(); tablasOpc[t] = true; } catch (e) { tablasOpc[t] = false; }
+  return tablasOpc[t];
+}
 async function tablaVisitas(env) {
   if (visitasOk) return true;
   try { await env.DB.prepare('SELECT dia FROM visitas LIMIT 1').first(); visitasOk = true; } catch (e) { visitasOk = false; }

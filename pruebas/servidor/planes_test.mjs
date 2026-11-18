@@ -34,6 +34,11 @@ for(let i=0;i<10;i++) await call(L,'POST',['ia/texto','ia/texto','ia/texto'][0],
 [s,r]=await call(L,'POST','mod/plan_usuario',{quien:'ana@x.com',plan:'promax',dias:30}); ok(s===200&&r.hasta>Date.now(),'regalar Pro Max a Ana por 30 días (por correo)');
 [s,r]=await call(L,'POST','mod/plan_usuario',{quien:'nadie',plan:'pro'}); ok(s===404,'persona inexistente');
 [s,r]=await call(L,'GET','mod/planes'); ok(s===200&&r.modo==='prueba'&&r.usuarios.length===2,'Moderación lista los planes vigentes');
+// v2.65.0 desde dónde usa la app cada cuenta
+[s,r]=await call(A,'POST','yo/plataforma',{plataforma:'ios'}); ok(s===200&&r.ok,'la app guarda desde dónde la usa');
+await call(L,'POST','yo/plataforma',{plataforma:'raro'});
+[s,r]=await call(L,'GET','mod/planes'); ok(r.plataformas&&r.plataformas.ios===1&&r.plataformas.web===1&&r.usuarios.every((x)=>'plataforma' in x),'moderación ve el resumen por plataforma (lo desconocido cuenta como web)');
+[s,r]=await call(A,'POST','yo/plataforma',{plataforma:'play'}); [s,r]=await call(L,'GET','mod/planes'); ok(r.plataformas.play===1&&!r.plataformas.ios,'se guarda el último uso');
 [s,r]=await call(L,'POST','mod/planes',{modo:'activo'});
 [s,r]=await call(A,'GET','plan'); ok(r.plan==='promax'&&r.regalo&&Math.round((r.hasta-r.regalo.desde)/864e5)===30&&r.planes.pro.ia===300,'v2.60.0 el regalo trae su fecha (30 días) y Pro tiene 300 créditos');
 [s,r]=await call(A,'GET','plan'); ok(r.aplica&&r.plan==='promax'&&r.limites.video.lim===null,'activo: Ana con Pro Max tiene video ilimitado');

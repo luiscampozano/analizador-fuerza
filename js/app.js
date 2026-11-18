@@ -29,7 +29,7 @@ import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 
-const VERSION = '2.64.0';
+const VERSION = '2.65.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -1546,6 +1546,11 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
       const plataforma = nube.esIOS() ? 'ios' : document.referrer.startsWith('android-app://') || 'getDigitalGoodsService' in window ? 'play' : 'web'; // v2.50.2 Safari en iPhone cuenta como web
       fetch('/api/visita', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ anon, plataforma, cuenta: nube.conectado() }) })
         .then((r) => { if (r.ok) try { localStorage.setItem('af_visita', hoy); } catch (e) { /* nada */ } }).catch(() => {});
+    }
+    // v2.65.0 con cuenta: desde dónde la usa (solo el tipo), una vez al día, para el panel de suscripciones
+    if (nube.conectado() && localStorage.getItem('af_plat_dia') !== hoy) {
+      const plataforma = nube.esIOS() ? 'ios' : document.referrer.startsWith('android-app://') || 'getDigitalGoodsService' in window ? 'play' : 'web';
+      nube.api('POST', '/api/yo/plataforma', { plataforma }).then(() => { try { localStorage.setItem('af_plat_dia', hoy); } catch (e) { /* nada */ } }).catch(() => {});
     }
   } catch (e) { /* sin almacenamiento: no se cuenta */ }
   comunidad.iniciar({ vista, porId: POR_ID, guardarRutina: (n, ejs) => entrenar.guardarRutina(n, ejs) });

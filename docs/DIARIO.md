@@ -6,6 +6,16 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-18
+
+### 07:55 · v2.65.0 — Tipo de celular o web en la lista de usuarios (Moderación)
+- **Pidió:** Luis: ver en la lista de suscripciones si cada persona usa la app de Android, la de iPhone o la web. Aprobó el boceto.
+- **Hecho:** nueva tabla D1 `plataformas` (usuario, plataforma, actualizado), creada en producción y verificada antes de
+  publicar; la app la envía 1 vez al día si hay sesión (solo el tipo). /api/mod/planes devuelve el resumen de todas las
+  cuentas y la plataforma de cada persona con plan; se borra al eliminar la cuenta. Panel: 4 cajas (Android, iPhone, Web,
+  Sin dato), filtros y etiqueta en cada fila. privacidad.html: nuevo punto «Desde dónde usas tu cuenta».
+- **Pendiente:** las cuentas salen como «Sin dato» hasta que abran la versión nueva.
+
 ## 2026-11-17
 
 ### 18:20 · v2.64.0 — Intentar de nuevo y corregir en las funciones con IA; re-análisis gratis del video
