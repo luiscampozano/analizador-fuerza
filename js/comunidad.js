@@ -462,7 +462,7 @@ function listaPlanesHtml(pl, NOMP) {
   // v2.65.0 desde dónde usa la app cada cuenta (todas, con o sin plan), según su último uso
   const P = pl.plataformas, conDato = P ? (P.play || 0) + (P.ios || 0) + (P.web || 0) : 0;
   const plat = P ? `<div class="pl-res">${[['play', '🤖 App Android'], ['ios', '🍎 App iPhone'], ['web', '🌐 Web']].map(([k, n]) => `<div class="uso-caja"><b>${P[k] || 0}</b><span>${n}</span></div>`).join('')}<div class="uso-caja"><b>${Math.max(0, pl.totalUsuarios - conDato)}</b><span>❔ Sin dato</span></div></div>
-    <p class="hint">Según el último uso de cada cuenta (todas, con o sin plan).</p>` : '';
+    <p class="hint">Según el último uso de cada cuenta (todas, con o sin plan). Los filtros 🤖 🍎 🌐 de abajo muestran solo a quienes tienen plan.</p>` : '';
   return `<div class="pl-res">${['promax', 'pro', 'plus'].map((k) => `<div class="uso-caja"><b>${cuenta(k)}</b><span>${NOMP[k]}</span></div>`).join('')}<div class="uso-caja"><b>${Math.max(0, pl.totalUsuarios - con.length)}</b><span>Gratis</span></div></div>
     <p class="hint">${pl.totalUsuarios} cuentas · ${con.length} con plan (${regalo} regalado${regalo === 1 ? '' : 's'}, ${pagados} pagado${pagados === 1 ? '' : 's'})</p>${plat}
     ${con.length ? `<input id="pl-buscar" class="pl-buscar" type="search" placeholder="🔎 Buscar @alias o correo" aria-label="Buscar usuario">

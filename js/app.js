@@ -1550,7 +1550,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
     // v2.65.0 con cuenta: desde dónde la usa (solo el tipo), una vez al día, para el panel de suscripciones
     if (nube.conectado() && localStorage.getItem('af_plat_dia') !== hoy) {
       const plataforma = nube.esIOS() ? 'ios' : document.referrer.startsWith('android-app://') || 'getDigitalGoodsService' in window ? 'play' : 'web';
-      nube.api('POST', '/api/yo/plataforma', { plataforma }).then(() => { try { localStorage.setItem('af_plat_dia', hoy); } catch (e) { /* nada */ } }).catch(() => {});
+      nube.api('POST', '/api/yo/plataforma', { plataforma }).then((r) => { if (r && r.ok) try { localStorage.setItem('af_plat_dia', hoy); } catch (e) { /* nada */ } }).catch(() => {});
     }
   } catch (e) { /* sin almacenamiento: no se cuenta */ }
   comunidad.iniciar({ vista, porId: POR_ID, guardarRutina: (n, ejs) => entrenar.guardarRutina(n, ejs) });
