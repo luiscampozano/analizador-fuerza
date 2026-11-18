@@ -1358,6 +1358,13 @@ body.buscando .action-footer { display: none; }
 
 /* v2.45.0 nutricionista personal IA */
 .nu-ia { margin-bottom: 14px; }
+/* v2.66.0 conexiones del iPhone (Apple Salud, aviso de descanso) */
+.pf-con-fila { display: flex; align-items: center; gap: 10px; }
+.pf-con-ico { font-size: 26px; flex: none; }
+.pf-con-txt { flex: 1; min-width: 0; }
+.pf-con-txt small { display: block; margin: 2px 0 0; }
+.pf-con-sep { border: 0; border-top: 1px solid var(--border-color); margin: 12px 0; }
+.pf-con-cuerpo { margin-top: 10px; padding: 10px; border-radius: 10px; background: var(--bg-input); }
 /* v2.64.0 analizar de nuevo gratis el mismo video */
 .reanalizar { margin: 12px 0; padding: 12px; border-radius: 12px; background: var(--bg-input); border: 1px solid var(--border-color); }
 .reanalizar .hint { margin: 4px 0 8px; }

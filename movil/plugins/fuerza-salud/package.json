@@ -1,0 +1,11 @@
+{
+  "name": "fuerza-salud",
+  "version": "1.0.0",
+  "description": "FuerzaPro: guardar entrenamientos y leer peso y estatura en Apple Salud (HealthKit). Complemento propio, solo iPhone.",
+  "license": "UNLICENSED",
+  "author": "Ing. Luis Campozano, MBA",
+  "repository": { "type": "git", "url": "https://github.com/luiscampozano/analizador-fuerza" },
+  "main": "index.js",
+  "capacitor": { "ios": { "src": "ios" } },
+  "peerDependencies": { "@capacitor/core": ">=7.0.0" }
+}

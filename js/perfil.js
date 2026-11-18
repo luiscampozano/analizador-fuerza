@@ -9,6 +9,7 @@ import * as plan from './plan.js';
 import { icono as figIcono } from './figura.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
+import * as nativo from './nativo.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -51,7 +52,7 @@ export function iniciar(d) {
   // ventanas de Perfil: Estadisticas y Ejercicios las pinta Entrenar (tiene el registro); Medidas y Ajustes, aqui
   const abrir = (id) => { $(id).style.display = 'flex'; };
   const cerrar = (id) => () => { $(id).style.display = 'none'; };
-  $('pf-ajustes').onclick = () => abrir('pf-ajustes-modal');
+  $('pf-ajustes').onclick = () => { abrir('pf-ajustes-modal'); pintarConexiones(); };
   $('pf-ir-estad').onclick = () => deps.abrirEstadisticas();
   $('pf-musc').onclick = () => deps.abrirEstadisticas(7);
   $('pf-ir-ejs').onclick = () => deps.abrirEjercicios();
@@ -289,6 +290,61 @@ function registrarPeso() {
   guardarJ('af_nutri_perfil', { ...perfilCuerpo(), peso: kg });
   $('pf-peso-in').value = '';
   pintar();
+}
+
+// ------------------------------------------------------------------ conexiones del iPhone (v2.66.0): Apple Salud y aviso de descanso
+async function pintarConexiones() {
+  const sec = $('pf-conexiones'), c = $('pf-con');
+  if (!nativo.saludDisponible() && !nativo.avisosDisponibles()) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const fila = (ico, titulo, sub, boton) => `<div class="pf-con-fila"><span class="pf-con-ico">${ico}</span><div class="pf-con-txt"><b>${titulo}</b>${sub ? `<small class="hint">${sub}</small>` : ''}</div>${boton}</div>`;
+  const conectada = nativo.saludConectada(), u = nativo.ultimoEnvio();
+  const hora = u ? new Date(u.t).toLocaleString('es-EC', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  let html = '';
+  if (nativo.saludDisponible()) html += conectada
+    ? fila('❤️', 'Apple Salud · conectado ✅', u ? `Último entrenamiento enviado: ${esc(hora)} (${u.min} min, ~${u.kcal} kcal).` : 'Al terminar un entrenamiento se guarda en Apple Salud.', '<button type="button" class="btn-sec" id="pf-salud-des">Desconectar</button>') + '<div id="pf-salud-cuerpo"></div>'
+    : fila('❤️', 'Apple Salud', 'Tus entrenamientos cierran los anillos de Apple Fitness y tu peso y estatura llegan solos.', '<button type="button" class="btn-sec en-terminar" id="pf-salud-con">Conectar</button>');
+  if (nativo.saludDisponible() && nativo.avisosDisponibles()) html += '<hr class="pf-con-sep">';
+  if (nativo.avisosDisponibles()) html += nativo.avisosActivos()
+    ? fila('🔔', 'Aviso de fin de descanso · activo ✅', 'Suena y vibra aunque tengas la pantalla apagada.', '<button type="button" class="btn-sec" id="pf-avisos-des">Quitar</button>')
+    : fila('🔔', 'Aviso de fin de descanso', 'Suena y vibra aunque tengas la pantalla apagada.', '<button type="button" class="btn-sec en-terminar" id="pf-avisos-act">Activar</button>');
+  c.innerHTML = html;
+  if ($('pf-salud-con')) $('pf-salud-con').onclick = async () => {
+    if (!(await salud.asegurar())) return; // permiso de datos de salud (LOPDP)
+    try { await nativo.conectarSalud(); } catch (e) { alert(e.message || String(e)); }
+    pintarConexiones();
+  };
+  if ($('pf-salud-des')) $('pf-salud-des').onclick = () => {
+    if (!confirm('FuerzaPro dejará de enviar tus entrenamientos a Apple Salud. Para quitar también el permiso: Ajustes del iPhone → Salud → Acceso a datos → FuerzaPro. ¿Desconectar?')) return;
+    nativo.desconectarSalud(); pintarConexiones();
+  };
+  if ($('pf-avisos-act')) $('pf-avisos-act').onclick = async () => {
+    if (!(await nativo.activarAvisos())) alert('El iPhone no dio permiso para avisos. Actívalos en Ajustes del iPhone → Notificaciones → FuerzaPro.');
+    pintarConexiones();
+  };
+  if ($('pf-avisos-des')) $('pf-avisos-des').onclick = () => { nativo.desactivarAvisos(); pintarConexiones(); };
+  // peso y estatura de Apple Salud: si son distintos a los de FuerzaPro, se ofrece usarlos
+  if (conectada && salud.tienePermiso()) {
+    const r = await nativo.leerCuerpo(), caja = $('pf-salud-cuerpo'); if (!caja) return;
+    const log = leerJ('af_peso_log', []), kgFP = log.length ? log[log.length - 1].kg : perfilCuerpo().peso || null;
+    const cmFP = perfilCuerpo().altura || Math.round((parseFloat(localStorage.getItem('af_altura')) || 0) * 100) || null;
+    const kg = r.kg > 30 && r.kg < 300 ? Math.round(r.kg * 10) / 10 : null, cm = r.m > 1.2 && r.m < 2.4 ? Math.round(r.m * 100) : null;
+    const difKg = kg && (!kgFP || Math.abs(kg - kgFP) >= 0.1), difCm = cm && (!cmFP || Math.abs(cm - cmFP) >= 1);
+    if (!difKg && !difCm) return;
+    const f1 = (x, d = 1) => x.toLocaleString('es-EC', { maximumFractionDigits: d });
+    caja.innerHTML = `<div class="pf-con-cuerpo"><small>Apple Salud dice ${[difKg ? `<b>${f1(kg)} kg</b>` : '', difCm ? `<b>${f1(cm / 100, 2)} m</b>` : ''].filter(Boolean).join(' y ')}.${difKg && kgFP ? ` En FuerzaPro tienes ${f1(kgFP)} kg.` : ''}</small>
+      <div class="en-det-botones"><button type="button" class="btn-sec en-terminar" id="pf-salud-usar">Usar los de Apple Salud</button><button type="button" class="btn-sec" id="pf-salud-no">Ahora no</button></div></div>`;
+    $('pf-salud-no').onclick = () => { caja.innerHTML = ''; };
+    $('pf-salud-usar').onclick = () => {
+      if (difKg) {
+        const l = leerJ('af_peso_log', []).filter((p) => p.fecha !== hoyISO()); l.push({ fecha: hoyISO(), kg }); l.sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+        guardarJ('af_peso_log', l); try { localStorage.setItem('af_pc', String(kg)); } catch (e) { /* nada */ }
+      }
+      guardarJ('af_nutri_perfil', { ...perfilCuerpo(), ...(difKg ? { peso: kg } : {}), ...(difCm ? { altura: cm } : {}) });
+      if (difCm) try { localStorage.setItem('af_altura', String(cm / 100)); } catch (e) { /* nada */ }
+      caja.innerHTML = '<p class="hint" style="margin:8px 0 0">✅ Listo: tu peso y estatura se actualizaron.</p>'; pintar();
+    };
+  }
 }
 
 // ------------------------------------------------------------------ enviar comentario (v2.38.0)

@@ -3,6 +3,7 @@
 // con enlace opcional al analisis por video de cada serie e importacion desde Hevy, Strong o Excel.
 import * as tarjetas from './tarjetas.js';
 import * as salud from './salud.js';
+import * as nativo from './nativo.js';
 import * as plan from './plan.js';
 import * as maquina from './maquina.js';
 import { icono as figIcono, animacion } from './figura.js';
@@ -103,7 +104,9 @@ function anterior(e, excluir = null) {
   }
   return null;
 }
-function guardarBorrador() { if (activo) guardarLS(BORRADOR, JSON.stringify(activo)); }
+function guardarBorrador() { if (activo) guardarLS(BORRADOR, JSON.stringify(activo)); sincAviso(); }
+// v2.66.0 app de iPhone: aviso de fin de descanso aunque la pantalla esté apagada
+const sincAviso = () => nativo.avisoDescanso(activo && !activo.editando && !activo.rutina && activo.descanso ? activo.descanso.fin : null);
 const serieVacia = (tipo = 'normal', obj = null) => ({ kg: null, reps: null, rpe: null, tipo, hecha: false, ...(obj ? { obj } : {}) });
 function guardarRutinas() { guardarLS(RUTINAS, JSON.stringify(rutinas)); }
 const ref = (e) => (activo && activo.rutina ? null : P.referencia(lista, e, e.series));
@@ -644,7 +647,7 @@ async function guardarEdicion() {
   abrirDetalle(en.id);
 }
 function cerrarActivo() {
-  activo = null; enlacePendiente = null;
+  activo = null; enlacePendiente = null; sincAviso();
   try { localStorage.removeItem(BORRADOR); } catch (e) { /* nada */ }
   clearInterval(reloj); reloj = null; tic(); pintar();
 }
@@ -1139,6 +1142,7 @@ function iniciarDescanso() {
   const seg = parseInt($('en-descanso').value, 10) || 0;
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) { /* sin audio */ }
   activo.descanso = seg ? { fin: Date.now() + seg * 1000, total: seg } : null;
+  sincAviso();
 }
 function ajustarDescanso(d) {
   if (!activo || !activo.descanso) return;
@@ -1236,6 +1240,13 @@ async function terminar() {
   try { await almacen.guardarEntreno(en); } catch (e) { alert('No pude guardar el entrenamiento: ' + (e.message || e)); return; }
   lista = [en, ...lista.filter((x) => x.id !== en.id)].sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
   cerrarActivo();
+  // v2.66.0 Apple Salud: el entrenamiento cierra los anillos (kcal: cardio por MET + fuerza a MET 5 con tu peso)
+  if (nativo.saludConectada()) {
+    const min = Math.max(0, (new Date(en.fin) - new Date(en.inicio)) / 60000);
+    const minCardio = en.ejercicios.reduce((a, e) => a + e.series.reduce((b, s) => b + (s.hecha && s.min > 0 ? s.min : 0), 0), 0);
+    const kcal = en.ejercicios.reduce((a, e) => a + kcalCardio(e), 0) + 5 * pesoCorporal() * Math.max(0, min - minCardio) / 60;
+    nativo.guardarEntreno(en, kcal).then((ok) => { if (ok && deps.aviso) deps.aviso('❤️ Guardado en Apple Salud', true); });
+  }
   abrirTarjetas(en, recs, true); // como Hevy: al terminar, primero las tarjetas para compartir; «Listo» lleva al detalle
   if (nRec && navigator.vibrate) navigator.vibrate([80, 60, 80, 60, 160]);
 }

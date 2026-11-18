@@ -7,7 +7,12 @@
     "@capacitor/core": "^7.4.0",
     "@capacitor/ios": "^7.4.0",
     "@capacitor-community/apple-sign-in": "^7.1.0",
-    "@capgo/native-purchases": "~7.19.3"
+    "@capgo/native-purchases": "~7.19.3",
+    "@capacitor/local-notifications": "^7.0.7",
+    "@capacitor/haptics": "^7.0.5",
+    "@capacitor/share": "^7.0.4",
+    "@capacitor/filesystem": "^7.1.9",
+    "fuerza-salud": "file:plugins/fuerza-salud"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5"

@@ -9,6 +9,8 @@ import { crearSeguidor, calcularTrayectoria } from './trayectoria.js';
 import { revisarTecnica } from './tecnica.js';
 import { agruparSesiones, tonelajeSemanal, exportarExcel } from './sesiones.js';
 import * as vivo from './vivo.js';
+import * as nativo from './nativo.js';
+nativo.instalar(); // v2.66.0 app de iPhone: vibración y compartir nativos
 import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
 import * as plan from './plan.js';
@@ -29,7 +31,7 @@ import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 
-const VERSION = '2.65.0';
+const VERSION = '2.66.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -1557,7 +1559,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   perfil.iniciar({ vista, version: VERSION, porId: POR_ID, abrirProgreso: (e) => entrenar.abrirProgreso(e), abrirEstadisticas: (dias) => entrenar.abrirEstadisticas(dias), miniMusculos: (c) => entrenar.pintarMiniMusculos(c), abrirEjercicios: () => entrenar.abrirEjercicios(),
     abrirSerie: (id) => abrirSerie(id, 'v-perfil'), alias: () => comunidad.aliasPropio(), verPerfil: (a) => comunidad.verPerfil(a) });
   document.querySelectorAll('[data-volver]').forEach((b) => (b.onclick = () => vista(b.dataset.volver)));
-  entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar'), recalcularPeso: recalcularConPeso, abrirActividad: (id) => abrirActividad(id, 'v-entrenar'), analizable: (id) => !!tipoActividad(POR_ID[id]), compartir: (en, recs, img) => comunidad.compartir(en, recs, img), compartido: (id) => comunidad.compartido(id), alias: () => comunidad.aliasPropio() }).then(() => {
+  entrenar.iniciar({ ejercicios: EJERCICIOS, porId: POR_ID, vista, analizar: analizarDesdeEntreno, abrirSerie: (id) => abrirSerie(id, 'v-entrenar'), recalcularPeso: recalcularConPeso, abrirActividad: (id) => abrirActividad(id, 'v-entrenar'), analizable: (id) => !!tipoActividad(POR_ID[id]), compartir: (en, recs, img) => comunidad.compartir(en, recs, img), compartido: (id) => comunidad.compartido(id), alias: () => comunidad.aliasPropio(), aviso }).then(() => {
     entrenar.alCambiarVista('v-entrenar');
     // nube: al recibir cambios de otro dispositivo se repinta lo que este a la vista
     nube.iniciar({

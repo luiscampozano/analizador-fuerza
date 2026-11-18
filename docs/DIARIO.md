@@ -8,6 +8,16 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-18
 
+### 12:30 · v2.66.0 — Versión 1.1 de iPhone: avisos de descanso, vibración, compartir y Apple Salud
+- **Pidió:** Luis: hacer hoy toda la 1.1 (si se demora, en la noche o mañana). Aprobó el plan; boceto enviado.
+- **Hecho:** complementos @capacitor/local-notifications, haptics, share y filesystem; complemento propio
+  `movil/plugins/fuerza-salud` (Swift, HealthKit: entrenamiento de fuerza con kcal; último peso y estatura).
+  `js/nativo.js` (en web/Android no hace nada). Ajustes: «📲 Conexiones del iPhone». Al terminar un entreno se guarda en
+  Apple Salud (kcal: cardio por MET + fuerza a MET 5 con el peso). codemagic.yaml: textos de HealthKit, entitlement,
+  idioma español, versión 1.1. privacidad.html: Apple Salud y avisos.
+- **Pendiente (Luis):** HealthKit en el App ID + perfil regenerado en Codemagic (fuerzapro_perfil); compilar; probar en
+  TestFlight; «Privacidad de la app» en App Store Connect (Salud y estado físico); palabras clave; enviar a revisión.
+
 ### 07:55 · v2.65.0 — Tipo de celular o web en la lista de usuarios (Moderación)
 - **Pidió:** Luis: ver en la lista de suscripciones si cada persona usa la app de Android, la de iPhone o la web. Aprobó el boceto.
 - **Hecho:** nueva tabla D1 `plataformas` (usuario, plataforma, actualizado), creada en producción y verificada antes de
