@@ -436,7 +436,11 @@ combinado es 41/59. Detalle en `docs/DIARIO.md`.
   declare inglés. Antes: boceto del selector (celular y computadora). Revisar leyes de privacidad de EE. UU./UE.
 - Cámara nativa para el análisis (sobre todo en vivo): lente gran angular 0,5×, 60 cuadros por segundo, pantalla
   siempre encendida, bloqueo de enfoque y exposición. Luego lo mismo en Android al pasarla a Capacitor.
-- Después de Google Play: Android a Capacitor + Health Connect + aviso de descanso con la pantalla apagada.
+- **Google Play (decisión de Luis, 18 nov): salir a producción de una sola vez con TODO**: app de Android pasada a
+  Capacitor (mismo paquete y misma llave de subida), inglés, cámara nativa, aviso de descanso con pantalla apagada,
+  vibración/compartir nativos, Health Connect y compras con Google Play Billing nativo (hoy la TWA usa Digital Goods).
+  Pedir el acceso a producción ~23 nov igual (no obliga a publicar); publicar cuando la versión completa esté probada.
+  Formularios de Play: Health Connect (justificar cada dato) y permisos de notificación/alarmas.
 
 **Después (solo cuando Luis lo pida):**
 
