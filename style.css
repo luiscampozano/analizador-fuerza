@@ -703,7 +703,10 @@ td.tec { color: #ffb070; font-size: 11.5px; max-width: 150px; }
 .en-titulo { width: 100%; background: transparent; border: none; color: var(--text-main); font-size: 19px; font-weight: 800; padding: 4px 0; outline: none; }
 .en-cab-datos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 13px; color: var(--text-muted); margin: 2px 0 8px; }
 .en-cab-datos b { color: var(--text-main); }
-.en-cab-fila { display: flex; gap: 8px; align-items: center; }
+.en-cab-fila { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+/* v2.66.1 en iPhone angosto «Terminar» se salía de la pantalla: Descartar y Terminar bajan juntos a su propia línea */
+.en-cab-acc { display: flex; gap: 8px; }
+@media (max-width: 440px) { .en-cab-acc { flex-basis: 100%; } .en-cab-acc > button { flex: 1; justify-content: center; } }
 .en-desc-sel { font-size: 12px; color: var(--text-muted); display: flex; gap: 6px; align-items: center; margin-right: auto; }
 .en-terminar { background: var(--accent-green) !important; color: #ffffff !important; border-color: var(--accent-green) !important; font-weight: 800; }
 .en-ej { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 10px; margin-bottom: 14px; }
@@ -714,6 +717,7 @@ td.tec { color: #ffb070; font-size: 11.5px; max-width: 150px; }
 .en-nota { width: 100%; background: transparent; border: none; border-bottom: 1px dashed var(--border-color); color: var(--text-muted); font-size: 12.5px; padding: 4px 2px; margin-bottom: 8px; outline: none; }
 .en-fila { display: grid; grid-template-columns: 32px minmax(0,1fr) 58px 46px 44px 34px 30px; gap: 5px; align-items: center; padding: 3px 0; border-radius: 8px; }
 .en-fila-cab { font-size: 10.5px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; text-align: center; }
+.en-fila-cab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* v2.66.1 «Anterior» no se monta sobre «kg» */
 .en-fila input { width: 100%; background: var(--bg-input); border: 1px solid transparent; color: var(--text-main); border-radius: 7px; padding: 8px 2px; text-align: center; font-size: 15px; font-weight: 700; -moz-appearance: textfield; }
 .en-fila input::-webkit-outer-spin-button, .en-fila input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .en-fila input:focus { border-color: var(--accent-green); outline: none; }

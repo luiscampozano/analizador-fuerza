@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-18
 
+### 16:40 · v2.66.1 — Botón «Terminar» visible en iPhone
+- **Pidió:** Luis probó la 1.1 en TestFlight: todo funciona (aviso de descanso con pantalla apagada, Apple Salud,
+  compartir), pero en el entrenamiento el botón «Terminar» no se veía (se salía a la derecha).
+- **Hecho:** Descartar y Terminar agrupados (.en-cab-acc); en ≤ 440 px bajan juntos a una línea a lo ancho. El título
+  «Anterior» ya no se monta sobre «kg». Es solo web: llega a la app de iPhone sin compilar de nuevo.
+
 ### 12:30 · Compilación 1.1 de iPhone y plan de la 1.2
 - **Hecho:** Luis activó HealthKit, regeneró el perfil y compiló en Codemagic (build 7, versión 1.1, todo en verde).
   Aviso de Apple ITMS-90725 (Xcode 27 obligatorio desde abril 2027): solo aviso; codemagic usa `xcode: latest`.
