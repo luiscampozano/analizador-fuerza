@@ -297,6 +297,7 @@ async function pintarConexiones() {
   const sec = $('pf-conexiones'), c = $('pf-con');
   if (!nativo.saludDisponible() && !nativo.avisosDisponibles()) { sec.style.display = 'none'; return; }
   sec.style.display = '';
+  await nativo.revisarAvisos();
   const fila = (ico, titulo, sub, boton) => `<div class="pf-con-fila"><span class="pf-con-ico">${ico}</span><div class="pf-con-txt"><b>${titulo}</b>${sub ? `<small class="hint">${sub}</small>` : ''}</div>${boton}</div>`;
   const conectada = nativo.saludConectada(), u = nativo.ultimoEnvio();
   const hora = u ? new Date(u.t).toLocaleString('es-EC', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';

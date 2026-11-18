@@ -32,10 +32,16 @@ export function instalar() {
       navigator.share = async (d = {}) => {
         const files = [];
         for (const f of d.files || []) {
-          const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(f); });
-          const nombre = (f.name || 'fuerzapro').replace(/[^\w.\-]/g, '_');
-          const w = await F.writeFile({ path: nombre, data: b64, directory: 'CACHE' });
-          files.push(w.uri);
+          // por partes de 3 MB (múltiplo de 3: el base64 de cada parte se puede pegar): un video grande no llena la memoria
+          const b64De = (b) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = rej; r.readAsDataURL(b); });
+          const nombre = (f.name || 'fuerzapro').replace(/[^\w.\-]/g, '_'), PARTE = 3 * 1024 * 1024;
+          let uri = null;
+          for (let i = 0; i < Math.max(1, f.size); i += PARTE) {
+            const data = await b64De(f.slice(i, i + PARTE));
+            if (i === 0) uri = (await F.writeFile({ path: nombre, data, directory: 'CACHE' })).uri;
+            else await F.appendFile({ path: nombre, data, directory: 'CACHE' });
+          }
+          files.push(uri);
         }
         try { await S.share({ title: d.title, text: d.text, url: d.url, files: files.length ? files : undefined, dialogTitle: d.title }); }
         catch (e) { const m = String(e && e.message || e); if (/cancel/i.test(m)) throw new DOMException('Compartir cancelado', 'AbortError'); throw e; }
@@ -46,7 +52,8 @@ export function instalar() {
 
 // ------------------------------------------------------------------ aviso de fin de descanso (pantalla apagada)
 const ID_DESCANSO = 4101;
-let programado = null;
+let programado; // undefined: al abrir la app no se sabe si quedó un aviso pendiente, así que el primer null sí lo cancela
+let pedido = null; // último fin pedido (aunque los avisos estén apagados), para programarlo al activarlos
 export const avisosDisponibles = () => esAppIOS() && !!plug('LocalNotifications');
 export const avisosActivos = () => avisosDisponibles() && leer('af_avisos_descanso') === '1';
 export async function activarAvisos() {
@@ -55,12 +62,20 @@ export async function activarAvisos() {
   if (p.display !== 'granted') p = await L.requestPermissions().catch(() => ({ display: 'denied' }));
   const ok = p.display === 'granted';
   guardar('af_avisos_descanso', ok ? '1' : null);
+  if (ok) { programado = undefined; avisoDescanso(pedido); } // si ya hay un descanso corriendo
   return ok;
+}
+// si la persona quitó el permiso en Ajustes del iPhone, se apaga aquí también
+export async function revisarAvisos() {
+  const L = plug('LocalNotifications'); if (!L || !avisosActivos()) return;
+  const p = await L.checkPermissions().catch(() => null);
+  if (p && p.display !== 'granted') guardar('af_avisos_descanso', null);
 }
 export function desactivarAvisos() { guardar('af_avisos_descanso', null); avisoDescanso(null); }
 // fin = momento (ms) en que termina el descanso, o null para quitar el aviso
 export function avisoDescanso(fin) {
   const L = plug('LocalNotifications'); if (!L) return;
+  pedido = fin;
   if (!avisosActivos()) fin = null;
   if (fin === programado) return;
   programado = fin;
