@@ -11,7 +11,7 @@ import { POR_ID } from './ejercicios.js';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const COLP = '#FF6A2B', COLS = '#8B5CF6'; // principal (naranja) y secundario (morado), como el mapa de Estadísticas
 const NIV = { 2: COLP, 1: COLS };
-const C = { base2: '#2B2A3A', base2L: '#211F2D', seam: '#0B0B12', base3: '#4A4960', metal: '#AEB4C2', disco: '#3F4454', mueble: '#34344A', cable: '#8E95A5' };
+const C = { base2: '#2B2A3A', base2L: '#211F2D', brazo2: '#3B3A52', seam: '#0B0B12', base3: '#4A4960', metal: '#AEB4C2', disco: '#3F4454', mueble: '#34344A', cable: '#8E95A5' };
 
 // ------------------------------------------------------------------ músculos del ejercicio
 const MUSC_ZONAS = { quadriceps: ['cuadriceps'], calves: ['pantorrilla'], left_soleus: ['pantorrilla'], right_soleus: ['pantorrilla'], hamstring: ['femoral'],
@@ -19,7 +19,7 @@ const MUSC_ZONAS = { quadriceps: ['cuadriceps'], calves: ['pantorrilla'], left_s
   chest: ['pecho'], front_deltoids: ['hombro'], back_deltoids: ['hombro'], biceps: ['biceps'], triceps: ['triceps'], forearm: ['antebrazo'], abs: ['abdomen'], obliques: ['oblicuo'] };
 // zona: [pieza, s0, s1, lado, umbral]; lado f = adelante, b = atrás, t = toda, l = costados, m = hacia adentro, x = hacia afuera
 const ZONA = {
-  cuadriceps: ['muslo', 0.12, 0.95, 'f', 0.15], femoral: ['muslo', 0.15, 0.95, 'b', 0.25], aductor: ['muslo', 0.05, 0.6, 'm', 0.45], abductor: ['muslo', -0.02, 0.4, 'x', 0.3],
+  cuadriceps: ['muslo', 0.12, 0.95, 'f', 0.15], femoral: ['muslo', 0.15, 0.95, 'b', 0.25], aductor: ['muslo', 0, 0.65, 'm', 0.45], abductor: ['muslo', -0.02, 0.4, 'x', 0.3],
   gluteo: ['tronco', -0.05, 0.27, 'b', -0.15], lumbar: ['tronco', 0.22, 0.55, 'b', 0.35], dorsal: ['tronco', 0.5, 0.98, 'b', -0.2], trapecio: ['tronco', 0.85, 1.12, 'b', 0.2],
   trapecio_cuello: ['cuello', 0, 0.9, 'b', 0.1], abdomen: ['tronco', 0.15, 0.62, 'f', 0.45], oblicuo: ['tronco', 0.15, 0.6, 'l', 0.6], pecho: ['tronco', 0.68, 0.95, 'f', 0.3],
   pantorrilla: ['pierna', 0, 0.6, 'b', 0.1], biceps: ['brazo', 0.2, 0.85, 'f', 0.3], triceps: ['brazo', 0.15, 0.85, 'b', 0.3], antebrazo: ['antebrazo', 0, 0.65, 't', 0], hombro: ['deltoide', 0, 1, 't', 0],
@@ -43,8 +43,18 @@ function cuerpo3d(t, pose) {
     const ld = j.lados.map((s) => ({ hom: p(s.Sh), codo: p(s.E), mano: p(s.M), cad: p(s.Hp), rod: p(s.K), tob: p(s.A), punta: [0.15, -s.A[1], s.A[0]] }));
     return { cad: p(j.H), hom: p(j.S), cab: p(j.cab), ld: [ld[1], ld[0]] };
   }
-  const j = articular(pose), W = [0.19, -0.19], Wc = [0.1, -0.1], p = (q, z) => [q[0], -q[1], z];
-  const ld = [0, 1].map((i) => ({ hom: p(j.S, W[i]), codo: p(j.braz[i][1], W[i]), mano: p(j.braz[i][2], W[i]), cad: p(j.H, Wc[i]), rod: p(j.pier[i][1], Wc[i]), tob: p(j.pier[i][2], Wc[i]), punta: p(j.pier[i][3], Wc[i]) }));
+  const j = articular(pose), W = [0.19, -0.19], Wc = [0.1, -0.1], k = [1, -1], p = (q, z) => [q[0], -q[1], z];
+  const ld = [0, 1].map((i) => ({ hom: p(j.S, W[i]), codo: p(j.braz[i][1], W[i] + k[i] * 0.02), mano: p(j.braz[i][2], W[i] + k[i] * 0.04), cad: p(j.H, Wc[i]), rod: p(j.pier[i][1], Wc[i]), tob: p(j.pier[i][2], Wc[i]), punta: p(j.pier[i][3], Wc[i]) }));
+  if (t.pieFijo) { // v2.70.1 búlgara: el pie de atrás se queda apoyado en el banco (rodilla calculada)
+    const d = ld[1], [A, Pn] = t.pieFijo, H = d.cad, dx = A[0] - H[0], dy = A[1] - H[1], dist = Math.min(Math.hypot(dx, dy), 0.859) || 1e-6;
+    const h = Math.sqrt(Math.max(0, 0.43 * 0.43 - (dist / 2) ** 2)), mx = H[0] + dx / 2, my = H[1] + dy / 2, nx = -dy / dist, ny = dx / dist;
+    const k1 = [mx + nx * h, my + ny * h], k2 = [mx - nx * h, my - ny * h], K = k1[1] < k2[1] ? k1 : k2;
+    d.rod = [K[0], K[1], d.cad[2]]; d.tob = [A[0], A[1], d.cad[2]]; d.punta = [Pn[0], Pn[1], d.cad[2]];
+  }
+  if (pose.abd) ld.forEach((d, i) => { // v2.70.1 abrir y cerrar las piernas sentado (máquina de aductores/abductores)
+    const a = (pose.abd * Math.PI) / 180 * (i ? -1 : 1), c = Math.cos(a), s = Math.sin(a), H = d.cad;
+    for (const n of ['rod', 'tob', 'punta']) { const q = d[n], dx = q[0] - H[0], dz = q[2] - H[2]; d[n] = [H[0] + dx * c - dz * s, q[1], H[2] + dx * s + dz * c]; }
+  });
   return { cad: p(j.H, 0), hom: p(j.S, 0), cab: p(j.cab, 0), ld };
 }
 // cámara: psi = giro alrededor del eje vertical (0 de lado, 90 de frente), phi = mirar un poco desde arriba
@@ -140,7 +150,7 @@ function piezas(t, pose, NC) {
   const barra = (c) => { eqp('barra', [c[0], c[1], -0.75], [c[0], c[1], 0.75], cil(0.014), C.metal); for (const z of [-1, 1]) eqp('disco', [c[0], c[1], z * 0.5], [c[0], c[1], z * 0.58], cil(0.2), C.disco); };
   const mancuerna = (m, eje) => { eqp('barra', mas(m, eje, -0.11), mas(m, eje, 0.11), cil(0.016), C.metal); for (const k of [-1, 1]) eqp('disco', mas(m, eje, k * 0.07), mas(m, eje, k * 0.12), cil(0.055), C.disco); };
   const cable = (a, b) => { eqp('barra', a, b, cil(0.007), C.cable); eqp('disco', mas(a, [0, 0, 1], -0.02), mas(a, [0, 0, 1], 0.02), cil(0.045), C.disco); };
-  const ejeM = t.frente ? [1, 0, 0] : [0, 0, 1];
+  const ejeM = t.frente || t.neutro ? [1, 0, 0] : [0, 0, 1];
   if (e === 'barra_mano' || e === 'barra_frente') barra([medio[0], medio[1]]);
   else if (e === 'barra_hombros') barra([C3.hom[0] - 0.05, C3.hom[1] + 0.02]);
   else if (e === 'barra_cadera') barra([C3.cad[0], C3.cad[1] + 0.12]);
@@ -184,7 +194,7 @@ function nivelCara(pz, sm, v, zonas) {
   return n;
 }
 function sombra(g, P, cy0) { // sombra suave en el piso
-  const a = P([-0.35, 0, 0]), b = P([0.35, 0, 0]), c = P([0, 0, -0.3]), d = P([0, 0, 0.3]);
+  const a = P([-0.3, 0, 0]), b = P([0.3, 0, 0]), c = P([0, 0, -0.22]), d = P([0, 0, 0.22]);
   const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, rx = Math.max(Math.abs(b[0] - a[0]), Math.abs(d[0] - c[0])) / 2, ry = Math.max(3, Math.max(Math.abs(b[1] - a[1]), Math.abs(d[1] - c[1])) / 2);
   g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(cx, cy ?? cy0, rx, ry, 0, 0, Math.PI * 2); g.fill();
 }
@@ -231,14 +241,14 @@ function dibujar3D(g, t, pose, psi, phi, zonas, caja, NC = 10) {
 }
 
 // ------------------------------------------------------------------ dibujo 2D plano (como el mapa de músculos)
-function dibujar2D(g, t, pose, psi, zonas, caja) {
-  const NC = 16, { C3, out, cajas } = piezas(t, pose, NC), X = camara(psi, 0), [cx, cy, e] = caja(X), P = (q) => { const p = X(q); return [cx + p[0] * e, cy + p[1] * e]; };
+function dibujar2D(g, t, pose, psi, zonas, caja, phi = 0) {
+  const NC = 16, { C3, out, cajas } = piezas(t, pose, NC), X = camara(psi, phi), [cx, cy, e] = caja(X), P = (q) => { const p = X(q); return [cx + p[0] * e, cy + p[1] * e]; };
   const zl = [0, 1].map((i) => (X(C3.ld[i].hom)[2] + X(C3.ld[i].cad)[2]) / 2), lejos = (i) => i !== undefined && zl[i] < zl[1 - i] - 1e-3;
   const vista = (d) => X(d)[2] - X([0, 0, 0])[2], capas = [];
   for (const v of cajas) capas.push({ z: v.reduce((a, q) => a + X(q)[2], 0) / 8 - 0.3, pts: envolvente(v.map(P)), c: C.mueble });
   for (const pz of out) {
     const zc = (X(pz.A)[2] + X(pz.B)[2]) / 2 + ({ deltoide: 0.02, antebrazo: 0.012, mano: 0.012, brazo: 0.01 }[pz.nombre] || 0);
-    const R = pz.anillos, base = pz.equipo || (lejos(pz.i) ? C.base2L : C.base2), a = pz.nombre === 'disco' && pz.forma[1][1] > 0.1 ? 0.3 : 1;
+    const R = pz.anillos, base = pz.equipo || (lejos(pz.i) ? C.base2L : /brazo|mano|deltoide/.test(pz.nombre) && pz.i !== undefined ? C.brazo2 : C.base2), a = pz.nombre === 'disco' && pz.forma[1][1] > 0.1 ? 0.3 : 1;
     for (let j = 0; j < R.length - 1; j++) capas.push({ z: zc + j * 1e-5, pts: envolvente(R[j].pts.concat(R[j + 1].pts).map(P)), c: base, a });
     if (pz.equipo) continue;
     for (const [nombre, nv] of Object.entries(zonas)) { // músculo: medio anillo hacia su lado, si mira a la cámara
@@ -337,8 +347,8 @@ function registrar(cv, hacer) {
   arrancar();
   return o;
 }
-function vistaPlana(cv, t, psi, zonas) {
-  registrar(cv, ({ W, H }) => { const caja = encuadre(puntos(t, muestras(t)), W, H); return (g, ms) => dibujar2D(g, t, poseEn(t, ms), psi, zonas, caja); });
+function vistaPlana(cv, t, psi, zonas, phi = 0) {
+  registrar(cv, ({ W, H }) => { const caja = encuadre(puntos(t, muestras(t)), W, H); return (g, ms) => dibujar2D(g, t, poseEn(t, ms), psi, zonas, caja, phi); });
 }
 function vistaGiro(cv, t, zonas) {
   const phi = 14, est = { giro: 35, arr: null, ult: 0 };
@@ -351,7 +361,33 @@ function vistaGiro(cv, t, zonas) {
     return (g, ms, dt) => { if (!quieto() && est.arr == null && ms - est.ult > 2500) est.giro += dt * 0.012; dibujar3D(g, t, poseEn(t, ms), est.giro, phi, zonas, caja); };
   });
 }
-const plantilla = (id) => { const n = plantillaDe(id); return n && T[n] ? T[n] : null; };
+// v2.70.1 plantillas propias del muñeco (sentado abriendo/cerrando piernas) y ajustes de las de figura.js
+const SENTADO = { H: [0, -0.55], suelo: false, tau: -8, piernas: [[90, 0]], brazos: [[30, 30]] };
+const PROPIAS = {
+  aductores: { A: { ...SENTADO, abd: 40 }, B: { ...SENTADO, abd: 6 }, props: ['asiento'], vistas: [[90, 'De frente', 40], [35, 'A 45°', 25]] },
+  abductores: { A: { ...SENTADO, abd: 6 }, B: { ...SENTADO, abd: 40 }, props: ['asiento'], vistas: [[90, 'De frente', 40], [35, 'A 45°', 25]] },
+};
+const AJUSTES = {
+  bulgara: { pieFijo: [[-0.6, 0.6], [-0.74, 0.52]], neutro: true }, bulgara_barra: { pieFijo: [[-0.6, 0.6], [-0.74, 0.52]] },
+  sentadilla_mancuernas: { neutro: true }, zancada: { neutro: true }, step_up: { neutro: true }, pantorrilla_libre: { neutro: true }, rumano_mancuernas: { neutro: true },
+};
+// ejercicio a un brazo o a una pierna con plantilla de los dos lados: el lado de atrás se queda quieto
+function unLado(t) {
+  if (!t.A || !t.B) return t;
+  const cambia = (k) => JSON.stringify(t.A[k]) !== JSON.stringify(t.B[k]), k = cambia('piernas') ? 'piernas' : cambia('brazos') ? 'brazos' : null;
+  if (!k || !t.A[k] || t.A[k].length !== 1 || t.B[k].length !== 1) return t;
+  return { ...t, A: { ...t.A, [k]: [t.A[k][0], t.A[k][0]] }, B: { ...t.B, [k]: [t.B[k][0], t.A[k][0]] } };
+}
+const cachePl = new Map();
+const plantilla = (id) => {
+  if (!id) return null;
+  if (cachePl.has(id)) return cachePl.get(id);
+  const n = plantillaDe(id); let t = n ? PROPIAS[n] || T[n] || null : null;
+  if (t && AJUSTES[n]) t = { ...t, ...AJUSTES[n] };
+  const def = POR_ID[id];
+  if (t && def && def.unilateral && !PROPIAS[n]) t = unLado(t);
+  cachePl.set(id, t); return t;
+};
 export const tieneMuneco = (id) => !!(id && plantilla(id));
 
 // ------------------------------------------------------------------ miniaturas para listas
@@ -397,6 +433,7 @@ function chips({ pri, sec }) {
 const LEYENDA = '<div class="mu-ley"><span><i class="mu-p"></i>Principal</span><span><i class="mu-s"></i>Secundario</span></div>';
 // segunda vista del 2D: de frente si está de pie; a 45° si está acostado o en el suelo (de frente no se entiende)
 function vistas2d(t) {
+  if (t.vistas) return t.vistas;
   if (t.frente) return [[90, 'De frente'], [0, 'De lado']];
   const p = t.A || t.cuadros[0], acostado = Math.abs(p.tau || 0) > 50 || p.suelo === false;
   return [[0, 'De lado'], acostado ? [45, 'A 45°'] : [90, 'De frente']];
@@ -409,7 +446,7 @@ export function demo(caja, ej) {
   caja.innerHTML = `<div class="mu-caja"><b class="mu-tit">📖 Cómo se hace</b>
     <div class="mu-vistas">${vs.map(([, n]) => `<div class="mu-v"><canvas role="img" aria-label="${esc(ej.nombre || '')}, ${n}"></canvas><span>${n}</span></div>`).join('')}</div>
     ${m.pri.length ? LEYENDA : ''}${chips(m)}<button type="button" class="btn-sec mu-ver">🔄 Ver en 3D</button></div>`;
-  caja.querySelectorAll('canvas').forEach((cv, i) => vistaPlana(cv, t, vs[i][0], m.zonas));
+  caja.querySelectorAll('canvas').forEach((cv, i) => vistaPlana(cv, t, vs[i][0], m.zonas, vs[i][2] || 0));
   caja.querySelector('.mu-ver').onclick = () => abrirFicha(ej);
   return true;
 }
