@@ -12,6 +12,19 @@ import * as vivo from './vivo.js';
 import * as nativo from './nativo.js';
 import './glosario.js'; // v2.67.0 explicaciones ⓘ de los términos
 import * as grabar from './grabar.js';
+import * as U from './unidades.js';
+// v2.68.0 el análisis también en libras (unidad de Perfil → ⚙️): los datos siguen en kg; solo cambia lo que se ve y se escribe
+const UA = () => U.global(), UN = () => U.nombre(UA());
+const pk = (kg, d = 0) => fmt(U.desdeKg(kg, UA()), d);
+const kgDe = (id) => U.aKg(parseFloat($(id).value || '0') || 0, UA()); // campo en la unidad elegida → kg
+const ponerKg = (id, kg) => { $(id).value = Number.isFinite(+kg) && kg !== '' && kg != null ? U.paraCampo(+kg, UA()) : ''; };
+function pintarUnidadAnalisis() { document.querySelectorAll('.u-peso').forEach((s) => { s.textContent = UN(); }); }
+// si cambia la unidad en Ajustes con el formulario lleno, los números se convierten
+window.addEventListener('af-unidades', (ev) => {
+  const { antes, ahora } = ev.detail || {}; if (!antes || antes === ahora) return;
+  for (const id of ['in-peso', 'in-carro', 'in-pc']) { const v = parseFloat($(id).value); if (Number.isFinite(v)) $(id).value = U.paraCampo(U.aKg(v, antes), ahora); }
+  pintarUnidadAnalisis(); cargaTotal();
+});
 nativo.instalar(); // v2.66.0 app de iPhone: vibración y compartir nativos
 import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
@@ -33,7 +46,7 @@ import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 
-const VERSION = '2.67.0';
+const VERSION = '2.68.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -254,8 +267,9 @@ function ajustarCampos() {
   $('ay-incl').textContent = 'Ángulo del riel (mídelo con el celular).';
   $('ay-pc').textContent = p === 'corporal' ? 'Con esto se calcula la fuerza.' : 'No se suma a la carga.';
   $('in-incl').value = leer('af_incl_' + ej.id) || ej.alfa || 45;
-  $('in-carro').value = leer('af_carro_' + ej.id) ?? ej.carro ?? 0;
-  $('in-peso').value = leer('af_peso_' + ej.id) ?? (p === 'corporal' ? 0 : '');
+  ponerKg('in-carro', leer('af_carro_' + ej.id) ?? ej.carro ?? 0);
+  { const pz = leer('af_peso_' + ej.id); if (pz != null) ponerKg('in-peso', pz); else $('in-peso').value = p === 'corporal' ? 0 : ''; }
+  pintarUnidadAnalisis();
   cargaTotal();
 }
 // v2.41.2 muestra cuánto mueves en total (discos + máquina o barra) para que no haya dudas
@@ -264,7 +278,7 @@ function cargaTotal() {
   if (!usaCarro()) { el.style.display = 'none'; return; }
   const d = parseFloat($('in-peso').value || '0') || 0, c = parseFloat($('in-carro').value || '0') || 0;
   const n = ej.perfil === 'riel' ? 'máquina' : 'barra';
-  el.style.display = ''; el.innerHTML = `Mueves en total: <b>${fmt(d + c, (d + c) % 1 ? 1 : 0)} kg</b> (discos ${fmt(d, d % 1 ? 1 : 0)} + ${n} ${fmt(c, c % 1 ? 1 : 0)}). Tu peso corporal no se suma.`;
+  el.style.display = ''; el.innerHTML = `Mueves en total: <b>${fmt(d + c, (d + c) % 1 ? 1 : 0)} ${UN()}</b> (discos ${fmt(d, d % 1 ? 1 : 0)} + ${n} ${fmt(c, c % 1 ? 1 : 0)}). Tu peso corporal no se suma.`;
 }
 $('in-peso').addEventListener('input', cargaTotal); $('in-carro').addEventListener('input', cargaTotal);
 
@@ -433,13 +447,13 @@ const minutos = (s) => (s === null ? '' : s < 60 ? ` · faltan ~${Math.ceil(s)} 
 // ------------------------------------------------------------------ analisis
 // Lee y valida los datos del formulario (los usa el analisis de videos y el modo en vivo)
 function leerDatos() {
-  const peso = parseFloat($('in-peso').value || '0');
-  const pc = parseFloat($('in-pc').value || '0');
+  const peso = kgDe('in-peso');
+  const pc = kgDe('in-pc');
   const altura = parseFloat($('in-altura').value || '0');
-  if (ej.perfil !== 'corporal' && ej.perfil !== 'cardio' && !(peso > 0)) { alert('Indica el peso en kg.'); return null; }
+  if (ej.perfil !== 'corporal' && ej.perfil !== 'cardio' && !(peso > 0)) { alert(`Indica el peso en ${UN()}.`); return null; }
   if (!(altura > 1 && altura < 2.4)) { alert('Revisa tu estatura (en metros, por ejemplo 1.68).'); return null; }
   if (ej.perfil === 'corporal' && !(pc > 20)) { alert('Indica tu peso corporal.'); return null; }
-  const carro = usaCarro() ? parseFloat($('in-carro').value || '0') : 0;
+  const carro = usaCarro() ? kgDe('in-carro') : 0;
   const alfa = ej.perfil === 'riel' ? parseFloat($('in-incl').value || '45') : 90;
   const relacion = ej.perfil === 'polea' ? parseFloat($('in-rel').value || '1') : 1;
   guardar('af_peso_' + ej.id, peso); guardar('af_carro_' + ej.id, carro); guardar('af_incl_' + ej.id, alfa);
@@ -706,9 +720,9 @@ const tramoDe = (frames) => { const v = frames.filter((f) => f.puntos); return v
 async function crearVideoSerie(video, archivoV, e, d, calc, { repsTotal = null, alAvanzar = () => {} } = {}) {
   const { full, res, tray, tec, fps } = calc;
   const ang = $('in-angulo').value ? anguloArticular(full, $('in-angulo').value, fps) : null;
-  const titulo = e.perfil === 'riel' ? `${e.corto} · ${fmt(d.carga, 1)} kg · peso efectivo (${d.alfa}°): ${fmt(res.estatico)} kg`
-    : e.perfil === 'corporal' ? `${e.corto} · peso corporal ${fmt(d.pc, 1)} kg${d.peso ? (e.asistido ? ` − asistencia ${fmt(d.peso, 1)} kg` : ` + lastre ${fmt(d.peso, 1)} kg`) : ''}`
-    : `${e.corto} · ${fmt(d.carga, 1)} kg${d.relacion !== 1 ? ` (polea ${d.relacion}:1)` : ''}`;
+  const titulo = e.perfil === 'riel' ? `${e.corto} · ${pk(d.carga, 1)} ${UN()} · peso efectivo (${d.alfa}°): ${pk(res.estatico)} ${UN()}`
+    : e.perfil === 'corporal' ? `${e.corto} · peso corporal ${pk(d.pc, 1)} ${UN()}${d.peso ? (e.asistido ? ` − asistencia ${pk(d.peso, 1)} ${UN()}` : ` + lastre ${fmt(d.peso, 1)} kg`) : ''}`
+    : `${e.corto} · ${pk(d.carga, 1)} ${UN()}${d.relacion !== 1 ? ` (polea ${d.relacion}:1)` : ''}`;
   const leyendaVel = e.sentido === 'abajo' ? 'Velocidad de la carga (m/s)  ↑ subida  ↓ bajada' : 'Velocidad (m/s)  ↑ fase concéntrica  ↓ excéntrica';
   // v2.40.1 la linea amarilla del recorrido es opcional (apagada por defecto); el informe y el PDF la siguen midiendo
   const tramo = d.ini || d.fin ? [Math.max(0, (d.ini || 0) - 3), d.fin ? d.fin + 3 : Infinity] : null; // el mismo tramo que miró la IA
@@ -856,7 +870,7 @@ function informeDesdeRegistro(r) {
 let informeActual = null, videoActual = null, vistaPrevia = 'v-form';
 function textoCarga(inf) {
   const { ej: e, datos: d } = inf;
-  return e.perfil === 'corporal' ? `peso corporal${d.peso ? (e.asistido ? ' − ' : ' + ') + fmt(d.peso, 1) + ' kg' : ''}` : fmt(d.carga, 1) + ' kg';
+  return e.perfil === 'corporal' ? `peso corporal${d.peso ? (e.asistido ? ' − ' : ' + ') + pk(d.peso, 1) + ' ' + UN() : ''}` : pk(d.carga, 1) + ' ' + UN();
 }
 // notas que dependen del ejercicio y del perfil (se calculan al mostrar)
 function notasInforme(inf) {
@@ -1005,12 +1019,12 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   pintarPierna(inf, desde);
   if (s.rm) {
     if (corporal) {
-      $('r-rm').innerHTML = s.rmLastre >= 0 ? `+${fmt(s.rmLastre, 1)} <small>kg de lastre</small>` : `${fmt(-s.rmLastre, 1)} <small>kg de asistencia</small>`;
-      $('r-rm-sub').textContent = `para 1 repetición · masa total que moverías ≈ ${fmt(s.rm)} kg`;
+      $('r-rm').innerHTML = s.rmLastre >= 0 ? `+${pk(s.rmLastre, 1)} <small>${UN()} de lastre</small>` : `${pk(-s.rmLastre, 1)} <small>${UN()} de asistencia</small>`;
+      $('r-rm-sub').textContent = `para 1 repetición · masa total que moverías ≈ ${pk(s.rm)} ${UN()}`;
     } else {
-      $('r-rm').innerHTML = `${fmt(s.rm, 1)} <small>kg</small>`;
-      $('r-rm-sub').textContent = (s.rmMax && Math.round(s.rmMax - s.rmMin) >= 1 ? `rango ${fmt(s.rmMin)}–${fmt(s.rmMax)} kg · ` : '') + (s.pct ? `esta serie fue al ${fmt(s.pct)} % de tu 1RM` : '') +
-        (e.perfil === 'riel' ? ` · en el riel equivale a ${fmt(s.rm * Math.sin((d.alfa || 90) * Math.PI / 180))} kg` : '');
+      $('r-rm').innerHTML = `${pk(s.rm, 1)} <small>${UN()}</small>`;
+      $('r-rm-sub').textContent = (s.rmMax && Math.round(s.rmMax - s.rmMin) >= 1 ? `rango ${pk(s.rmMin)}–${pk(s.rmMax)} ${UN()} · ` : '') + (s.pct ? `esta serie fue al ${fmt(s.pct)} % de tu 1RM` : '') +
+        (e.perfil === 'riel' ? ` · en el riel equivale a ${pk(s.rm * Math.sin((d.alfa || 90) * Math.PI / 180))} ${UN()}` : '');
     }
   } else { $('r-rm').textContent = '--'; $('r-rm-sub').textContent = ''; }
   $('r-rpe').textContent = s.rpeTexto ?? '--'; $('r-rir').textContent = s.rirTexto ?? '--';
@@ -1018,9 +1032,9 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   $('r-reps-sub').textContent = inf.corregida ? 'corregido a mano' : s.validas < inf.reps.length ? `${inf.reps.length - s.validas} parcial(es)` : 'completas';
   $('r-vel').textContent = fmt(s.vMejor, 2);
   $('r-perd').textContent = fmt(s.perdida) + ' %'; $('r-fatiga').textContent = 'fatiga ' + (s.fatiga || '').toLowerCase();
-  $('r-est').innerHTML = Number.isFinite(inf.estatico) ? `${fmt(inf.estatico)} <small>kg</small>` : '--';
+  $('r-est').innerHTML = Number.isFinite(inf.estatico) ? `${pk(inf.estatico)} <small>${UN()}</small>` : '--';
   $('r-est-sub').textContent = e.perfil === 'riel' ? `en el riel a ${d.alfa}°` : corporal ? (e.asistido ? 'de tu cuerpo − asistencia' : 'de tu cuerpo + lastre') : 'carga vertical';
-  $('r-fpico').textContent = fmt(s.fPico); $('r-ppico').textContent = fmt(s.pPico);
+  $('r-fpico').textContent = pk(s.fPico); $('r-fpico-u').textContent = `${UN()} aplicados`; $('r-ppico').textContent = fmt(s.pPico);
 
   // video
   $('btn-rehacer').style.display = video && inf.corregida && !inf.videoCorregido ? '' : 'none';
@@ -1069,15 +1083,15 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   // cargas sugeridas
   const paso = e.perfil === 'polea' ? 2.5 : e.carro === 0 && e.perfil === 'libre' ? 1 : 2.5;
   $('r-cargas').innerHTML = (s.tablaCargas || []).map((c) => `<tr><td>${c.reps} ${c.reps === 1 ? 'rep' : 'reps'}</td>
-    <td><b>${corporal && c.carga >= 0 ? '+' : ''}${fmt(redondear(Math.abs(c.carga), paso), paso < 1 ? 1 : paso % 1 ? 1 : 0)} kg</b>${corporal ? (c.carga >= 0 ? ' lastre' : ' asistencia') : ''}</td>
+    <td><b>${corporal && c.carga >= 0 ? '+' : ''}${UA() === 'lb' ? fmt(redondear(U.desdeKg(Math.abs(c.carga), 'lb'), 5)) : fmt(redondear(Math.abs(c.carga), paso), paso < 1 ? 1 : paso % 1 ? 1 : 0)} ${UN()}</b>${corporal ? (c.carga >= 0 ? ' lastre' : ' asistencia') : ''}</td>
     <td>${fmt(100 / (1 + (c.reps === 1 ? 0 : c.reps) / 30))} %</td></tr>`).join('') || '<tr><td colspan="3">—</td></tr>';
-  $('r-metodos').textContent = s.metodos && s.metodos.length ? 'Estimado con: ' + s.metodos.map((m) => `${m.metodo} → ${fmt(m.valor, 1)} kg`).join(' · ') + '.' : '';
+  $('r-metodos').textContent = s.metodos && s.metodos.length ? 'Estimado con: ' + s.metodos.map((m) => `${m.metodo} → ${pk(m.valor, 1)} ${UN()}`).join(' · ') + '.' : '';
 
   // estadistica
   const st = inf.stats;
   const filaSt = (nombre, x, d2, u) => x ? `<tr><td>${nombre}</td><td>${fmt(x.media, d2)} ${u}</td><td>±${fmt(x.de, d2)}</td><td>${fmt(x.cv, 1)} %</td><td>${fmt(x.min, d2)}–${fmt(x.max, d2)}</td></tr>` : '';
   $('r-stats').innerHTML = st ? filaSt('Velocidad media', st.vars.v, 2, 'm/s') + filaSt('Velocidad pico', st.vars.vp, 2, 'm/s') + filaSt('Recorrido', st.vars.rec, 0, 'cm')
-    + filaSt('Fuerza pico', st.vars.f, 0, 'kg') + filaSt('Potencia pico', st.vars.p, 0, 'W') + filaSt('Tiempo de subida', st.vars.ts, 2, 's') : '<tr><td colspan="5">—</td></tr>';
+    + filaSt('Fuerza pico', st.vars.f && UA() === 'lb' ? { ...st.vars.f, media: U.desdeKg(st.vars.f.media, 'lb'), de: U.desdeKg(st.vars.f.de, 'lb'), min: U.desdeKg(st.vars.f.min, 'lb'), max: U.desdeKg(st.vars.f.max, 'lb') } : st.vars.f, 0, UN()) + filaSt('Potencia pico', st.vars.p, 0, 'W') + filaSt('Tiempo de subida', st.vars.ts, 2, 's') : '<tr><td colspan="5">—</td></tr>';
   $('r-stats-txt').innerHTML = st ? [
     `Reps usadas: <b>${st.n}</b>${st.parciales ? ` (+${st.parciales} parcial${st.parciales > 1 ? 'es' : ''} o atípica${st.parciales > 1 ? 's' : ''}, excluida${st.parciales > 1 ? 's' : ''})` : ''} · más rápida: rep <b>${st.mejor}</b> · más lenta: rep <b>${st.peor}</b>.`,
     st.pendiente === null ? '' : st.pendiente > -0.005 ? 'La velocidad se mantuvo estable de rep a rep (sin tendencia de caída).' : `La velocidad cayó <b>${fmt(-st.pendiente, 3)} m/s por rep</b> desde la más rápida (ajuste R² = ${fmt(st.r2, 2)}${st.r2 >= 0.7 ? ', tendencia clara' : ', tendencia irregular'}).`,
@@ -1089,7 +1103,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   // tabla de reps
   $('r-tabla').innerHTML = inf.reps.map((r) => `<tr><td><b>${r.n}</b>${r.lado ? ` <small>${r.lado === 'der' ? 'der.' : 'izq.'}</small>` : ''}${r.parcial ? ' <small>(parcial)</small>' : ''}${r.atipica ? ' <small>(atípica)</small>' : ''}</td>
     <td>${Number.isFinite(r.rec) ? fmt(r.rec) + ' cm' : '--'}</td><td class="${Math.round(r.perd) === 0 ? 'badge-fastest' : ''}">${fmt(r.v, 2)}</td>
-    <td>${fmt(r.perd)} %</td><td>${Number.isFinite(r.f) ? fmt(r.f) + ' kg' : '--'}</td><td>${Number.isFinite(r.p) ? fmt(r.p) + ' W' : '--'}</td><td>${Number.isFinite(r.ts) ? fmt(r.ts, 1) + ' s' : '--'}</td>
+    <td>${fmt(r.perd)} %</td><td>${Number.isFinite(r.f) ? pk(r.f) + ' ' + UN() : '--'}</td><td>${Number.isFinite(r.p) ? fmt(r.p) + ' W' : '--'}</td><td>${Number.isFinite(r.ts) ? fmt(r.ts, 1) + ' s' : '--'}</td>
     <td>${Number.isFinite(r.desvio) ? fmt(r.desvio, 1) + ' cm' : '--'}</td>
     <td class="tec">${(r.alertas || []).filter((t) => !t.startsWith('Rep parcial')).map(esc).join('<br>') || '✓'}</td></tr>`).join('');
   vista('v-resultados');
@@ -1240,10 +1254,11 @@ $('btn-peso').onclick = async () => {
   const inf = informeActual; if (!inf || !inf.id || !inf.datos) return;
   const e = POR_ID[inf.ej && inf.ej.id]; if (!e) return;
   const corporal = e.perfil === 'corporal', antes = corporal ? inf.datos.peso || 0 : inf.datos.carga;
-  const txt = prompt(corporal ? (e.asistido ? '¿Cuánta asistencia usaste? (kg)' : '¿Cuánto lastre usaste? (kg; 0 si fue solo tu peso)') : `¿Cuánto peso moviste en total? (kg${(inf.datos.carga || 0) > (inf.datos.peso || 0) ? ', discos + barra o máquina' : ''})`, antes);
+  const txt = prompt(corporal ? (e.asistido ? `¿Cuánta asistencia usaste? (${UN()})` : `¿Cuánto lastre usaste? (${UN()}; 0 si fue solo tu peso)`) : `¿Cuánto peso moviste en total? (${UN()}${(inf.datos.carga || 0) > (inf.datos.peso || 0) ? ', discos + barra o máquina' : ''})`, antes);
   if (txt == null) return;
-  const kg = parseFloat(String(txt).replace(',', '.'));
-  if (!Number.isFinite(kg) || kg < 0 || kg > 1000 || (!corporal && kg === 0)) return alert('Escribe el peso en kg, por ejemplo 40.');
+  const kg = U.aKg(parseFloat(String(txt).replace(',', '.')), UA());
+  if (!Number.isFinite(kg) || kg < 0 || kg > 1000 || (!corporal && kg === 0)) return alert(`Escribe el peso en ${UN()}, por ejemplo 40.`);
+  if (Math.abs(kg - antes) < 0.01) return;
   if (kg === antes) return;
   let r = null;
   try { r = await recalcularConPeso(inf.id, kg); } catch (err) { return alert('No se pudo recalcular la serie: ' + (err.message || err)); }
@@ -1422,9 +1437,9 @@ function pintarHistorial() {
     $('h-lista-ses').innerHTML = ses.length ? ses.map((s) => `<div class="sesion">
       <div class="sesion-cab"><strong>${s.fecha.toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long' })}</strong>
         <small>${s.series.length} series · ${s.reps} reps</small></div>
-      <small>${fmt(s.tonelaje)} kg movidos${s.rpeMedio ? ` · RPE medio ${fmt(s.rpeMedio, 1)}` : ''}${s.duracionMin >= 5 ? ` · ${Math.round(s.duracionMin)} min` : ''}</small>
+      <small>${pk(s.tonelaje)} ${UN()} movidos${s.rpeMedio ? ` · RPE medio ${fmt(s.rpeMedio, 1)}` : ''}${s.duracionMin >= 5 ? ` · ${Math.round(s.duracionMin)} min` : ''}</small>
       ${s.ejercicios.map((e) => `<div class="sesion-ej"><b>${esc(e.nombre)}</b>
-        ${e.series.map((r, k) => `<div class="serie" data-abrir="${r.id}" role="button"><span>${k + 1}. ${e.perfil === 'corporal' ? (r.carga ? '+' + fmt(r.carga, 1) + ' kg' : 'corporal') : fmt(r.carga, 1) + ' kg'} × ${r.reps}</span>
+        ${e.series.map((r, k) => `<div class="serie" data-abrir="${r.id}" role="button"><span>${k + 1}. ${e.perfil === 'corporal' ? (r.carga ? '+' + pk(r.carga, 1) + ' ' + UN() : 'corporal') : pk(r.carga, 1) + ' ' + UN()} × ${r.reps}</span>
           <span>${fmt(r.vMejor, 2)} m/s · −${fmt(r.perdida)} % · RPE ${r.rpe ?? '--'}${(r.alertas || []).length ? ' · ⚠' : ''}</span>
           <button type="button" class="serie-borrar" data-borrar="${r.id}" aria-label="Borrar serie">🗑️</button></div>`).join('')}
         ${e.fatiga !== null ? `<div class="fatiga">Tu rep más rápida cayó ${fmt(e.fatiga)} % de la 1.ª a la última serie${e.fatiga > 15 ? ': fatiga acumulada alta.' : '.'}</div>` : ''}
@@ -1454,15 +1469,15 @@ function pintarHistorial() {
     $('h-perfil').innerHTML = !p || p.n < 2
       ? `Necesitas series con al menos 2 pesos distintos de este ejercicio. ${guia}`
       : p.confianza === 'baja' ? `Perfil con confianza baja${p.motivo ? ': ' + p.motivo : '.'} ${guia}<br>${mvtTxt}`
-      : `<b>1RM ≈ ${fmt(p.rm, 1)} kg</b> · confianza <b>${p.confianza}</b> (${p.n} pesos${p.n >= 3 ? `, ajuste R² ${fmt(p.r2, 2)}` : ''}). Desde ahora tus series de este ejercicio usan este perfil para el 1RM y el RIR.<br>${mvtTxt}<br>${guia}`;
+      : `<b>1RM ≈ ${pk(p.rm, 1)} ${UN()}</b> · confianza <b>${p.confianza}</b> (${p.n} pesos${p.n >= 3 ? `, ajuste R² ${fmt(p.r2, 2)}` : ''}). Desde ahora tus series de este ejercicio usan este perfil para el 1RM y el RIR.<br>${mvtTxt}<br>${guia}`;
     return;
   }
   $('h-lista').innerHTML = lista.length ? [...lista].reverse().map((r) => {
     const x = POR_ID[r.ejercicio] || { nombre: nombreDe(r), perfil: r.perfil };
     return `<div class="historial-item" data-abrir="${r.id}" role="button"><div><strong>${esc(x.nombre)}</strong>
       <small class="ver">Toca para ver el análisis completo</small>
-      <small>${new Date(r.fecha).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })} · ${x.perfil === 'corporal' ? (r.carga ? '+' + fmt(r.carga, 1) + ' kg' : 'peso corporal') : fmt(r.carga, 1) + ' kg'} × ${r.reps} · RPE ${r.rpe ?? '--'}${r.origen === 'vivo' ? ' · en vivo' : ''}</small></div>
-      <div class="der"><b>${r.rm ? fmt(x.perfil === 'corporal' ? r.rmLastre : r.rm, 0) + ' kg' : '--'}</b><small>1RM est.</small>
+      <small>${new Date(r.fecha).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })} · ${x.perfil === 'corporal' ? (r.carga ? '+' + pk(r.carga, 1) + ' ' + UN() : 'peso corporal') : pk(r.carga, 1) + ' ' + UN()} × ${r.reps} · RPE ${r.rpe ?? '--'}${r.origen === 'vivo' ? ' · en vivo' : ''}</small></div>
+      <div class="der"><b>${r.rm ? pk(x.perfil === 'corporal' ? r.rmLastre : r.rm, 0) + ' ' + UN() : '--'}</b><small>1RM est.</small>
       <button type="button" class="btn-sec peligro" data-borrar="${r.id}" style="padding:5px 10px;margin-top:6px;font-size:12px">🗑️ Borrar</button></div></div>`;
   }).join('') : '<p class="vacio">Todavía no hay series. Analiza tu primer video y aparecerá aquí.</p>';
   $('h-lista').querySelectorAll('[data-borrar]').forEach((b) => (b.onclick = (ev) => {
@@ -1514,18 +1529,18 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
   if (!POR_ID[id]) return;
   elegir(POR_ID[id]);
   if (kg > 0) {
-    const carro = usaCarro() ? parseFloat($('in-carro').value || '0') : 0;
+    const carro = usaCarro() ? kgDe('in-carro') : 0;
     const peso = Math.round((kg - carro) * 100) / 100;
-    $('in-peso').value = peso > 0 ? peso : kg; cargaTotal();
+    ponerKg('in-peso', peso > 0 ? peso : kg); cargaTotal();
   }
   vista('v-form');
-  aviso(`🎥 Serie ${serie} de ${nombre}${kg > 0 ? ` (${fmt(kg, kg % 1 ? 1 : 0)} kg en total)` : ''}: graba o elige el video y pulsa Analizar. El resultado se guarda en tu entrenamiento.`, true);
+  aviso(`🎥 Serie ${serie} de ${nombre}${kg > 0 ? ` (${pk(kg, 1)} ${UN()} en total)` : ''}: graba o elige el video y pulsa Analizar. El resultado se guarda en tu entrenamiento.`, true);
 }
 
 // ------------------------------------------------------------------ inicio
 (function iniciar() {
   if (leer('af_altura')) $('in-altura').value = leer('af_altura');
-  if (leer('af_pc')) $('in-pc').value = leer('af_pc');
+  if (leer('af_pc')) ponerKg('in-pc', leer('af_pc'));
   // v2.59.0 una sola vez: quien tenía «Normal» (la de antes por defecto) pasa a «Automática»
   if (leer('af_calidad') === 'normal' && !leer('af_calidad_auto')) guardar('af_calidad', 'auto');
   guardar('af_calidad_auto', 1);
@@ -1570,7 +1585,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
         await entrenar.recargar();
         nutricion.pintar(); perfil.pintar();
         if (leer('af_altura')) $('in-altura').value = leer('af_altura');
-        if (leer('af_pc')) $('in-pc').value = leer('af_pc');
+        if (leer('af_pc')) ponerKg('in-pc', leer('af_pc'));
         if ($('v-historial').classList.contains('active')) pintarHistorial();
       },
       alEstado: (e) => perfil.pintarNube(e),

@@ -161,12 +161,12 @@
         <div class="form-grid">
           <div class="form-group" id="g-peso">
             <label for="in-peso" id="lbl-peso">Peso de discos</label>
-            <div class="input-unit"><input type="number" id="in-peso" inputmode="decimal" step="0.5" min="0"><span>kg</span></div>
+            <div class="input-unit"><input type="number" id="in-peso" inputmode="decimal" step="any" min="0"><span class="u-peso">kg</span></div>
             <small class="campo-ayuda" id="ay-peso"></small>
           </div>
           <div class="form-group" id="g-carro">
             <label for="in-carro" id="lbl-carro">Peso de la barra</label>
-            <div class="input-unit"><input type="number" id="in-carro" inputmode="decimal" step="0.5" min="0"><span>kg</span></div>
+            <div class="input-unit"><input type="number" id="in-carro" inputmode="decimal" step="any" min="0"><span class="u-peso">kg</span></div>
             <small class="campo-ayuda" id="ay-carro"></small>
           </div>
           <div class="form-group" id="g-incl">
@@ -180,7 +180,7 @@
           </div>
           <div class="form-group">
             <label for="in-pc">Tu peso corporal</label>
-            <div class="input-unit"><input type="number" id="in-pc" inputmode="decimal" step="0.1" value="77.8"><span>kg</span></div>
+            <div class="input-unit"><input type="number" id="in-pc" inputmode="decimal" step="any" value="77.8"><span class="u-peso">kg</span></div>
             <small class="campo-ayuda" id="ay-pc"></small>
           </div>
         </div>
@@ -359,7 +359,7 @@
         <div class="kpi-card"><span class="kpi-label">PÉRDIDA VEL. <button type="button" class="glo-i" data-term="perdida" aria-label="¿Qué es esto?">ⓘ</button></span><span class="kpi-value" id="r-perd">--</span><span class="kpi-sub" id="r-fatiga"></span></div>
         <div class="kpi-card"><span class="kpi-label">CARGA EFECTIVA <button type="button" class="glo-i" data-term="carga" aria-label="¿Qué es esto?">ⓘ</button></span><span class="kpi-value" id="r-est">--</span><span class="kpi-sub" id="r-est-sub"></span>
           <button type="button" class="kpi-accion" id="btn-peso">✏️ ¿Peso mal? Corregir</button></div>
-        <div class="kpi-card"><span class="kpi-label">FUERZA PICO <button type="button" class="glo-i" data-term="fuerza" aria-label="¿Qué es esto?">ⓘ</button></span><span class="kpi-value" id="r-fpico">--</span><span class="kpi-sub">kg aplicados</span></div>
+        <div class="kpi-card"><span class="kpi-label">FUERZA PICO <button type="button" class="glo-i" data-term="fuerza" aria-label="¿Qué es esto?">ⓘ</button></span><span class="kpi-value" id="r-fpico">--</span><span class="kpi-sub" id="r-fpico-u">kg aplicados</span></div>
         <div class="kpi-card"><span class="kpi-label">POTENCIA PICO <button type="button" class="glo-i" data-term="potencia" aria-label="¿Qué es esto?">ⓘ</button></span><span class="kpi-value" id="r-ppico">--</span><span class="kpi-sub">watts</span></div>
       </section>
 
@@ -703,7 +703,7 @@
     <div class="en-sec-cab"><strong id="pf-medidas-titulo">Medidas</strong><button type="button" class="btn-sec" id="pf-medidas-cerrar">Cerrar</button></div>
     <div class="en-det-cuerpo">
       <section class="section"><label class="section-title">Peso corporal</label>
-        <div class="card"><div class="nu-cant-fila" style="margin-top:0"><input id="pf-peso-in" type="number" inputmode="decimal" step="any"><span>kg</span><button type="button" class="btn-sec en-terminar" id="pf-peso-ok">Registrar hoy</button></div>
+        <div class="card"><div class="nu-cant-fila" style="margin-top:0"><input id="pf-peso-in" type="number" inputmode="decimal" step="any"><span id="pf-peso-u">kg</span><button type="button" class="btn-sec en-terminar" id="pf-peso-ok">Registrar hoy</button></div>
           <canvas id="pf-peso-graf" class="en-graf" style="display:none"></canvas><p class="hint" id="pf-peso-txt"></p></div></section>
           </div>
   </div></div>

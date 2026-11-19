@@ -8,7 +8,10 @@ const guardar = (k, v) => { try { if (v == null) localStorage.removeItem(k); els
 const leerJ = (k) => { try { const o = JSON.parse(leer(k) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
 
 export const global = () => (leer('af_unidades') === 'lb' ? 'lb' : 'kg');
-export const ponerGlobal = (u) => guardar('af_unidades', u === 'lb' ? 'lb' : null);
+export function ponerGlobal(u) { // avisa a las pantallas abiertas (Analizar convierte los números que ya estaban escritos)
+  const antes = global(); guardar('af_unidades', u === 'lb' ? 'lb' : null);
+  if (antes !== global()) try { window.dispatchEvent(new CustomEvent('af-unidades', { detail: { antes, ahora: global() } })); } catch (e) { /* nada */ }
+}
 export const delEjercicio = (id) => { const u = id ? leerJ('af_unidad_ej')[id] : null; return u === 'lb' || u === 'kg' ? u : global(); };
 export function recordarEjercicio(id, u) { if (!id) return; const m = leerJ('af_unidad_ej'); m[id] = u; guardar('af_unidad_ej', JSON.stringify(m)); } // sin id (ejercicio propio): solo ese entreno
 export const resumenGuardado = () => { const u = leer('af_unidad_resumen'); return u === 'lb' || u === 'kg' ? u : null; };

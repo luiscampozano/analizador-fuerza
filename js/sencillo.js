@@ -1,5 +1,8 @@
 // Explicacion en palabras simples de cada informe (v2.39.0). Se arma en el telefono con los numeros medidos, sin
 // internet: para la persona comun que no sabe que es RIR, MVT o CV. Cada linea empieza con un emoji.
+import * as U from './unidades.js';
+// v2.68.0 pesos en la unidad elegida (kg o lb)
+const fp = (kg) => f(U.desdeKg(kg, U.global())), UN = () => U.nombre(U.global());
 const f = (x, d = 0) => (Number.isFinite(x) ? x.toFixed(d).replace('.', ',') : '?');
 const media = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN);
 
@@ -29,8 +32,8 @@ export function resumenPesas(inf, cargaTexto = '') {
   }
 
   // peso maximo
-  if (s.rm && !corporal && !e.balistico) out.push(`🎯 Con esta medición, el peso máximo que podrías levantar <b>una sola vez</b> estaría cerca de <b>${f(s.rm)} kg</b> (es una estimación).`);
-  else if (s.rm && corporal && Number.isFinite(s.rmLastre) && !e.balistico) out.push(s.rmLastre >= 0 ? `🎯 Para hacer una sola repetición podrías colgarte unos <b>${f(s.rmLastre)} kg</b> extra (estimado).` : `🎯 Para una sola repetición necesitarías unos <b>${f(-s.rmLastre)} kg</b> de ayuda (estimado).`);
+  if (s.rm && !corporal && !e.balistico) out.push(`🎯 Con esta medición, el peso máximo que podrías levantar <b>una sola vez</b> estaría cerca de <b>${fp(s.rm)} ${UN()}</b> (es una estimación).`);
+  else if (s.rm && corporal && Number.isFinite(s.rmLastre) && !e.balistico) out.push(s.rmLastre >= 0 ? `🎯 Para hacer una sola repetición podrías colgarte unos <b>${fp(s.rmLastre)} ${UN()}</b> extra (estimado).` : `🎯 Para una sola repetición necesitarías unos <b>${f(-s.rmLastre)} kg</b> de ayuda (estimado).`);
 
   // tecnica y control
   const avisos = (inf.tec && inf.tec.resumen) || [];
@@ -40,7 +43,7 @@ export function resumenPesas(inf, cargaTexto = '') {
 
   // que hacer la proxima vez
   if (!e.balistico && Number.isFinite(rir)) {
-    if (rir >= 4) out.push('➡️ <b>Próxima vez:</b> sube un poco el peso (2,5 a 5 kg) o haz más repeticiones.');
+    if (rir >= 4) out.push(`➡️ <b>Próxima vez:</b> sube un poco el peso (${U.global() === 'lb' ? '5 a 10 lb' : '2,5 a 5 kg'}) o haz más repeticiones.`);
     else if (rir <= 0.5) out.push('➡️ <b>Próxima vez:</b> mantén el peso o bájalo un poco y deja 1-2 repeticiones en reserva.');
     else out.push('➡️ <b>Próxima vez:</b> mantén este peso; cuando la misma serie te salga más rápida, súbelo.');
   } else if (!e.balistico && (s.rirTexto === '≥ 5')) out.push('➡️ <b>Próxima vez:</b> sube el peso para que la serie cuente más.');

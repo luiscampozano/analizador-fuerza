@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-18
 
+### 20:00 · v2.68.0 — Libras en el analizador, el Perfil y la calculadora de discos
+- **Pidió:** Luis: agregar la conversión a libras al analizador y al perfil, y también a la calculadora de discos.
+- **Hecho:** ver PROYECTO_CLAUDE.md (v2.68.0). Probado: análisis en lb (220,5 lb = 100 kg; corrección a 50 lb guarda
+  22,68 kg), Perfil 77,8 kg → 171,5 lb, calculadora 225 lb = barra 45 + 45 + 45 por lado.
+- **Pendiente:** video con telemetría, PDF y gráficas de 1RM siguen en kg.
+
 ### 19:45 · v2.67.0 — Términos explicados, cómo grabarse y libras
 - **Pidió:** usuarios vía Luis: (1) explicar términos (RPE…) a novatos; (2) el mejor ángulo para grabarse según el
   ejercicio; (3) libras, incluso por ejercicio en medio del entreno (mancuernas en lb y discos en kg) y preguntar al

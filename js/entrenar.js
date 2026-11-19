@@ -42,7 +42,7 @@ let activo = null;      // entrenamiento (o rutina en edicion) en curso
 let reemplazarIndex = null; // ejercicio que se esta reemplazando desde el selector
 let mesCal = null;      // primer dia del mes que muestra el calendario de constancia
 let vistaActual = '';
-let reloj = null, audio = null, ultimoKg = null;
+let reloj = null, audio = null, ultimoKg = null, ultimaUni = null; // ultimaUni: unidad del último campo de peso (v2.68.0)
 export let enlacePendiente = null; // serie que espera su analisis por video
 
 // ------------------------------------------------------------------ utilidades de datos
@@ -149,7 +149,7 @@ export async function iniciar(d) {
   $('en-empezar').onclick = () => empezar();
   $('en-nueva-rutina').onclick = () => editarRutina(null);
   $('en-discos').onclick = () => abrirDiscos();
-  $('en-discos2').onclick = () => abrirDiscos(ultimoKg);
+  $('en-discos2').onclick = () => abrirDiscos(ultimoKg, ultimaUni);
   // v2.67.0 cambiar todo el entrenamiento entre kilos y libras (y la unidad por defecto)
   $('en-uni-todo').onclick = () => {
     if (!activo) return;
@@ -234,7 +234,7 @@ function pintarInicio() {
   const semana = lista.filter((e) => new Date(e.inicio) >= lunes);
   $('en-semana').innerHTML = `<div class="kpi-card"><div class="kpi-label">Esta semana</div><div class="kpi-value">${semana.length}</div><div class="kpi-sub">entrenamientos</div></div>
     <div class="kpi-card"><div class="kpi-label">Series</div><div class="kpi-value">${semana.reduce((a, e) => a + seriesHechas(e), 0)}</div><div class="kpi-sub">efectivas</div></div>
-    <div class="kpi-card"><div class="kpi-label">Volumen ${ti('volumen')}</div><div class="kpi-value">${fmt(semana.reduce((a, e) => a + volumen(e), 0) / 1000, 1)}</div><div class="kpi-sub">toneladas</div></div>`;
+    <div class="kpi-card"><div class="kpi-label">Volumen ${ti('volumen')}</div><div class="kpi-value">${fmt(U.desdeKg(semana.reduce((a, e) => a + volumen(e), 0), U.global()) / 1000, 1)}</div><div class="kpi-sub">${U.global() === 'lb' ? 'mil lb' : 'toneladas'}</div></div>`;
   pintarRutinas(); pintarCalendario(lunes);
   $('en-lista').innerHTML = lista.length ? lista.slice(0, 60).map((en) => `<div class="en-tarjeta" data-id="${en.id}" role="button">
       <div class="en-tarjeta-cab"><strong>${esc(en.titulo || 'Entrenamiento')}</strong><small>${fechaTxt(en.inicio)}${en.fin ? ' · ' + duracion(new Date(en.fin) - new Date(en.inicio)) : ''}</small></div>
@@ -760,7 +760,7 @@ function enlazarEventos() {
         let v = inp.value === '' ? null : parseFloat(inp.value.replace(',', '.'));
         if (Number.isFinite(v) && inp.dataset.escala) v /= +inp.dataset.escala; // natacion: metros -> km
         s[inp.dataset.campo] = Number.isFinite(v) ? v : null;
-        if (inp.dataset.campo === 'kg') ultimoKg = s.kg;
+        if (inp.dataset.campo === 'kg') { ultimoKg = s.kg; ultimaUni = uni(e); }
         if (esCardio(e)) { const rt = fila.querySelector('.en-ritmo'); if (rt && defEj(e).medida === 'dist') rt.textContent = velTxt(e, s.km, s.min); const kc = caja.querySelector('.en-kcal'); if (kc) kc.textContent = kcalTxt(e); }
         else if (inp.dataset.campo !== 'kg') { // al cambiar reps o RPE se recalcula el peso sugerido
           const m = marcadores(e, is, activo.rutina ? [] : anterior(e, activo.id) || [], ref(e)), k = fila.querySelector('[data-campo="kg"]');
@@ -768,7 +768,7 @@ function enlazarEventos() {
         }
         guardarBorrador(); tic();
       };
-      if (inp.dataset.campo === 'kg') inp.onfocus = () => { ultimoKg = ((inp.value ? parseFloat(inp.value) : U.numEs(inp.placeholder)) / (+inp.dataset.escala || 1)) || ultimoKg; };
+      if (inp.dataset.campo === 'kg') inp.onfocus = () => { ultimaUni = uni(e); ultimoKg = ((inp.value ? parseFloat(inp.value) : U.numEs(inp.placeholder)) / (+inp.dataset.escala || 1)) || ultimoKg; };
       // v2.55.1 si la serie ya tiene análisis por video y se corrige el peso, el análisis se vuelve a calcular con el nuevo peso
       if (inp.dataset.campo === 'kg' && !esCardio(e)) inp.onchange = async () => {
         const s = e.series[+inp.closest('.en-fila').dataset.is];
@@ -1012,10 +1012,11 @@ function pintarCuerpo(canvas, colorDe) {
 export function abrirProgreso(e) {
   if (esCardio(e)) return abrirProgresoCardio(e);
   const k = P.claveEj(e), r = P.registros(lista, k), real = P.rmReal(k), rf = P.referencia(lista, { ...e, series: [] });
-  const repMax = Object.entries(r.repMax).map(([n, x]) => `<tr><td><b>${n}RM</b></td><td>${kgTxt(x.kg)} kg</td><td>${fechaTxt(x.fecha, false)}</td></tr>`).join('');
+  const u = uni(e), un = U.nombre(u), pt = (x) => pesoTxt(x, e); // v2.68.0 la ficha en la unidad del ejercicio
+  const repMax = Object.entries(r.repMax).map(([n, x]) => `<tr><td><b>${n}RM</b></td><td>${pt(x.kg)} ${un}</td><td>${fechaTxt(x.fecha, false)}</td></tr>`).join('');
   const base = real ? real.kg : r.mejor ? r.mejor.valor : null;
-  const tablaRPE = base ? `<table class="tabla en-tabla"><thead><tr><th>Reps</th><th>@7</th><th>@8</th><th>@9</th><th>@10</th></tr></thead><tbody>${[1, 2, 3, 4, 5, 6, 8, 10].map((n) => `<tr><td><b>${n}</b></td>${[7, 8, 9, 10].map((rpe) => `<td>${kgTxt(P.redondear(P.cargaPara(base, n, rpe)))}</td>`).join('')}</tr>`).join('')}</tbody></table>
-    <p class="hint">Cargas (kg) según tu ${real ? '1RM real' : '1RM estimado'} de ${fmt(base)} kg, redondeadas a 2,5 kg. RPE 8 = te quedaban 2 reps.</p>` : '';
+  const tablaRPE = base ? `<table class="tabla en-tabla"><thead><tr><th>Reps</th><th>@7</th><th>@8</th><th>@9</th><th>@10</th></tr></thead><tbody>${[1, 2, 3, 4, 5, 6, 8, 10].map((n) => `<tr><td><b>${n}</b></td>${[7, 8, 9, 10].map((rpe) => `<td>${u === 'lb' ? kgTxt(Math.round(U.desdeKg(P.cargaPara(base, n, rpe), 'lb') / 5) * 5) : kgTxt(P.redondear(P.cargaPara(base, n, rpe)))}</td>`).join('')}</tr>`).join('')}</tbody></table>
+    <p class="hint">Cargas (${un}) según tu ${real ? '1RM real' : '1RM estimado'} de ${pt(base)} ${un}, redondeadas a ${u === 'lb' ? '5 lb' : '2,5 kg'}. RPE 8 = te quedaban 2 reps.</p>` : '';
   const musc = obtenerMusculos(e);
   const demo = e.ej && animacion(e.ej);
   $('en-det-cuerpo').innerHTML = `<h3 class="en-det-titulo">${iconoEj(e)} ${esc(nombreEj(e))}</h3>
@@ -1027,23 +1028,23 @@ export function abrirProgreso(e) {
         ${musc.secTxt ? `<div><span class="en-musc-dot sec"></span><b>Secundario:</b> ${esc(musc.secTxt)}</div>` : ''}
       </div>
     </div>
-    <div class="en-rm-real"><label for="en-rm-in">Mi 1RM real (kg)</label>
-      <div><input id="en-rm-in" type="number" inputmode="decimal" step="any" min="0" value="${real ? real.kg : ''}" placeholder="${r.mejor ? fmt(r.mejor.valor) : 'ej.: 200'}">
+    <div class="en-rm-real"><label for="en-rm-in">Mi 1RM real (${un})</label>
+      <div><input id="en-rm-in" type="number" inputmode="decimal" step="any" min="0" value="${real ? U.paraCampo(real.kg, u) : ''}" placeholder="${r.mejor ? pt(r.mejor.valor) : 'ej.: 200'}">
       <button type="button" class="btn-sec" id="en-rm-ok">Guardar</button></div>
       <small>${real ? `Guardado el ${fechaTxt(real.fecha, false)}. ` : ''}Tu marca de competencia o de prueba. La app la usa para sugerirte cargas y para calibrar el análisis por video (útil si eres más explosivo que el promedio). Déjalo vacío para usar el estimado.</small></div>
     <div class="kpi-grid tres en-kpis">
-      <div class="kpi-card"><div class="kpi-label">1RM estimado</div><div class="kpi-value">${r.mejor ? fmt(r.mejor.valor) : '--'}</div><div class="kpi-sub">${r.mejor ? `${kgTxt(r.mejor.kg)} × ${r.mejor.reps}` : 'sin datos'}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Peso máximo</div><div class="kpi-value">${r.maxKg ? kgTxt(r.maxKg.kg) : '--'}</div><div class="kpi-sub">${r.maxKg ? `× ${r.maxKg.reps} reps` : ''}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Mejor serie</div><div class="kpi-value">${r.maxVol ? fmt(r.maxVol.vol) : '--'}</div><div class="kpi-sub">${r.maxVol ? `${kgTxt(r.maxVol.kg)} × ${r.maxVol.reps} (kg)` : ''}</div></div></div>
+      <div class="kpi-card"><div class="kpi-label">1RM estimado</div><div class="kpi-value">${r.mejor ? pt(r.mejor.valor) : '--'}</div><div class="kpi-sub">${r.mejor ? `${pt(r.mejor.kg)} × ${r.mejor.reps} (${un})` : 'sin datos'}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Peso máximo</div><div class="kpi-value">${r.maxKg ? pt(r.maxKg.kg) : '--'}</div><div class="kpi-sub">${r.maxKg ? `${un} × ${r.maxKg.reps} reps` : ''}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Mejor serie</div><div class="kpi-value">${r.maxVol ? fmt(U.desdeKg(r.maxVol.vol, u)) : '--'}</div><div class="kpi-sub">${r.maxVol ? `${pt(r.maxVol.kg)} × ${r.maxVol.reps} (${un})` : ''}</div></div></div>
     ${r.puntos.length > 1 ? '<label class="section-title" style="margin-top:12px">1RM estimado por sesión</label><canvas id="en-graf" class="en-graf"></canvas>' : ''}
     ${repMax ? `<label class="section-title" style="margin-top:12px">Récords por repeticiones</label><table class="tabla en-tabla"><tbody>${repMax}</tbody></table>` : ''}
     ${tablaRPE ? `<label class="section-title" style="margin-top:12px">Tabla de cargas por RPE</label>${tablaRPE}` : ''}
-    ${r.sesiones.length ? `<label class="section-title" style="margin-top:12px">Últimas sesiones</label>${r.sesiones.slice(0, 8).map((x) => `<div class="en-det-serie"><span style="width:auto;min-width:70px;text-align:left">${fechaTxt(x.fecha, false)}</span><span>${x.series.filter((s) => s.tipo !== 'calentamiento').map((s) => `${kgTxt(s.kg)}×${s.reps ?? '—'}${s.rpe ? '@' + fmt(s.rpe, s.rpe % 1 ? 1 : 0) : ''}`).join(', ') || '—'}</span></div>`).join('')}` : ''}
+    ${r.sesiones.length ? `<label class="section-title" style="margin-top:12px">Últimas sesiones</label>${r.sesiones.slice(0, 8).map((x) => `<div class="en-det-serie"><span style="width:auto;min-width:70px;text-align:left">${fechaTxt(x.fecha, false)}</span><span>${x.series.filter((s) => s.tipo !== 'calentamiento').map((s) => `${pt(s.kg)}×${s.reps ?? '—'}${s.rpe ? '@' + fmt(s.rpe, s.rpe % 1 ? 1 : 0) : ''}`).join(', ') || '—'}</span></div>`).join('')}` : ''}
     ${!r.puntos.length && !rf ? '<p class="vacio">Todavía no hay series de este ejercicio.</p>' : ''}`;
   $('en-detalle').style.display = 'flex';
   $('en-det-cuerpo').scrollTop = 0;
   $('en-rm-ok').onclick = () => {
-    const v = parseFloat(($('en-rm-in').value || '').replace(',', '.'));
+    const v = U.aKg(parseFloat(($('en-rm-in').value || '').replace(',', '.')), u);
     P.guardarRmReal(k, v > 0 ? v : 0);
     abrirProgreso(e); if (activo) pintarActivo(); else pintar();
   };
@@ -1148,32 +1149,50 @@ function abrirCalentamiento(ie) {
   $('en-detalle').style.display = 'flex'; $('en-det-cuerpo').scrollTop = 0;
 }
 
-function abrirDiscos(kg = null) {
-  const cfg = (() => { try { return JSON.parse(leerLS('af_discos') || 'null') || {}; } catch (e) { return {}; } })();
-  const barra = cfg.barra ?? 20, disp = cfg.disp || [25, 20, 15, 10, 5, 2.5, 1.25];
-  $('en-det-cuerpo').innerHTML = `<h3 class="en-det-titulo">🧮 Calculadora de discos</h3>
+// v2.68.0 también en libras: discos de 45/35/25/10/5/2,5 lb y barras de 45/35/15 lb (configuración aparte)
+const DISCOS_LB = [45, 35, 25, 10, 5, 2.5];
+const COLOR_DISCO_LB = { 45: '#1e63d6', 35: '#f2c200', 25: '#2e9b4a', 10: '#e8e8e8', 5: '#e53935', 2.5: '#222' };
+function abrirDiscos(kg = null, unidad = null) {
+  let u = unidad === 'lb' || unidad === 'kg' ? unidad : U.global();
+  const pintarDc = () => {
+    const lb = u === 'lb', clave = lb ? 'af_discos_lb' : 'af_discos';
+    const cfg = (() => { try { return JSON.parse(leerLS(clave) || 'null') || {}; } catch (e) { return {}; } })();
+    const barra = cfg.barra ?? (lb ? 45 : 20), disp = cfg.disp || (lb ? DISCOS_LB : [25, 20, 15, 10, 5, 2.5, 1.25]);
+    const lista = lb ? DISCOS_LB : P.DISCOS, barras = lb ? [45, 35, 15, 0] : [20, 15, 10, 25, 0], colores = lb ? COLOR_DISCO_LB : COLOR_DISCO;
+    const obj0 = kg > 0 ? (lb ? Math.round(U.desdeKg(kg, 'lb') * 10) / 10 : kg) : '';
+    $('en-det-cuerpo').innerHTML = `<h3 class="en-det-titulo">🧮 Calculadora de discos</h3>
+    <div class="chips" style="margin:8px 0 0"><button type="button" class="chip${lb ? '' : ' active'}" data-dcu="kg">Kilos (kg)</button><button type="button" class="chip${lb ? ' active' : ''}" data-dcu="lb">Libras (lb)</button></div>
     <div class="form-grid" style="margin-top:10px">
-      <div class="form-group"><label for="dc-obj">Peso total (kg)</label><input id="dc-obj" type="number" inputmode="decimal" step="any" value="${kg > 0 ? kg : ''}" placeholder="ej.: 182,5"></div>
-      <div class="form-group"><label for="dc-barra">Barra (kg)</label><select id="dc-barra">${[20, 15, 10, 25, 0].map((b) => `<option value="${b}"${b === barra ? ' selected' : ''}>${b ? b + ' kg' : 'Sin barra'}</option>`).join('')}</select></div>
+      <div class="form-group"><label for="dc-obj">Peso total (${u})</label><input id="dc-obj" type="number" inputmode="decimal" step="any" value="${obj0}" placeholder="ej.: ${lb ? '225' : '182,5'}"></div>
+      <div class="form-group"><label for="dc-barra">Barra (${u})</label><select id="dc-barra">${barras.map((b) => `<option value="${b}"${b === barra ? ' selected' : ''}>${b ? b + ' ' + u : 'Sin barra'}</option>`).join('')}</select></div>
     </div>
-    <div class="en-dc-disp">${P.DISCOS.map((p) => `<label><input type="checkbox" value="${p}"${disp.includes(p) ? ' checked' : ''}> ${kgTxt(p)}</label>`).join('')}</div>
+    <div class="en-dc-disp">${lista.map((p) => `<label><input type="checkbox" value="${p}"${disp.includes(p) ? ' checked' : ''}> ${kgTxt(p)}</label>`).join('')}</div>
     <div id="dc-res" class="en-dc-res"></div>`;
-  $('en-detalle').style.display = 'flex';
-  const calc = () => {
-    const obj = parseFloat(($('dc-obj').value || '').replace(',', '.')), b = parseFloat($('dc-barra').value);
-    const d = [...document.querySelectorAll('.en-dc-disp input:checked')].map((x) => parseFloat(x.value));
-    guardarLS('af_discos', JSON.stringify({ barra: b, disp: d }));
-    if (!(obj > 0)) { $('dc-res').innerHTML = '<p class="hint">Escribe el peso total que quieres levantar.</p>'; return; }
-    const r = P.discos(obj, b, d);
-    if (obj < b) { $('dc-res').innerHTML = '<p class="hint">El peso es menor que la barra.</p>'; return; }
-    const alto = (p) => Math.round(34 + 66 * Math.min(1, p / 25));
-    $('dc-res').innerHTML = `<div class="en-dc-barra"><span class="en-dc-eje"></span>${r.lado.map((p) => `<span class="en-dc-disco" style="height:${alto(p)}px;background:${COLOR_DISCO[p] || '#888'};color:${[5, 15].includes(p) ? '#111' : '#fff'}">${kgTxt(p)}</span>`).join('')}<span class="en-dc-tope"></span></div>
-      <p style="margin:10px 0 0">Por lado: <b>${r.lado.length ? r.lado.map(kgTxt).join(' + ') : 'nada'}</b>${r.lado.length ? ` (= ${kgTxt(r.lado.reduce((a, x) => a + x, 0))} kg)` : ''}</p>
-      ${r.exacto ? '' : `<p class="hint" style="color:var(--accent-orange)">Con esos discos no llega exacto: queda en ${kgTxt(r.total)} kg.</p>`}`;
+    $('en-det-cuerpo').querySelectorAll('[data-dcu]').forEach((b) => (b.onclick = () => {
+      if (b.dataset.dcu === u) return;
+      const v = parseFloat(($('dc-obj').value || '').replace(',', '.'));
+      if (v > 0) kg = U.aKg(v, u); // conserva el peso escrito al cambiar de unidad
+      u = b.dataset.dcu; pintarDc();
+    }));
+    const calc = () => {
+      const obj = parseFloat(($('dc-obj').value || '').replace(',', '.')), b = parseFloat($('dc-barra').value);
+      const d = [...document.querySelectorAll('.en-dc-disp input:checked')].map((x) => parseFloat(x.value));
+      guardarLS(clave, JSON.stringify({ barra: b, disp: d }));
+      if (!(obj > 0)) { $('dc-res').innerHTML = '<p class="hint">Escribe el peso total que quieres levantar.</p>'; return; }
+      const r = P.discos(obj, b, d);
+      if (obj < b) { $('dc-res').innerHTML = '<p class="hint">El peso es menor que la barra.</p>'; return; }
+      const alto = (p) => Math.round(34 + 66 * Math.min(1, p / (lb ? 45 : 25)));
+      $('dc-res').innerHTML = `<div class="en-dc-barra"><span class="en-dc-eje"></span>${r.lado.map((p) => `<span class="en-dc-disco" style="height:${alto(p)}px;background:${colores[p] || '#888'};color:${(lb ? [35, 10] : [5, 15]).includes(p) ? '#111' : '#fff'}">${kgTxt(p)}</span>`).join('')}<span class="en-dc-tope"></span></div>
+      <p style="margin:10px 0 0">Por lado: <b>${r.lado.length ? r.lado.map(kgTxt).join(' + ') : 'nada'}</b>${r.lado.length ? ` (= ${kgTxt(r.lado.reduce((a, x) => a + x, 0))} ${u})` : ''}</p>
+      ${r.exacto ? '' : `<p class="hint" style="color:var(--accent-orange)">Con esos discos no llega exacto: queda en ${kgTxt(r.total)} ${u}.</p>`}
+      ${lb ? `<p class="hint">≈ ${kgTxt(Math.round(U.aKg(r.total, 'lb') * 10) / 10)} kg en total.</p>` : ''}`;
+    };
+    $('dc-obj').oninput = calc; $('dc-barra').onchange = calc;
+    document.querySelectorAll('.en-dc-disp input').forEach((x) => (x.onchange = calc));
+    calc();
   };
-  $('dc-obj').oninput = calc; $('dc-barra').onchange = calc;
-  document.querySelectorAll('.en-dc-disp input').forEach((x) => (x.onchange = calc));
-  calc();
+  pintarDc();
+  $('en-detalle').style.display = 'flex';
 }
 
 // ------------------------------------------------------------------ descanso y reloj

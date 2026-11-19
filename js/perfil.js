@@ -162,7 +162,7 @@ export async function pintar() {
   const vol = (en) => en.ejercicios.reduce((a, e) => a + e.series.filter((s) => s.hecha && s.tipo !== 'calentamiento').reduce((b, s) => b + (s.kg || 0) * (s.reps || 0), 0), 0);
   const nAnalisis = (() => { try { return JSON.parse(localStorage.getItem('af_historial_v1') || '[]').length; } catch (e) { return 0; } })();
   $('pf-stats').innerHTML = `<div class="kpi-card"><div class="kpi-label">Entrenamientos</div><div class="kpi-value">${lista.length}</div><div class="kpi-sub">${mes.length} este mes</div></div>
-    <div class="kpi-card"><div class="kpi-label">Volumen del mes</div><div class="kpi-value">${fmt(mes.reduce((a, e) => a + vol(e), 0) / 1000, 1)}</div><div class="kpi-sub">toneladas</div></div>
+    <div class="kpi-card"><div class="kpi-label">Volumen del mes</div><div class="kpi-value">${fmt(toneladas(mes.reduce((a, e) => a + vol(e), 0)), 1)}</div><div class="kpi-sub">${TON()}</div></div>
     <div class="kpi-card"><div class="kpi-label">Análisis de video</div><div class="kpi-value">${nAnalisis}</div><div class="kpi-sub">series medidas</div></div>`;
 
   // v2.57.0 cuerpo pequeño con los músculos de la semana
@@ -178,7 +178,11 @@ export async function pintar() {
 // ------------------------------------------------------------------ mis marcas (récords, powerlifting, culturismo, crossfit)
 const TABS_MARCAS = { rec: 'Récords', pl: 'Powerlifting', bb: 'Culturismo', cf: 'CrossFit', run: 'Running' };
 let tabMarcas = localStorage.getItem('af_pf_marcas') || 'rec';
-const kgF = (x) => fmt(x, x % 1 ? 1 : 0);
+// v2.68.0 el Perfil también en libras (unidad de Ajustes): los datos siguen en kg
+const UP = () => U.global(), UNP = () => U.nombre(UP());
+const kgF = (x) => { const v = U.desdeKg(x, UP()), r = Math.round(v * 10) / 10; return fmt(r, r % 1 ? 1 : 0); };
+const toneladas = (kg) => U.desdeKg(kg, UP()) / 1000; // 'mil lb' en libras
+const TON = () => (UP() === 'lb' ? 'mil lb' : 'toneladas');
 const fechaC = (iso) => new Date(iso).toLocaleDateString('es-EC', { day: 'numeric', month: 'short', year: '2-digit' });
 function pintarMarcas(lista, marca, pc, cuerpo) {
   if (!TABS_MARCAS[tabMarcas]) tabMarcas = 'rec';
@@ -192,16 +196,16 @@ function pintarMarcas(lista, marca, pc, cuerpo) {
   if (tabMarcas === 'rec') {
     const top = [...ejs.keys()].map((k) => [k, reg(k)]).filter(([k, r]) => r && r.maxKg && !/asistid/.test(k)).sort((a, b) => b[1].maxKg.kg - a[1].maxKg.kg).slice(0, 6); // en las asistidas el peso ayuda, no es carga
     html = top.length ? `<div class="pf-recs">${top.map(([k, r], i) => `<button type="button" class="pf-rec" data-k="${esc(k)}"><span class="pf-rec-n">${i + 1}</span><span class="pf-rec-ic">${icono(k)}</span>
-        <div><strong>${esc(nombre(k))}</strong><small>${fechaC(r.maxKg.fecha)} · 1RM est. ${r.mejor ? kgF(Math.round(r.mejor.valor)) : '--'} kg</small></div>
-        <b>${kgF(r.maxKg.kg)}<small> kg × ${r.maxKg.reps}</small></b></button>`).join('')}</div>
+        <div><strong>${esc(nombre(k))}</strong><small>${fechaC(r.maxKg.fecha)} · 1RM est. ${r.mejor ? kgF(Math.round(r.mejor.valor)) : '--'} ${UNP()}</small></div>
+        <b>${kgF(r.maxKg.kg)}<small> ${UNP()} × ${r.maxKg.reps}</small></b></button>`).join('')}</div>
       <p class="hint">Tus levantamientos más pesados, de cualquier ejercicio. Toca uno para ver su progreso.</p>`
       : '<p class="hint" style="margin:0">Registra series con peso para ver aquí tus levantamientos más pesados.</p>';
   } else if (tabMarcas === 'pl') {
     const sbd = [['Sentadilla', marca(['sentadilla'])], ['Press banca', marca(['press_banca'])], ['Peso muerto', marca(['peso_muerto', 'peso_muerto_sumo'])]];
     const total = sbd.every(([, m]) => m) ? sbd.reduce((a, [, m]) => a + m.kg, 0) : null;
     const d = total && pc ? dots(total, pc, cuerpo.sexo) : null;
-    html = `<div class="pf-sbd">${sbd.map(([n, m]) => `<div><small>${n}</small><b>${m ? fmt(m.kg, m.kg % 1 ? 1 : 0) : '--'}</b><i>${m ? (m.tipo === 'real' ? '1RM real' : '1RM est.') : 'sin datos'}</i></div>`).join('')}</div>
-    <div class="pf-total"><div><small>Total</small><b>${total ? fmt(total, total % 1 ? 1 : 0) + ' kg' : '--'}</b></div><div><small>Puntos DOTS</small><b>${d ? fmt(d, 1) : '--'}</b></div><div><small>Peso corporal</small><b>${pc ? fmt(pc, 1) + ' kg' : '--'}</b></div></div>
+    html = `<div class="pf-sbd">${sbd.map(([n, m]) => `<div><small>${n}</small><b>${m ? kgF(m.kg) : '--'}</b><i>${m ? (m.tipo === 'real' ? '1RM real' : '1RM est.') : 'sin datos'}</i></div>`).join('')}</div>
+    <div class="pf-total"><div><small>Total</small><b>${total ? kgF(total) + ' ' + UNP() : '--'}</b></div><div><small>Puntos DOTS</small><b>${d ? fmt(d, 1) : '--'}</b></div><div><small>Peso corporal</small><b>${pc ? kgF(pc) + ' ' + UNP() : '--'}</b></div></div>
     <p class="hint">${total ? 'Usa tu 1RM real cuando lo guardaste (en la ficha del ejercicio) y si no, el mejor 1RM estimado de tus series.' : 'Registra series de sentadilla, banca y peso muerto (o guarda tus 1RM reales) para ver tu total.'}${d ? '' : total ? ' Registra tu peso corporal para calcular los puntos DOTS.' : ''}</p>`;
   } else if (tabMarcas === 'bb') {
     // culturismo: series por semana de cada grupo (ultimas 4 semanas) y el ejercicio mas fuerte del grupo
@@ -263,27 +267,29 @@ function pintarMarcas(lista, marca, pc, cuerpo) {
 // ------------------------------------------------------------------ peso corporal
 function pintarPeso() {
   const log = leerJ('af_peso_log', []);
-  $('pf-peso-in').placeholder = log.length ? fmt(log[log.length - 1].kg, 1) : 'ej.: 90';
+  $('pf-peso-in').placeholder = log.length ? kgF(log[log.length - 1].kg) : (UP() === 'lb' ? 'ej.: 200' : 'ej.: 90');
+  if ($('pf-peso-u')) $('pf-peso-u').textContent = UNP();
   const c = $('pf-peso-graf');
-  if (log.length < 2) { c.style.display = 'none'; $('pf-peso-txt').textContent = log.length ? `Último registro: ${fmt(log[0].kg, 1)} kg (${log[0].fecha}).` : 'Pésate en las mañanas, en ayunas, para ver una tendencia confiable.'; return; }
+  if (log.length < 2) { c.style.display = 'none'; $('pf-peso-txt').textContent = log.length ? `Último registro: ${kgF(log[0].kg)} ${UNP()} (${log[0].fecha}).` : 'Pésate en las mañanas, en ayunas, para ver una tendencia confiable.'; return; }
   c.style.display = '';
   const ult = log.slice(-60), a = ult[0], b = ult[ult.length - 1];
   const dias = Math.max(1, (new Date(b.fecha) - new Date(a.fecha)) / 86400000);
-  $('pf-peso-txt').textContent = `${b.kg - a.kg >= 0 ? '+' : '−'}${fmt(Math.abs(b.kg - a.kg), 1)} kg en ${Math.round(dias)} días (${fmt(7 * (b.kg - a.kg) / dias, 2)} kg por semana).`;
+  const dU = U.desdeKg(b.kg - a.kg, UP());
+  $('pf-peso-txt').textContent = `${dU >= 0 ? '+' : '−'}${fmt(Math.abs(dU), 1)} ${UNP()} en ${Math.round(dias)} días (${fmt(7 * dU / dias, 2)} ${UNP()} por semana).`;
   const dpr = window.devicePixelRatio || 1, W = c.clientWidth || 320, H = 150;
   c.width = W * dpr; c.height = H * dpr; c.style.height = H + 'px';
   const g = c.getContext('2d'); g.scale(dpr, dpr);
-  const ys = ult.map((p) => p.kg); let mn = Math.min(...ys), mx = Math.max(...ys); const pad = Math.max(0.5, (mx - mn) * 0.15); mn -= pad; mx += pad;
+  const ys = ult.map((p) => U.desdeKg(p.kg, UP())); let mn = Math.min(...ys), mx = Math.max(...ys); const pad = Math.max(0.5, (mx - mn) * 0.15); mn -= pad; mx += pad;
   const L = 36, R = 8, T = 8, B = 20, x = (i) => L + (W - L - R) * i / (ult.length - 1), y = (v) => T + (H - T - B) * (1 - (v - mn) / (mx - mn));
   g.font = '10px system-ui, sans-serif'; g.fillStyle = '#8e95a5'; g.strokeStyle = 'rgba(255,255,255,.07)';
   for (let k = 0; k <= 3; k++) { const v = mn + (mx - mn) * k / 3; g.beginPath(); g.moveTo(L, y(v)); g.lineTo(W - R, y(v)); g.stroke(); g.fillText(fmt(v, 1), 2, y(v) + 3); }
   g.fillText(a.fecha.slice(5), L, H - 5); g.fillText(b.fecha.slice(5), W - R - 28, H - 5);
-  g.strokeStyle = '#5aa0ff'; g.lineWidth = 2; g.beginPath(); ult.forEach((p, i) => (i ? g.lineTo(x(i), y(p.kg)) : g.moveTo(x(i), y(p.kg)))); g.stroke();
-  g.fillStyle = '#5adc78'; ult.forEach((p, i) => { g.beginPath(); g.arc(x(i), y(p.kg), 2.5, 0, 7); g.fill(); });
+  g.strokeStyle = '#5aa0ff'; g.lineWidth = 2; g.beginPath(); ult.forEach((p, i) => (i ? g.lineTo(x(i), y(ys[i])) : g.moveTo(x(i), y(ys[i])))); g.stroke();
+  g.fillStyle = '#5adc78'; ult.forEach((p, i) => { g.beginPath(); g.arc(x(i), y(ys[i]), 2.5, 0, 7); g.fill(); });
 }
 function registrarPeso() {
-  const kg = parseFloat(($('pf-peso-in').value || '').replace(',', '.'));
-  if (!(kg > 30 && kg < 300)) return alert('Escribe tu peso en kg.');
+  const kg = Math.round(U.aKg(parseFloat(($('pf-peso-in').value || '').replace(',', '.')), UP()) * 100) / 100;
+  if (!(kg > 30 && kg < 300)) return alert(`Escribe tu peso en ${UNP()}.`);
   const log = leerJ('af_peso_log', []).filter((p) => p.fecha !== hoyISO());
   log.push({ fecha: hoyISO(), kg }); log.sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
   guardarJ('af_peso_log', log);
@@ -298,7 +304,7 @@ function pintarUnidades() {
   const u = U.global();
   $('pf-unidades').querySelectorAll('[data-u]').forEach((b) => {
     b.classList.toggle('active', b.dataset.u === u);
-    b.onclick = () => { U.ponerGlobal(b.dataset.u); pintarUnidades(); };
+    b.onclick = () => { U.ponerGlobal(b.dataset.u); pintarUnidades(); pintar(); };
   });
   const r = U.resumenGuardado();
   $('pf-uni-res').innerHTML = r ? `Resumen al terminar: siempre en <b>${r === 'lb' ? 'libras' : 'kilos'}</b>. <button type="button" class="link" id="pf-uni-preg">Volver a preguntarme</button>` : '';
@@ -519,7 +525,8 @@ async function pintarSocial() {
   } catch (e) { /* sin internet: se queda lo recordado */ }
 }
 
-const METRICAS = { dur: ['Duración', 'h'], vol: ['Volumen', 't'], ser: ['Series', 'series'], vel: ['⚡ Velocidad', 'm/s'] };
+const METRICAS = { dur: ['Duración', 'h'], vol: ['Volumen', 't'], // en libras la unidad del volumen se muestra como 'mil lb' (ver pintarSemanas)
+ ser: ['Series', 'series'], vel: ['⚡ Velocidad', 'm/s'] };
 let metrica = localStorage.getItem('af_pf_sem') || 'dur';
 const lunesDe = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
 let ultimaLista = [];
@@ -532,14 +539,14 @@ function pintarSemanas(lista = ultimaLista) {
   for (const en of lista) {
     const k = idx(en.inicio); if (k < 0) continue;
     if (en.fin) sem[k].dur += Math.min(4, Math.max(0, (new Date(en.fin) - new Date(en.inicio)) / 3600000)); // max 4 h (si se olvido terminar)
-    for (const e of en.ejercicios) for (const sr of e.series) if (sr.hecha && sr.tipo !== 'calentamiento') { sem[k].ser++; sem[k].vol += (sr.kg || 0) * (sr.reps || 0) / 1000; }
+    for (const e of en.ejercicios) for (const sr of e.series) if (sr.hecha && sr.tipo !== 'calentamiento') { sem[k].ser++; sem[k].vol += toneladas((sr.kg || 0) * (sr.reps || 0)); }
   }
   for (const r of hist.leer()) { const k = idx(r.fecha); if (k >= 0 && r.vMejor > 0) sem[k].vels.push(r.vMejor); }
   const val = (w) => (metrica === 'vel' ? (w.vels.length ? w.vels.reduce((a, b) => a + b, 0) / w.vels.length : null) : w[metrica]);
   const vals = sem.map(val);
   $('pf-sem-chips').innerHTML = Object.entries(METRICAS).map(([k, [n]]) => `<button type="button" class="chip${k === metrica ? ' active' : ''}" data-m="${k}">${n}</button>`).join('');
   $('pf-sem-chips').querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => { metrica = b.dataset.m; try { localStorage.setItem('af_pf_sem', metrica); } catch (e) { /* nada */ } pintarSemanas(); }));
-  const dec = metrica === 'vel' ? 2 : metrica === 'ser' ? 0 : 1, uni = METRICAS[metrica][1];
+  const dec = metrica === 'vel' ? 2 : metrica === 'ser' ? 0 : 1, uni = metrica === 'vol' && UP() === 'lb' ? 'mil lb' : METRICAS[metrica][1];
   const conDato = vals.filter((v) => v != null && v > 0), prom = conDato.length ? conDato.reduce((a, b) => a + b, 0) / conDato.length : null;
   const hoy = vals[N - 1];
   $('pf-sem-txt').textContent = !conDato.length
@@ -593,12 +600,12 @@ function pintarVideo() {
     let cambio = '';
     if (n >= 2) {
       const misma = l.filter((r) => kg(r) === carga), v0 = misma[0].vMejor, v1 = misma[misma.length - 1].vMejor, pct = (v1 / v0 - 1) * 100;
-      cambio = `<span class="pf-vid-cambio ${pct >= 3 ? 'sube' : pct <= -3 ? 'baja' : ''}">${pct >= 0 ? '▲' : '▼'} ${fmt(Math.abs(pct))} %<small>con ${kgF(carga)} kg</small></span>`;
+      cambio = `<span class="pf-vid-cambio ${pct >= 3 ? 'sube' : pct <= -3 ? 'baja' : ''}">${pct >= 0 ? '▲' : '▼'} ${fmt(Math.abs(pct))} %<small>con ${kgF(carga)} ${UNP()}</small></span>`;
     }
     const ult = l[l.length - 1], ult12 = l.slice(-12).map((r) => r.vMejor);
     const mn = Math.min(...ult12), mxv = Math.max(...ult12), sp = ult12.length > 1 ? ult12.map((v, i) => `${(i / (ult12.length - 1) * 70).toFixed(1)},${(22 - (mxv > mn ? (v - mn) / (mxv - mn) : 0.5) * 18).toFixed(1)}`).join(' ') : '';
     return `<button type="button" class="pf-vid" data-id="${esc(ult.id)}"><span class="pf-rec-ic">${icono}</span>
-      <div><strong>${esc(nombre)}</strong><small>${l.length} ${l.length === 1 ? 'serie' : 'series'} · última ${fmt(ult.vMejor, 2)} m/s${kg(ult) != null ? ` con ${kgF(kg(ult))} kg` : ''}</small></div>
+      <div><strong>${esc(nombre)}</strong><small>${l.length} ${l.length === 1 ? 'serie' : 'series'} · última ${fmt(ult.vMejor, 2)} m/s${kg(ult) != null ? ` con ${kgF(kg(ult))} ${UNP()}` : ''}</small></div>
       ${sp ? `<svg viewBox="0 0 70 24" class="pf-vid-sp" aria-hidden="true"><polyline points="${sp}"/></svg>` : ''}${cambio}</button>`;
   }).join('');
   const dif = vm && va ? (vm / va - 1) * 100 : null;
