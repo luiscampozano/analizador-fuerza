@@ -9,8 +9,8 @@ const leerJ = (k) => { try { const o = JSON.parse(leer(k) || '{}'); return o && 
 
 export const global = () => (leer('af_unidades') === 'lb' ? 'lb' : 'kg');
 export const ponerGlobal = (u) => guardar('af_unidades', u === 'lb' ? 'lb' : null);
-export const delEjercicio = (id) => { const u = leerJ('af_unidad_ej')[id]; return u === 'lb' || u === 'kg' ? u : global(); };
-export function recordarEjercicio(id, u) { const m = leerJ('af_unidad_ej'); m[id] = u; guardar('af_unidad_ej', JSON.stringify(m)); }
+export const delEjercicio = (id) => { const u = id ? leerJ('af_unidad_ej')[id] : null; return u === 'lb' || u === 'kg' ? u : global(); };
+export function recordarEjercicio(id, u) { if (!id) return; const m = leerJ('af_unidad_ej'); m[id] = u; guardar('af_unidad_ej', JSON.stringify(m)); } // sin id (ejercicio propio): solo ese entreno
 export const resumenGuardado = () => { const u = leer('af_unidad_resumen'); return u === 'lb' || u === 'kg' ? u : null; };
 export const guardarResumen = (u) => guardar('af_unidad_resumen', u);
 
@@ -24,3 +24,13 @@ export function paraCampo(kg, u) {
   return String(Math.round(v * (u === 'lb' ? 10 : 100)) / (u === 'lb' ? 10 : 100));
 }
 export const nombre = (u) => (u === 'lb' ? 'lb' : 'kg');
+// número escrito en español (1.020,5) → 1020.5
+export const numEs = (t) => parseFloat(String(t || '').replace(/\./g, '').replace(',', '.'));
+// textos ya armados en kg (récords: «102,5 kg (90 × 5)», «90 kg × 5») pasados a libras
+export function textoEn(txt, u) {
+  if (u !== 'lb' || !txt) return txt;
+  return String(txt).replace(/(\d[\d.]*(?:,\d+)?)(\s?kg| ×)/g, (m0, n, suf) => {
+    const v = Math.round(desdeKg(numEs(n), 'lb') * 10) / 10;
+    return `${v.toLocaleString('es-EC', { maximumFractionDigits: 1 })}${suf.trim() === 'kg' ? ' lb' : suf}`;
+  });
+}

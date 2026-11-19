@@ -15,6 +15,8 @@ const logoListo = () => new Promise((ok) => { if (!LOGO || (LOGO.complete && LOG
 const fmt = (x, d = 0) => (Number.isFinite(x) ? x.toLocaleString('es-EC', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—');
 // v2.67.0 las tarjetas pueden salir en libras (los datos siguen en kg); UN se fija en generar()
 let UN = 'kg';
+import { textoEn } from './unidades.js';
+const U2 = (t) => textoEn(t, UN);
 const kg = (x) => { const v = UN === 'lb' ? x / 0.45359237 : x; const r = Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10; return fmt(r, r % 1 ? 1 : 0); };
 const cuenta = (s) => s.tipo !== 'calentamiento' && s.hecha !== false;
 const e1rm = (k, r) => (k > 0 && r > 0 ? (r === 1 ? k : k * (1 + r / 30)) : 0);
@@ -205,7 +207,7 @@ function tRecords(d) {
     if (y + h > H - 160) break;
     caja(g, 64, y, W - 128, h);
     texto(g, r.nombre, 100, y + 60, { tam: 38, peso: 800, max: W - 200 });
-    filas.forEach((x, i) => { texto(g, x.tipo, 100, y + 112 + i * 52, { tam: 30, peso: 500, color: C.suave }); texto(g, x.texto, W - 100, y + 112 + i * 52, { tam: 32, peso: 800, color: C.amarillo, alin: 'right' }); });
+    filas.forEach((x, i) => { texto(g, x.tipo, 100, y + 112 + i * 52, { tam: 30, peso: 500, color: C.suave }); texto(g, U2(x.texto), W - 100, y + 112 + i * 52, { tam: 32, peso: 800, color: C.amarillo, alin: 'right' }); });
     y += h + 24;
   }
   marca(g, d); return c;

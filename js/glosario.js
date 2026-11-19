@@ -38,7 +38,7 @@ export function abrir(k) {
   caja.querySelector('.glo-ok').focus();
 }
 // botón ⓘ para poner junto a un término
-export const ti = (k) => `<button type="button" class="glo-i" data-term="${k}" aria-label="¿Qué es esto?">ⓘ</button>`;
+export const ti = (k) => `<button type="button" class="glo-i" data-term="${k}" aria-label="¿Qué es ${T[k] ? T[k][0].split(' · ')[0] : 'esto'}?">ⓘ</button>`;
 document.addEventListener('click', (e) => {
   const b = e.target.closest && e.target.closest('[data-term]');
   if (!b) return;

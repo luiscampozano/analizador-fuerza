@@ -9,7 +9,7 @@ export function consejo(ej) {
   const ambos = /de lado o de frente|de frente o de lado/.test(h);
   const vista = frente ? 'frente' : ambos ? 'ambos' : 'lado';
   const piso = /flexiones|sit-up|en el suelo|rueda abdominal|plancha|remo invertido|puente de gl/.test(n);
-  const acostado = !/brazos rectos/.test(n) && /banca|press inclinado|press declinado|press con mancuerna|aperturas|pullover|hip thrust|rompecr|skull|press franc/.test(n);
+  const acostado = !/brazos rectos/.test(n) && /tumbad|acostad|banca|press inclinado|press declinado|press con mancuerna|aperturas|pullover|hip thrust|rompecr|skull|press franc/.test(n);
   const altura = piso ? 'bajo, a 30–50 cm del piso'
     : acostado ? 'a la altura del banco'
       : /dominada|jal[oó]n|fondos|press militar|press de hombro|press de pecho|pec deck|muscle up|elevaci|face pull|crunch en m/.test(n) || g === 'Hombros' || g === 'Brazos' ? 'a la altura del pecho'
@@ -19,7 +19,7 @@ export function consejo(ej) {
   const items = [];
   if (vista === 'frente') items.push('<b>De frente</b>, mirándote de cara.');
   else if (vista === 'ambos') items.push('<b>De lado (90°)</b> o <b>de frente</b>: las dos sirven.');
-  else items.push(`<b>De lado (90°)</b>, mirando tu costado${ej.unilateral ? ', <b>del lado que trabaja</b>' : ''}. En diagonal (45°) también funciona.`);
+  else items.push(`<b>De lado (90°)</b>, mirando tu costado${ej.unilateral || /pierna que trabaja/.test(h) ? ', <b>del lado que trabaja</b>' : ''}. En diagonal (45°) también funciona.`);
   items.push(`Celular <b>${altura}</b>, fijo y ${piso || acostado ? '<b>en horizontal</b> (acostado entras completo)' : 'en vertical'}.`);
   items.push(`A <b>${distancia}</b>: que entre ${ver}.`);
   items.push(vista === 'frente' ? 'Evita grabar de lado: un brazo tapa al otro y el arco no se ve.' : 'Evita grabar de frente: la profundidad y el recorrido no se ven bien.');

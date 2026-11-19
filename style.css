@@ -1364,7 +1364,9 @@ body.buscando .action-footer { display: none; }
 .nu-ia { margin-bottom: 14px; }
 /* v2.67.0 kilos o libras */
 .en-uni { background: none; border: 1px solid var(--border-color); border-radius: 6px; color: inherit; font: inherit; font-weight: 800; padding: 1px 4px; cursor: pointer; min-height: 0; }
-.en-fila-cab span:has(.en-uni) { overflow: visible; }
+.en-fila-cab .cab-uni { overflow: visible; }
+.en-fila-cab .cab-ti { display: flex; justify-content: center; align-items: center; gap: 1px; overflow: visible; }
+.en-fila-cab .cab-ti em { font-style: normal; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .eg-uni { margin: 10px 0 0; }
 .eg-uni .eg-uni-rec { display: flex; flex-direction: row; justify-content: flex-start; gap: 8px; align-items: center; margin: 0; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 13px; text-align: left; }
 .eg-uni .eg-uni-rec input { width: auto; margin: 0; }

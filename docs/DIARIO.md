@@ -14,6 +14,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
   final en qué unidad ver el resumen. Luis aprobó los bocetos.
 - **Hecho:** glosario ⓘ, tarjeta «📐 Cómo grabar» y unidades kg/lb (datos siempre en kg). Probado: banca 60 kg × 8 +
   mancuernas 45 lb × 10 → volumen 684 kg = 1.508 lb; tarjetas en lb.
+- **Revisión (otro Claude):** récords en las tarjetas y el detalle pasados a lb; ejercicios sin id no comparten unidad;
+  lectura de «1.100» corregida; ⚖️ según el entreno (kg, lb o kg/lb); solo cardio no pregunta; la edición también
+  pregunta; «Anterior ⓘ» siempre visible; curl femoral tumbado y búlgaras en «Cómo grabar».
 - **Pendiente:** libras también en el análisis de video, Perfil y estadísticas (siguen en kg).
 
 ### 16:40 · v2.66.1 — Botón «Terminar» visible en iPhone
