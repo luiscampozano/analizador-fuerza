@@ -33,7 +33,7 @@ export function resumenPesas(inf, cargaTexto = '') {
 
   // peso maximo
   if (s.rm && !corporal && !e.balistico) out.push(`🎯 Con esta medición, el peso máximo que podrías levantar <b>una sola vez</b> estaría cerca de <b>${fp(s.rm)} ${UN()}</b> (es una estimación).`);
-  else if (s.rm && corporal && Number.isFinite(s.rmLastre) && !e.balistico) out.push(s.rmLastre >= 0 ? `🎯 Para hacer una sola repetición podrías colgarte unos <b>${fp(s.rmLastre)} ${UN()}</b> extra (estimado).` : `🎯 Para una sola repetición necesitarías unos <b>${f(-s.rmLastre)} kg</b> de ayuda (estimado).`);
+  else if (s.rm && corporal && Number.isFinite(s.rmLastre) && !e.balistico) out.push(s.rmLastre >= 0 ? `🎯 Para hacer una sola repetición podrías colgarte unos <b>${fp(s.rmLastre)} ${UN()}</b> extra (estimado).` : `🎯 Para una sola repetición necesitarías unos <b>${fp(-s.rmLastre)} ${UN()}</b> de ayuda (estimado).`);
 
   // tecnica y control
   const avisos = (inf.tec && inf.tec.resumen) || [];

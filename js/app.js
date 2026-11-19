@@ -721,7 +721,7 @@ async function crearVideoSerie(video, archivoV, e, d, calc, { repsTotal = null, 
   const { full, res, tray, tec, fps } = calc;
   const ang = $('in-angulo').value ? anguloArticular(full, $('in-angulo').value, fps) : null;
   const titulo = e.perfil === 'riel' ? `${e.corto} · ${pk(d.carga, 1)} ${UN()} · peso efectivo (${d.alfa}°): ${pk(res.estatico)} ${UN()}`
-    : e.perfil === 'corporal' ? `${e.corto} · peso corporal ${pk(d.pc, 1)} ${UN()}${d.peso ? (e.asistido ? ` − asistencia ${pk(d.peso, 1)} ${UN()}` : ` + lastre ${fmt(d.peso, 1)} kg`) : ''}`
+    : e.perfil === 'corporal' ? `${e.corto} · peso corporal ${pk(d.pc, 1)} ${UN()}${d.peso ? (e.asistido ? ` − asistencia ${pk(d.peso, 1)} ${UN()}` : ` + lastre ${pk(d.peso, 1)} ${UN()}`) : ''}`
     : `${e.corto} · ${pk(d.carga, 1)} ${UN()}${d.relacion !== 1 ? ` (polea ${d.relacion}:1)` : ''}`;
   const leyendaVel = e.sentido === 'abajo' ? 'Velocidad de la carga (m/s)  ↑ subida  ↓ bajada' : 'Velocidad (m/s)  ↑ fase concéntrica  ↓ excéntrica';
   // v2.40.1 la linea amarilla del recorrido es opcional (apagada por defecto); el informe y el PDF la siguen midiendo
@@ -1254,7 +1254,7 @@ $('btn-peso').onclick = async () => {
   const inf = informeActual; if (!inf || !inf.id || !inf.datos) return;
   const e = POR_ID[inf.ej && inf.ej.id]; if (!e) return;
   const corporal = e.perfil === 'corporal', antes = corporal ? inf.datos.peso || 0 : inf.datos.carga;
-  const txt = prompt(corporal ? (e.asistido ? `¿Cuánta asistencia usaste? (${UN()})` : `¿Cuánto lastre usaste? (${UN()}; 0 si fue solo tu peso)`) : `¿Cuánto peso moviste en total? (${UN()}${(inf.datos.carga || 0) > (inf.datos.peso || 0) ? ', discos + barra o máquina' : ''})`, antes);
+  const txt = prompt(corporal ? (e.asistido ? `¿Cuánta asistencia usaste? (${UN()})` : `¿Cuánto lastre usaste? (${UN()}; 0 si fue solo tu peso)`) : `¿Cuánto peso moviste en total? (${UN()}${(inf.datos.carga || 0) > (inf.datos.peso || 0) ? ', discos + barra o máquina' : ''})`, U.paraCampo(antes, UA()));
   if (txt == null) return;
   const kg = U.aKg(parseFloat(String(txt).replace(',', '.')), UA());
   if (!Number.isFinite(kg) || kg < 0 || kg > 1000 || (!corporal && kg === 0)) return alert(`Escribe el peso en ${UN()}, por ejemplo 40.`);
@@ -1463,7 +1463,7 @@ function pintarHistorial() {
     graficaPerfil($('g-perfil'), p, e || ej);
     const ultimoRM = delEj.length ? (corporal ? delEj[delEj.length - 1].rm : delEj[delEj.length - 1].rm) : null;
     const cal = sugerirCalibracion(p && p.rm && p.confianza !== 'baja' ? p.rm : ultimoRM);
-    const guia = cal ? `Para ${p && p.confianza === 'alta' ? 'mantenerlo al día' : 'calibrarlo'}: haz series de 2–3 reps <b>lo más rápido posible</b> con ${cal.map((c) => `${fmt(c.carga, 1)} kg (~${c.pct} %)`).join(', ')}${corporal ? ' de masa total (cuerpo + lastre)' : ''}.` : 'Para calibrarlo: haz series de 2–3 reps lo más rápido posible con 3 pesos distintos (ligero, medio y pesado).';
+    const guia = cal ? `Para ${p && p.confianza === 'alta' ? 'mantenerlo al día' : 'calibrarlo'}: haz series de 2–3 reps <b>lo más rápido posible</b> con ${cal.map((c) => `${pk(c.carga, 1)} ${UN()} (~${c.pct} %)`).join(', ')}${corporal ? ' de masa total (cuerpo + lastre)' : ''}.` : 'Para calibrarlo: haz series de 2–3 reps lo más rápido posible con 3 pesos distintos (ligero, medio y pesado).';
     const mvtTxt = p ? (p.mvtPersonal ? `Tu velocidad mínima (MVT): <b>${fmt(p.mvt, 2)} m/s</b>, medida en ${p.nFinales} series llevadas cerca del fallo.`
       : `Velocidad mínima (MVT): ${fmt(p.mvt, 2)} m/s (valor promedio). Se personaliza cuando tengas 2 series llevadas cerca del fallo (≥30 % de pérdida y 4+ reps).`) : '';
     $('h-perfil').innerHTML = !p || p.n < 2
@@ -1540,7 +1540,7 @@ function analizarDesdeEntreno({ ej: id, kg, serie, nombre }) {
 // ------------------------------------------------------------------ inicio
 (function iniciar() {
   if (leer('af_altura')) $('in-altura').value = leer('af_altura');
-  if (leer('af_pc')) ponerKg('in-pc', leer('af_pc'));
+  ponerKg('in-pc', leer('af_pc') || 77.8); // sin peso guardado: 77,8 kg de ejemplo, convertido si la app está en libras
   // v2.59.0 una sola vez: quien tenía «Normal» (la de antes por defecto) pasa a «Automática»
   if (leer('af_calidad') === 'normal' && !leer('af_calidad_auto')) guardar('af_calidad', 'auto');
   guardar('af_calidad_auto', 1);
