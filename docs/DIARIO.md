@@ -13,6 +13,8 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
   ejercicios (aprobó el boceto: 3D quieto en los cuadritos, 2D moviéndose en Analizar y 3D grande en la ficha).
 - **Hecho:** js/muneco.js dibuja el muñeco de piezas con los movimientos de figura.js y los músculos de tarjetas.js
   (principal naranja, secundario morado). 128 movimientos revisados en una hoja de prueba; miniaturas ~4 ms cada una.
+- **Revisión (otro Claude):** sin errores en los 199 ejercicios; se corrigió: animación pausada debajo de la ficha 3D,
+  limpieza de miniaturas al buscar, sin medir en cada cuadro, leyenda de colores en Analizar, foco y Escape en la ficha.
 - **Pendiente:** etapa 2 (arreglar los raros: máquinas, poleas, acostados) y etapa 3 (3 pasos por ejercicio).
 
 ## 2026-11-18

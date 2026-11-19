@@ -309,15 +309,16 @@ function preparar(cv) {
   return { g, W: r.width, H: r.height };
 }
 const vivos = new Set();
+const fichaAbierta = () => { const m = document.getElementById('mu-modal'); return !!(m && m.style.display !== 'none'); };
 let corriendo = false, antes = 0;
-const io = typeof IntersectionObserver === 'function' ? new IntersectionObserver((ents) => { for (const en of ents) { const o = en.target._mu; if (o) o.vis = en.isIntersecting; } arrancar(); }) : null;
+const io = typeof IntersectionObserver === 'function' ? new IntersectionObserver((ents) => { for (const en of ents) { const o = en.target._mu; if (!o) continue; if (!en.target.isConnected) { vivos.delete(o); io.unobserve(en.target); continue; } o.vis = en.isIntersecting; } arrancar(); }) : null;
 function arrancar() { if (!corriendo && [...vivos].some((o) => o.vis)) { corriendo = true; requestAnimationFrame(cuadro); } }
 function cuadro(ms) {
   const dt = Math.min(50, ms - antes); antes = ms;
   let alguno = false;
   for (const o of vivos) {
     if (!o.cv.isConnected) { vivos.delete(o); if (io) io.unobserve(o.cv); continue; }
-    if (!o.vis) continue;
+    if (!o.vis || (fichaAbierta() && !o.cv.closest('#mu-modal'))) continue;
     alguno = true; o.dibujar(quieto() ? 1400 : ms, dt);
   }
   corriendo = alguno && !quieto();
@@ -327,11 +328,12 @@ function registrar(cv, hacer) {
   const o = { cv, vis: !io, dibujar: null };
   let ctx = null;
   o.dibujar = (ms, dt) => {
-    if (!ctx || ctx.W !== cv.getBoundingClientRect().width) { ctx = preparar(cv); if (!ctx) return; o.listo = hacer(ctx); }
+    if (!ctx || o.medir) { o.medir = false; const n = preparar(cv); if (!n) return; if (!ctx || n.W !== ctx.W || n.H !== ctx.H || !o.listo) o.listo = hacer(n); ctx = n; }
     if (!o.listo) return;
     ctx.g.clearRect(0, 0, ctx.W, ctx.H); o.listo(ctx.g, ms, dt);
   };
   cv._mu = o; vivos.add(o); if (io) io.observe(cv);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => { o.medir = true; }).observe(cv);
   arrancar();
   return o;
 }
@@ -371,7 +373,7 @@ function atenderCola() {
   if (cola.length) requestAnimationFrame(atenderCola); else colaActiva = false;
 }
 const ioMini = typeof IntersectionObserver === 'function' ? new IntersectionObserver((ents) => {
-  for (const en of ents) if (en.isIntersecting) { ioMini.unobserve(en.target); cola.push(en.target); }
+  for (const en of ents) { if (!en.target.isConnected) { ioMini.unobserve(en.target); continue; } if (en.isIntersecting) { ioMini.unobserve(en.target); cola.push(en.target); } }
   if (cola.length && !colaActiva) requestAnimationFrame(atenderCola);
 }, { rootMargin: '200px' }) : null;
 function vigilar(raiz) {
@@ -406,7 +408,7 @@ export function demo(caja, ej) {
   const m = musculosDe(ej), vs = vistas2d(t);
   caja.innerHTML = `<div class="mu-caja"><b class="mu-tit">📖 Cómo se hace</b>
     <div class="mu-vistas">${vs.map(([, n]) => `<div class="mu-v"><canvas role="img" aria-label="${esc(ej.nombre || '')}, ${n}"></canvas><span>${n}</span></div>`).join('')}</div>
-    ${chips(m)}<button type="button" class="btn-sec mu-ver">🔄 Ver en 3D</button></div>`;
+    ${m.pri.length ? LEYENDA : ''}${chips(m)}<button type="button" class="btn-sec mu-ver">🔄 Ver en 3D</button></div>`;
   caja.querySelectorAll('canvas').forEach((cv, i) => vistaPlana(cv, t, vs[i][0], m.zonas));
   caja.querySelector('.mu-ver').onclick = () => abrirFicha(ej);
   return true;
@@ -416,7 +418,7 @@ export function vista3d(caja, ej, conMusculos = true) {
   const t = ej && plantilla(ej.id);
   if (!t) { caja.innerHTML = ''; return false; }
   const m = musculosDe(ej);
-  caja.innerHTML = `<div class="mu-3d"><canvas role="img" aria-label="${esc(ej.nombre || 'Ejercicio')} en 3D"></canvas></div><p class="mu-gira">☝️ Gira solo; arrástralo para verlo desde otro lado</p>${conMusculos ? LEYENDA + chips(m) : ''}`;
+  caja.innerHTML = `<div class="mu-3d"><canvas role="img" aria-label="${esc(ej.nombre || 'Ejercicio')} en 3D"></canvas></div><p class="mu-gira">☝️ Gira solo; arrástralo para verlo desde otro lado</p>${conMusculos && m.pri.length ? LEYENDA + chips(m) : ''}`;
   vistaGiro(caja.querySelector('canvas'), t, m.zonas);
   return true;
 }
@@ -425,17 +427,21 @@ export function abrirFicha(ej) {
   const def = POR_ID[ej.id] || ej;
   document.getElementById('mu-titulo').textContent = def.nombre || ej.nombre || 'Ejercicio';
   document.getElementById('mu-sub').textContent = [def.equipo, def.grupo].filter(Boolean).join(' · ');
+  volverA = document.activeElement;
   md.style.display = 'flex';
   vista3d(document.getElementById('mu-cuerpo'), def);
   const pasos = def.pasos || [];
-  document.getElementById('mu-pasos').innerHTML = pasos.length ? `<ol class="mu-pasos">${pasos.map((p) => `<li>${esc(p)}</li>`).join('')}</ol>` : '';
+  document.getElementById('mu-pasos').innerHTML = pasos.length ? `<ol class="mu-pasos">${pasos.map((p) => `<li>${esc(p)}</li>`).join('')}</ol>` : ''; // etapa 3: pasos de cada ejercicio
+  document.getElementById('mu-cerrar').focus();
 }
+let volverA = null;
 if (typeof document !== 'undefined') {
   const iniciar = () => {
     const b = document.getElementById('mu-cerrar'), md = document.getElementById('mu-modal');
     if (!b || !md) return;
-    b.onclick = () => { md.style.display = 'none'; document.getElementById('mu-cuerpo').innerHTML = ''; };
+    b.onclick = () => { md.style.display = 'none'; document.getElementById('mu-cuerpo').innerHTML = ''; if (volverA && volverA.isConnected) try { volverA.focus(); } catch (e) { /* nada */ } arrancar(); };
     md.addEventListener('click', (e) => { if (e.target === md) b.click(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && md.style.display !== 'none') b.click(); });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 }
