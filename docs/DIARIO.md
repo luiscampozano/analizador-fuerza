@@ -8,6 +8,11 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-19
 
+### 12:15 · Apple aprobó FuerzaPro 1.1 (iPhone)
+- **Pasó:** correo de App Store Connect: la revisión de la 1.1 (enviada el 18-nov) terminó y está lista para
+  distribución. Funciones nativas: aviso de descanso, vibración, compartir y Apple Salud.
+- **Pendiente:** si quedó en «lanzamiento manual», Luis toca «Publicar esta versión»; probar actualizando desde la App Store.
+
 ### 09:30 · v2.70.1 — Arreglos del muñeco que encontró Luis
 - **Pidió:** Luis (con capturas): prensa a una pierna movía las 2 piernas; aductores en máquina se veía de pie;
   búlgara con el pie despegado del banco y la mancuerna atravesando la pierna; brazos perdidos en la sentadilla.
