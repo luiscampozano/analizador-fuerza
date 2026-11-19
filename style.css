@@ -1362,6 +1362,11 @@ body.buscando .action-footer { display: none; }
 
 /* v2.45.0 nutricionista personal IA */
 .nu-ia { margin-bottom: 14px; }
+/* v2.69.0 kg/lb junto a «3. Datos» en Analizar */
+.datos-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.datos-cab .section-title { margin-bottom: 0; }
+.u-sel { margin: 0; flex-wrap: nowrap; }
+.u-sel .chip { padding: 5px 14px; }
 /* v2.67.0 kilos o libras */
 .en-uni { background: none; border: 1px solid var(--border-color); border-radius: 6px; color: inherit; font: inherit; font-weight: 800; padding: 1px 4px; cursor: pointer; min-height: 0; }
 .en-fila-cab .cab-uni { overflow: visible; }

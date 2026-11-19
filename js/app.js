@@ -18,7 +18,12 @@ const UA = () => U.global(), UN = () => U.nombre(UA());
 const pk = (kg, d = 0) => fmt(U.desdeKg(kg, UA()), d);
 const kgDe = (id) => U.aKg(parseFloat($(id).value || '0') || 0, UA()); // campo en la unidad elegida → kg
 const ponerKg = (id, kg) => { $(id).value = Number.isFinite(+kg) && kg !== '' && kg != null ? U.paraCampo(+kg, UA()) : ''; };
-function pintarUnidadAnalisis() { document.querySelectorAll('.u-peso').forEach((s) => { s.textContent = UN(); }); }
+function pintarUnidadAnalisis() {
+  document.querySelectorAll('.u-peso').forEach((s) => { s.textContent = UN(); });
+  document.querySelectorAll('#in-unidad [data-u]').forEach((b) => b.classList.toggle('active', b.dataset.u === UA())); // v2.69.0
+}
+// v2.69.0 elegir kg o lb aquí mismo (es la misma unidad de Perfil → ⚙️): convierte lo escrito, el video y el informe
+document.querySelectorAll('#in-unidad [data-u]').forEach((b) => (b.onclick = () => U.ponerGlobal(b.dataset.u)));
 // si cambia la unidad en Ajustes con el formulario lleno, los números se convierten
 window.addEventListener('af-unidades', (ev) => {
   const { antes, ahora } = ev.detail || {}; if (!antes || antes === ahora) return;
@@ -46,7 +51,7 @@ import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 
-const VERSION = '2.68.0';
+const VERSION = '2.69.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -726,7 +731,7 @@ async function crearVideoSerie(video, archivoV, e, d, calc, { repsTotal = null, 
   const leyendaVel = e.sentido === 'abajo' ? 'Velocidad de la carga (m/s)  ↑ subida  ↓ bajada' : 'Velocidad (m/s)  ↑ fase concéntrica  ↓ excéntrica';
   // v2.40.1 la linea amarilla del recorrido es opcional (apagada por defecto); el informe y el PDF la siguen midiendo
   const tramo = d.ini || d.fin ? [Math.max(0, (d.ini || 0) - 3), d.fin ? d.fin + 3 : Infinity] : null; // el mismo tramo que miró la IA
-  const dibujar = prepararDibujo(video, full, res, { puntoIdx: MP[e.punto], angulo: ang, titulo, leyendaVel, trayectoria: $('in-estela').checked ? tray : null, alertas: tec.porRep, repsTotal, tramo });
+  const dibujar = prepararDibujo(video, full, res, { puntoIdx: MP[e.punto], angulo: ang, titulo, leyendaVel, trayectoria: $('in-estela').checked ? tray : null, alertas: tec.porRep, repsTotal, tramo, unidad: UA() });
   return generarVideo(video, archivoV, dibujar, { cancelado: () => cancelar, alAvanzar });
 }
 // Videos originales analizados en esta sesion (para rehacer el video al corregir el conteo sin pedirlo de nuevo)
@@ -1069,7 +1074,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   // v2.39.0 explicacion sencilla (sin internet) y boton de IA
   $('r-sencillo').innerHTML = resumenPesas(inf, textoCarga(inf)).map((t) => `<li>${t}</li>`).join('');
   $('r-pdf-op').style.display = 'none';
-  $('r-meta-caja').style.display = esGrande(inf) && inf.ej.perfil !== 'corporal' ? '' : 'none'; $('r-meta').value = metaRM(inf) || '';
+  $('r-meta-caja').style.display = esGrande(inf) && inf.ej.perfil !== 'corporal' ? '' : 'none'; if (metaRM(inf)) ponerKg('r-meta', metaRM(inf)); else $('r-meta').value = ''; pintarUnidadAnalisis();
 
   // tecnica
   $('r-tecnica').innerHTML = inf.tec.resumen.length
@@ -1243,7 +1248,7 @@ async function recalcularConPeso(id, cargaNueva) {
   nuevo.id = id; nuevo.fecha = inf.fecha || r.fecha; if (inf.pareja) nuevo.pareja = inf.pareja;
   if (k) { nuevo.corregida = k; nuevo.s.notas = [`Conteo corregido a mano: la app contó ${k.app} y hiciste ${k.real}.`, ...nuevo.s.notas]; }
   const antes = corporal ? d0.peso : d0.carga;
-  nuevo.s.notas = [`Peso corregido: ${fmt(antes || 0, 1)} kg → ${fmt(cargaNueva, 1)} kg. Todo se volvió a calcular; el video con telemetría muestra todavía el peso anterior.`, ...nuevo.s.notas];
+  nuevo.s.notas = [`Peso corregido: ${pk(antes || 0, 1)} ${UN()} → ${pk(cargaNueva, 1)} ${UN()}. Todo se volvió a calcular; el video con telemetría muestra todavía el peso anterior.`, ...nuevo.s.notas];
   const reg = registroDe(e, d, c.res, c.serie, c.tray, c.tec, nuevo, d0.origen || 'video');
   await almacen.guardarInforme(nuevo);
   hist.actualizar(id, reg);
@@ -1275,7 +1280,7 @@ $('corregir').addEventListener('click', (ev) => { if (ev.target.id === 'corregir
 $('btn-pdf').onclick = () => { const o = $('r-pdf-op'); o.style.display = o.style.display === 'none' ? '' : 'none'; };
 $('r-pdf-simple').onclick = () => pdfSerie(false);
 $('r-pdf-ia').onclick = () => pdfSerie(true);
-$('r-meta').onchange = () => { if (informeActual) guardarMetaRM(informeActual.ej.id, parseFloat($('r-meta').value) || 0); };
+$('r-meta').onchange = () => { if (informeActual) guardarMetaRM(informeActual.ej.id, kgDe('r-meta') || 0); }; // v2.69.0 la meta se guarda en kg
 async function pdfSerie(conIA) {
   if (!informeActual) return;
   const b = $(conIA ? 'r-pdf-ia' : 'r-pdf-simple'), txt = b.textContent;
@@ -1293,7 +1298,7 @@ async function pdfSerie(conIA) {
       let B = sinIA(o); if (t0(o) < t0(informeActual)) { const x = A; A = B; B = x; }
       pareja = { inf: B, notas: notasInforme(B), textoTrayectoria: textoTrayectoria(B), textoCarga: textoCarga(B) };
     }
-    const { blob, nombre } = await crearPDF(A, { video: videoActual, pareja, graficas: { barras: graficaBarras, trayectoria: graficaTrayectoria }, notas: notasInforme(A),
+    const { blob, nombre } = await crearPDF(A, { unidad: UA(), video: videoActual, pareja, graficas: { barras: graficaBarras, trayectoria: graficaTrayectoria }, notas: notasInforme(A),
       textoTrayectoria: textoTrayectoria(A), textoCarga: textoCarga(A), version: VERSION, muestra: !plan.permiso('pdf') });
     if (!plan.permiso('pdf')) setTimeout(() => plan.mostrarMejora('Con tu plan el PDF sale como muestra (con marca de agua). Desde Plus sale completo.'), 600);
     await entregarPDF(blob, nombre);

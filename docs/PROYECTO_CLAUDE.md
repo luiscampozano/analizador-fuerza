@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 17 de noviembre de 2026 · **Versión en producción:** v2.68.0
+**Actualizado:** 17 de noviembre de 2026 · **Versión en producción:** v2.69.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -347,6 +347,7 @@ bloqueos, reportes, fallos.
 | v2.66.1 | Entrenar: en pantallas angostas (iPhone 375–440 px) «Descartar» y «Terminar» bajan juntos a su propia línea (Terminar se salía de la pantalla); el título «Anterior» se recorta con «…» en vez de montarse sobre «kg». |
 | v2.67.0 | Sugerencias de usuarios: (1) js/glosario.js: botón ⓘ con explicación simple de RPE, RIR, 1RM, velocidad, pérdida de velocidad, carga efectiva, fuerza y potencia pico, volumen y «Anterior» (resultados del análisis y Entrenar). (2) js/grabar.js: «📐 Cómo grabar» en Analizar según el ejercicio (de lado/de frente, altura, distancia, horizontal si va acostado). (3) js/unidades.js: kilos o libras; datos siempre en kg; por ejercicio («KG ⇄», recordado en af_unidad_ej), todo el entreno (⚖️, af_unidades) y por defecto en Ajustes; al guardar pregunta si el resumen y las tarjetas van en kg o lb (en.unidad, af_unidad_resumen). Falta: análisis de video, Perfil y estadísticas siguen en kg. |
 | v2.68.0 | Libras también en el análisis (campos de peso, barra/máquina y peso corporal con conversión; resultados, 1RM, carga efectiva, fuerza, tablas, historial, resumen sencillo y corrección del peso), en el Perfil (peso corporal y su gráfica, Mis marcas, volumen) y en la ficha del ejercicio (1RM real, tabla RPE en pasos de 5 lb), y calculadora de discos en kg o lb (discos 45/35/25/10/5/2,5 lb, barras 45/35/15, af_discos_lb). Evento `af-unidades` convierte lo ya escrito. Siguen en kg: video con telemetría, PDF y gráficas de 1RM. |
+| v2.69.0 | Analizar: selector «kg | lb» junto a «3. Datos» (misma unidad global de Ajustes; convierte lo escrito). El video con telemetría (render.js: flecha, «Fuerza:» y gráfica) y el informe PDF (pdf.js) salen en la unidad elegida; la meta de 1RM del PDF con IA se guarda en kg. |
 | v2.60.0 | Créditos IA por mes 10/90/300/900 y tope global 1.000/día. Avisos una sola vez: 🎁 regalo de plan (con sus días) y ⭐ llegada de los planes (solo a Gratis). En la web, enlaces a App Store (id6832380426) y «Google Play muy pronto». |
 | v2.59.0 | Precisión «Automática · recomendada» (nueva por defecto): empieza en Normal y, si el análisis va a tardar más de 70 s (límite también del botón manual), pasa sola a Rápida en ese video y avisa. Quien tenía «Normal» guardada pasa una vez a Automática (af_calidad_auto). |
 | v2.58.0 | Si el análisis va a tardar más de 40 s aparece «⚡ Seguir en modo Rápido» (reinicia con la IA liviana y la deja elegida). La imagen de 960 px se descartó (banco: 2/5 vs 3/5 reps, velocidades hasta ±16 %). |

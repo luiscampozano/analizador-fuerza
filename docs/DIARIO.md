@@ -8,6 +8,11 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-18
 
+### 21:45 · v2.69.0 — kg/lb en Analizar, video e informe PDF
+- **Pidió:** Luis: poder elegir kilos o libras en Analizar y sacar el video y el informe en esa unidad.
+- **Hecho:** selector «kg | lb» junto a «3. Datos»; video y PDF en la unidad elegida. Probado: análisis con lb
+  (220,5 lb), peso corporal 77,8 kg → 171,5 lb, PDF con todos los pesos en lb.
+
 ### 20:00 · v2.68.0 — Libras en el analizador, el Perfil y la calculadora de discos
 - **Pidió:** Luis: agregar la conversión a libras al analizador y al perfil, y también a la calculadora de discos.
 - **Hecho:** ver PROYECTO_CLAUDE.md (v2.68.0). Probado: análisis en lb (220,5 lb = 100 kg; corrección a 50 lb guarda

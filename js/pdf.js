@@ -101,7 +101,9 @@ function marcaAgua(doc) {
     if (gs) doc.restoreGraphicsState();
   }
 }
-export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, textoCarga, version, pareja = null, muestra = false }) {
+export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, textoCarga, version, pareja = null, muestra = false, unidad = 'kg' }) {
+  // v2.69.0 informe en kilos o libras (los datos siguen en kg)
+  const LBK = unidad === 'lb' ? 1 / 0.45359237 : 1, UN = unidad === 'lb' ? 'lb' : 'kg', fw = (x, d = 0) => fmt(x * LBK, d);
   const jsPDF = await cargarLibreria();
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const W = 210, M = 14, ancho = W - 2 * M;
@@ -147,9 +149,9 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
       ['Mejor velocidad (m/s)', num(A.s.vMejor), num(B.s.vMejor), 2],
       ['Velocidad media (m/s)', media(A), media(B), 2],
       ['Pérdida de velocidad (%)', num(A.s.perdida), num(B.s.perdida), 0],
-      ['Fuerza pico (kg)', num(A.s.fPico), num(B.s.fPico), 0],
+      [`Fuerza pico (${UN})`, num(A.s.fPico * LBK), num(B.s.fPico * LBK), 0],
       ['Potencia pico (W)', num(A.s.pPico), num(B.s.pPico), 0],
-      ['1RM estimado (kg)', num(A.s.rm), num(B.s.rm), 1],
+      [`1RM estimado (${UN})`, num(A.s.rm * LBK), num(B.s.rm * LBK), 1],
     ];
     const dif = (a, b) => (a > 0 && b > 0 ? (b - a) / Math.max(a, b) * 100 : null); // + = el segundo lado es mayor
     const art = (l, may = false) => `${/^pierna/.test(l) ? (may ? 'La' : 'la') : /^brazo/.test(l) ? (may ? 'El' : 'el') : (may ? 'El lado' : 'el lado')} ${l}`;
@@ -177,7 +179,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   doc.setTextColor(...C.texto); doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text(limpio(e.nombre + (ladoDe(inf) ? ' · ' + ladoDe(inf) : '')), M, y);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.gris);
   const det = [limpio(textoCarga), e.equipo, e.grupo, d.origen === 'vivo' ? 'grabado en modo en vivo' : null,
-    corporal && d.pc ? `peso corporal ${fmt(d.pc, 1)} kg` : null, e.perfil === 'riel' ? `riel a ${fmt(d.alfa)}°` : null].filter(Boolean).join('  ·  ');
+    corporal && d.pc ? `peso corporal ${fw(d.pc, 1)} ${UN}` : null, e.perfil === 'riel' ? `riel a ${fmt(d.alfa)}°` : null].filter(Boolean).join('  ·  ');
   doc.text(limpio(det), M, y + 6);
   y += 12;
   y = bloqueSencillo(doc, resumenPesas(inf, textoCarga), inf.ia, y, M, ancho);
@@ -198,14 +200,14 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
     doc.text('Rep más rápida, del video con telemetría', W - M - anchoImg / 2, y + altoImg + 4, { align: 'center' });
   }
   const kpis = [
-    ['1RM ESTIMADO', s.rm ? (corporal ? (s.rmLastre >= 0 ? `+${fmt(s.rmLastre, 1)} kg lastre` : `${fmt(-s.rmLastre, 1)} kg asistencia`) : `${fmt(s.rm, 1)} kg`) : '--', s.pct ? `serie al ${fmt(s.pct)} % del 1RM` : ''],
+    ['1RM ESTIMADO', s.rm ? (corporal ? (s.rmLastre >= 0 ? `+${fw(s.rmLastre, 1)} ${UN} lastre` : `${fw(-s.rmLastre, 1)} ${UN} asistencia`) : `${fw(s.rm, 1)} ${UN}`) : '--', s.pct ? `serie al ${fmt(s.pct)} % del 1RM` : ''],
     ['RPE', limpio(s.rpeTexto ?? '--'), 'esfuerzo (1-10)'],
     ['RIR', limpio(s.rirTexto ?? '--'), 'reps en reserva'],
     ['REPS', String(inf.reps.length), s.validas < inf.reps.length ? `${inf.reps.length - s.validas} parcial(es)` : 'completas'],
     ['MEJOR VELOCIDAD', `${fmt(s.vMejor, 2)} m/s`, 'media concéntrica'],
     ['PÉRDIDA DE VEL.', `${fmt(s.perdida)} %`, `fatiga ${(s.fatiga || '').toLowerCase()}`],
-    ['CARGA EFECTIVA', Number.isFinite(inf.estatico) ? `${fmt(inf.estatico)} kg` : '--', e.perfil === 'riel' ? 'componente en el riel' : 'estática'],
-    ['FUERZA PICO', `${fmt(s.fPico)} kg`, 'aplicada'],
+    ['CARGA EFECTIVA', Number.isFinite(inf.estatico) ? `${fw(inf.estatico)} ${UN}` : '--', e.perfil === 'riel' ? 'componente en el riel' : 'estática'],
+    ['FUERZA PICO', `${fw(s.fPico)} ${UN}`, 'aplicada'],
     ['POTENCIA PICO', `${fmt(s.pPico)} W`, 'mecánica'],
   ];
   const cols = 3, gap = 3, bw = (anchoKpi - gap * (cols - 1)) / cols, bh = 19;
@@ -270,10 +272,10 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   // ---- tablas
   const st = inf.stats;
   if (st) {
-    const fila = (n, x, dd, u) => (x ? [n, `${fmt(x.media, dd)} ${u}`, `+/-${fmt(x.de, dd)}`, `${fmt(x.cv, 1)} %`, `${fmt(x.min, dd)} - ${fmt(x.max, dd)}`] : null);
+    const fila = (n, x, dd, u, k = 1) => (x ? [n, `${fmt(x.media * k, dd)} ${u}`, `+/-${fmt(x.de * k, dd)}`, `${fmt(x.cv, 1)} %`, `${fmt(x.min * k, dd)} - ${fmt(x.max * k, dd)}`] : null);
     tabla('Estadística de la serie', ['Variable', 'Media', 'Desv. estándar', 'CV', 'Rango'], [
       fila('Velocidad media', st.vars.v, 2, 'm/s'), fila('Velocidad pico', st.vars.vp, 2, 'm/s'), fila('Recorrido', st.vars.rec, 0, 'cm'),
-      fila('Fuerza pico', st.vars.f, 0, 'kg'), fila('Potencia pico', st.vars.p, 0, 'W'), fila('Tiempo de subida', st.vars.ts, 2, 's')].filter(Boolean));
+      fila('Fuerza pico', st.vars.f, 0, UN, LBK), fila('Potencia pico', st.vars.p, 0, 'W'), fila('Tiempo de subida', st.vars.ts, 2, 's')].filter(Boolean));
     const lineas = [
       `Reps usadas: ${st.n}${st.parciales ? ` (+${st.parciales} parcial(es) o atípica(s), excluidas)` : ''}. Más rápida: rep ${st.mejor}. Más lenta: rep ${st.peor}.`,
       st.pendiente === null ? null : st.pendiente > -0.005 ? 'La velocidad se mantuvo estable de rep a rep.' : `Caída de velocidad: ${fmt(-st.pendiente, 3)} m/s por rep desde la más rápida (R2 = ${fmt(st.r2, 2)}).`,
@@ -287,17 +289,17 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   tabla('Repetición por repetición', ['Rep', 'Recorrido', 'V. media', 'V. pico', 'Pérdida', 'F. pico', 'P. pico', 'Subida', 'Desvío', 'Técnica'],
     inf.reps.map((r) => [`${r.n}${r.lado ? (r.lado === 'der' ? ' D' : ' I') : ''}${r.parcial ? ' (parcial)' : ''}${r.atipica ? ' (atípica)' : ''}`,
       Number.isFinite(r.rec) ? `${fmt(r.rec)} cm` : '--', `${fmt(r.v, 2)}`, Number.isFinite(r.vp) ? fmt(r.vp, 2) : '--', `${fmt(r.perd)} %`,
-      Number.isFinite(r.f) ? `${fmt(r.f)} kg` : '--', Number.isFinite(r.p) ? `${fmt(r.p)} W` : '--', Number.isFinite(r.ts) ? `${fmt(r.ts, 1)} s` : '--',
+      Number.isFinite(r.f) ? `${fw(r.f)} ${UN}` : '--', Number.isFinite(r.p) ? `${fmt(r.p)} W` : '--', Number.isFinite(r.ts) ? `${fmt(r.ts, 1)} s` : '--',
       Number.isFinite(r.desvio) ? `${fmt(r.desvio, 1)} cm` : '--', (r.alertas || []).filter((t) => !t.startsWith('Rep parcial')).join('; ') || 'OK']),
     { columnStyles: { 9: { cellWidth: 34 } } });
   if ((s.tablaCargas || []).length) {
     const paso = e.perfil === 'polea' ? 2.5 : e.carro === 0 && e.perfil === 'libre' ? 1 : 2.5;
     tabla('Cargas sugeridas según el 1RM estimado', ['Reps objetivo', 'Carga', '% 1RM'],
-      s.tablaCargas.map((c) => [`${c.reps} ${c.reps === 1 ? 'rep' : 'reps'}`, `${corporal && c.carga >= 0 ? '+' : ''}${fmt(Math.round(Math.abs(c.carga) / paso) * paso, paso % 1 ? 1 : 0)} kg${corporal ? (c.carga >= 0 ? ' lastre' : ' asistencia') : ''}`,
+      s.tablaCargas.map((c) => [`${c.reps} ${c.reps === 1 ? 'rep' : 'reps'}`, `${corporal && c.carga >= 0 ? '+' : ''}${unidad === 'lb' ? fmt(Math.round(Math.abs(c.carga) * LBK / 5) * 5) : fmt(Math.round(Math.abs(c.carga) / paso) * paso, paso % 1 ? 1 : 0)} ${UN}${corporal ? (c.carga >= 0 ? ' lastre' : ' asistencia') : ''}`,
         `${fmt(100 / (1 + (c.reps === 1 ? 0 : c.reps) / 30))} %`]), { tableWidth: 110 });
     if (s.metodos && s.metodos.length) {
       doc.setFontSize(8); doc.setTextColor(...C.gris);
-      const p = doc.splitTextToSize(limpio('1RM estimado con: ' + s.metodos.map((m) => `${m.metodo} -> ${fmt(m.valor, 1)} kg`).join('; ') + '.'), ancho);
+      const p = doc.splitTextToSize(limpio('1RM estimado con: ' + s.metodos.map((m) => `${m.metodo} -> ${fw(m.valor, 1)} ${UN}`).join('; ') + '.'), ancho);
       doc.text(p, M, y - 2); y += p.length * 3.6 + 2;
     }
   }

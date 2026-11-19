@@ -53,7 +53,10 @@ function pastilla(ctx, x, y, w, h, texto, color, tam = 34) {
 }
 
 export function prepararDibujo(fuente, full, res, opciones) {
-  const { fps, fuerza, v, potencia, reps, valido, estatico, dirs } = res;
+  // v2.69.0 video en kilos o libras: la fuerza se pasa a la unidad elegida antes de dibujar
+  const LBK = opciones && opciones.unidad === 'lb' ? 1 / 0.45359237 : 1, UNI = LBK === 1 ? 'kg' : 'lb';
+  const { fps, v, potencia, reps, valido, dirs } = res;
+  const fuerza = LBK === 1 ? res.fuerza : res.fuerza.map((x) => x * LBK), estatico = res.estatico * LBK;
   const n = full.length, W = fuente.videoWidth, H = fuente.videoHeight;
   const esc = OW / W, Hs = H * esc;
   const cy = suavizar(full.map((f) => {
@@ -108,7 +111,7 @@ export function prepararDibujo(fuente, full, res, opciones) {
       ctx.beginPath(); ctx.moveTo(punta[0] + Math.cos(ang) * 22, punta[1] + Math.sin(ang) * 22);
       ctx.lineTo(punta[0] + Math.cos(ang + 2.4) * 30, punta[1] + Math.sin(ang + 2.4) * 30);
       ctx.lineTo(punta[0] + Math.cos(ang - 2.4) * 30, punta[1] + Math.sin(ang - 2.4) * 30); ctx.fill();
-      pastilla(ctx, Math.min(OW - 195, punta[0] + 16), punta[1] - 24, 175, 50, `${Math.round(fuerza[i])} kg`, C.naranja);
+      pastilla(ctx, Math.min(OW - 195, punta[0] + 16), punta[1] - 24, 175, 50, `${Math.round(fuerza[i])} ${UNI}`, C.naranja);
     }
     // trayectoria de la barra: estela de los ultimos ~2.5 s y linea vertical de referencia desde el inicio de la rep
     const tr = opciones.trayectoria;
@@ -156,7 +159,7 @@ export function prepararDibujo(fuente, full, res, opciones) {
     ctx.fillStyle = C.gris; ctx.font = `400 25px ${FUENTE}`; ctx.fillText(opciones.titulo, 40, VH + 118);
     ctx.textAlign = 'right';
     if (vivo) {
-      ctx.fillStyle = C.naranja; ctx.font = `700 36px ${FUENTE}`; ctx.fillText(`Fuerza: ${Math.round(fuerza[i])} kg`, OW - 40, VH + 60);
+      ctx.fillStyle = C.naranja; ctx.font = `700 36px ${FUENTE}`; ctx.fillText(`Fuerza: ${Math.round(fuerza[i])} ${UNI}`, OW - 40, VH + 60);
       ctx.fillStyle = C.azul; ctx.font = `500 29px ${FUENTE}`; ctx.fillText(`Velocidad: ${v[i] >= 0 ? '+' : ''}${v[i].toFixed(2)} m/s`, OW - 40, VH + 102);
       ctx.fillStyle = C.verde; ctx.fillText(`Potencia: ${Math.round(Math.max(0, potencia[i]))} W`, OW - 40, VH + 142);
     } else if (repN[i] && i > ultimo) {
@@ -174,7 +177,7 @@ export function prepararDibujo(fuente, full, res, opciones) {
       }
     });
     marca(ctx, (GX0 + GX1) / 2, (FG0 + VG1) / 2);
-    ctx.fillStyle = C.blanco; ctx.font = `500 28px ${FUENTE}`; ctx.fillText('Fuerza aplicada (kg)', GX0, VH + 208);
+    ctx.fillStyle = C.blanco; ctx.font = `500 28px ${FUENTE}`; ctx.fillText(`Fuerza aplicada (${UNI})`, GX0, VH + 208);
     ctx.font = `400 23px ${FUENTE}`;
     for (const val of ticks(lo, hi)) {
       const y = fy(val); ctx.strokeStyle = '#32363e'; ctx.lineWidth = 1;
