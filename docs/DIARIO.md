@@ -8,6 +8,10 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-18
 
+### 22:45 · iPhone 1.1 enviada a revisión de Apple
+- **Hecho (Luis):** versión 1.1 (compilación 7) enviada con novedades, palabras clave, notas para el revisor y
+  privacidad (Salud y Forma física ya declaradas). Falta: esperar la respuesta de Apple (1-2 días).
+
 ### 21:45 · v2.69.0 — kg/lb en Analizar, video e informe PDF
 - **Pidió:** Luis: poder elegir kilos o libras en Analizar y sacar el video y el informe en esa unidad.
 - **Hecho:** selector «kg | lb» junto a «3. Datos»; video y PDF en la unidad elegida. Probado: análisis con lb
