@@ -1362,6 +1362,25 @@ body.buscando .action-footer { display: none; }
 
 /* v2.45.0 nutricionista personal IA */
 .nu-ia { margin-bottom: 14px; }
+/* v2.67.0 kilos o libras */
+.en-uni { background: none; border: 1px solid var(--border-color); border-radius: 6px; color: inherit; font: inherit; font-weight: 800; padding: 1px 4px; cursor: pointer; min-height: 0; }
+.en-fila-cab span:has(.en-uni) { overflow: visible; }
+.eg-uni { margin: 10px 0 0; }
+.eg-uni .eg-uni-rec { display: flex; flex-direction: row; justify-content: flex-start; gap: 8px; align-items: center; margin: 0; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 13px; text-align: left; }
+.eg-uni .eg-uni-rec input { width: auto; margin: 0; }
+.link { background: none; border: 0; padding: 0; color: var(--primary, #7c5cff); text-decoration: underline; font: inherit; cursor: pointer; }
+/* v2.67.0 cómo grabar según el ejercicio */
+.gr-caja { margin: 10px 0; padding: 12px; }
+.gr-fila { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+.gr-svg { flex: none; background: var(--bg-input); border-radius: 12px; }
+.gr-fila ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
+/* v2.67.0 explicaciones de términos (ⓘ) */
+.glo-i { background: none; border: 0; padding: 0 2px; margin: 0; color: var(--accent, #2dd4bf); font-size: 1.05em; line-height: 1; cursor: pointer; vertical-align: baseline; min-height: 0; }
+.glo-fondo { position: fixed; inset: 0; background: rgba(0, 0, 0, .55); z-index: 9000; display: flex; align-items: flex-end; justify-content: center; padding: 0 12px; }
+.glo-hoja { background: var(--bg-card, #15151d); border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 480px; margin: 0 0 calc(16px + env(safe-area-inset-bottom, 0px)); padding: 16px; color: var(--text-main); text-transform: none; font-weight: 400; letter-spacing: 0; text-align: left; }
+.glo-hoja > b { font-size: 17px; }
+.glo-txt p { margin: 8px 0; } .glo-txt ul { margin: 6px 0; padding-left: 18px; line-height: 1.6; }
+.glo-ok { width: 100%; margin-top: 10px; justify-content: center; }
 /* v2.66.0 conexiones del iPhone (Apple Salud, aviso de descanso) */
 .pf-con-fila { display: flex; align-items: center; gap: 10px; }
 .pf-con-ico { font-size: 26px; flex: none; }

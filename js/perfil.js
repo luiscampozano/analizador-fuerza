@@ -10,6 +10,7 @@ import { icono as figIcono } from './figura.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 import * as nativo from './nativo.js';
+import * as U from './unidades.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -52,7 +53,7 @@ export function iniciar(d) {
   // ventanas de Perfil: Estadisticas y Ejercicios las pinta Entrenar (tiene el registro); Medidas y Ajustes, aqui
   const abrir = (id) => { $(id).style.display = 'flex'; };
   const cerrar = (id) => () => { $(id).style.display = 'none'; };
-  $('pf-ajustes').onclick = () => { abrir('pf-ajustes-modal'); pintarConexiones(); };
+  $('pf-ajustes').onclick = () => { abrir('pf-ajustes-modal'); pintarConexiones(); pintarUnidades(); };
   $('pf-ir-estad').onclick = () => deps.abrirEstadisticas();
   $('pf-musc').onclick = () => deps.abrirEstadisticas(7);
   $('pf-ir-ejs').onclick = () => deps.abrirEjercicios();
@@ -292,6 +293,17 @@ function registrarPeso() {
   pintar();
 }
 
+// ------------------------------------------------------------------ unidades de peso (v2.67.0)
+function pintarUnidades() {
+  const u = U.global();
+  $('pf-unidades').querySelectorAll('[data-u]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.u === u);
+    b.onclick = () => { U.ponerGlobal(b.dataset.u); pintarUnidades(); };
+  });
+  const r = U.resumenGuardado();
+  $('pf-uni-res').innerHTML = r ? `Resumen al terminar: siempre en <b>${r === 'lb' ? 'libras' : 'kilos'}</b>. <button type="button" class="link" id="pf-uni-preg">Volver a preguntarme</button>` : '';
+  if ($('pf-uni-preg')) $('pf-uni-preg').onclick = () => { U.guardarResumen(null); pintarUnidades(); };
+}
 // ------------------------------------------------------------------ conexiones del iPhone (v2.66.0): Apple Salud y aviso de descanso
 async function pintarConexiones() {
   const sec = $('pf-conexiones'), c = $('pf-con');

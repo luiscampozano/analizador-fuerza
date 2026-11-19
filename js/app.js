@@ -10,6 +10,8 @@ import { revisarTecnica } from './tecnica.js';
 import { agruparSesiones, tonelajeSemanal, exportarExcel } from './sesiones.js';
 import * as vivo from './vivo.js';
 import * as nativo from './nativo.js';
+import './glosario.js'; // v2.67.0 explicaciones ⓘ de los términos
+import * as grabar from './grabar.js';
 nativo.instalar(); // v2.66.0 app de iPhone: vibración y compartir nativos
 import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
@@ -31,7 +33,7 @@ import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 
-const VERSION = '2.66.1';
+const VERSION = '2.67.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -127,6 +129,7 @@ function pintarElegido() {
     if (!abierto) { seccEj = null; $('buscar-ej').value = ''; pintarLista(); setTimeout(() => $('selector-ej').scrollIntoView({ block: 'start', behavior: 'smooth' }), 50); }
   };
   $('hint-ej').textContent = ej.cardio ? '🎥 ' + (CONSEJO[tipoActividad(ej)] || '') : ej.hint;
+  $('grabar-ej').innerHTML = grabar.html(ej); // v2.67.0 cómo grabarse según el ejercicio
   pintarModoDep(); pintarEquipo();
 }
 // v2.51.0 equipo del deporte (guantes, raqueta, balón...): valores estándar que el usuario avanzado puede cambiar

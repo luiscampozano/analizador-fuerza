@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 17 de noviembre de 2026 · **Versión en producción:** v2.66.1
+**Actualizado:** 17 de noviembre de 2026 · **Versión en producción:** v2.67.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -345,6 +345,7 @@ bloqueos, reportes, fallos.
 | v2.65.0 | Moderación → Suscripciones: desde dónde usa la app cada cuenta (🤖 Android / 🍎 iPhone / 🌐 Web / ❔ sin dato): resumen de todas las cuentas, filtros y etiqueta en cada fila. Nueva tabla D1 `plataformas` (creada en producción el 18 nov) y POST /api/yo/plataforma (1 vez al día con sesión, clave af_plat_dia). privacidad.html actualizada. |
 | v2.66.0 | App de iPhone 1.1: js/nativo.js (vibración con Haptics y compartir con Share+Filesystem si el navegador no puede; aviso de fin de descanso con LocalNotifications, af_avisos_descanso; Apple Salud con complemento propio movil/plugins/fuerza-salud → guarda el entreno al terminar y lee peso/estatura, af_apple_salud). Perfil → ⚙️ «📲 Conexiones del iPhone» (solo en la app 1.1). codemagic.yaml: HealthKit, español, versión 1.1. Requiere HealthKit en el App ID y perfil regenerado. |
 | v2.66.1 | Entrenar: en pantallas angostas (iPhone 375–440 px) «Descartar» y «Terminar» bajan juntos a su propia línea (Terminar se salía de la pantalla); el título «Anterior» se recorta con «…» en vez de montarse sobre «kg». |
+| v2.67.0 | Sugerencias de usuarios: (1) js/glosario.js: botón ⓘ con explicación simple de RPE, RIR, 1RM, velocidad, pérdida de velocidad, carga efectiva, fuerza y potencia pico, volumen y «Anterior» (resultados del análisis y Entrenar). (2) js/grabar.js: «📐 Cómo grabar» en Analizar según el ejercicio (de lado/de frente, altura, distancia, horizontal si va acostado). (3) js/unidades.js: kilos o libras; datos siempre en kg; por ejercicio («KG ⇄», recordado en af_unidad_ej), todo el entreno (⚖️, af_unidades) y por defecto en Ajustes; al guardar pregunta si el resumen y las tarjetas van en kg o lb (en.unidad, af_unidad_resumen). Falta: análisis de video, Perfil y estadísticas siguen en kg. |
 | v2.60.0 | Créditos IA por mes 10/90/300/900 y tope global 1.000/día. Avisos una sola vez: 🎁 regalo de plan (con sus días) y ⭐ llegada de los planes (solo a Gratis). En la web, enlaces a App Store (id6832380426) y «Google Play muy pronto». |
 | v2.59.0 | Precisión «Automática · recomendada» (nueva por defecto): empieza en Normal y, si el análisis va a tardar más de 70 s (límite también del botón manual), pasa sola a Rápida en ese video y avisa. Quien tenía «Normal» guardada pasa una vez a Automática (af_calidad_auto). |
 | v2.58.0 | Si el análisis va a tardar más de 40 s aparece «⚡ Seguir en modo Rápido» (reinicia con la IA liviana y la deja elegida). La imagen de 960 px se descartó (banco: 2/5 vs 3/5 reps, velocidades hasta ±16 %). |

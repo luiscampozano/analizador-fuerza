@@ -8,6 +8,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-18
 
+### 19:45 · v2.67.0 — Términos explicados, cómo grabarse y libras
+- **Pidió:** usuarios vía Luis: (1) explicar términos (RPE…) a novatos; (2) el mejor ángulo para grabarse según el
+  ejercicio; (3) libras, incluso por ejercicio en medio del entreno (mancuernas en lb y discos en kg) y preguntar al
+  final en qué unidad ver el resumen. Luis aprobó los bocetos.
+- **Hecho:** glosario ⓘ, tarjeta «📐 Cómo grabar» y unidades kg/lb (datos siempre en kg). Probado: banca 60 kg × 8 +
+  mancuernas 45 lb × 10 → volumen 684 kg = 1.508 lb; tarjetas en lb.
+- **Pendiente:** libras también en el análisis de video, Perfil y estadísticas (siguen en kg).
+
 ### 16:40 · v2.66.1 — Botón «Terminar» visible en iPhone
 - **Pidió:** Luis probó la 1.1 en TestFlight: todo funciona (aviso de descanso con pantalla apagada, Apple Salud,
   compartir), pero en el entrenamiento el botón «Terminar» no se veía (se salía a la derecha).

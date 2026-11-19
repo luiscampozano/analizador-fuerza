@@ -13,7 +13,9 @@ if (LOGO) LOGO.src = new URL('../iconos/logo.png', import.meta.url).href;
 const logoListo = () => new Promise((ok) => { if (!LOGO || (LOGO.complete && LOGO.naturalWidth)) return ok(); LOGO.onload = LOGO.onerror = () => ok(); setTimeout(ok, 1500); });
 
 const fmt = (x, d = 0) => (Number.isFinite(x) ? x.toLocaleString('es-EC', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—');
-const kg = (x) => fmt(x, x % 1 ? 1 : 0);
+// v2.67.0 las tarjetas pueden salir en libras (los datos siguen en kg); UN se fija en generar()
+let UN = 'kg';
+const kg = (x) => { const v = UN === 'lb' ? x / 0.45359237 : x; const r = Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10; return fmt(r, r % 1 ? 1 : 0); };
 const cuenta = (s) => s.tipo !== 'calentamiento' && s.hecha !== false;
 const e1rm = (k, r) => (k > 0 && r > 0 ? (r === 1 ? k : k * (1 + r / 30)) : 0);
 const diaLocal = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
@@ -92,7 +94,7 @@ function tResumen(d) {
   const w = (W - 128 - 32) / 2;
   const dur = !d.min ? ['—', ''] : d.min >= 60 ? [`${Math.floor(d.min / 60)}:${String(d.min % 60).padStart(2, '0')}`, 'h'] : [String(d.min), 'min'];
   dato(g, 64, 300, w, dur[0], dur[1], 'Duración');
-  dato(g, 64 + w + 32, 300, w, kg(Math.round(d.volumen)), 'kg', 'Volumen', C.amarillo);
+  dato(g, 64 + w + 32, 300, w, kg(Math.round(d.volumen)), UN, 'Volumen', C.amarillo);
   dato(g, 64, 532, w, fmt(d.series), '', 'Series');
   dato(g, 64 + w + 32, 532, w, fmt(d.ejs.length), '', 'Ejercicios');
   const nRec = d.recs.reduce((a, r) => a + r.records.length, 0);
@@ -219,8 +221,8 @@ function tEjercicios(d) {
     texto(g, e.nombre, 100, y + alto / 2 + 4, { tam: 34, peso: 700, max: W - 520 });
     const m = e.mejor;
     const km = e.series.reduce((x, s) => x + (s.km || 0), 0), min = e.series.reduce((x, s) => x + (s.min || 0), 0); // cardio
-    const det = m && m.kg ? `${e.series.length} series · ${kg(m.kg)} kg × ${m.reps ?? '—'}` : m && m.reps ? `${e.series.length} series · ${m.reps} reps`
-      : km || min ? [km ? `${kg(Math.round(km * 100) / 100)} km` : '', min ? `${Math.round(min)} min` : ''].filter(Boolean).join(' · ') : `${e.series.length} series`;
+    const det = m && m.kg ? `${e.series.length} series · ${kg(m.kg)} ${UN} × ${m.reps ?? '—'}` : m && m.reps ? `${e.series.length} series · ${m.reps} reps`
+      : km || min ? [km ? `${fmt(Math.round(km * 100) / 100, km % 1 ? 2 : 0)} km` : '', min ? `${Math.round(min)} min` : ''].filter(Boolean).join(' · ') : `${e.series.length} series`;
     texto(g, det, W - 100, y + alto / 2 + 4, { tam: 30, peso: 600, color: C.suave, alin: 'right' });
   });
   if (d.ejs.length > 8) texto(g, `+${d.ejs.length - 8} ejercicios más`, 64, 290 + 8 * alto + 30, { tam: 30, color: C.suave });
@@ -233,9 +235,9 @@ function tMejor(d) {
   const [c, g] = lienzo(); fondo(g); encabezado(g, d, 'Levantamiento del día');
   texto(g, m.nombre, W / 2, 420, { tam: 50, peso: 800, alin: 'center', max: W - 128 });
   texto(g, `${kg(m.mejor.kg)}`, W / 2, 700, { tam: 260, peso: 900, color: C.amarillo, alin: 'center' });
-  texto(g, `kg × ${m.mejor.reps} ${m.mejor.reps === 1 ? 'rep' : 'reps'}`, W / 2, 790, { tam: 60, peso: 700, alin: 'center' });
+  texto(g, `${UN} × ${m.mejor.reps} ${m.mejor.reps === 1 ? 'rep' : 'reps'}`, W / 2, 790, { tam: 60, peso: 700, alin: 'center' });
   caja(g, 200, 880, W - 400, 170, 85);
-  texto(g, `1RM estimado ≈ ${kg(Math.round(e1rm(m.mejor.kg, m.mejor.reps) * 2) / 2)} kg`, W / 2, 984, { tam: 44, peso: 700, color: C.cian, alin: 'center' });
+  texto(g, `1RM estimado ≈ ${kg(Math.round(e1rm(m.mejor.kg, m.mejor.reps) * 2) / 2)} ${UN}`, W / 2, 984, { tam: 44, peso: 700, color: C.cian, alin: 'center' });
   marca(g, d); return c;
 }
 
@@ -248,7 +250,7 @@ function tVolumen(d) {
   if (!(d.volumen > 0)) return null;
   const [c, g] = lienzo(); fondo(g); encabezado(g, d, 'Volumen total');
   texto(g, kg(Math.round(d.volumen)), W / 2, 470, { tam: 170, peso: 900, color: C.amarillo, alin: 'center' });
-  texto(g, 'kg levantados hoy', W / 2, 540, { tam: 44, peso: 600, alin: 'center' });
+  texto(g, `${UN} levantados hoy`, W / 2, 540, { tam: 44, peso: 600, alin: 'center' });
   const [peso, ico, plural, singular] = COSAS.find(([p]) => d.volumen / p >= 1 && d.volumen / p <= 6) || COSAS.find(([p]) => d.volumen / p >= 1) || COSAS[COSAS.length - 1];
   const n = d.volumen / peso, enteros = Math.floor(n), resto = n - enteros, cuantos = Math.min(6, Math.ceil(n));
   caja(g, 64, 610, W - 128, 560, 36, '#17142A', '#3A2F7A');
@@ -314,7 +316,7 @@ function tSticker(d) {
   const [c, g] = lienzo(); fondo(g, true);
   g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 18;
   texto(g, d.titulo, W / 2, 520, { tam: 64, peso: 900, alin: 'center', max: W - 100 });
-  const cols = [[d.min ? durTxt(d.min) : '—', 'Duración'], [`${kg(Math.round(d.volumen))} kg`, 'Volumen'], [fmt(d.series), 'Series']];
+  const cols = [[d.min ? durTxt(d.min) : '—', 'Duración'], [`${kg(Math.round(d.volumen))} ${UN}`, 'Volumen'], [fmt(d.series), 'Series']];
   cols.forEach(([v, n], i) => {
     const x = W / 6 + i * W / 3;
     texto(g, v, x, 680, { tam: 54, peso: 800, alin: 'center' });
@@ -334,6 +336,7 @@ const TIPOS = [
 // Devuelve [{id, nombre, canvas}] solo con las tarjetas que tienen datos
 export async function generar(en, opciones) {
   await logoListo();
+  UN = opciones && opciones.unidad === 'lb' ? 'lb' : 'kg';
   const d = datosTarjetas(en, opciones);
   return TIPOS.map(([id, nombre, f]) => { try { const canvas = f(d); return canvas ? { id, nombre, canvas } : null; } catch (e) { return null; } }).filter(Boolean);
 }

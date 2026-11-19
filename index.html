@@ -111,6 +111,7 @@
           </div>
         </div>
         <p class="hint" id="hint-ej"></p>
+        <div id="grabar-ej"></div>
         <div id="g-modo-dep" style="display:none">
           <div class="chips" id="modo-dep" style="margin-bottom:4px;flex-wrap:wrap">
             <button type="button" class="chip active" data-m="cuerpo">🏃 Solo cuerpo (rápido)</button>
@@ -336,17 +337,17 @@
 
       <section class="kpi-grid">
         <div class="kpi-card highlight">
-          <span class="kpi-label">1RM ESTIMADO (PESO MÁXIMO TEÓRICO)</span>
+          <span class="kpi-label">1RM ESTIMADO (PESO MÁXIMO TEÓRICO) <button type="button" class="glo-i" data-term="1rm" aria-label="¿Qué es esto?">ⓘ</button></span>
           <span class="kpi-value" id="r-rm">--</span>
           <span class="kpi-sub" id="r-rm-sub">--</span>
         </div>
         <div class="kpi-card rpe">
-          <span class="kpi-label">RPE</span>
+          <span class="kpi-label">RPE <button type="button" class="glo-i" data-term="rpe" aria-label="¿Qué es esto?">ⓘ</button></span>
           <span class="kpi-value" id="r-rpe">--</span>
           <span class="kpi-sub">esfuerzo percibido estimado (1–10)</span>
         </div>
         <div class="kpi-card rpe">
-          <span class="kpi-label">RIR</span>
+          <span class="kpi-label">RIR <button type="button" class="glo-i" data-term="rir" aria-label="¿Qué es esto?">ⓘ</button></span>
           <span class="kpi-value" id="r-rir">--</span>
           <span class="kpi-sub">repeticiones en reserva</span>
         </div>
@@ -354,12 +355,12 @@
       <section class="kpi-grid tres">
         <div class="kpi-card"><span class="kpi-label">REPS</span><span class="kpi-value" id="r-reps">--</span><span class="kpi-sub" id="r-reps-sub"></span>
           <button type="button" class="kpi-accion" id="btn-corregir">✏️ ¿Conteo mal? Corregir</button></div>
-        <div class="kpi-card"><span class="kpi-label">MEJOR VEL.</span><span class="kpi-value" id="r-vel">--</span><span class="kpi-sub">m/s media</span></div>
-        <div class="kpi-card"><span class="kpi-label">PÉRDIDA VEL.</span><span class="kpi-value" id="r-perd">--</span><span class="kpi-sub" id="r-fatiga"></span></div>
-        <div class="kpi-card"><span class="kpi-label">CARGA EFECTIVA</span><span class="kpi-value" id="r-est">--</span><span class="kpi-sub" id="r-est-sub"></span>
+        <div class="kpi-card"><span class="kpi-label">MEJOR VEL. <button type="button" class="glo-i" data-term="vel" aria-label="¿Qué es esto?">ⓘ</button></span><span class="kpi-value" id="r-vel">--</span><span class="kpi-sub">m/s media</span></div>
+        <div class="kpi-card"><span class="kpi-label">PÉRDIDA VEL. <button type="button" class="glo-i" data-term="perdida" aria-label="¿Qué es esto?">ⓘ</button></span><span class="kpi-value" id="r-perd">--</span><span class="kpi-sub" id="r-fatiga"></span></div>
+        <div class="kpi-card"><span class="kpi-label">CARGA EFECTIVA <button type="button" class="glo-i" data-term="carga" aria-label="¿Qué es esto?">ⓘ</button></span><span class="kpi-value" id="r-est">--</span><span class="kpi-sub" id="r-est-sub"></span>
           <button type="button" class="kpi-accion" id="btn-peso">✏️ ¿Peso mal? Corregir</button></div>
-        <div class="kpi-card"><span class="kpi-label">FUERZA PICO</span><span class="kpi-value" id="r-fpico">--</span><span class="kpi-sub">kg aplicados</span></div>
-        <div class="kpi-card"><span class="kpi-label">POTENCIA PICO</span><span class="kpi-value" id="r-ppico">--</span><span class="kpi-sub">watts</span></div>
+        <div class="kpi-card"><span class="kpi-label">FUERZA PICO <button type="button" class="glo-i" data-term="fuerza" aria-label="¿Qué es esto?">ⓘ</button></span><span class="kpi-value" id="r-fpico">--</span><span class="kpi-sub">kg aplicados</span></div>
+        <div class="kpi-card"><span class="kpi-label">POTENCIA PICO <button type="button" class="glo-i" data-term="potencia" aria-label="¿Qué es esto?">ⓘ</button></span><span class="kpi-value" id="r-ppico">--</span><span class="kpi-sub">watts</span></div>
       </section>
 
       <div class="reanalizar" id="r-reanalizar" style="display:none"></div>
@@ -456,6 +457,7 @@
             <label class="en-desc-sel">Descanso
               <select id="en-descanso"><option value="0">Sin</option><option value="60">1:00</option><option value="90">1:30</option><option value="120">2:00</option>
                 <option value="180">3:00</option><option value="240">4:00</option><option value="300">5:00</option></select></label>
+            <button type="button" class="btn-sec en-uni-todo" id="en-uni-todo" title="Cambiar todo el entrenamiento entre kilos y libras">⚖️ kg</button>
             <button type="button" class="btn-sec en-discos2" id="en-discos2" title="Calculadora de discos">🧮</button>
             <span class="en-cab-acc"><button type="button" class="btn-sec peligro" id="en-descartar">Descartar</button>
             <button type="button" class="btn-sec en-terminar" id="en-terminar">Terminar</button></span>
@@ -708,6 +710,10 @@
   <div id="pf-ajustes-modal" class="modal en-modal" style="display:none" role="dialog" aria-labelledby="pf-ajustes-modal-titulo"><div class="modal-caja en-sel-caja pf-hoja">
     <div class="en-sec-cab"><strong id="pf-ajustes-modal-titulo">Ajustes y cuenta</strong><button type="button" class="btn-sec" id="pf-ajustes-modal-cerrar">Cerrar</button></div>
     <div class="en-det-cuerpo">
+      <section class="section"><label class="section-title">⚖️ Unidades de peso</label><div class="card">
+        <div class="chips" id="pf-unidades" style="margin:0"><button type="button" class="chip" data-u="kg">Kilos (kg)</button><button type="button" class="chip" data-u="lb">Libras (lb)</button></div>
+        <p class="hint" style="margin:8px 0 0">La unidad con la que empiezan tus ejercicios en Entrenar. También puedes cambiarla en cada ejercicio (toca «KG ⇄» en la tabla) o en todo el entreno (⚖️). Tus datos no cambian: se convierten al mostrarlos.</p>
+        <p class="hint" id="pf-uni-res" style="margin:6px 0 0"></p></div></section>
       <section class="section"><label class="section-title">Cuenta y nube</label><div class="card pf-nube" id="pf-nube"></div></section>
       <section class="section" id="pf-conexiones" style="display:none"><label class="section-title">📲 Conexiones del iPhone</label><div class="card" id="pf-con"></div></section>
         <section class="section">

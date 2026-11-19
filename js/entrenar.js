@@ -4,6 +4,8 @@
 import * as tarjetas from './tarjetas.js';
 import * as salud from './salud.js';
 import * as nativo from './nativo.js';
+import { ti } from './glosario.js';
+import * as U from './unidades.js';
 import * as plan from './plan.js';
 import * as maquina from './maquina.js';
 import { icono as figIcono, animacion } from './figura.js';
@@ -17,6 +19,9 @@ const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (x, d = 0) => (Number.isFinite(x) ? x.toLocaleString('es-EC', { minimumFractionDigits: d, maximumFractionDigits: d }) : '--');
 const kgTxt = (x) => (Number.isFinite(x) ? fmt(x, Math.abs(x * 10 - Math.round(x * 10)) > 1e-6 ? 2 : x % 1 ? 1 : 0) : '');
+// v2.67.0 kilos o libras por ejercicio (los datos siguen en kg)
+const uni = (e) => (e && (e.unidad === 'lb' || e.unidad === 'kg') ? e.unidad : U.delEjercicio(e && e.ej));
+const pesoTxt = (x, e) => { if (!Number.isFinite(x)) return ''; const u = uni(e); return kgTxt(u === 'lb' ? Math.round(U.desdeKg(x, u) * 10) / 10 : x); };
 const norm = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 const guardarLS = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* nada */ } };
 const leerLS = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -140,6 +145,14 @@ export async function iniciar(d) {
   $('en-nueva-rutina').onclick = () => editarRutina(null);
   $('en-discos').onclick = () => abrirDiscos();
   $('en-discos2').onclick = () => abrirDiscos(ultimoKg);
+  // v2.67.0 cambiar todo el entrenamiento entre kilos y libras (y la unidad por defecto)
+  $('en-uni-todo').onclick = () => {
+    if (!activo) return;
+    const u = U.global() === 'lb' ? 'kg' : 'lb';
+    U.ponerGlobal(u);
+    activo.ejercicios.forEach((e) => { if (!esCardio(e)) { e.unidad = u; U.recordarEjercicio(e.ej, u); } });
+    guardarBorrador(); pintarActivo();
+  };
   $('en-importar').onclick = () => $('en-archivo').click();
   $('en-archivo').onchange = importarArchivo;
   $('en-plantilla').onclick = () => compartir(plantilla(), 'plantilla-entrenamientos.xlsx');
@@ -216,7 +229,7 @@ function pintarInicio() {
   const semana = lista.filter((e) => new Date(e.inicio) >= lunes);
   $('en-semana').innerHTML = `<div class="kpi-card"><div class="kpi-label">Esta semana</div><div class="kpi-value">${semana.length}</div><div class="kpi-sub">entrenamientos</div></div>
     <div class="kpi-card"><div class="kpi-label">Series</div><div class="kpi-value">${semana.reduce((a, e) => a + seriesHechas(e), 0)}</div><div class="kpi-sub">efectivas</div></div>
-    <div class="kpi-card"><div class="kpi-label">Volumen</div><div class="kpi-value">${fmt(semana.reduce((a, e) => a + volumen(e), 0) / 1000, 1)}</div><div class="kpi-sub">toneladas</div></div>`;
+    <div class="kpi-card"><div class="kpi-label">Volumen ${ti('volumen')}</div><div class="kpi-value">${fmt(semana.reduce((a, e) => a + volumen(e), 0) / 1000, 1)}</div><div class="kpi-sub">toneladas</div></div>`;
   pintarRutinas(); pintarCalendario(lunes);
   $('en-lista').innerHTML = lista.length ? lista.slice(0, 60).map((en) => `<div class="en-tarjeta" data-id="${en.id}" role="button">
       <div class="en-tarjeta-cab"><strong>${esc(en.titulo || 'Entrenamiento')}</strong><small>${fechaTxt(en.inicio)}${en.fin ? ' · ' + duracion(new Date(en.fin) - new Date(en.inicio)) : ''}</small></div>
@@ -460,12 +473,12 @@ function abrirDetalle(id, nuevo = null) {
   const recs = nuevo && nuevo.length ? `<div class="en-records"><b>🏆 ¡Nuevos récords!</b>${nuevo.map((r) => `<div><strong>${esc(r.nombre)}</strong><br>${r.records.map((x) => `<span>${x.tipo}: <b>${x.texto}</b></span>`).join('<br>')}</div>`).join('')}</div>` : '';
   $('en-det-cuerpo').innerHTML = `${nuevo ? '<div class="en-ok">✅ ¡Entrenamiento guardado!</div>' + recs : ''}
     <div class="en-det-cab"><h3 class="en-det-titulo">${esc(en.titulo || 'Entrenamiento')}</h3><button type="button" class="btn-sec" id="en-det-editar">✏️ Editar</button></div>
-    <p class="hint" style="margin-top:2px">${fechaTxt(en.inicio)}${en.fin ? ' · ' + duracion(new Date(en.fin) - new Date(en.inicio)) : ''} · ${fmt(volumen(en))} kg · ${seriesHechas(en)} series${kcalEntreno(en) > 0 ? ` · 🔥 ≈ ${fmt(kcalEntreno(en))} kcal de cardio` : ''}</p>
+    <p class="hint" style="margin-top:2px">${fechaTxt(en.inicio)}${en.fin ? ' · ' + duracion(new Date(en.fin) - new Date(en.inicio)) : ''} · ${fmt(U.desdeKg(volumen(en), en.unidad))} ${U.nombre(en.unidad)} · ${seriesHechas(en)} series${kcalEntreno(en) > 0 ? ` · 🔥 ≈ ${fmt(kcalEntreno(en))} kcal de cardio` : ''}</p>
     ${en.descripcion ? `<p class="en-det-desc">${esc(en.descripcion)}</p>` : ''}${en.foto ? `<img class="en-det-foto" src="${en.foto}" alt="Foto del entrenamiento">` : ''}
     ${en.ejercicios.map((e) => `<div class="en-det-ej"><strong>${iconoEj(e)} ${esc(nombreEj(e))}</strong>${e.ej && deps.porId[e.ej] && norm(e.nombre) !== norm(deps.porId[e.ej].nombre) ? `<small> (${esc(e.nombre)})</small>` : ''}
       ${e.notas ? `<div class="hint" style="margin:2px 0 4px">📝 ${esc(e.notas)}</div>` : ''}${esCardio(e) && kcalCardio(e) > 0 ? `<div class="hint" style="margin:2px 0 4px">🔥 ≈ ${fmt(kcalCardio(e))} kcal</div>` : ''}
       ${e.series.map((s, i) => `<div class="en-det-serie${s.tipo === 'calentamiento' ? ' cal' : ''}"><span>${TIPOS[s.tipo] || i + 1 - e.series.slice(0, i).filter((x) => x.tipo === 'calentamiento').length}</span>
-        <span>${esCardio(e) ? (cardioTxt(e, s) || '—') + (velTxt(e, s.km, s.min) ? ` · ${velTxt(e, s.km, s.min)}` : '') : `${kgTxt(s.kg) || '—'} kg × ${s.reps ?? '—'}${s.rpe ? ` @${fmt(s.rpe, s.rpe % 1 ? 1 : 0)}` : ''}`}</span>
+        <span>${esCardio(e) ? (cardioTxt(e, s) || '—') + (velTxt(e, s.km, s.min) ? ` · ${velTxt(e, s.km, s.min)}` : '') : `${pesoTxt(s.kg, e) || '—'} ${U.nombre(uni(e))} × ${s.reps ?? '—'}${s.rpe ? ` @${fmt(s.rpe, s.rpe % 1 ? 1 : 0)}` : ''}`}</span>
         ${s.actividad ? `<button type="button" class="en-vel" data-act="${s.actividad.id}">⚡ ${s.actividad.ritmo ?? '--'} ${esc(s.actividad.unidad || '')}</button>` : ''}
         ${s.analisis ? `<button type="button" class="en-vel" data-serie="${s.analisis.id}">⚡ ${fmt(s.analisis.v, 2)} m/s</button>` : ''}</div>`).join('')}</div>`).join('')}
     <button type="button" class="btn-sec en-tarjetas" id="en-tarjetas">🖼️ Tarjetas para compartir</button>
@@ -584,7 +597,17 @@ function abrirGuardar(d) {
     $('eg-inicio').value = aLocal(d.inicio); $('eg-inicio').max = aLocal(new Date());
     const min = Math.max(0, Math.round(d.min || 0));
     $('eg-dur-h').value = Math.floor(min / 60); $('eg-dur-m').value = min % 60;
-    $('eg-datos').innerHTML = `<div><small>Volumen</small><b>${fmt(d.volumen)} kg</b></div><div><small>Series</small><b>${d.series}</b></div><div><small>Ejercicios</small><b>${d.nEj}</b></div>`;
+    // v2.67.0 si hubo libras: ¿resumen y tarjetas en kilos o en libras?
+    let unidad = d.unidad || 'kg';
+    const pintarDatos = () => { $('eg-datos').innerHTML = `<div><small>Volumen</small><b>${fmt(U.desdeKg(d.volumen, unidad))} ${U.nombre(unidad)}</b></div><div><small>Series</small><b>${d.series}</b></div><div><small>Ejercicios</small><b>${d.nEj}</b></div>`; };
+    pintarDatos();
+    if (!$('eg-uni')) $('eg-datos').insertAdjacentHTML('afterend', '<div id="eg-uni" class="eg-uni"></div>');
+    $('eg-uni').innerHTML = d.preguntar ? `<b>🏁 ¿Ver tu resumen en kilos o en libras?</b>
+      <div class="chips" style="margin:6px 0"><button type="button" class="chip" data-u="kg">En kilos (kg)</button><button type="button" class="chip" data-u="lb">En libras (lb)</button></div>
+      <label class="hint eg-uni-rec"><input type="checkbox" id="eg-uni-rec"> Recordar mi elección</label>` : '';
+    const marcarU = () => $('eg-uni').querySelectorAll('[data-u]').forEach((b) => b.classList.toggle('active', b.dataset.u === unidad));
+    $('eg-uni').querySelectorAll('[data-u]').forEach((b) => (b.onclick = () => { unidad = b.dataset.u; marcarU(); pintarDatos(); }));
+    marcarU();
     const pintarFoto = () => {
       $('eg-foto').innerHTML = foto ? `<div class="eg-img"><img src="${foto}" alt="Foto del entrenamiento"><button type="button" class="eg-quitar" id="eg-quitar" aria-label="Quitar foto">✕</button></div>`
         : '<button type="button" class="eg-agregar" id="eg-agregar">📷 Agregar una foto</button>';
@@ -603,13 +626,22 @@ function abrirGuardar(d) {
       if (!ini) return alert('Elige la fecha y hora de inicio.');
       if (+ini > Date.now() + 60000) return alert('La fecha de inicio no puede estar en el futuro.');
       const durMin = (+$('eg-dur-h').value || 0) * 60 + (+$('eg-dur-m').value || 0);
+      if (d.preguntar && $('eg-uni-rec') && $('eg-uni-rec').checked) U.guardarResumen(unidad);
       fin({ titulo: $('eg-titulo').value.trim() || 'Entrenamiento', descripcion: $('eg-desc').value.trim(), foto,
-        inicio: ini.toISOString(), fin: durMin > 0 ? new Date(+ini + durMin * 60000).toISOString() : null });
+        inicio: ini.toISOString(), fin: durMin > 0 ? new Date(+ini + durMin * 60000).toISOString() : null, unidad });
     };
     $('en-guardar').style.display = 'flex';
   });
 }
 const resumenGuardar = (en) => ({ volumen: volumen(en), series: seriesHechas(en), nEj: en.ejercicios.length });
+// v2.67.0 ¿en qué unidad se muestra el resumen? Se pregunta si hubo algún ejercicio en libras (o la app está en libras)
+function unidadResumen(ejs) {
+  const pesas = ejs.filter((e) => !esCardio(e)), lb = pesas.filter((e) => uni(e) === 'lb').length;
+  const recordado = U.resumenGuardado();
+  if (!lb && U.global() === 'kg') return { unidad: 'kg', preguntar: false };
+  if (recordado) return { unidad: recordado, preguntar: false };
+  return { unidad: pesas.length && lb === pesas.length ? 'lb' : U.global(), preguntar: true };
+}
 // Editar un entrenamiento guardado (v2.27.0): se abre en la misma pantalla del entreno en curso para cambiar
 // ejercicios, series, peso y reps; al tocar «Guardar» sale la ventana de nombre, foto, fecha y duracion.
 async function editarEntreno(en) {
@@ -631,7 +663,7 @@ async function guardarEdicion() {
   const ejercicios = activo.ejercicios.map((e) => ({ ...e, series: e.series.filter((x) => x.hecha).map(({ obj, ...x }) => x) })).filter((e) => e.series.length);
   if (!ejercicios.length) return alert('Deja al menos una serie hecha. Si quieres eliminar el entrenamiento, usa «Borrar» en su detalle.');
   const g = await abrirGuardar({ modo: 'editar', titulo: activo.titulo, descripcion: activo.descripcion, foto: activo.foto, inicio: activo.inicio,
-    min: activo.durMin || 0, ...resumenGuardar({ ejercicios }) });
+    min: activo.durMin || 0, ...resumenGuardar({ ejercicios }), unidad: activo.unidad === 'lb' ? 'lb' : 'kg' });
   if (!g) return; // sigue editando
   const viejo = lista.find((x) => x.id === activo.id) || {};
   const en = { ...viejo, id: activo.id, titulo: g.titulo, inicio: g.inicio, fin: g.fin, ejercicios };
@@ -657,6 +689,7 @@ function pintarActivo() {
   $('en-activo').classList.toggle('modo-rutina', modoRutina);
   $('en-titulo').value = activo.titulo || '';
   $('en-titulo').placeholder = modoRutina ? 'Nombre de la rutina (ej.: Pierna A)' : 'Nombre del entrenamiento';
+  $('en-uni-todo').textContent = `⚖️ ${U.nombre(U.global())}`;
   const editando = !!activo.editando;
   $('en-terminar').textContent = modoRutina ? 'Guardar rutina' : editando ? 'Guardar' : 'Terminar';
   $('en-descartar').textContent = modoRutina || editando ? 'Cancelar' : 'Descartar';
@@ -689,15 +722,15 @@ function pintarActivo() {
           <button type="button" class="en-check" data-acc="hecha">✓</button>
           ${deps.analizable && deps.analizable(e.ej) ? `<button type="button" class="en-video${s.actividad ? ' con' : ''}" data-acc="video" title="Analizar con video">${s.actividad ? '⚡' : '🎥'}</button>` : '<span></span>'}
         </div>${s.actividad ? `<button type="button" class="en-analisis" data-acc="ver" data-is="${is}">⚡ ${s.actividad.ritmo ?? '--'} ${esc(s.actividad.unidad || '')} · ${s.actividad.total} ${esc((s.actividad.contador || '').toLowerCase())} · ver análisis</button>` : ''}`;
-      }).join('')}` : `<div class="en-fila en-fila-cab"><span>Serie</span><span>${modoRutina ? '' : 'Anterior'}</span><span>kg</span><span>Reps</span><span>RPE</span><span>✓</span><span>🎥</span></div>
+      }).join('')}` : `<div class="en-fila en-fila-cab"><span>Serie</span><span>${modoRutina ? '' : 'Anterior' + ti('anterior')}</span><span><button type="button" class="en-uni" data-acc="unidad" title="Cambiar entre kilos y libras solo en este ejercicio">${uni(e) === 'lb' ? 'LB' : 'KG'} ⇄</button></span><span>Reps</span><span>RPE${ti('rpe')}</span><span>✓</span><span>🎥</span></div>
       ${e.series.map((s, is) => {
         const etiqueta = TIPOS[s.tipo] || String(++nNormal);
         const p = prev[is], m = marcadores(e, is, prev, r);
-        const ptxt = p && (p.kg || p.reps) ? `${kgTxt(p.kg) || 0} × ${p.reps ?? 0}${p.rpe ? ' @' + fmt(p.rpe, p.rpe % 1 ? 1 : 0) : ''}` : modoRutina ? '' : '—';
+        const ptxt = p && (p.kg || p.reps) ? `${pesoTxt(p.kg, e) || 0} × ${p.reps ?? 0}${p.rpe ? ' @' + fmt(p.rpe, p.rpe % 1 ? 1 : 0) : ''}` : modoRutina ? '' : '—';
         return `<div class="en-fila${s.hecha ? ' hecha' : ''}" data-is="${is}">
           <button type="button" class="en-num t-${s.tipo}" data-acc="tipo">${etiqueta}</button>
           <button type="button" class="en-prev" data-acc="copiar">${ptxt}</button>
-          <input type="number" inputmode="decimal" step="any" min="0" data-campo="kg" value="${s.kg ?? ''}" placeholder="${m.kg != null ? kgTxt(m.kg) : ''}" class="${m.sug ? 'sug' : ''}">
+          <input type="number" inputmode="decimal" step="any" min="0" data-campo="kg" value="${s.kg == null ? '' : U.paraCampo(s.kg, uni(e))}"${uni(e) === 'lb' ? ` data-escala="${1 / U.LB}"` : ''} placeholder="${m.kg != null ? pesoTxt(m.kg, e) : ''}" class="${m.sug ? 'sug' : ''}">
           <input type="number" inputmode="numeric" step="1" min="0" data-campo="reps" value="${s.reps ?? ''}" placeholder="${m.reps ?? ''}">
           <input type="number" inputmode="decimal" step="0.5" min="1" max="10" data-campo="rpe" value="${s.rpe ?? ''}" placeholder="${m.rpe ?? ''}">
           <button type="button" class="en-check" data-acc="hecha">✓</button>
@@ -725,11 +758,11 @@ function enlazarEventos() {
         if (esCardio(e)) { const rt = fila.querySelector('.en-ritmo'); if (rt && defEj(e).medida === 'dist') rt.textContent = velTxt(e, s.km, s.min); const kc = caja.querySelector('.en-kcal'); if (kc) kc.textContent = kcalTxt(e); }
         else if (inp.dataset.campo !== 'kg') { // al cambiar reps o RPE se recalcula el peso sugerido
           const m = marcadores(e, is, activo.rutina ? [] : anterior(e, activo.id) || [], ref(e)), k = fila.querySelector('[data-campo="kg"]');
-          k.placeholder = m.kg != null ? kgTxt(m.kg) : ''; k.classList.toggle('sug', m.sug);
+          k.placeholder = m.kg != null ? pesoTxt(m.kg, e) : ''; k.classList.toggle('sug', m.sug);
         }
         guardarBorrador(); tic();
       };
-      if (inp.dataset.campo === 'kg') inp.onfocus = () => { ultimoKg = parseFloat(inp.value || inp.placeholder) || ultimoKg; };
+      if (inp.dataset.campo === 'kg') inp.onfocus = () => { ultimoKg = (parseFloat(inp.value || inp.placeholder) / (+inp.dataset.escala || 1)) || ultimoKg; };
       // v2.55.1 si la serie ya tiene análisis por video y se corrige el peso, el análisis se vuelve a calcular con el nuevo peso
       if (inp.dataset.campo === 'kg' && !esCardio(e)) inp.onchange = async () => {
         const s = e.series[+inp.closest('.en-fila').dataset.is];
@@ -756,6 +789,7 @@ function accion(acc, ie, is) {
   else if (acc === 'subir') { if (ie === 0) return; activo.ejercicios.splice(ie - 1, 0, activo.ejercicios.splice(ie, 1)[0]); }
   else if (acc === 'opciones') return abrirOpcionesEjercicio(ie);
   else if (acc === 'progreso') return abrirProgreso(e);
+  else if (acc === 'unidad') { const u = uni(e) === 'lb' ? 'kg' : 'lb'; e.unidad = u; U.recordarEjercicio(e.ej, u); } // v2.67.0
   else if (acc === 'serie' && esCardio(e)) {
     const u = e.series[e.series.length - 1];
     e.series.push({ ...serieVacia(), km: u ? u.km ?? null : null, min: u ? u.min ?? null : null });
@@ -1173,7 +1207,7 @@ function tic() {
     }
   }
   $('en-tiempo').textContent = trans;
-  $('en-vol').textContent = `${fmt(volumen(activo))} kg`;
+  $('en-vol').textContent = `${fmt(U.desdeKg(volumen(activo), U.global()))} ${U.nombre(U.global())}`;
   $('en-nser').textContent = seriesHechas(activo);
   desc.style.display = resta !== null && vistaActual === 'v-entrenar' ? 'flex' : 'none';
   if (resta !== null) {
@@ -1199,7 +1233,7 @@ async function terminar() {
   }
   const borradorEn = { ejercicios };
   const g = await abrirGuardar({ modo: 'nuevo', titulo: activo.titulo, descripcion: activo.descripcion, foto: activo.foto, inicio: activo.inicio,
-    min: (Date.now() - new Date(activo.inicio)) / 60000, ...resumenGuardar(borradorEn) });
+    min: (Date.now() - new Date(activo.inicio)) / 60000, ...resumenGuardar(borradorEn), ...unidadResumen(ejercicios) });
   if (!g) return; // volvio al entrenamiento
   activo.titulo = g.titulo;
   if (activo.rutinaId) {
@@ -1233,7 +1267,7 @@ async function terminar() {
   }
 
   const en = { id: activo.id, titulo: g.titulo, inicio: g.inicio, fin: g.fin, origen: 'app', ejercicios,
-    ...(g.descripcion ? { descripcion: g.descripcion } : {}), ...(g.foto ? { foto: g.foto } : {}) };
+    ...(g.descripcion ? { descripcion: g.descripcion } : {}), ...(g.foto ? { foto: g.foto } : {}), ...(g.unidad === 'lb' ? { unidad: 'lb' } : {}) };
   const recs = P.recordsNuevos(en, lista.filter((x) => x.id !== en.id), nombreEj, defEj);
   const nRec = recs.reduce((a, r) => a + r.records.length, 0);
   if (nRec) en.records = nRec;
@@ -1387,7 +1421,7 @@ async function abrirTarjetas(en, recs, nuevo) {
   m.style.display = 'flex';
   let alias = '';
   try { alias = deps.alias ? await Promise.race([deps.alias(), new Promise((ok) => setTimeout(() => ok(''), 2500))]) : ''; } catch (e) { /* sin alias */ }
-  const lista = await tarjetas.generar(en, { lista: lista_(), porId: deps.porId, recs, alias });
+  const lista = await tarjetas.generar(en, { lista: lista_(), porId: deps.porId, recs, alias, unidad: en.unidad === 'lb' ? 'lb' : 'kg' });
   if (tjActual.en !== en) return;
   tjActual.lista = await Promise.all(lista.map(async (t) => ({ ...t, blob: await tarjetas.aBlob(t.canvas) })));
   tjActual.lista.forEach((t) => { t.url = URL.createObjectURL(t.blob); });
