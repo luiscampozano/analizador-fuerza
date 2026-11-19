@@ -28,6 +28,7 @@ document.querySelectorAll('#in-unidad [data-u]').forEach((b) => (b.onclick = () 
 window.addEventListener('af-unidades', (ev) => {
   const { antes, ahora } = ev.detail || {}; if (!antes || antes === ahora) return;
   for (const id of ['in-peso', 'in-carro', 'in-pc']) { const v = parseFloat($(id).value); if (Number.isFinite(v)) $(id).value = U.paraCampo(U.aKg(v, antes), ahora); }
+  if (informeActual && metaRM(informeActual)) ponerKg('r-meta', metaRM(informeActual));
   pintarUnidadAnalisis(); cargaTotal();
 });
 nativo.instalar(); // v2.66.0 app de iPhone: vibración y compartir nativos

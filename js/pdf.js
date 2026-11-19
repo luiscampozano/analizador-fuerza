@@ -103,7 +103,8 @@ function marcaAgua(doc) {
 }
 export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, textoCarga, version, pareja = null, muestra = false, unidad = 'kg' }) {
   // v2.69.0 informe en kilos o libras (los datos siguen en kg)
-  const LBK = unidad === 'lb' ? 1 / 0.45359237 : 1, UN = unidad === 'lb' ? 'lb' : 'kg', fw = (x, d = 0) => fmt(x * LBK, d);
+  const LBK = unidad === 'lb' ? 1 / 0.45359237 : 1, UN = unidad === 'lb' ? 'lb' : 'kg', fw = (x, d = 0) => (Number.isFinite(x) ? fmt(x * LBK, d) : '--');
+  const esc1 = (x) => (Number.isFinite(x) ? x * LBK : null); // sin dato sigue sin dato (no 0)
   const jsPDF = await cargarLibreria();
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const W = 210, M = 14, ancho = W - 2 * M;
@@ -149,9 +150,9 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
       ['Mejor velocidad (m/s)', num(A.s.vMejor), num(B.s.vMejor), 2],
       ['Velocidad media (m/s)', media(A), media(B), 2],
       ['Pérdida de velocidad (%)', num(A.s.perdida), num(B.s.perdida), 0],
-      [`Fuerza pico (${UN})`, num(A.s.fPico * LBK), num(B.s.fPico * LBK), 0],
+      [`Fuerza pico (${UN})`, num(esc1(A.s.fPico)), num(esc1(B.s.fPico)), 0],
       ['Potencia pico (W)', num(A.s.pPico), num(B.s.pPico), 0],
-      [`1RM estimado (${UN})`, num(A.s.rm * LBK), num(B.s.rm * LBK), 1],
+      [`1RM estimado (${UN})`, num(esc1(A.s.rm)), num(esc1(B.s.rm)), 1],
     ];
     const dif = (a, b) => (a > 0 && b > 0 ? (b - a) / Math.max(a, b) * 100 : null); // + = el segundo lado es mayor
     const art = (l, may = false) => `${/^pierna/.test(l) ? (may ? 'La' : 'la') : /^brazo/.test(l) ? (may ? 'El' : 'el') : (may ? 'El lado' : 'el lado')} ${l}`;
