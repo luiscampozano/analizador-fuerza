@@ -45,7 +45,10 @@ function cuerpo3d(t, pose) {
   }
   const j = articular(pose), W = [0.19, -0.19], Wc = [0.1, -0.1], k = [1, -1], p = (q, z) => [q[0], -q[1], z];
   const ld = [0, 1].map((i) => ({ hom: p(j.S, W[i]), codo: p(j.braz[i][1], W[i] + k[i] * 0.02), mano: p(j.braz[i][2], W[i] + k[i] * 0.04), cad: p(j.H, Wc[i]), rod: p(j.pier[i][1], Wc[i]), tob: p(j.pier[i][2], Wc[i]), punta: p(j.pier[i][3], Wc[i]) }));
+  let cad = p(j.H, 0), hom = p(j.S, 0), cab = p(j.cab, 0);
   if (t.pieFijo) { // v2.70.1 búlgara: el pie de atrás se queda apoyado en el banco (rodilla calculada)
+    const alto = -Math.min(ld[0].tob[1], ld[0].punta[1]), sube = (q) => [q[0], q[1] + alto, q[2]]; // el pie de adelante toca el piso
+    ld.forEach((d) => Object.keys(d).forEach((n) => (d[n] = sube(d[n])))); cad = sube(cad); hom = sube(hom); cab = sube(cab);
     const d = ld[1], [A, Pn] = t.pieFijo, H = d.cad, dx = A[0] - H[0], dy = A[1] - H[1], dist = Math.min(Math.hypot(dx, dy), 0.859) || 1e-6;
     const h = Math.sqrt(Math.max(0, 0.43 * 0.43 - (dist / 2) ** 2)), mx = H[0] + dx / 2, my = H[1] + dy / 2, nx = -dy / dist, ny = dx / dist;
     const k1 = [mx + nx * h, my + ny * h], k2 = [mx - nx * h, my - ny * h], K = k1[1] < k2[1] ? k1 : k2;
@@ -55,7 +58,7 @@ function cuerpo3d(t, pose) {
     const a = (pose.abd * Math.PI) / 180 * (i ? -1 : 1), c = Math.cos(a), s = Math.sin(a), H = d.cad;
     for (const n of ['rod', 'tob', 'punta']) { const q = d[n], dx = q[0] - H[0], dz = q[2] - H[2]; d[n] = [H[0] + dx * c - dz * s, q[1], H[2] + dx * s + dz * c]; }
   });
-  return { cad: p(j.H, 0), hom: p(j.S, 0), cab: p(j.cab, 0), ld };
+  return { cad, hom, cab, ld };
 }
 // cámara: psi = giro alrededor del eje vertical (0 de lado, 90 de frente), phi = mirar un poco desde arriba
 function camara(psi, phi) {
@@ -151,7 +154,9 @@ function piezas(t, pose, NC) {
   const mancuerna = (m, eje) => { eqp('barra', mas(m, eje, -0.11), mas(m, eje, 0.11), cil(0.016), C.metal); for (const k of [-1, 1]) eqp('disco', mas(m, eje, k * 0.07), mas(m, eje, k * 0.12), cil(0.055), C.disco); };
   const cable = (a, b) => { eqp('barra', a, b, cil(0.007), C.cable); eqp('disco', mas(a, [0, 0, 1], -0.02), mas(a, [0, 0, 1], 0.02), cil(0.045), C.disco); };
   const ejeM = t.frente || t.neutro ? [1, 0, 0] : [0, 0, 1];
-  if (e === 'barra_mano' || e === 'barra_frente') barra([medio[0], medio[1]]);
+  if (t.uno && /^(barra_mano|barra_frente|mancuernas|mancuernas_frente|mancuerna_mano|mancuerna_frente)$/.test(e)) mancuerna(C3.ld[0].mano, ejeM); // v2.70.1 a un brazo: solo en la mano que trabaja
+  else if (t.uno && e === 'barra_jalon') { const m = C3.ld[0].mano; eqp('barra', mas(m, [0, 0, 1], -0.07), mas(m, [0, 0, 1], 0.07), cil(0.02), C.metal); eqp('barra', m, [m[0], 2.3, m[2]], cil(0.007), C.cable); }
+  else if (e === 'barra_mano' || e === 'barra_frente') barra([medio[0], medio[1]]);
   else if (e === 'barra_hombros') barra([C3.hom[0] - 0.05, C3.hom[1] + 0.02]);
   else if (e === 'barra_cadera') barra([C3.cad[0], C3.cad[1] + 0.12]);
   else if (e === 'barra_codos') { const c = mas(C3.ld[0].codo, sub(C3.ld[1].codo, C3.ld[0].codo), 0.5); barra([c[0], c[1]]); }
@@ -376,7 +381,9 @@ function unLado(t) {
   if (!t.A || !t.B) return t;
   const cambia = (k) => JSON.stringify(t.A[k]) !== JSON.stringify(t.B[k]), k = cambia('piernas') ? 'piernas' : cambia('brazos') ? 'brazos' : null;
   if (!k || !t.A[k] || t.A[k].length !== 1 || t.B[k].length !== 1) return t;
-  return { ...t, A: { ...t.A, [k]: [t.A[k][0], t.A[k][0]] }, B: { ...t.B, [k]: [t.B[k][0], t.A[k][0]] } };
+  // de lado se queda quieto el de atrás (índice 1); de frente el índice 0, que es el que queda atrás en 3D
+  const a = t.A[k][0], b = t.B[k][0], uno = k === 'brazos';
+  return t.frente ? { ...t, uno, A: { ...t.A, [k]: [a, a] }, B: { ...t.B, [k]: [a, b] } } : { ...t, uno, A: { ...t.A, [k]: [a, a] }, B: { ...t.B, [k]: [b, a] } };
 }
 const cachePl = new Map();
 const plantilla = (id) => {

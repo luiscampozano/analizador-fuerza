@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-19
 
+### 09:30 · v2.70.1 — Arreglos del muñeco que encontró Luis
+- **Pidió:** Luis (con capturas): prensa a una pierna movía las 2 piernas; aductores en máquina se veía de pie;
+  búlgara con el pie despegado del banco y la mancuerna atravesando la pierna; brazos perdidos en la sentadilla.
+- **Hecho:** ejercicios a un brazo/una pierna dejan quieto el otro lado (y llevan el equipo solo en la mano que
+  trabaja); aductores/abductores sentados abriendo y cerrando; búlgara con el pie fijo en el banco y mancuernas con
+  agarre neutro; brazo cercano más claro en el 2D. Revisado por otro Claude (se corrigieron sus observaciones).
+
 ### 08:30 · v2.70.0 — Muñeco nuevo «Cómo se hace» (etapa 1)
 - **Pidió:** Luis: cambiar la figurita morada por un muñeco tipo mapa de músculos, animado en 2D y 3D, para todos los
   ejercicios (aprobó el boceto: 3D quieto en los cuadritos, 2D moviéndose en Analizar y 3D grande en la ficha).
