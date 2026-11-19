@@ -35,7 +35,7 @@ nativo.instalar(); // v2.66.0 app de iPhone: vibración y compartir nativos
 import { prepararDibujo, generarVideo } from './render.js';
 import * as hist from './historial.js';
 import * as plan from './plan.js';
-import { icono as figIcono, animacion } from './figura.js';
+import { icono as figIcono, demo as muDemo } from './muneco.js'; // v2.70.0 muñeco nuevo (antes figura.js)
 import { DE_UNA_PIERNA, cambioDePierna } from './piernas.js';
 import { abrirVideo } from './lector.js';
 import * as entrenar from './entrenar.js';
@@ -52,7 +52,7 @@ import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 
-const VERSION = '2.69.0';
+const VERSION = '2.70.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -132,7 +132,7 @@ function aviso(txt, ok = false) {
 // ------------------------------------------------------------------ ejercicios
 function pintarElegido() {
   const sub = [ej.propio ? (ej.musculo || GRUPO_PROPIOS) : ej.grupo, ej.equipo].filter(Boolean).join(' · ');
-  const demo = animacion(ej.id); $('ej-demo').innerHTML = demo || ''; $('ej-demo').style.display = demo ? '' : 'none'; // como se hace (v2.32.0)
+  const demo = muDemo($('ej-demo'), ej); $('ej-demo').style.display = demo ? '' : 'none'; // como se hace (v2.70.0 muñeco 2D + ficha 3D)
   $('ej-elegido').innerHTML = `<span class="preset-icon">${figIcono(ej.id, ej.icono)}</span><div><strong>${esc(ej.nombre)}</strong>
     <small>${esc(sub)}</small></div><div class="ej-botones">${ej.propio ? '<button type="button" class="btn-sec peligro" id="btn-borrar-ej">Borrar</button>' : ''}<button type="button" class="btn-sec" id="btn-cambiar">Cambiar</button></div>`;
   if (ej.propio) $('btn-borrar-ej').onclick = () => {

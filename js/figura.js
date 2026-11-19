@@ -400,3 +400,4 @@ export function animacion(id) { const k = 'a' + id; if (!cache.has(k)) cache.set
 export const tieneFigura = (id) => !!plantillaDe(id);
 // icono para listas: la figura si el ejercicio la tiene; si no, el emoji de siempre
 export const icono = (id, emoji = '🏋️') => { const m = id && miniatura(id); return m ? `<span class="fig-mini">${m}</span>` : emoji; };
+export { T, articular, articularFrente, mezclar, suave, accesorios }; // v2.70.0 para el muñeco nuevo (js/muneco.js)

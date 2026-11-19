@@ -6,7 +6,7 @@ import * as nube from './nube.js';
 import * as bienvenida from './bienvenida.js';
 import * as hist from './historial.js';
 import * as plan from './plan.js';
-import { icono as figIcono } from './figura.js';
+import { icono as figIcono } from './muneco.js'; // v2.70.0
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 import * as nativo from './nativo.js';

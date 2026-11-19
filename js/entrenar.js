@@ -8,7 +8,7 @@ import { ti } from './glosario.js';
 import * as U from './unidades.js';
 import * as plan from './plan.js';
 import * as maquina from './maquina.js';
-import { icono as figIcono, animacion } from './figura.js';
+import { icono as figIcono, vista3d as muVista3d, tieneMuneco } from './muneco.js'; // v2.70.0 muñeco nuevo
 import * as almacen from './almacen.js';
 import { leerArchivo, convertir } from './importar.js';
 import { crearExcel } from './excel.js';
@@ -1018,9 +1018,9 @@ export function abrirProgreso(e) {
   const tablaRPE = base ? `<table class="tabla en-tabla"><thead><tr><th>Reps</th><th>@7</th><th>@8</th><th>@9</th><th>@10</th></tr></thead><tbody>${[1, 2, 3, 4, 5, 6, 8, 10].map((n) => `<tr><td><b>${n}</b></td>${[7, 8, 9, 10].map((rpe) => `<td>${u === 'lb' ? kgTxt(Math.round(U.desdeKg(P.cargaPara(base, n, rpe), 'lb') / 5) * 5) : kgTxt(P.redondear(P.cargaPara(base, n, rpe)))}</td>`).join('')}</tr>`).join('')}</tbody></table>
     <p class="hint">Cargas (${un}) según tu ${real ? '1RM real' : '1RM estimado'} de ${pt(base)} ${un}, redondeadas a ${u === 'lb' ? '5 lb' : '2,5 kg'}. RPE 8 = te quedaban 2 reps.</p>` : '';
   const musc = obtenerMusculos(e);
-  const demo = e.ej && animacion(e.ej);
+  const demo = e.ej && tieneMuneco(e.ej);
   $('en-det-cuerpo').innerHTML = `<h3 class="en-det-titulo">${iconoEj(e)} ${esc(nombreEj(e))}</h3>
-    ${demo ? `<div class="fig-demo">${demo}</div>` : ''}
+    ${demo ? '<div id="en-mu3d" class="mu-ficha"></div>' : ''}
     <div class="en-musc-box">
       <canvas id="en-musc-graf" class="en-musc-graf"></canvas>
       <div class="en-musc-info">
@@ -1042,6 +1042,7 @@ export function abrirProgreso(e) {
     ${r.sesiones.length ? `<label class="section-title" style="margin-top:12px">Últimas sesiones</label>${r.sesiones.slice(0, 8).map((x) => `<div class="en-det-serie"><span style="width:auto;min-width:70px;text-align:left">${fechaTxt(x.fecha, false)}</span><span>${x.series.filter((s) => s.tipo !== 'calentamiento').map((s) => `${pt(s.kg)}×${s.reps ?? '—'}${s.rpe ? '@' + fmt(s.rpe, s.rpe % 1 ? 1 : 0) : ''}`).join(', ') || '—'}</span></div>`).join('')}` : ''}
     ${!r.puntos.length && !rf ? '<p class="vacio">Todavía no hay series de este ejercicio.</p>' : ''}`;
   $('en-detalle').style.display = 'flex';
+  if (demo) muVista3d($('en-mu3d'), deps.porId[e.ej] || { id: e.ej, nombre: nombreEj(e) }, false); // v2.70.0 muñeco 3D (los músculos ya están abajo)
   $('en-det-cuerpo').scrollTop = 0;
   $('en-rm-ok').onclick = () => {
     const v = U.aKg(parseFloat(($('en-rm-in').value || '').replace(',', '.')), u);
