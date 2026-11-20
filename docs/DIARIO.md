@@ -8,6 +8,15 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-20
 
+### 16:40 · v2.71.0 — Muñeco etapa 2: revisión de los 128 movimientos
+- **Pidió:** Luis: empezar la etapa 2 (con capturas de tenis sin raqueta, boxeo tapado por el saco y fútbol).
+- **Hecho:** hoja de inspección de todas las plantillas (2 vistas × inicio/fin + 3D). Vistas según los músculos
+  principales: «De atrás» si están atrás (peso muerto, remos, dominadas, tríceps, pantorrilla), «Diagonal» en vez de
+  «De lado» para las de frente (laterales, aperturas en polea) y diagonal desde arriba para los acostados; miniaturas
+  y 3D arrancan desde atrás en esos casos. Músculos aproximados para potencia, cardio y deportes (antes salían sin
+  color). Equipo nuevo: raqueta, cuerda de saltar, cuerdas de batalla. Boxeo en diagonal.
+- **Pendiente:** etapa 3 (3 pasos por ejercicio).
+
 ### 15:20 · v2.70.2 — Regalar planes a cuentas con correo oculto de Apple
 - **Pidió:** Luis no encontraba a Karen (iPhone) para regalarle un plan con su Gmail.
 - **Causa:** entró con «Iniciar sesión con Apple» y ocultó su correo (la cuenta tiene un correo @privaterelay de

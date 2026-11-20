@@ -24,15 +24,30 @@ const ZONA = {
   trapecio_cuello: ['cuello', 0, 0.9, 'b', 0.1], abdomen: ['tronco', 0.15, 0.62, 'f', 0.45], oblicuo: ['tronco', 0.15, 0.6, 'l', 0.6], pecho: ['tronco', 0.68, 0.95, 'f', 0.3],
   pantorrilla: ['pierna', 0, 0.6, 'b', 0.1], biceps: ['brazo', 0.2, 0.85, 'f', 0.3], triceps: ['brazo', 0.15, 0.85, 'b', 0.3], antebrazo: ['antebrazo', 0, 0.65, 't', 0], hombro: ['deltoide', 0, 1, 't', 0],
 };
+// v2.71.0 músculos aproximados de potencia, cardio y deportes (solo para el muñeco; Estadísticas no cambia)
+const Q = 'quadriceps', G = 'gluteal', H = 'hamstring', CA = 'calves', FD = 'front_deltoids', TR = 'triceps', AB = 'abs', UB = 'upper_back';
+const MUSC_PL = {
+  cargada: [[G, H, Q, 'trapezius'], ['lower_back', FD, CA]], arranque: [[G, H, Q, 'trapezius'], ['lower_back', FD, CA]],
+  envion: [[Q, G, FD, TR], ['trapezius', AB]], thruster: [[Q, G, FD], [TR, AB]], lanzamiento: [[Q, G, FD], [AB, TR]],
+  sentadilla_salto: [[Q, G, CA], [H]], salto_cajon: [[Q, G, CA], [H]],
+  correr: [[Q, H, CA], [G, AB]], caminar: [[Q, CA], [G, H]], bici: [[Q], [G, CA, H]], eliptica: [[Q, G], [H, CA]],
+  remo_ergometro: [[UB, Q], ['biceps', H, G]], ski: [[UB, TR], [AB]], nadar: [[UB, FD], [TR, 'chest']], escaladora: [[Q, G], [CA]],
+  saltar_cuerda: [[CA], [Q, FD]], burpee: [[Q, 'chest'], [TR, AB]], cuerdas: [[FD, 'forearm'], [AB, UB]], jumping_jacks: [[CA, FD], [Q]],
+  escaladores: [[AB, FD], [Q]], boxeo: [[FD, TR], ['obliques', 'chest']], baile: [[CA, Q], [AB]], patada: [[Q], [G, AB]],
+  tiro: [[Q, CA], [FD, TR]], remate: [[Q, FD], [AB, CA]], raqueta: [[FD, 'forearm'], ['obliques', Q]],
+};
 export function musculosDe(ej) {
   const id = (ej && ej.id) || '', def = POR_ID[id] || ej || {}, grupo = def.musculo || def.grupo;
-  const m = (POR_EJ.find(([re]) => re.test(id)) || [])[1] || POR_GRUPO[grupo] || { pri: [], sec: [] };
+  let m = (POR_EJ.find(([re]) => re.test(id)) || [])[1] || POR_GRUPO[grupo] || { pri: [], sec: [] };
+  if (!m.pri.length) { const r = MUSC_PL[plantillaDe(id)]; if (r) m = { pri: r[0], sec: r[1] }; }
   const zonas = {};
   m.sec.forEach((k) => (MUSC_ZONAS[k] || []).forEach((z) => (zonas[z] = Math.max(zonas[z] || 0, 1))));
   m.pri.forEach((k) => (MUSC_ZONAS[k] || []).forEach((z) => (zonas[z] = 2)));
   const nombres = (l) => [...new Set(l.map((k) => NOMBRES_MUSC[k]).filter(Boolean))];
   const pri = nombres(m.pri), sec = nombres(m.sec).filter((n) => !pri.includes(n));
-  return { zonas, pri, sec };
+  // ¿los músculos principales están sobre todo atrás? (espalda, femoral, glúteo, tríceps…): entonces se muestra desde atrás
+  let atr = 0, del = 0; for (const [z, nv] of Object.entries(zonas)) if (nv === 2 && ZONA[z]) { if (ZONA[z][3] === 'b') atr++; else if (ZONA[z][3] === 'f') del++; }
+  return { zonas, pri, sec, atras: atr > del };
 }
 
 // ------------------------------------------------------------------ cuerpo en 3D a partir de las posturas 2D
@@ -175,6 +190,15 @@ function piezas(t, pose, NC) {
   else if (e === 'cable_tobillo') cable([0, 0.05, -0.7], C3.ld[0].tob);
   else if (e === 'cables_frente') { cable([0, 1.9, -0.85], m0); cable([0, 1.9, 0.85], m1); }
   else if (e === 'landmine') eqp('barra', [-1.0, 0, 0], medio, cil(0.016), C.metal);
+  else if (e === 'raqueta') { // v2.71.0 mango en la dirección del antebrazo y la cabeza plana
+    const d = nrm(sub(C3.ld[0].mano, C3.ld[0].codo)), cab = mas(C3.ld[0].mano, d, 0.42), n = nrm(cruz(d, [0, 0, 1]));
+    eqp('barra', C3.ld[0].mano, mas(C3.ld[0].mano, d, 0.27), cil(0.014), C.metal);
+    eqp('disco', mas(cab, n, -0.012), mas(cab, n, 0.012), [[0, 0.1, 0.14, 0.14], [1, 0.1, 0.14, 0.14]], C.disco);
+  } else if (e === 'cuerda' || e === 'cuerdas') { // curva por puntos (cuerda de saltar por debajo de los pies; de batalla hacia adelante)
+    const tramos = (a, b, c, n = 8) => { let p0 = a; for (let i = 1; i <= n; i++) { const u = i / n, q = [0, 1, 2].map((k) => (1 - u) * (1 - u) * a[k] + 2 * u * (1 - u) * b[k] + u * u * c[k]); eqp('barra', p0, q, cil(e === 'cuerda' ? 0.006 : 0.018), C.cable); p0 = q; } };
+    if (e === 'cuerda') tramos(m0, [medio[0] + 0.25, -0.35, 0], m1);
+    else for (const [m, k] of [[m0, 1], [m1, -1]]) tramos(m, [m[0] + 0.8, m[1] + 0.2 * k, m[2]], [m[0] + 1.7, 0.1, m[2] * 0.6]);
+  }
   const pr = props3d(t);
   for (const [a, b] of pr.tubos) eqp('mueble', a, b, cil(0.022), C.mueble);
   for (const v of pr.cajas) cajas.push(v);
@@ -355,8 +379,8 @@ function registrar(cv, hacer) {
 function vistaPlana(cv, t, psi, zonas, phi = 0) {
   registrar(cv, ({ W, H }) => { const caja = encuadre(puntos(t, muestras(t)), W, H); return (g, ms) => dibujar2D(g, t, poseEn(t, ms), psi, zonas, caja, phi); });
 }
-function vistaGiro(cv, t, zonas) {
-  const phi = 14, est = { giro: 35, arr: null, ult: 0 };
+function vistaGiro(cv, t, zonas, giro = 35) {
+  const phi = 14, est = { giro, arr: null, ult: 0 };
   cv.addEventListener('pointerdown', (e) => { est.arr = e.clientX; try { cv.setPointerCapture(e.pointerId); } catch (er) { /* nada */ } });
   cv.addEventListener('pointermove', (e) => { if (est.arr == null) return; est.giro += (e.clientX - est.arr) * 0.6; est.arr = e.clientX; est.ult = performance.now(); if (quieto()) cv._mu.dibujar(1400, 0); });
   const soltar = () => { est.arr = null; est.ult = performance.now(); };
@@ -373,6 +397,8 @@ const PROPIAS = {
   abductores: { A: { ...SENTADO, abd: 6 }, B: { ...SENTADO, abd: 40 }, props: ['asiento'], vistas: [[90, 'De frente', 40], [35, 'A 45°', 25]] },
 };
 const AJUSTES = {
+  boxeo: { vistas: [[0, 'De lado'], [-35, 'Diagonal']] },
+  cuerdas: { vistas: [[0, 'De lado'], [35, 'Diagonal']] },
   bulgara: { pieFijo: [[-0.6, 0.6], [-0.74, 0.52]], neutro: true }, bulgara_barra: { pieFijo: [[-0.6, 0.6], [-0.74, 0.52]] },
   sentadilla_mancuernas: { neutro: true }, zancada: { neutro: true }, step_up: { neutro: true }, pantorrilla_libre: { neutro: true }, rumano_mancuernas: { neutro: true },
 };
@@ -404,9 +430,9 @@ function mini(id) {
   if (cacheMini.has(id)) return cacheMini.get(id);
   const t = plantilla(id); if (!t) return '';
   const S = 112, cv = document.createElement('canvas'); cv.width = S; cv.height = S;
-  const g = cv.getContext('2d'), pose = poseMini(t), { zonas } = musculosDe({ id });
+  const g = cv.getContext('2d'), pose = poseMini(t), mm = musculosDe({ id }), { zonas } = mm;
   const pts = puntos(t, [pose]), caja = (X) => { const [cx, cy, e] = encuadre(pts, S, S, 0.04)(X); return [cx, cy, e]; };
-  try { dibujar3D(g, t, pose, 32, 10, zonas, caja, 8); } catch (e) { /* nada */ }
+  try { dibujar3D(g, t, pose, mm.atras ? -40 : 32, 10, zonas, caja, 8); } catch (e) { /* nada */ }
   const url = cv.toDataURL('image/png'); cacheMini.set(id, url); return url;
 }
 function atenderCola() {
@@ -439,17 +465,19 @@ function chips({ pri, sec }) {
 }
 const LEYENDA = '<div class="mu-ley"><span><i class="mu-p"></i>Principal</span><span><i class="mu-s"></i>Secundario</span></div>';
 // segunda vista del 2D: de frente si está de pie; a 45° si está acostado o en el suelo (de frente no se entiende)
-function vistas2d(t) {
+function vistas2d(t, m = {}) {
   if (t.vistas) return t.vistas;
-  if (t.frente) return [[90, 'De frente'], [0, 'De lado']];
+  const a = !!m.atras;
+  if (t.frente) return a ? [[-90, 'De atrás'], [-35, 'Diagonal']] : [[90, 'De frente'], [35, 'Diagonal']];
   const p = t.A || t.cuadros[0], acostado = Math.abs(p.tau || 0) > 50 || p.suelo === false;
-  return [[0, 'De lado'], acostado ? [45, 'A 45°'] : [90, 'De frente']];
+  return [[0, 'De lado'], acostado ? [a ? -40 : 40, 'Diagonal', 22] : a ? [-90, 'De atrás'] : [90, 'De frente']];
 }
+const giroDe = (m) => (m && m.atras ? -40 : 35); // ángulo del 3D: de atrás si los músculos principales están atrás
 // Analizar: muñeco 2D moviéndose (dos vistas), músculos y botón para la ficha 3D. Devuelve false si no hay muñeco.
 export function demo(caja, ej) {
   const t = ej && plantilla(ej.id);
   if (!t) { caja.innerHTML = ''; return false; }
-  const m = musculosDe(ej), vs = vistas2d(t);
+  const m = musculosDe(ej), vs = vistas2d(t, m);
   caja.innerHTML = `<div class="mu-caja"><b class="mu-tit">📖 Cómo se hace</b>
     <div class="mu-vistas">${vs.map(([, n]) => `<div class="mu-v"><canvas role="img" aria-label="${esc(ej.nombre || '')}, ${n}"></canvas><span>${n}</span></div>`).join('')}</div>
     ${m.pri.length ? LEYENDA : ''}${chips(m)}<button type="button" class="btn-sec mu-ver">🔄 Ver en 3D</button></div>`;
@@ -463,7 +491,7 @@ export function vista3d(caja, ej, conMusculos = true) {
   if (!t) { caja.innerHTML = ''; return false; }
   const m = musculosDe(ej);
   caja.innerHTML = `<div class="mu-3d"><canvas role="img" aria-label="${esc(ej.nombre || 'Ejercicio')} en 3D"></canvas></div><p class="mu-gira">☝️ Gira solo; arrástralo para verlo desde otro lado</p>${conMusculos && m.pri.length ? LEYENDA + chips(m) : ''}`;
-  vistaGiro(caja.querySelector('canvas'), t, m.zonas);
+  vistaGiro(caja.querySelector('canvas'), t, m.zonas, giroDe(m));
   return true;
 }
 export function abrirFicha(ej) {
@@ -490,3 +518,11 @@ if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 }
 export const miniaturaURL = (id) => (tieneMuneco(id) ? mini(id) : ''); // imagen fija (también para pruebas)
+// pruebas: dibuja una postura fija (k de 0 a 1) en un lienzo, en 2D (vista i del ejercicio) o 3D
+export function _fijo(cv, id, modo, i, k) {
+  const t = plantilla(id); if (!t) return;
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height, mm = musculosDe({ id }), { zonas } = mm, vs = vistas2d(t, mm);
+  const pose = t.cuadros ? t.cuadros[Math.min(t.cuadros.length - 1, Math.round(k * (t.cuadros.length - 1)))] : mezclar(t.A, t.B, k);
+  const caja = encuadre(puntos(t, muestras(t)), W, H);
+  if (modo === '2d') dibujar2D(g, t, pose, vs[i][0], zonas, caja, vs[i][2] || 0); else dibujar3D(g, t, pose, giroDe(mm), 14, zonas, encuadreFijo(puntos(t, muestras(t)), W, H, 14));
+}
