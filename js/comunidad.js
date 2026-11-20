@@ -476,6 +476,7 @@ function conectarListaPlanes(pl, NOMP) {
   const PLATU = new Map(pl.usuarios.map((x) => [x.usuario, x.plataforma]));
   const con = [...conPlan.map((x) => ({ ...x, nombre: (info.get(x.usuario) || {}).nombre })).sort((a, b) => (a.usuario === pl.yo ? -1 : b.usuario === pl.yo ? 1 : (a.hasta || Infinity) - (b.hasta || Infinity))),
     ...(pl.cuentas || []).filter((x) => !ids.has(x.usuario)).map((x) => ({ ...x, plan: 'gratis', plataforma: x.plataforma ?? PLATU.get(x.usuario) ?? null }))];
+  const iYo = con.findIndex((x) => x.usuario === pl.yo); if (iYo > 0) con.unshift(con.splice(iYo, 1)[0]);
   let filtro = 'todos', mostrar = 10;
   const nombreDe = (x) => x.nombre || (x.alias ? '@' + x.alias : x.email || 'usuario');
   const CL = { promax: 'pl-pm', pro: 'pl-pr', plus: 'pl-pl' }, PLAT = { play: '🤖 Android', ios: '🍎 iPhone', web: '🌐 Web' };
@@ -492,7 +493,7 @@ function conectarListaPlanes(pl, NOMP) {
     caja.innerHTML = vis.length ? vis.slice(0, mostrar).map((x) => {
       const d = x.hasta ? diasPara(x.hasta) : null, ori = x.usuario === pl.yo ? 'Tú' : x.plan === 'gratis' ? 'sin plan' : x.origen === 'regalo' ? '🎁 Regalo' : x.origen === 'apple' ? '💳 App Store' : x.origen === 'play' ? '💳 Google Play' : esc(x.origen || '');
       const fin = x.plan === 'gratis' ? (x.alias ? '@' + esc(x.alias) : /privaterelay/.test(x.email || '') ? 'correo oculto de Apple' : esc(x.email || '')) : d == null ? 'sin fin' : `${x.origen === 'regalo' ? 'vence' : 'renueva'} ${new Date(x.hasta).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })} (en ${d} día${d === 1 ? '' : 's'})`;
-      return `<button type="button" class="pl-fila" data-plq="${esc(x.alias ? '@' + x.alias : x.email || x.usuario || '')}" data-plp="${esc(x.plan === 'gratis' ? 'plus' : x.plan)}" data-plpago="${x.origen === 'play' || x.origen === 'apple' ? 1 : ''}"${x.alias || x.email || x.usuario ? '' : ' disabled'}><span class="pl-av">${esc(nombreDe(x).replace('@', '').charAt(0).toUpperCase())}</span>
+      return `<button type="button" class="pl-fila" data-plq="${esc(x.alias ? '@' + x.alias : x.usuario || x.email || '')}" data-plp="${esc(x.plan === 'gratis' ? 'plus' : x.plan)}" data-plpago="${x.origen === 'play' || x.origen === 'apple' ? 1 : ''}"${x.alias || x.email || x.usuario ? '' : ' disabled'}><span class="pl-av">${esc(nombreDe(x).replace('@', '').charAt(0).toUpperCase())}</span>
         <span class="pl-q"><b>${esc(nombreDe(x))}</b><small${x.origen === 'regalo' && d != null && d <= 30 ? ' class="pl-ya"' : ''}>${pl.plataformas ? `${PLAT[x.plataforma] || '❔ Sin dato'} · ` : ''}${ori} · ${fin}</small></span><span class="pl-b ${CL[x.plan] || ''}">${esc(NOMP[x.plan] || x.plan)}</span></button>`;
     }).join('') + (vis.length > mostrar ? `<button type="button" class="pl-mas" id="pl-mas">Ver ${Math.min(20, vis.length - mostrar)} más de ${vis.length - mostrar}</button>` : '') : '<p class="hint" style="padding:10px 12px;margin:0">Nadie con ese filtro.</p>';
     if ($('pl-mas')) $('pl-mas').onclick = () => { mostrar += 20; pintarL(); };
