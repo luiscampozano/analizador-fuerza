@@ -36,17 +36,19 @@ const MUSC_PL = {
   escaladores: [[AB, FD], [Q]], boxeo: [[FD, TR], ['obliques', 'chest']], baile: [[CA, Q], [AB]], patada: [[Q], [G, AB]],
   tiro: [[Q, CA], [FD, TR]], remate: [[Q, FD], [AB, CA]], raqueta: [[FD, 'forearm'], ['obliques', Q]],
 };
+const MUSC_ID = { kayak: [[UB, FD], ['biceps', AB, 'obliques']], patinaje: [[Q, G], [CA, 'abductor']], cardio_otro: null }; // por ejercicio (gana a la plantilla)
 export function musculosDe(ej) {
   const id = (ej && ej.id) || '', def = POR_ID[id] || ej || {}, grupo = def.musculo || def.grupo;
   let m = (POR_EJ.find(([re]) => re.test(id)) || [])[1] || POR_GRUPO[grupo] || { pri: [], sec: [] };
-  if (!m.pri.length) { const r = MUSC_PL[plantillaDe(id)]; if (r) m = { pri: r[0], sec: r[1] }; }
+  if (!m.pri.length) { const r = id in MUSC_ID ? MUSC_ID[id] : MUSC_PL[plantillaDe(id)]; if (r) m = { pri: r[0], sec: r[1] }; }
   const zonas = {};
   m.sec.forEach((k) => (MUSC_ZONAS[k] || []).forEach((z) => (zonas[z] = Math.max(zonas[z] || 0, 1))));
   m.pri.forEach((k) => (MUSC_ZONAS[k] || []).forEach((z) => (zonas[z] = 2)));
   const nombres = (l) => [...new Set(l.map((k) => NOMBRES_MUSC[k]).filter(Boolean))];
   const pri = nombres(m.pri), sec = nombres(m.sec).filter((n) => !pri.includes(n));
   // ¿los músculos principales están sobre todo atrás? (espalda, femoral, glúteo, tríceps…): entonces se muestra desde atrás
-  let atr = 0, del = 0; for (const [z, nv] of Object.entries(zonas)) if (nv === 2 && ZONA[z]) { if (ZONA[z][3] === 'b') atr++; else if (ZONA[z][3] === 'f') del++; }
+  let atr = 0, del = 0; // se cuentan los músculos principales (no las zonas); hombros y antebrazos se ven de frente
+  for (const k of m.pri) { const z = (MUSC_ZONAS[k] || [])[0]; if (!z || !ZONA[z]) continue; if (ZONA[z][3] === 'b') atr++; else del++; }
   return { zonas, pri, sec, atras: atr > del };
 }
 
@@ -191,7 +193,7 @@ function piezas(t, pose, NC) {
   else if (e === 'cables_frente') { cable([0, 1.9, -0.85], m0); cable([0, 1.9, 0.85], m1); }
   else if (e === 'landmine') eqp('barra', [-1.0, 0, 0], medio, cil(0.016), C.metal);
   else if (e === 'raqueta') { // v2.71.0 mango en la dirección del antebrazo y la cabeza plana
-    const d = nrm(sub(C3.ld[0].mano, C3.ld[0].codo)), cab = mas(C3.ld[0].mano, d, 0.42), n = nrm(cruz(d, [0, 0, 1]));
+    const d = nrm(sub(C3.ld[0].mano, C3.ld[0].codo)), cab = mas(C3.ld[0].mano, d, 0.42), n0 = cruz(d, [0, 0, 1]), n = nrm(Math.hypot(...n0) > 0.2 ? n0 : cruz(d, [0, 1, 0]));
     eqp('barra', C3.ld[0].mano, mas(C3.ld[0].mano, d, 0.27), cil(0.014), C.metal);
     eqp('disco', mas(cab, n, -0.012), mas(cab, n, 0.012), [[0, 0.1, 0.14, 0.14], [1, 0.1, 0.14, 0.14]], C.disco);
   } else if (e === 'cuerda' || e === 'cuerdas') { // curva por puntos (cuerda de saltar por debajo de los pies; de batalla hacia adelante)
@@ -393,8 +395,8 @@ function vistaGiro(cv, t, zonas, giro = 35) {
 // v2.70.1 plantillas propias del muñeco (sentado abriendo/cerrando piernas) y ajustes de las de figura.js
 const SENTADO = { H: [0, -0.55], suelo: false, tau: -8, piernas: [[90, 0]], brazos: [[30, 30]] };
 const PROPIAS = {
-  aductores: { A: { ...SENTADO, abd: 40 }, B: { ...SENTADO, abd: 6 }, props: ['asiento'], vistas: [[90, 'De frente', 40], [35, 'A 45°', 25]] },
-  abductores: { A: { ...SENTADO, abd: 6 }, B: { ...SENTADO, abd: 40 }, props: ['asiento'], vistas: [[90, 'De frente', 40], [35, 'A 45°', 25]] },
+  aductores: { A: { ...SENTADO, abd: 40 }, B: { ...SENTADO, abd: 6 }, props: ['asiento'], vistas: [[90, 'De frente', 40], [35, 'Diagonal', 25]] },
+  abductores: { A: { ...SENTADO, abd: 6 }, B: { ...SENTADO, abd: 40 }, props: ['asiento'], vistas: [[90, 'De frente', 40], [35, 'Diagonal', 25]] },
 };
 const AJUSTES = {
   boxeo: { vistas: [[0, 'De lado'], [-35, 'Diagonal']] },
@@ -464,7 +466,7 @@ function chips({ pri, sec }) {
   return `<div class="mu-chips">${pri.map((n) => `<b class="mu-p">${esc(n)}</b>`).join('')}${sec.map((n) => `<b class="mu-s">${esc(n)}</b>`).join('')}</div>`;
 }
 const LEYENDA = '<div class="mu-ley"><span><i class="mu-p"></i>Principal</span><span><i class="mu-s"></i>Secundario</span></div>';
-// segunda vista del 2D: de frente si está de pie; a 45° si está acostado o en el suelo (de frente no se entiende)
+// vistas del 2D: de lado + de frente (o de atrás si los músculos principales están atrás); diagonal para las de frente y los acostados
 function vistas2d(t, m = {}) {
   if (t.vistas) return t.vistas;
   const a = !!m.atras;
