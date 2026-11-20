@@ -39,6 +39,11 @@ for(let i=0;i<10;i++) await call(L,'POST',['ia/texto','ia/texto','ia/texto'][0],
 await call(L,'POST','yo/plataforma',{plataforma:'raro'});
 [s,r]=await call(L,'GET','mod/planes'); ok(r.plataformas&&r.plataformas.ios===1&&r.plataformas.web===1&&r.usuarios.every((x)=>'plataforma' in x),'moderación ve el resumen por plataforma (lo desconocido cuenta como web)');
 [s,r]=await call(A,'POST','yo/plataforma',{plataforma:'play'}); [s,r]=await call(L,'GET','mod/planes'); ok(r.plataformas.play===1&&!r.plataformas.ios,'se guarda el último uso');
+// v2.70.2 todas las cuentas (con o sin plan) y regalar por id (cuentas de Apple con correo oculto)
+const C1=await reg('karen@privaterelay.appleid.com','Karen Torres');
+[s,r]=await call(L,'GET','mod/planes'); const k=(r.cuentas||[]).find((x)=>x.nombre==='Karen Torres'); ok(k&&'plataforma' in k&&r.cuentas.length===3,'moderación ve todas las cuentas con nombre');
+[s,r]=await call(L,'POST','mod/plan_usuario',{quien:k.usuario,plan:'promax',dias:120}); ok(s===200&&r.usuario===k.usuario,'regalar un plan por id');
+[s,r]=await call(A,'GET','mod/planes'); ok(s===404,'la lista de cuentas es solo para el administrador');
 [s,r]=await call(L,'POST','mod/planes',{modo:'activo'});
 [s,r]=await call(A,'GET','plan'); ok(r.plan==='promax'&&r.regalo&&Math.round((r.hasta-r.regalo.desde)/864e5)===30&&r.planes.pro.ia===300,'v2.60.0 el regalo trae su fecha (30 días) y Pro tiene 300 créditos');
 [s,r]=await call(A,'GET','plan'); ok(r.aplica&&r.plan==='promax'&&r.limites.video.lim===null,'activo: Ana con Pro Max tiene video ilimitado');

@@ -913,7 +913,11 @@ async function moderacion(req, env, u, r, m) {
       const mapa = new Map(((await DB.prepare('SELECT usuario, plataforma FROM plataformas').all()).results || []).map((x) => [x.usuario, x.plataforma]));
       usuarios = usuarios.map((x) => ({ ...x, plataforma: mapa.get(x.usuario) || null }));
     }
-    return json({ modo, usuarios, totalUsuarios: total ? total.n : 0, yo: u.id, plataformas });
+    // v2.70.2 todas las cuentas (con o sin plan) para buscarlas por nombre y regalarles un plan
+    const conPlat = !!plataformas;
+    const cuentas = ((await DB.prepare(`SELECT us.id AS usuario, us.nombre, us.email, us.visto, pf.alias${conPlat ? ', pl.plataforma' : ''} FROM usuarios us LEFT JOIN perfiles pf ON pf.usuario = us.id
+      ${conPlat ? 'LEFT JOIN plataformas pl ON pl.usuario = us.id' : ''} ORDER BY us.visto DESC LIMIT 5000`).all()).results || []);
+    return json({ modo, usuarios, cuentas, totalUsuarios: total ? total.n : 0, yo: u.id, plataformas });
   }
   if (r === 'planes' && m === 'POST') {
     if (!(await tablasPlan(env))) throw fallo('Primero crea las tablas de planes en D1.', 409);
@@ -926,7 +930,7 @@ async function moderacion(req, env, u, r, m) {
     if (!(await tablasPlan(env))) throw fallo('Primero crea las tablas de planes en D1.', 409);
     const d = await leerJSON(req), quien = texto(d.quien, 120).replace(/^@/, '');
     if (!PLANES[d.plan]) throw fallo('Plan inválido.');
-    const x = quien === 'yo' ? { id: u.id } : await DB.prepare('SELECT us.id FROM usuarios us LEFT JOIN perfiles pf ON pf.usuario = us.id WHERE lower(us.email) = lower(?1) OR pf.alias = ?1 COLLATE NOCASE LIMIT 1').bind(quien).first();
+    const x = quien === 'yo' ? { id: u.id } : await DB.prepare('SELECT us.id FROM usuarios us LEFT JOIN perfiles pf ON pf.usuario = us.id WHERE us.id = ?1 OR lower(us.email) = lower(?1) OR pf.alias = ?1 COLLATE NOCASE LIMIT 1').bind(quien).first();
     if (!x) throw fallo('No encontré a esa persona (escribe su @alias de la comunidad o su correo).', 404);
     const dias = Math.floor(+d.dias) || 0, hasta = dias > 0 ? Date.now() + dias * 86400000 : null;
     if (d.plan === 'gratis') await DB.prepare('DELETE FROM planes WHERE usuario = ?1').bind(x.id).run();

@@ -458,27 +458,31 @@ const diasPara = (t) => Math.ceil((t - Date.now()) / 86_400_000);
 function listaPlanesHtml(pl, NOMP) {
   const con = pl.usuarios.filter(planActivo), cuenta = (k) => con.filter((x) => x.plan === k).length;
   const regalo = con.filter((x) => x.origen === 'regalo').length, pagados = con.filter((x) => x.origen === 'play' || x.origen === 'apple').length;
-  const FIL = [['todos', 'Todos'], ['promax', 'Pro Max'], ['pro', 'Pro'], ['plus', 'Plus'], ['regalo', '🎁 Regalados'], ['pago', '💳 Pagados'], ['vence', '⏳ Vencen en 30 días'], ...(pl.plataformas ? [['p:play', '🤖 Android'], ['p:ios', '🍎 iPhone'], ['p:web', '🌐 Web']] : [])];
+  const FIL = [['todos', 'Todos'], ['gratis', 'Sin plan'], ['promax', 'Pro Max'], ['pro', 'Pro'], ['plus', 'Plus'], ['regalo', '🎁 Regalados'], ['pago', '💳 Pagados'], ['vence', '⏳ Vencen en 30 días'], ...(pl.plataformas ? [['p:play', '🤖 Android'], ['p:ios', '🍎 iPhone'], ['p:web', '🌐 Web']] : [])];
   // v2.65.0 desde dónde usa la app cada cuenta (todas, con o sin plan), según su último uso
   const P = pl.plataformas, conDato = P ? (P.play || 0) + (P.ios || 0) + (P.web || 0) : 0;
   const plat = P ? `<div class="pl-res">${[['play', '🤖 App Android'], ['ios', '🍎 App iPhone'], ['web', '🌐 Web']].map(([k, n]) => `<div class="uso-caja"><b>${P[k] || 0}</b><span>${n}</span></div>`).join('')}<div class="uso-caja"><b>${Math.max(0, pl.totalUsuarios - conDato)}</b><span>❔ Sin dato</span></div></div>
-    <p class="hint">Según el último uso de cada cuenta (todas, con o sin plan). Los filtros 🤖 🍎 🌐 de abajo muestran solo a quienes tienen plan.</p>` : '';
+    <p class="hint">Según el último uso de cada cuenta (todas, con o sin plan).</p>` : '';
   return `<div class="pl-res">${['promax', 'pro', 'plus'].map((k) => `<div class="uso-caja"><b>${cuenta(k)}</b><span>${NOMP[k]}</span></div>`).join('')}<div class="uso-caja"><b>${Math.max(0, pl.totalUsuarios - con.length)}</b><span>Gratis</span></div></div>
     <p class="hint">${pl.totalUsuarios} cuentas · ${con.length} con plan (${regalo} regalado${regalo === 1 ? '' : 's'}, ${pagados} pagado${pagados === 1 ? '' : 's'})</p>${plat}
-    ${con.length ? `<input id="pl-buscar" class="pl-buscar" type="search" placeholder="🔎 Buscar @alias o correo" aria-label="Buscar usuario">
+    ${con.length || (pl.cuentas || []).length ? `<input id="pl-buscar" class="pl-buscar" type="search" placeholder="🔎 Buscar nombre, @alias o correo" aria-label="Buscar usuario">
     <div class="chips" id="pl-filtros">${FIL.map(([k, n], i) => `<button type="button" class="chip${i ? '' : ' active'}" data-plf="${k}">${n}</button>`).join('')}</div>
     <div class="card pl-lista" id="pl-lista"></div><p class="hint">Toca a una persona para cambiarle el plan o los días (se llena el formulario de «Regalar»).</p>` : ''}`;
 }
 function conectarListaPlanes(pl, NOMP) {
   const caja = $('pl-lista'); if (!caja) return;
-  const con = pl.usuarios.filter(planActivo).sort((a, b) => (a.usuario === pl.yo ? -1 : b.usuario === pl.yo ? 1 : (a.hasta || Infinity) - (b.hasta || Infinity)));
+  // v2.70.2 todas las cuentas: primero tú, luego las que tienen plan (por vencimiento) y después las demás (las más recientes primero)
+  const conPlan = pl.usuarios.filter(planActivo), ids = new Set(conPlan.map((x) => x.usuario)), info = new Map((pl.cuentas || []).map((x) => [x.usuario, x]));
+  const PLATU = new Map(pl.usuarios.map((x) => [x.usuario, x.plataforma]));
+  const con = [...conPlan.map((x) => ({ ...x, nombre: (info.get(x.usuario) || {}).nombre })).sort((a, b) => (a.usuario === pl.yo ? -1 : b.usuario === pl.yo ? 1 : (a.hasta || Infinity) - (b.hasta || Infinity))),
+    ...(pl.cuentas || []).filter((x) => !ids.has(x.usuario)).map((x) => ({ ...x, plan: 'gratis', plataforma: x.plataforma ?? PLATU.get(x.usuario) ?? null }))];
   let filtro = 'todos', mostrar = 10;
-  const nombreDe = (x) => (x.alias ? '@' + x.alias : x.email || 'usuario');
+  const nombreDe = (x) => x.nombre || (x.alias ? '@' + x.alias : x.email || 'usuario');
   const CL = { promax: 'pl-pm', pro: 'pl-pr', plus: 'pl-pl' }, PLAT = { play: '🤖 Android', ios: '🍎 iPhone', web: '🌐 Web' };
   const pintarL = () => {
     const q = ($('pl-buscar').value || '').trim().toLowerCase().replace(/^@/, '');
     const vis = con.filter((x) => {
-      if (q && !((x.alias || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q))) return false;
+      if (q && !((x.alias || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q) || (x.nombre || '').toLowerCase().includes(q))) return false;
       if (filtro === 'regalo') return x.origen === 'regalo';
       if (filtro === 'pago') return x.origen === 'play' || x.origen === 'apple';
       if (filtro.startsWith('p:')) return x.plataforma === filtro.slice(2);
@@ -486,9 +490,9 @@ function conectarListaPlanes(pl, NOMP) {
       return filtro === 'todos' || x.plan === filtro;
     });
     caja.innerHTML = vis.length ? vis.slice(0, mostrar).map((x) => {
-      const d = x.hasta ? diasPara(x.hasta) : null, ori = x.usuario === pl.yo ? 'Tú' : x.origen === 'regalo' ? '🎁 Regalo' : x.origen === 'apple' ? '💳 App Store' : x.origen === 'play' ? '💳 Google Play' : esc(x.origen || '');
-      const fin = d == null ? 'sin fin' : `${x.origen === 'regalo' ? 'vence' : 'renueva'} ${new Date(x.hasta).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })} (en ${d} día${d === 1 ? '' : 's'})`;
-      return `<button type="button" class="pl-fila" data-plq="${esc(x.alias ? '@' + x.alias : x.email || '')}" data-plp="${esc(x.plan)}" data-plpago="${x.origen === 'play' || x.origen === 'apple' ? 1 : ''}"${x.alias || x.email ? '' : ' disabled'}><span class="pl-av">${esc(nombreDe(x).replace('@', '').charAt(0).toUpperCase())}</span>
+      const d = x.hasta ? diasPara(x.hasta) : null, ori = x.usuario === pl.yo ? 'Tú' : x.plan === 'gratis' ? 'sin plan' : x.origen === 'regalo' ? '🎁 Regalo' : x.origen === 'apple' ? '💳 App Store' : x.origen === 'play' ? '💳 Google Play' : esc(x.origen || '');
+      const fin = x.plan === 'gratis' ? (x.alias ? '@' + esc(x.alias) : /privaterelay/.test(x.email || '') ? 'correo oculto de Apple' : esc(x.email || '')) : d == null ? 'sin fin' : `${x.origen === 'regalo' ? 'vence' : 'renueva'} ${new Date(x.hasta).toLocaleDateString('es-EC', { day: 'numeric', month: 'short' })} (en ${d} día${d === 1 ? '' : 's'})`;
+      return `<button type="button" class="pl-fila" data-plq="${esc(x.alias ? '@' + x.alias : x.email || x.usuario || '')}" data-plp="${esc(x.plan === 'gratis' ? 'plus' : x.plan)}" data-plpago="${x.origen === 'play' || x.origen === 'apple' ? 1 : ''}"${x.alias || x.email || x.usuario ? '' : ' disabled'}><span class="pl-av">${esc(nombreDe(x).replace('@', '').charAt(0).toUpperCase())}</span>
         <span class="pl-q"><b>${esc(nombreDe(x))}</b><small${x.origen === 'regalo' && d != null && d <= 30 ? ' class="pl-ya"' : ''}>${pl.plataformas ? `${PLAT[x.plataforma] || '❔ Sin dato'} · ` : ''}${ori} · ${fin}</small></span><span class="pl-b ${CL[x.plan] || ''}">${esc(NOMP[x.plan] || x.plan)}</span></button>`;
     }).join('') + (vis.length > mostrar ? `<button type="button" class="pl-mas" id="pl-mas">Ver ${Math.min(20, vis.length - mostrar)} más de ${vis.length - mostrar}</button>` : '') : '<p class="hint" style="padding:10px 12px;margin:0">Nadie con ese filtro.</p>';
     if ($('pl-mas')) $('pl-mas').onclick = () => { mostrar += 20; pintarL(); };

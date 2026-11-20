@@ -6,6 +6,15 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-20
+
+### 15:20 · v2.70.2 — Regalar planes a cuentas con correo oculto de Apple
+- **Pidió:** Luis no encontraba a Karen (iPhone) para regalarle un plan con su Gmail.
+- **Causa:** entró con «Iniciar sesión con Apple» y ocultó su correo (la cuenta tiene un correo @privaterelay de
+  Apple, sin alias); la lista de Moderación solo mostraba cuentas con plan y buscaba por alias/correo.
+- **Hecho:** se le dio Pro Max por 120 días directo en D1 (pedido de Luis). Moderación → Suscripciones ahora lista
+  todas las cuentas, busca por nombre, filtro «Sin plan», y «Regalar» acepta el id de la cuenta.
+
 ## 2026-11-19
 
 ### 12:15 · Apple aprobó FuerzaPro 1.1 (iPhone)

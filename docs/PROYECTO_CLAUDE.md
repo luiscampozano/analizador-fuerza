@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 19 de noviembre de 2026 · **Versión en producción:** v2.70.1
+**Actualizado:** 20 de noviembre de 2026 · **Versión en producción:** v2.70.2
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -350,6 +350,7 @@ bloqueos, reportes, fallos.
 | v2.69.0 | Analizar: selector «kg | lb» junto a «3. Datos» (misma unidad global de Ajustes; convierte lo escrito). El video con telemetría (render.js: flecha, «Fuerza:» y gráfica) y el informe PDF (pdf.js) salen en la unidad elegida; la meta de 1RM del PDF con IA se guarda en kg. |
 | v2.70.0 | «Cómo se hace» con el muñeco de piezas (estilo mapa de músculos), en js/muneco.js (canvas, sin librerías): miniatura 3D quieta en todas las listas (reemplaza la figurita morada), en Analizar dos vistas 2D animadas + músculos + «🔄 Ver en 3D» (modal #mu-modal que gira solo y con el dedo), y 3D en la ficha del ejercicio de Entrenar. Usa las posturas de figura.js (ahora exporta T, articular, articularFrente, mezclar, suave, accesorios) y los músculos de tarjetas.js (principal naranja, secundario morado). Pendiente: etapa 2 (revisar uno por uno los raros) y etapa 3 (3 pasos por ejercicio en `pasos`). |
 | v2.70.1 | Muñeco: ejercicios unilaterales congelan el lado que no trabaja (unLado) y dibujan el equipo en una mano; aductores/abductores con plantilla propia sentada (`abd`); búlgara con `pieFijo` (cinemática inversa) y mancuernas `neutro`; manos un poco más afuera; brazo cercano más claro en 2D; vistas 2D con inclinación (phi). |
+| v2.70.2 | Moderación → Suscripciones: lista de todas las cuentas (GET /api/mod/planes devuelve `cuentas`), búsqueda por nombre, filtro «Sin plan»; /api/mod/plan_usuario acepta el id (cuentas de Apple con correo oculto y sin alias). |
 | v2.60.0 | Créditos IA por mes 10/90/300/900 y tope global 1.000/día. Avisos una sola vez: 🎁 regalo de plan (con sus días) y ⭐ llegada de los planes (solo a Gratis). En la web, enlaces a App Store (id6832380426) y «Google Play muy pronto». |
 | v2.59.0 | Precisión «Automática · recomendada» (nueva por defecto): empieza en Normal y, si el análisis va a tardar más de 70 s (límite también del botón manual), pasa sola a Rápida en ese video y avisa. Quien tenía «Normal» guardada pasa una vez a Automática (af_calidad_auto). |
 | v2.58.0 | Si el análisis va a tardar más de 40 s aparece «⚡ Seguir en modo Rápido» (reinicia con la IA liviana y la deja elegida). La imagen de 960 px se descartó (banco: 2/5 vs 3/5 reps, velocidades hasta ±16 %). |
