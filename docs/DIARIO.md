@@ -6,6 +6,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-22
+
+### 14:45 · v2.72.0 — Muñeco etapa 3: 3 pasos por ejercicio
+- **Pidió:** Luis: hacer la etapa 3.
+- **Hecho:** js/pasos.js con 3 pasos cortos (posición, movimiento, clave) para los 198 ejercicios con muñeco
+  (todos menos «Otro cardio»). Se muestran como «Cómo hacerlo» bajo el 3D, en la ficha de Analizar y en la de Entrenar.
+
 ## 2026-11-20
 
 ### 16:40 · v2.71.0 — Muñeco etapa 2: revisión de los 128 movimientos

@@ -7,6 +7,7 @@
 import { T, articular, articularFrente, mezclar, suave, plantillaDe, accesorios } from './figura.js';
 import { POR_EJ, POR_GRUPO, NOMBRES_MUSC } from './tarjetas.js';
 import { POR_ID } from './ejercicios.js';
+import { PASOS } from './pasos.js'; // v2.72.0 3 pasos por ejercicio
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const COLP = '#FF6A2B', COLS = '#8B5CF6'; // principal (naranja) y secundario (morado), como el mapa de Estadísticas
@@ -488,11 +489,13 @@ export function demo(caja, ej) {
   return true;
 }
 // muñeco 3D que gira (ficha del ejercicio)
+// v2.72.0 los 3 pasos de cada ejercicio (js/pasos.js)
+const pasosHtml = (id) => { const p = PASOS[id]; return p ? `<b class="mu-pasos-t">Cómo hacerlo</b><ol class="mu-pasos">${p.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''; };
 export function vista3d(caja, ej, conMusculos = true) {
   const t = ej && plantilla(ej.id);
   if (!t) { caja.innerHTML = ''; return false; }
   const m = musculosDe(ej);
-  caja.innerHTML = `<div class="mu-3d"><canvas role="img" aria-label="${esc(ej.nombre || 'Ejercicio')} en 3D"></canvas></div><p class="mu-gira">☝️ Gira solo; arrástralo para verlo desde otro lado</p>${conMusculos && m.pri.length ? LEYENDA + chips(m) : ''}`;
+  caja.innerHTML = `<div class="mu-3d"><canvas role="img" aria-label="${esc(ej.nombre || 'Ejercicio')} en 3D"></canvas></div><p class="mu-gira">☝️ Gira solo; arrástralo para verlo desde otro lado</p>${conMusculos && m.pri.length ? LEYENDA + chips(m) : ''}${pasosHtml(ej.id)}`;
   vistaGiro(caja.querySelector('canvas'), t, m.zonas, giroDe(m));
   return true;
 }
@@ -504,8 +507,7 @@ export function abrirFicha(ej) {
   volverA = document.activeElement;
   md.style.display = 'flex';
   vista3d(document.getElementById('mu-cuerpo'), def);
-  const pasos = def.pasos || [];
-  document.getElementById('mu-pasos').innerHTML = pasos.length ? `<ol class="mu-pasos">${pasos.map((p) => `<li>${esc(p)}</li>`).join('')}</ol>` : ''; // etapa 3: pasos de cada ejercicio
+  document.getElementById('mu-pasos').innerHTML = ''; // los pasos ya van dentro de vista3d
   document.getElementById('mu-cerrar').focus();
 }
 let volverA = null;
