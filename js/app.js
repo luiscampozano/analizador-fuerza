@@ -1018,7 +1018,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   informeActual = inf; videoActual = video; vistaPrevia = desde;
   vista3d.preparar($('btn-3d'), inf.id);
   const { ej: e, s, datos: d } = inf, corporal = e.perfil === 'corporal';
-  $('btn-nueva').textContent = nuevo ? '← Nueva serie' : '← Volver';
+  $('btn-nueva').textContent = nuevo ? '← Nueva serie' : '← Volver'; $('btn-nueva').dataset.nueva = nuevo ? '1' : ''; // v2.73.0 la marca no depende del idioma
   if (nuevo) fresco = true;
   pintarReanalizar('r-reanalizar', fresco && desde === 'v-form');
   $('r-guardado').textContent = nuevo ? '✓ Guardado en historial' : 'Serie del historial';
@@ -1118,7 +1118,7 @@ function mostrarInforme(inf, { video = null, nuevo = false, desde = 'v-form' } =
   graficaTrayectoria($('g-tray'), inf.tray.caminos);
 }
 $('btn-nueva').onclick = () => {
-  if ($('btn-nueva').textContent.includes('Nueva')) { $('btn-quitar').click(); vista('v-form'); } else vista(vistaPrevia);
+  if ($('btn-nueva').dataset.nueva === '1') { $('btn-quitar').click(); vista('v-form'); } else vista(vistaPrevia);
 };
 async function abrirSerie(id, desde) {
   const r = hist.leer().find((x) => x.id === id); if (!r) return;
@@ -1133,7 +1133,7 @@ $('btn-borrar-serie').onclick = () => {
   if (!borrarSerieHist(id)) return;
   informeActual = null;
   const destino = vistaPrevia && vistaPrevia !== 'v-progreso' ? vistaPrevia : 'v-form';
-  if ($('btn-nueva').textContent.includes('Nueva')) $('btn-quitar').click();
+  if ($('btn-nueva').dataset.nueva === '1') $('btn-quitar').click();
   vista(destino);
   aviso('Serie borrada del historial.', true);
 };

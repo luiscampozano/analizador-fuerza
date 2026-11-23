@@ -2,6 +2,7 @@
 // rutinas, records personales, progreso por ejercicio, cargas sugeridas por RPE y calculadora de discos,
 // con enlace opcional al analisis por video de cada serie e importacion desde Hevy, Strong o Excel.
 import * as tarjetas from './tarjetas.js';
+import * as IDI from './idioma.js'; // v2.73.0
 import * as salud from './salud.js';
 import * as nativo from './nativo.js';
 import { ti } from './glosario.js';
@@ -289,7 +290,7 @@ function pintarCalendario(lunes) {
       <div class="en-mes-cab"><button type="button" class="en-mes-flecha" id="en-mes-ant" aria-label="Mes anterior">‹</button>
         <div><strong>${titulo.charAt(0).toUpperCase() + titulo.slice(1)}</strong><small>${nMes} día${nMes === 1 ? '' : 's'} entrenado${nMes === 1 ? '' : 's'}</small></div>
         <button type="button" class="en-mes-flecha" id="en-mes-sig" aria-label="Mes siguiente"${esActual ? ' disabled' : ''}>›</button></div>
-      <div class="en-mes-sem"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+      <div class="en-mes-sem" data-sin-traducir>${(IDI.enIngles() ? 'MTWTFSS' : 'LMXJVSD').split('').map((d) => `<span>${d}</span>`).join('')}</div>
       <div class="en-mes-dias">${celdas}</div>
     </div>
     <p class="hint" style="margin-top:6px">🔥 Racha: <b>${racha} semana${racha === 1 ? '' : 's'}</b> · ${n30} entrenamientos en los últimos 30 días</p>`;
@@ -482,7 +483,7 @@ function abrirDetalle(id, nuevo = null) {
     ${en.descripcion ? `<p class="en-det-desc">${esc(en.descripcion)}</p>` : ''}${en.foto ? `<img class="en-det-foto" src="${en.foto}" alt="Foto del entrenamiento">` : ''}
     ${en.ejercicios.map((e) => `<div class="en-det-ej"><strong>${iconoEj(e)} ${esc(nombreEj(e))}</strong>${e.ej && deps.porId[e.ej] && norm(e.nombre) !== norm(deps.porId[e.ej].nombre) ? `<small> (${esc(e.nombre)})</small>` : ''}
       ${e.notas ? `<div class="hint" style="margin:2px 0 4px">📝 ${esc(e.notas)}</div>` : ''}${esCardio(e) && kcalCardio(e) > 0 ? `<div class="hint" style="margin:2px 0 4px">🔥 ≈ ${fmt(kcalCardio(e))} kcal</div>` : ''}
-      ${e.series.map((s, i) => `<div class="en-det-serie${s.tipo === 'calentamiento' ? ' cal' : ''}"><span>${TIPOS[s.tipo] || i + 1 - e.series.slice(0, i).filter((x) => x.tipo === 'calentamiento').length}</span>
+      ${e.series.map((s, i) => `<div class="en-det-serie${s.tipo === 'calentamiento' ? ' cal' : ''}"><span data-sin-traducir>${TIPOS[s.tipo] || i + 1 - e.series.slice(0, i).filter((x) => x.tipo === 'calentamiento').length}</span>
         <span>${esCardio(e) ? (cardioTxt(e, s) || '—') + (velTxt(e, s.km, s.min) ? ` · ${velTxt(e, s.km, s.min)}` : '') : `${pesoTxt(s.kg, e) || '—'} ${U.nombre(uni(e))} × ${s.reps ?? '—'}${s.rpe ? ` @${fmt(s.rpe, s.rpe % 1 ? 1 : 0)}` : ''}`}</span>
         ${s.actividad ? `<button type="button" class="en-vel" data-act="${s.actividad.id}">⚡ ${s.actividad.ritmo ?? '--'} ${esc(s.actividad.unidad || '')}</button>` : ''}
         ${s.analisis ? `<button type="button" class="en-vel" data-serie="${s.analisis.id}">⚡ ${fmt(s.analisis.v, 2)} m/s</button>` : ''}</div>`).join('')}</div>`).join('')}
@@ -719,7 +720,7 @@ function pintarActivo() {
         const p = prev[is], etiqueta = TIPOS[s.tipo] || String(++nNormal), dist = defEj(e).medida === 'dist';
         const ptxt = p && (p.km || p.min) ? cardioTxt(e, p) : modoRutina ? '' : '—';
         return `<div class="en-fila en-cardio${s.hecha ? ' hecha' : ''}" data-is="${is}">
-          <button type="button" class="en-num t-${s.tipo}" data-acc="tipo">${etiqueta}</button>
+          <button type="button" class="en-num t-${s.tipo}" data-acc="tipo" data-sin-traducir>${etiqueta}</button>
           <button type="button" class="en-prev" data-acc="copiar">${ptxt}</button>
           ${dist ? (enMetros(e) ? `<input type="number" inputmode="numeric" step="any" min="0" data-campo="km" data-escala="1000" value="${s.km != null ? Math.round(s.km * 1000) : ''}" placeholder="${p && p.km ? Math.round(p.km * 1000) : ''}">`
     : `<input type="number" inputmode="decimal" step="any" min="0" data-campo="km" value="${s.km ?? ''}" placeholder="${p && p.km ? fmt(p.km, p.km % 1 ? 2 : 0) : ''}">`) : '<span></span>'}
@@ -734,7 +735,7 @@ function pintarActivo() {
         const p = prev[is], m = marcadores(e, is, prev, r);
         const ptxt = p && (p.kg || p.reps) ? `${pesoTxt(p.kg, e) || 0} × ${p.reps ?? 0}${p.rpe ? ' @' + fmt(p.rpe, p.rpe % 1 ? 1 : 0) : ''}` : modoRutina ? '' : '—';
         return `<div class="en-fila${s.hecha ? ' hecha' : ''}" data-is="${is}">
-          <button type="button" class="en-num t-${s.tipo}" data-acc="tipo">${etiqueta}</button>
+          <button type="button" class="en-num t-${s.tipo}" data-acc="tipo" data-sin-traducir>${etiqueta}</button>
           <button type="button" class="en-prev" data-acc="copiar">${ptxt}</button>
           <input type="number" inputmode="decimal" step="any" min="0" data-campo="kg" value="${s.kg == null ? '' : U.paraCampo(s.kg, uni(e))}"${uni(e) === 'lb' ? ` data-escala="${1 / U.LB}"` : ''} placeholder="${m.kg != null ? pesoTxt(m.kg, e) : ''}" class="${m.sug ? 'sug' : ''}">
           <input type="number" inputmode="numeric" step="1" min="0" data-campo="reps" value="${s.reps ?? ''}" placeholder="${m.reps ?? ''}">
@@ -867,7 +868,7 @@ function abrirOpcionesEjercicio(ie) {
 }
 
 function elegirTipo(e, is) {
-  const op = Object.keys(NOMBRE_TIPO).map((t) => [`<span class="en-num t-${t}">${TIPOS[t] || '1'}</span>`, NOMBRE_TIPO[t] + (e.series[is].tipo === t ? ' ✓' : ''),
+  const op = Object.keys(NOMBRE_TIPO).map((t) => [`<span class="en-num t-${t}" data-sin-traducir>${TIPOS[t] || '1'}</span>`, NOMBRE_TIPO[t] + (e.series[is].tipo === t ? ' ✓' : ''),
     () => { e.series[is].tipo = t; guardarBorrador(); pintarActivo(); }]);
   op.push(['🗑️', 'Borrar serie', () => { e.series.splice(is, 1); guardarBorrador(); pintarActivo(); }, true]);
   hoja(op);

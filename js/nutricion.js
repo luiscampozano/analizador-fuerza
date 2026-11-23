@@ -97,7 +97,7 @@ function pintarComidas() {
   $('nu-comidas').innerHTML = COMIDAS.map(([k, titulo]) => {
     const lista = registros.filter((r) => r.comida === k), t = totales(lista);
     return `<div class="nu-comida"><div class="nu-comida-cab"><strong>${titulo}</strong><span>${lista.length ? `${fmt(t.kcal)} kcal · P ${fmt(t.p)} g` : ''}</span></div>
-      ${lista.map((r) => `<div class="nu-item" data-id="${r.id}" role="button"><div><b>${esc(r.nombre)}</b><small>${r.marca ? esc(r.marca) + ' · ' : ''}${fmt(r.gramos)} g · P ${fmt(total(r, 'p'), 1)} · C ${fmt(total(r, 'c'), 1)} · G ${fmt(total(r, 'g'), 1)}</small></div><span>${fmt(total(r, 'kcal'))}</span></div>`).join('')}
+      ${lista.map((r) => `<div class="nu-item" data-id="${r.id}" role="button"><div><b data-sin-traducir>${esc(r.nombre)}</b><small>${r.marca ? esc(r.marca) + ' · ' : ''}${fmt(r.gramos)} g · P ${fmt(total(r, 'p'), 1)} · C ${fmt(total(r, 'c'), 1)} · G ${fmt(total(r, 'g'), 1)}</small></div><span>${fmt(total(r, 'kcal'))}</span></div>`).join('')}
       <button type="button" class="nu-agregar" data-c="${k}">+ Agregar alimento</button></div>`;
   }).join('') + (registros.length ? '' : '<button type="button" class="btn-sec" id="nu-copiar" style="width:100%">📋 Copiar las comidas del día anterior</button>');
   $('nu-comidas').querySelectorAll('.nu-agregar').forEach((b) => (b.onclick = () => abrirHoja(b.dataset.c)));
@@ -149,7 +149,7 @@ function pintarResultados() {
   const pasa = (a) => pal.every((w) => norm(`${a.nombre} ${a.marca || ''} ${a.extra || ''}`).includes(w));
   const propios = leerLS('af_alimentos_propios', []);
   const item = (a, i, grupo) => `<button type="button" class="en-sel-item" data-g="${grupo}" data-i="${i}"><span>${a.fuente === 'off' ? '🏷️' : a.fuente === 'comunidad' ? '👥' : a.fuente === 'ia' ? '📸' : a.fuente === 'propio' ? '⭐' : '🥗'}</span>
-    <span><b>${esc(a.nombre)}</b><small>${a.marca ? esc(a.marca) + ' · ' : ''}${fmt(a.kcal)} kcal · P ${fmt(a.p, 1)} · C ${fmt(a.c, 1)} · G ${fmt(a.g, 1)} por 100 g</small></span></button>`;
+    <span><b data-sin-traducir>${esc(a.nombre)}</b><small>${a.marca ? esc(a.marca) + ' · ' : ''}${fmt(a.kcal)} kcal · P ${fmt(a.p, 1)} · C ${fmt(a.c, 1)} · G ${fmt(a.g, 1)} por 100 g</small></span></button>`;
   const grupos = { r: recientes.filter(pasa), p: propios.filter(pasa), l: ALIMENTOS.filter(pasa) };
   $('nu-res').innerHTML = (grupos.r.length ? `<div class="en-sel-grupo">Recientes</div>${grupos.r.map((a, i) => item(a, i, 'r')).join('')}` : '')
     + (grupos.p.length ? `<div class="en-sel-grupo">Mis alimentos</div>${grupos.p.map((a, i) => item(a, i, 'p')).join('')}` : '')
@@ -195,7 +195,7 @@ async function buscarInternet() {
   const lc = com.status === 'fulfilled' ? com.value : [], lo = off.status === 'fulfilled' ? off.value : [];
   const lista = [...lc, ...lo];
   const fila = (a, i) => `<button type="button" class="en-sel-item" data-i="${i}"><span>${a.fuente === 'comunidad' ? '👥' : '🏷️'}</span>
-      <span><b>${esc(a.nombre)}</b><small>${a.marca ? esc(a.marca) + ' · ' : ''}${a.ecuador ? '🇪🇨 · ' : ''}${fmt(a.kcal)} kcal · P ${fmt(a.p, 1)} · C ${fmt(a.c, 1)} · G ${fmt(a.g, 1)} por 100 g</small></span></button>`;
+      <span><b data-sin-traducir>${esc(a.nombre)}</b><small>${a.marca ? esc(a.marca) + ' · ' : ''}${a.ecuador ? '🇪🇨 · ' : ''}${fmt(a.kcal)} kcal · P ${fmt(a.p, 1)} · C ${fmt(a.c, 1)} · G ${fmt(a.g, 1)} por 100 g</small></span></button>`;
   $('nu-off').innerHTML = (lc.length ? `<div class="en-sel-grupo">Comunidad FuerzaPro</div>${lc.map((a, i) => fila(a, i)).join('')}` : '')
     + (lo.length ? `<div class="en-sel-grupo">Open Food Facts</div>${lo.map((a, i) => fila(a, lc.length + i)).join('')}` : '')
     + (!lista.length ? (off.status === 'rejected' && com.status === 'rejected' ? '<p class="hint">No pude conectar. Revisa tu internet o inténtalo en un rato.</p>'
@@ -318,7 +318,7 @@ function listaIA(r, titulo, pie, volver = null, intro = null, foto = null, corr 
   $('nu-cant').innerHTML = `<h3 class="en-det-titulo">${titulo}</h3>
     <p class="hint" style="margin-top:2px">${intro || `Estimación de la IA: reconoce bien los alimentos, pero en las porciones puede equivocarse bastante (±40 %). <b>Ajusta los gramos</b> (mejor si pesas) y desmarca lo que no comiste.${r.nota ? ' ' + esc(r.nota) : ''}`}</p>
     <div class="nu-plato">${items.map((a, i) => `<label class="nu-plato-fila"><input type="checkbox" data-i="${i}" checked>
-      <span><b>${esc(a.nombre)}</b> <small title="confianza de la IA en la porción">${CONF[a.confianza] || ''}</small><small id="nu-pl-k${i}"></small></span>
+      <span><b data-sin-traducir>${esc(a.nombre)}</b> <small title="confianza de la IA en la porción">${CONF[a.confianza] || ''}</small><small id="nu-pl-k${i}"></small></span>
       <input type="number" inputmode="decimal" min="0" step="any" value="${Math.round(a.gramos)}" data-g="${i}"><span class="nu-plato-u">g</span></label>`).join('')}</div>
     <div id="nu-prev" class="nu-prev"></div>
     <details class="m3" id="nu-3d"${foto ? ' open' : ''}><summary>🧊 Tus macros en 3D <span class="v3d-exp">Experimental</span></summary><div id="nu-3d-caja"></div></details>

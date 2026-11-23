@@ -180,7 +180,7 @@ async function pintarSugerencias(cont) {
     conectarPersonas(cont);
   } catch (e) { /* nada */ }
 }
-const persona = (a) => `<div class="co-persona" data-alias="${esc(a.alias)}">${avatar(a)}<div class="co-persona-txt"><strong>${esc(a.nombre)}</strong><small>@${esc(a.alias)}${a.gimnasio ? ' · ' + esc(a.gimnasio) : ''}</small></div>
+const persona = (a) => `<div class="co-persona" data-alias="${esc(a.alias)}">${avatar(a)}<div class="co-persona-txt" data-sin-traducir><strong>${esc(a.nombre)}</strong><small>@${esc(a.alias)}${a.gimnasio ? ' · ' + esc(a.gimnasio) : ''}</small></div>
   <button type="button" class="btn-sec co-seguir" data-id="${esc(a.id)}">Seguir</button></div>`;
 function conectarPersonas(cont) {
   cont.querySelectorAll('.co-persona').forEach((el) => (el.onclick = (ev) => { if (!ev.target.closest('.co-seguir')) { cerrarModal(); abrirPerfil(el.dataset.alias); } }));
@@ -222,7 +222,7 @@ function bloqueEntreno(d, completo = false) {
       const validas = (e.series || []).filter((s) => s.tipo !== 'calentamiento');
       const vel = (e.series || []).filter((s) => s.v > 0);
       if (completo) {
-        return `<div class="co-ej"><b>${esc(e.icono || '🏋️')} ${esc(e.nombre)}</b>${(e.series || []).map((s, i) => `<div class="co-serie${s.tipo === 'calentamiento' ? ' cal' : ''}"><span>${s.tipo === 'calentamiento' ? 'C' : s.tipo === 'fallo' ? 'F' : s.tipo === 'drop' ? 'D' : i + 1 - (e.series.slice(0, i).filter((x) => x.tipo === 'calentamiento').length)}</span><span>${resumenSerie(s)}</span>${s.v > 0 ? `<span class="co-vel">⚡ ${fmt(s.v, 2)} m/s</span>` : ''}</div>`).join('')}</div>`;
+        return `<div class="co-ej"><b data-sin-traducir>${esc(e.icono || '🏋️')} ${esc(e.nombre)}</b>${(e.series || []).map((s, i) => `<div class="co-serie${s.tipo === 'calentamiento' ? ' cal' : ''}"><span data-sin-traducir>${s.tipo === 'calentamiento' ? 'C' : s.tipo === 'fallo' ? 'F' : s.tipo === 'drop' ? 'D' : i + 1 - (e.series.slice(0, i).filter((x) => x.tipo === 'calentamiento').length)}</span><span>${resumenSerie(s)}</span>${s.v > 0 ? `<span class="co-vel">⚡ ${fmt(s.v, 2)} m/s</span>` : ''}</div>`).join('')}</div>`;
       }
       const m = mejorSerie(e);
       return `<div class="co-ej-linea"><span>${esc(e.icono || '🏋️')} ${validas.length} × ${esc(e.nombre)}</span><span>${m ? resumenSerie(m) : ''}${vel.length ? ` <span class="co-vel">⚡ ${fmt(Math.max(...vel.map((s) => s.v)), 2)}</span>` : ''}</span></div>`;
@@ -238,9 +238,9 @@ const imgPub = (p) => (p.datos && p.datos.img ? `<img class="co-img" src="${urlI
 function tarjeta(p) {
   const mia = yo && yo.perfil && p.autor.id === yo.perfil.id;
   return `<article class="card co-pub" data-id="${esc(p.id)}">
-    <header class="co-pub-cab"><button type="button" class="co-autor" data-alias="${esc(p.autor.alias)}">${avatar(p.autor)}<div><strong>${esc(p.autor.nombre)}</strong><small>@${esc(p.autor.alias)} · ${hace(p.creado)}${p.editado ? ' · editado' : ''}</small></div></button>
+    <header class="co-pub-cab"><button type="button" class="co-autor" data-alias="${esc(p.autor.alias)}">${avatar(p.autor)}<div data-sin-traducir><strong>${esc(p.autor.nombre)}</strong><small>@${esc(p.autor.alias)} · ${hace(p.creado)}${p.editado ? ' · editado' : ''}</small></div></button>
       <button type="button" class="co-ico co-menu" aria-label="Opciones">⋯</button></header>
-    ${p.texto ? `<p class="co-texto">${esc(p.texto)}</p>` : ''}
+    ${p.texto ? `<p class="co-texto" data-sin-traducir>${esc(p.texto)}</p>` : ''}
     ${imgPub(p)}${vidPub(p)}<div class="co-abrir">${bloqueEntreno(p.datos)}</div>
     <footer class="co-pub-pie"><button type="button" class="co-like${p.meGusta ? ' activo' : ''}">${p.meGusta ? '❤️' : '🤍'} <span>${p.likes}</span></button>
       <button type="button" class="co-coment">💬 <span>${p.comentarios}</span></button>${mia ? '<span class="co-tuya">Tu publicación</span>' : ''}</footer>
@@ -300,7 +300,7 @@ async function abrirPublicacion(id, alComentar = false) {
   let r;
   try { r = await api('GET', 'publicaciones/' + id); } catch (e) { $('co-modal-cuerpo').innerHTML = `<p class="pf-nube-error">${esc(e.message)}</p>`; return; }
   const p = r.publicacion;
-  const pintarC = (cs) => cs.map((c) => `<div class="co-com" data-id="${esc(c.id)}">${avatar(c.autor, 'chico')}<div class="co-com-txt"><b class="co-com-autor" data-alias="${esc(c.autor.alias)}">${esc(c.autor.nombre)}</b> <small>${hace(c.creado)}</small><p>${esc(c.texto)}</p></div>
+  const pintarC = (cs) => cs.map((c) => `<div class="co-com" data-id="${esc(c.id)}">${avatar(c.autor, 'chico')}<div class="co-com-txt" data-sin-traducir><b class="co-com-autor" data-alias="${esc(c.autor.alias)}">${esc(c.autor.nombre)}</b> <small>${hace(c.creado)}</small><p>${esc(c.texto)}</p></div>
     <button type="button" class="co-ico co-com-menu" aria-label="Opciones">⋯</button></div>`).join('');
   modal(`${tarjeta(p).replace('<div class="co-abrir">' + bloqueEntreno(p.datos) + '</div>', bloqueEntreno(p.datos, true))}
     <label class="section-title" style="margin-top:14px">Comentarios</label>
@@ -387,7 +387,7 @@ async function cargarPubsUsuario(uid, desde) {
 async function verBloqueados() {
   try {
     const r = await api('GET', 'bloqueados');
-    modal(`<h3 class="en-det-titulo">Personas bloqueadas</h3>${r.personas.length ? `<div class="co-personas">${r.personas.map((a) => `<div class="co-persona">${avatar(a)}<div class="co-persona-txt"><strong>${esc(a.nombre)}</strong><small>@${esc(a.alias)}</small></div><button type="button" class="btn-sec" data-id="${esc(a.id)}">Desbloquear</button></div>`).join('')}</div>` : '<p class="hint">No has bloqueado a nadie.</p>'}`);
+    modal(`<h3 class="en-det-titulo">Personas bloqueadas</h3>${r.personas.length ? `<div class="co-personas">${r.personas.map((a) => `<div class="co-persona">${avatar(a)}<div class="co-persona-txt" data-sin-traducir><strong>${esc(a.nombre)}</strong><small>@${esc(a.alias)}</small></div><button type="button" class="btn-sec" data-id="${esc(a.id)}">Desbloquear</button></div>`).join('')}</div>` : '<p class="hint">No has bloqueado a nadie.</p>'}`);
     $('co-modal-cuerpo').querySelectorAll('[data-id]').forEach((b) => (b.onclick = async () => { try { await api('DELETE', 'bloquear/' + encodeURIComponent(b.dataset.id)); b.closest('.co-persona').remove(); } catch (e) { error(e); } }));
   } catch (e) { error(e); }
 }
@@ -537,7 +537,7 @@ async function moderar() {
     const pend = f.fallos.filter((x) => x.estado === 'pendiente');
     const fallosHtml = `<h4>🐞 Fallos de conteo reportados${pend.length ? ` · ${pend.length} pendiente${pend.length > 1 ? 's' : ''}` : ''}</h4>${f.fallos.length
       ? f.fallos.slice(0, 30).map((x) => `<div class="card co-rep"><b>${esc(x.nombre || x.ejercicio)}</b> · la app contó ${x.reps_app ?? '?'}, eran ${x.reps_real ?? '?'}
-        <small class="hint"> · ${hace(x.creado)} · v${esc(x.version || '?')} · ${esc(x.estado)}${x.pose_bytes ? '' : ' · sin puntos'}</small>${x.comentario ? `<p class="co-texto">${esc(x.comentario)}</p>` : ''}
+        <small class="hint"> · ${hace(x.creado)} · v${esc(x.version || '?')} · ${esc(x.estado)}${x.pose_bytes ? '' : ' · sin puntos'}</small>${x.comentario ? `<p class="co-texto" data-sin-traducir>${esc(x.comentario)}</p>` : ''}
         <div class="co-perfil-botones">${x.pose_bytes ? `<button type="button" class="btn-sec" data-bajar="${esc(x.id)}">⬇️ Descargar para Claude</button>` : ''}${x.estado !== 'corregido' ? `<button type="button" class="btn-sec" data-corregido="${esc(x.id)}">✓ Corregido</button>` : ''}</div></div>`).join('')
       : '<p class="hint">Sin fallos reportados.</p>'}<p class="hint">Descarga el fallo y adjunta el archivo en el chat con Claude: trae solo los puntos del cuerpo (sin video) y lo que corrigió la persona.</p>`;
     // comentarios de los usuarios (v2.38.0)
@@ -546,7 +546,7 @@ async function moderar() {
     const opHtml = !op ? '' : op.sinTabla ? '<h4>💬 Comentarios de usuarios</h4><p class="hint">⚠️ Falta crear la tabla opiniones en D1.</p>'
       : `<h4>💬 Comentarios de usuarios${nuevos ? ` · ${nuevos} nuevo${nuevos > 1 ? 's' : ''}` : ''}</h4>${op.opiniones.length ? op.opiniones.slice(0, 50).map((x) => `<div class="card co-rep">
         <b>${TOP[x.tipo] || '💬'} ${esc(x.alias ? '@' + x.alias : x.email || 'usuario')}</b><small class="hint"> · ${hace(x.creado)} · v${esc(x.version || '?')} · ${x.plataforma === 'play' ? 'app de Play' : 'web'} · ${esc(x.estado)}</small>
-        <p class="co-texto">${esc(x.texto)}</p><div data-cap-de="${esc(x.id)}"></div>
+        <p class="co-texto" data-sin-traducir>${esc(x.texto)}</p><div data-cap-de="${esc(x.id)}"></div>
         <div class="co-perfil-botones">${x.cap ? `<button type="button" class="btn-sec" data-vercap="${esc(x.id)}">🖼️ Ver captura</button>` : ''}${x.estado === 'nuevo' ? `<button type="button" class="btn-sec" data-opest="${esc(x.id)}" data-e="leido">✓ Leído</button>` : ''}${x.estado !== 'resuelto' ? `<button type="button" class="btn-sec" data-opest="${esc(x.id)}" data-e="resuelto">✅ Resuelto</button>` : ''}</div></div>`).join('')
       : '<p class="hint">Todavía no hay comentarios.</p>'}`;
     // panel de uso de la app (v2.40.0)
@@ -567,7 +567,7 @@ async function moderar() {
     }
     modal(`<h3 class="en-det-titulo">🛡️ Moderación</h3>${usoHtml}${planesHtml}${opHtml}${iaHtml}${fallosHtml}<h4>Reportes de la comunidad</h4>${r.reportes.length ? r.reportes.map((x, i) => `<div class="card co-rep" data-i="${i}">
         <b>${nombre[x.tipo]}${x.alias ? ' de @' + esc(x.alias) : ''}</b> · ${x.n} reporte${x.n > 1 ? 's' : ''}${x.oculto ? ' · <span class="pf-nube-error">oculto</span>' : ''}
-        <p class="co-texto">${esc(x.contenido || '(ya no existe)')}</p><p class="hint">${esc(x.motivos)}</p>
+        <p class="co-texto" data-sin-traducir>${esc(x.contenido || '(ya no existe)')}</p><p class="hint">${esc(x.motivos)}</p>
         <div class="co-perfil-botones">${x.tipo !== 'usuario' ? `<button type="button" class="btn-sec" data-a="${x.oculto ? 'mostrar' : 'ocultar'}">${x.oculto ? 'Mostrar' : 'Ocultar'}</button>` : ''}
           <button type="button" class="btn-sec peligro" data-a="borrar">${x.tipo === 'usuario' ? 'Sacar de la comunidad' : 'Borrar'}</button><button type="button" class="btn-sec" data-a="descartar">Descartar</button></div></div>`).join('') : '<p class="hint">No hay reportes pendientes. 🎉</p>'}`);
     const cuerpo = $('co-modal-cuerpo'), recargar = () => { plan.actualizar(); moderar(); };

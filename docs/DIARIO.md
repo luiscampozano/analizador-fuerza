@@ -15,6 +15,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
   textos que se crean después y los avisos alert/confirm; data-sin-traducir para excluir) y js/idioma_en.js (~600
   textos de menú, Analizar, resultados, Entrenar, Nutrición, Comunidad, Perfil, Ajustes, guía y bienvenida). Selector
   «🌐 Idioma · Language» en Ajustes y ES | EN en la bienvenida. Las pruebas e2e fijan español (af_idioma=es).
+- **Revisión (otro Claude):** se corrigió «← Nueva serie» (dependía del texto), kilos elegidos que pasaban a libras
+  (ahora se guarda 'kg'), usuarios actuales quedan en español, letras del calendario y de serie drop, textos de
+  usuarios protegidos (comunidad, alimentos), «Cómo grabar» con frases completas y mejoras del inglés.
 - **Pendiente:** etapa 2 (nombres de ejercicios, pasos, glosario, tarjetas, PDF, IA en inglés, formato de números),
   etapa 3 (guía/tour y páginas legales), etapa 4 (App Store en inglés) y cámara nativa.
 

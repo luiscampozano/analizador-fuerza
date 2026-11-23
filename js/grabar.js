@@ -1,5 +1,6 @@
 // v2.67.0 «📐 Cómo grabar» según el ejercicio (pedido de usuarios: saber el mejor ángulo antes de analizar).
 // Se arma con los datos de js/ejercicios.js: grupo, unilateral y los consejos que ya dicen «Graba de frente».
+import * as IDI from './idioma.js';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 export function consejo(ej) {
@@ -16,13 +17,18 @@ export function consejo(ej) {
         : 'a la altura de la cadera';
   const distancia = g === 'Brazos' || g === 'Hombros' ? '1,5–2,5 m' : '2–3 m';
   const ver = g === 'Piernas' || g === 'Glúteo y femoral' || g === 'Potencia' ? 'de la cabeza a los pies, con la barra o la máquina' : 'todo tu cuerpo y la carga (barra, mancuernas o el agarre)';
-  const items = [];
-  if (vista === 'frente') items.push('<b>De frente</b>, mirándote de cara.');
-  else if (vista === 'ambos') items.push('<b>De lado (90°)</b> o <b>de frente</b>: las dos sirven.');
-  else items.push(`<b>De lado (90°)</b>, mirando tu costado${ej.unilateral || /pierna que trabaja/.test(h) ? ', <b>del lado que trabaja</b>' : ''}. En diagonal (45°) también funciona.`);
-  items.push(`Celular <b>${altura}</b>, fijo y ${piso || acostado ? '<b>en horizontal</b> (acostado entras completo)' : 'en vertical'}.`);
-  items.push(`A <b>${distancia}</b>: que entre ${ver}.`);
-  items.push(vista === 'frente' ? 'Evita grabar de lado: un brazo tapa al otro y el arco no se ve.' : 'Evita grabar de frente: la profundidad y el recorrido no se ven bien.');
+  const items = [], en = IDI.enIngles(); // v2.73.0 frases completas en cada idioma (no se traducen por pedazos)
+  const ALT = { 'bajo, a 30–50 cm del piso': 'low, 30–50 cm (1–1.5 ft) off the floor', 'a la altura del banco': 'at bench height', 'a la altura del pecho': 'at chest height', 'a la altura de la cadera': 'at hip height' };
+  const lado = ej.unilateral || /pierna que trabaja/.test(h);
+  if (vista === 'frente') items.push(en ? '<b>From the front</b>, facing you.' : '<b>De frente</b>, mirándote de cara.');
+  else if (vista === 'ambos') items.push(en ? '<b>From the side (90°)</b> or <b>from the front</b>: both work.' : '<b>De lado (90°)</b> o <b>de frente</b>: las dos sirven.');
+  else items.push(en ? `<b>From the side (90°)</b>, facing your side${lado ? ', <b>on the working side</b>' : ''}. Diagonal (45°) also works.` : `<b>De lado (90°)</b>, mirando tu costado${lado ? ', <b>del lado que trabaja</b>' : ''}. En diagonal (45°) también funciona.`);
+  items.push(en ? `Phone <b>${ALT[altura]}</b>, still and ${piso || acostado ? '<b>horizontal</b> (lying down you fit completely)' : 'vertical'}.` : `Celular <b>${altura}</b>, fijo y ${piso || acostado ? '<b>en horizontal</b> (acostado entras completo)' : 'en vertical'}.`);
+  const dist = en ? (distancia === '1,5–2,5 m' ? '1.5–2.5 m (5–8 ft)' : '2–3 m (6–10 ft)') : distancia;
+  const verEn = g === 'Piernas' || g === 'Glúteo y femoral' || g === 'Potencia' ? 'head to toe, with the bar or machine' : 'your whole body and the load (bar, dumbbells or handle)';
+  items.push(en ? `At <b>${dist}</b>: ${verEn} must fit.` : `A <b>${distancia}</b>: que entre ${ver}.`);
+  items.push(vista === 'frente' ? (en ? "Avoid filming from the side: one arm hides the other and the arc can't be seen." : 'Evita grabar de lado: un brazo tapa al otro y el arco no se ve.')
+    : (en ? "Avoid filming from the front: depth and range of motion can't be seen well." : 'Evita grabar de frente: la profundidad y el recorrido no se ven bien.'));
   return { vista, items };
 }
 

@@ -9,6 +9,8 @@ import { EN, PATRONES } from './idioma_en.js';
 const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const guardar = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* nada */ } };
 
+// quien ya usaba la app antes de que existiera el inglés se queda en español (no cambia de golpe por tener el teléfono en inglés)
+if (leer('af_idioma') == null && leer('af_bienvenida') != null && leer('af_idioma_uni') == null) guardar('af_idioma', 'es');
 export const preferencia = () => { const p = leer('af_idioma'); return p === 'es' || p === 'en' ? p : 'auto'; };
 const delTelefono = () => { try { return /^es\b/i.test(navigator.language || 'es') ? 'es' : 'en'; } catch (e) { return 'es'; } };
 export const idioma = () => { const p = preferencia(); return p === 'auto' ? delTelefono() : p; };

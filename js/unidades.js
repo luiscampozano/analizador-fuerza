@@ -9,7 +9,7 @@ const leerJ = (k) => { try { const o = JSON.parse(leer(k) || '{}'); return o && 
 
 export const global = () => (leer('af_unidades') === 'lb' ? 'lb' : 'kg');
 export function ponerGlobal(u) { // avisa a las pantallas abiertas (Analizar convierte los números que ya estaban escritos)
-  const antes = global(); guardar('af_unidades', u === 'lb' ? 'lb' : null);
+  const antes = global(); guardar('af_unidades', u === 'lb' ? 'lb' : 'kg'); // v2.73.0 'kg' explícito: el inglés no lo cambia a libras
   if (antes !== global()) try { window.dispatchEvent(new CustomEvent('af-unidades', { detail: { antes, ahora: global() } })); } catch (e) { /* nada */ }
 }
 export const delEjercicio = (id) => { const u = id ? leerJ('af_unidad_ej')[id] : null; return u === 'lb' || u === 'kg' ? u : global(); };
