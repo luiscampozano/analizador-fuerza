@@ -71,6 +71,18 @@ export function traducirArbol(raiz) {
   while ((n = w.nextNode())) textoNodo(n);
 }
 
+// v2.74.0 PDF (jsPDF): traduce los textos y las tablas de un documento
+export function traducirPDF(doc) {
+  if (!enIngles() || !doc) return doc;
+  const tr = (x) => (Array.isArray(x) ? x.map(tr) : typeof x === 'string' ? t(x) : x);
+  for (const k of ['text', 'splitTextToSize', 'getTextWidth']) { const o = doc[k]; if (typeof o === 'function') doc[k] = function (txt, ...r) { return o.call(doc, tr(txt), ...r); }; }
+  const at = doc.autoTable;
+  if (typeof at === 'function') doc.autoTable = function (op = {}) {
+    const fila = (f) => (Array.isArray(f) ? f.map((c) => (c && typeof c === 'object' && typeof c.content === 'string' ? { ...c, content: t(c.content) } : tr(c))) : f);
+    return at.call(doc, { ...op, head: op.head && op.head.map(fila), body: op.body && op.body.map(fila), foot: op.foot && op.foot.map(fila) });
+  };
+  return doc;
+}
 export function iniciar() {
   if (typeof document === 'undefined') return;
   const en = enIngles();
@@ -89,6 +101,17 @@ export function iniciar() {
     }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATRIBUTOS });
   };
   if (document.body) empezar(); else document.addEventListener('DOMContentLoaded', empezar);
+  // v2.74.0 números y fechas en formato de EE. UU. (punto decimal), aunque el código pida 'es-EC'
+  const loc = (l) => (l == null || /^es/i.test(String(l)) ? 'en-US' : l);
+  const N = Number.prototype.toLocaleString; Number.prototype.toLocaleString = function (l, o) { return N.call(this, loc(l), o); };
+  for (const k of ['toLocaleString', 'toLocaleDateString', 'toLocaleTimeString']) { const o = Date.prototype[k]; Date.prototype[k] = function (l, op) { return o.call(this, loc(l), op); }; }
+  for (const k of ['NumberFormat', 'DateTimeFormat', 'RelativeTimeFormat']) {
+    const O = Intl[k]; if (!O) continue;
+    const F = function (l, op) { return new O(loc(l), op); }; F.prototype = O.prototype; F.supportedLocalesOf = O.supportedLocalesOf; Intl[k] = F;
+  }
+  // texto dibujado en lienzos (tarjetas para compartir, video con telemetría, gráficas)
+  const C2 = typeof CanvasRenderingContext2D !== 'undefined' && CanvasRenderingContext2D.prototype;
+  if (C2) for (const k of ['fillText', 'strokeText', 'measureText']) { const o = C2[k]; C2[k] = function (txt, ...r) { return o.call(this, typeof txt === 'string' ? t(txt) : txt, ...r); }; }
   // avisos del navegador
   for (const f of ['alert', 'confirm', 'prompt']) {
     const o = window[f]; if (typeof o !== 'function') continue;

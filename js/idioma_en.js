@@ -178,7 +178,7 @@ export const EN = {
   'El botón': 'The', 'Informe PDF': 'PDF report', 'crea un documento con los datos, las gráficas, la estadística, la técnica y una imagen del video, listo para guardar o compartir.': 'button creates a document with the data, charts, statistics, technique and an image from the video, ready to save or share.',
   'Se guardan los videos de las últimas 15 series; el análisis de todas queda guardado siempre.': 'Videos of the last 15 sets are kept; the analysis of all of them is always saved.',
   '⚠️ Precisión': '⚠️ Accuracy', 'Son estimaciones, no un sensor de fuerza. La carga estática es tan exacta como el peso e inclinación que indiques.': 'These are estimates, not a force sensor. The static load is as accurate as the weight and angle you enter.',
-  'Velocidad y potencia: margen aproximado de ±15–20%, mayor si la cámara se mueve o está en diagonal.': 'Velocity and power: approximate margin of ±15–20%, larger if the camera moves or is at an angle.',
+  'Velocidad y potencia: margen aproximado de ±15–20 %, mayor si la cámara se mueve o está en diagonal.': 'Velocity and power: approximate margin of ±15–20%, larger if the camera moves or is at an angle.',
   'RIR y 1RM son orientativos: úsalos para ver tendencias, no como verdad absoluta.': 'RIR and 1RM are a guide: use them to see trends, not as absolute truth.',
   'En máquinas de palanca (Hammer) y movimientos en arco (laterales, extensiones, curl femoral) la fuerza y la potencia son aproximadas; velocidad, reps y RIR sí sirven. Si tu ejercicio no está, créalo con «Crear mi propio ejercicio».': "On lever machines (Hammer) and arc movements (lateral raises, extensions, leg curls) force and power are approximate; velocity, reps and RIR are reliable. If your exercise isn't listed, create it with «Create my own exercise».",
   '📚 Fuentes científicas': '📚 Scientific sources', 'Las fórmulas de calorías, macros, cardio, velocidad, RIR, RPE y 1RM vienen de estudios publicados.': 'The formulas for calories, macros, cardio, velocity, RIR, RPE and 1RM come from published studies.',
@@ -204,3 +204,14 @@ export const PATRONES = [
   [/^\(discos (\S+) \+ máquina (\S+)\)\. Tu peso corporal no se suma\.$/, '(plates $1 + machine $2). Your body weight is not added.'],
   [/^¿Qué es (.+)\?$/, 'What is $1?'],
 ];
+
+// v2.74.0 nombres y consejos de los ejercicios; el buscador también encuentra el nombre en inglés
+import { EJERCICIOS } from './ejercicios.js';
+import { EJ_EN, HINTS_EN } from './ejercicios_en.js';
+for (const x of EJERCICIOS) {
+  const n = EJ_EN[x.id]; if (!n) continue;
+  if (!Object.prototype.hasOwnProperty.call(EN, x.nombre)) EN[x.nombre] = n[0];
+  if (x.corto && !Object.prototype.hasOwnProperty.call(EN, x.corto)) EN[x.corto] = n[1];
+  x.en = `${x.en || ''} ${n[0].toLowerCase()}`;
+}
+Object.assign(EN, HINTS_EN);

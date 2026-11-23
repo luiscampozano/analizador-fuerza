@@ -8,6 +8,8 @@ import { T, articular, articularFrente, mezclar, suave, plantillaDe, accesorios 
 import { POR_EJ, POR_GRUPO, NOMBRES_MUSC } from './tarjetas.js';
 import { POR_ID } from './ejercicios.js';
 import { PASOS } from './pasos.js'; // v2.72.0 3 pasos por ejercicio
+import { PASOS_EN } from './pasos_en.js';
+import { enIngles } from './idioma.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const COLP = '#FF6A2B', COLS = '#8B5CF6'; // principal (naranja) y secundario (morado), como el mapa de Estadísticas
@@ -490,7 +492,7 @@ export function demo(caja, ej) {
 }
 // muñeco 3D que gira (ficha del ejercicio)
 // v2.72.0 los 3 pasos de cada ejercicio (js/pasos.js)
-const pasosHtml = (id) => { const p = PASOS[id]; return p ? `<b class="mu-pasos-t">Cómo hacerlo</b><ol class="mu-pasos">${p.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''; };
+const pasosHtml = (id) => { const p = (enIngles() && PASOS_EN[id]) || PASOS[id]; return p ? `<b class="mu-pasos-t">Cómo hacerlo</b><ol class="mu-pasos">${p.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''; };
 export function vista3d(caja, ej, conMusculos = true) {
   const t = ej && plantilla(ej.id);
   if (!t) { caja.innerHTML = ''; return false; }

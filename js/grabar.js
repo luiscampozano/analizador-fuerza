@@ -50,7 +50,7 @@ function dibujo(vista) {
 
 export function html(ej) {
   const c = consejo(ej); if (!c) return '';
-  const nombre = (ej.corto || ej.nombre || 'este ejercicio').toLowerCase();
+  const nombre = IDI.t(ej.corto || ej.nombre || 'este ejercicio').toLowerCase(); // v2.74.0 en inglés, el nombre en inglés
   return `<div class="card gr-caja"><b>📐 Cómo grabar: ${esc(nombre)}</b>
     <div class="gr-fila">${dibujo(c.vista === 'ambos' ? 'ambos' : c.vista)}<ul>${c.items.map((x) => `<li>${x}</li>`).join('')}</ul></div></div>`;
 }

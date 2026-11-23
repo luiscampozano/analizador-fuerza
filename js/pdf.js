@@ -1,5 +1,6 @@
 // Informe PDF de una serie, generado en el telefono con jsPDF (sin internet ni servidores).
 import { resumenPesas, resumenActividad } from './sencillo.js';
+import { traducirPDF } from './idioma.js';
 const BASE = new URL('../vendor/jspdf/', import.meta.url).href;
 let cargado = null;
 function script(src) {
@@ -106,7 +107,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   const LBK = unidad === 'lb' ? 1 / 0.45359237 : 1, UN = unidad === 'lb' ? 'lb' : 'kg', fw = (x, d = 0) => (Number.isFinite(x) ? fmt(x * LBK, d) : '--');
   const esc1 = (x) => (Number.isFinite(x) ? x * LBK : null); // sin dato sigue sin dato (no 0)
   const jsPDF = await cargarLibreria();
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+  const doc = traducirPDF(new jsPDF({ unit: 'mm', format: 'a4', compress: true })); // v2.74.0 inglés
   const W = 210, M = 14, ancho = W - 2 * M;
   const fecha = new Date(inf.fecha || Date.now());
   let y = 0;
@@ -336,7 +337,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
 // Informe PDF de un analisis de cardio, boxeo o HIIT (mismo estilo que el de series de fuerza)
 export async function crearPDFActividad(a, { video, version, muestra = false } = {}) {
   const jsPDF = await cargarLibreria();
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+  const doc = traducirPDF(new jsPDF({ unit: 'mm', format: 'a4', compress: true })); // v2.74.0 inglés
   const W = 210, M = 14, ancho = W - 2 * M;
   const fecha = new Date(a.fecha || Date.now());
   // ---- encabezado

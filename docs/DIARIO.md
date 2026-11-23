@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-23
 
+### 14:30 · v2.74.0 — Inglés, etapa 2a
+- **Pidió:** Luis: seguir con la etapa 2 (y confirmó que se pueda buscar un ejercicio en inglés con la app en español: ya funciona).
+- **Hecho:** nombres en inglés de los 199 ejercicios (js/ejercicios_en.js, también para el buscador) y sus 70 consejos;
+  pasos en inglés (js/pasos_en.js); glosario en inglés; números y fechas en formato de EE. UU.; textos de lienzos
+  (tarjetas, video con telemetría) y del PDF traducidos (traducirPDF). Probado el análisis completo en inglés.
+- **Pendiente 2b:** «En palabras simples», respuestas de la IA en inglés y avisos con partes que cambian.
+
 ### 12:30 · v2.73.0 — Inglés, etapa 1 (motor de idiomas y pantallas principales)
 - **Pidió:** Luis: empezar la versión 1.2 de iPhone (inglés + cámara). Aprobó el boceto del selector y las decisiones:
   idioma automático según el teléfono e inglés con libras por defecto.
