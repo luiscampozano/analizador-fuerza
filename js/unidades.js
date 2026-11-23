@@ -28,11 +28,16 @@ export function paraCampo(kg, u) {
 }
 export const nombre = (u) => (u === 'lb' ? 'lb' : 'kg');
 // número escrito en español (1.020,5) → 1020.5
-export const numEs = (t) => parseFloat(String(t || '').replace(/\./g, '').replace(',', '.'));
+// v2.74.0 acepta «1.020,5» (español) y «1,020.5» (inglés): el separador decimal es el último que no deja 3 cifras
+export const numEs = (t) => {
+  let s = String(t || '').trim(); const d = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
+  s = d >= 0 && s.length - d - 1 !== 3 ? s.slice(0, d).replace(/[.,]/g, '') + '.' + s.slice(d + 1) : s.replace(/[.,]/g, '');
+  return parseFloat(s);
+};
 // textos ya armados en kg (récords: «102,5 kg (90 × 5)», «90 kg × 5») pasados a libras
 export function textoEn(txt, u) {
   if (u !== 'lb' || !txt) return txt;
-  return String(txt).replace(/(\d[\d.]*(?:,\d+)?)(\s?kg| ×)/g, (m0, n, suf) => {
+  return String(txt).replace(/(\d[\d.,]*)(\s?kg| ×)/g, (m0, n, suf) => {
     const v = Math.round(desdeKg(numEs(n), 'lb') * 10) / 10;
     return `${v.toLocaleString('es-EC', { maximumFractionDigits: 1 })}${suf.trim() === 'kg' ? ' lb' : suf}`;
   });

@@ -896,8 +896,8 @@ function pintarSelector() {
   $('en-maquina').style.display = ''; maquina.cancelar();
   const q = norm($('en-buscar').value), pal = q.split(/\s+/).filter(Boolean);
   const pasa = (texto) => pal.every((w) => norm(texto).includes(w));
-  const rec = recientes().filter((r) => pasa(r.ej && deps.porId[r.ej] ? `${deps.porId[r.ej].nombre} ${deps.porId[r.ej].en}` : r.nombre));
-  const bib = deps.ejercicios.filter((e) => pasa([e.nombre, e.grupo, e.equipo, e.musculo, e.en].join(' ')));
+  const rec = recientes().filter((r) => pasa(r.ej && deps.porId[r.ej] ? `${deps.porId[r.ej].nombre} ${deps.porId[r.ej].en} ${deps.porId[r.ej].nombreEn || ''}` : r.nombre));
+  const bib = deps.ejercicios.filter((e) => pasa([e.nombre, e.grupo, e.equipo, e.musculo, e.en, e.nombreEn].join(' ')));
   const item = (ej, nombre, sub, icono) => `<button type="button" class="en-sel-item" data-ej="${ej || ''}" data-nombre="${esc(nombre)}"><span>${icono}</span><span><b>${esc(nombre)}</b><small>${esc(sub)}</small></span></button>`;
   $('en-sel-lista').innerHTML = (rec.length ? `<div class="en-sel-grupo">Recientes</div>${rec.map((r) => {
     const x = r.ej && deps.porId[r.ej]; return item(r.ej, x ? x.nombre : r.nombre, x ? x.equipo || x.grupo : 'Sin análisis por video', x ? figIcono(r.ej, x.icono) : '🏋️');

@@ -33,7 +33,7 @@ const T_EN = {
   rir: ['RIR · reps in reserve', `<p>How many <b>more</b> reps you could have done before failing.</p>
     <ul><li><b>0</b> = you reached failure.</li><li><b>1–3</b> = close to failure: the best range for strength and muscle.</li><li><b>4 or more</b> = the set was easy.</li></ul>
     <p class="hint">The app estimates it from how much your last rep slowed down.</p>`],
-  '1rm': ['1RM · your max weight', `<p>The heaviest weight you could lift <b>once</b> with good form.</p>
+  '1rm': ['1RM · one-rep max', `<p>The heaviest weight you could lift <b>once</b> with good form.</p>
     <p>No need to test it: the app <b>estimates</b> it from the weight, your reps and what you had left (RIR). It shows whether you're getting stronger week to week.</p>`],
   vel: ['Velocity (m/s)', `<p>How fast the load moved up, in <b>meters per second</b>.</p>
     <ul><li>Faster = you have strength to spare with that weight.</li><li>When velocity drops a lot, you're close to failure.</li></ul>
@@ -42,11 +42,11 @@ const T_EN = {
     <ul><li><b>Under 20%</b>: fresh set, good for strength and power.</li><li><b>20–40%</b>: hard set, good for muscle.</li><li><b>Over 40%</b>: very close to failure, lots of fatigue.</li></ul>`],
   carga: ['Effective load', `<p>The weight you <b>actually</b> moved.</p>
     <p>On incline machines, cables or bodyweight exercises it isn't always what the stack or plates say: the app corrects it using the angle and the machine.</p>`],
-  fuerza: ['Peak force', `<p>Your hardest push during the set, in kilos. It can be more than the load because when you accelerate you push more than the weight you're holding.</p>`],
+  fuerza: ['Peak force', `<p>Your hardest push during the set, in your weight unit (lb or kg). It can be more than the load because when you accelerate you push more than the weight you're holding.</p>`],
   potencia: ['Peak power (watts)', `<p>Force × velocity: how <b>explosive</b> you were. It matters a lot in sports (jumping, sprinting, throwing).</p>
     <p class="hint">It goes up if you move the same weight faster.</p>`],
   volumen: ['Volume', `<p>All the weight you moved: <b>weight × reps</b>, added up over all sets.</p>
-    <p class="hint">Example: 3 sets of 10 with 50 kg = 1,500 kg. If it rises over the weeks, you're training more.</p>`],
+    <p class="hint">Example: 3 sets of 10 with 100 lb = 3,000 lb. If it rises over the weeks, you're training more.</p>`],
   anterior: ['Previous', `<p>What you did in that same set <b>the last time</b> you did this exercise. Use it to try to beat it: a little more weight or one more rep.</p>`],
 };
 const TX = () => (enIngles() ? T_EN : T);

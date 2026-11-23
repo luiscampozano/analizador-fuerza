@@ -208,7 +208,7 @@ function pintarLista() {
     if (e.cardio && !tipoActividad(e)) return false; // cardio sin analisis por video (natacion, deportes...)
     if (!palabras.length && seccionDe(e) !== secc) return false; // con búsqueda: en las tres pestañas
     if (!palabras.length && secc === 'gym' && grupo !== 'Todos' && e.grupo !== grupo) return false;
-    const texto = [e.nombre, e.grupo, e.equipo, e.musculo, e.en].join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const texto = [e.nombre, e.grupo, e.equipo, e.musculo, e.en, e.nombreEn].join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     return palabras.every((w) => texto.includes(w));
   });
   $('lista-ej').innerHTML = lista.map((e) => `<button type="button" class="preset-card${e.id === ej.id ? ' active' : ''}" data-id="${e.id}">

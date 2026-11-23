@@ -187,6 +187,19 @@ export const EN = {
   '. MediaPipe Tasks (Google, Apache 2.0) · mp4-muxer (MIT) · Mediabunny (MPL-2.0) · jsPDF y jsPDF-AutoTable (MIT). Ecuaciones carga-velocidad: González-Badillo y Sánchez-Medina (2010); Sánchez-Medina y col. (2017).': '. MediaPipe Tasks (Google, Apache 2.0) · mp4-muxer (MIT) · Mediabunny (MPL-2.0) · jsPDF and jsPDF-AutoTable (MIT). Load-velocity equations: González-Badillo and Sánchez-Medina (2010); Sánchez-Medina et al. (2017).',
   // glosario
   'RPE · esfuerzo percibido': 'RPE · rate of perceived exertion', 'RIR · repeticiones en reserva': 'RIR · reps in reserve', '1RM · tu peso máximo': '1RM · your max weight',
+  // v2.74.0 PDF y video con telemetría
+  'Peso de la barra': 'Bar weight', 'Serie terminada': 'Set complete', 'estático': 'static',
+  'CARGA EFECTIVA': 'EFFECTIVE LOAD', 'Cargas sugeridas según el 1RM estimado': 'Suggested loads from the estimated 1RM', 'Comparación entre lados': 'Side-to-side comparison',
+  'Cuadro del video con telemetría': 'Frame from the telemetry video', 'CÓMO MEJORAR TU LEVANTAMIENTO': 'HOW TO IMPROVE YOUR LIFT', 'Cómo se calculó': 'How it was calculated',
+  'Desde el anterior': 'Since the previous one', 'Desv. estándar': 'Std. deviation', 'Diferencia': 'Difference', 'EN PALABRAS SIMPLES': 'IN PLAIN WORDS',
+  'EXPLICACIÓN DEL ENTRENADOR IA': 'AI COACH EXPLANATION', 'El lado': 'The side', 'En las páginas siguientes está el detalle de cada lado.': 'The following pages show the detail for each side.',
+  'Gráficas': 'Charts', 'Informe completo con FuerzaPro Plus': 'Full report with FuerzaPro Plus', 'Informe de cardio / boxeo  ·  Ing. Luis Campozano, MBA': 'Cardio / boxing report  ·  Ing. Luis Campozano, MBA',
+  'Informe de serie a los dos lados': 'Two-sided set report', 'Informe de serie': 'Set report', 'La velocidad se mantuvo estable de rep a rep.': 'Velocity stayed steady from rep to rep.',
+  'MEJOR VELOCIDAD': 'BEST VELOCITY', 'MUESTRA': 'SAMPLE', 'Mano / lado': 'Hand / side', 'Mejor velocidad (m/s)': 'Best velocity (m/s)', 'Mejor velocidad': 'Best velocity',
+  'Potencia pico (W)': 'Peak power (W)', 'Potencia pico': 'Peak power', 'PÉRDIDA DE VEL.': 'VEL. LOSS', 'Pérdida de velocidad (%)': 'Velocity loss (%)',
+  'Recorrido constante': 'Consistent range of motion', 'Rep más rápida, del video con telemetría': 'Fastest rep, from the telemetry video', 'Rep parcial': 'Partial rep', 'Reps': 'Reps',
+  'Sin observaciones.': 'No remarks.', 'Tiempo de subida': 'Concentric time', 'Tiempo': 'Time', 'Tipo (aprox.)': 'Type (approx.)', 'V. pico': 'Peak v.',
+  'Velocidad media (m/s)': 'Mean velocity (m/s)', 'Velocidad media': 'Mean velocity', 'Velocidad pico': 'Peak velocity',
   'Velocidad (m/s)': 'Velocity (m/s)', 'Pérdida de velocidad': 'Velocity loss', 'Carga efectiva': 'Effective load', 'Fuerza pico': 'Peak force', 'Potencia pico (watts)': 'Peak power (watts)', 'Anterior': 'Previous',
 };
 
@@ -203,6 +216,8 @@ export const PATRONES = [
   [/^(.+), (De lado|De frente|De atrás|Diagonal|A 45°)$/, (m, a, v) => `${a}, ${EN[v] || v}`],
   [/^\(discos (\S+) \+ máquina (\S+)\)\. Tu peso corporal no se suma\.$/, '(plates $1 + machine $2). Your body weight is not added.'],
   [/^¿Qué es (.+)\?$/, 'What is $1?'],
+  [/^Fuerza: (.+)$/, 'Force: $1'], [/^Velocidad: (.+)$/, 'Velocity: $1'], [/^Potencia: (.+)$/, 'Power: $1'], [/^Fuerza aplicada \((.+)\)$/, 'Applied force ($1)'],
+  [/^No se pudo cargar (.+)$/, 'Could not load $1'],
 ];
 
 // v2.74.0 nombres y consejos de los ejercicios; el buscador también encuentra el nombre en inglés
@@ -212,6 +227,6 @@ for (const x of EJERCICIOS) {
   const n = EJ_EN[x.id]; if (!n) continue;
   if (!Object.prototype.hasOwnProperty.call(EN, x.nombre)) EN[x.nombre] = n[0];
   if (x.corto && !Object.prototype.hasOwnProperty.call(EN, x.corto)) EN[x.corto] = n[1];
-  x.en = `${x.en || ''} ${n[0].toLowerCase()}`;
+  x.nombreEn = n[0].toLowerCase(); // para el buscador (no se toca «en», que usa el importador de Hevy)
 }
 Object.assign(EN, HINTS_EN);

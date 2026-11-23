@@ -1,6 +1,7 @@
 // Tarjetas para compartir un entrenamiento (como las de Hevy): imagenes 1080x1350 hechas en canvas, listas para
 // descargar, compartir en redes o acompañar la publicacion en la Comunidad. Cada tarjeta solo se genera si hay datos.
 import { FRENTE, ESPALDA } from './anatomia.js';
+import * as IDI from './idioma.js';
 const W = 1080, H = 1350;
 const C = { fondo: '#0B0B12', fondo2: '#16122B', tarjeta: '#14141F', borde: '#29293D', texto: '#F0F2F5', suave: '#8E95A5',
   morado: '#7C5CFF', amarillo: '#F2C200', cian: '#22D3EE', rojo: '#E53935', apagado: '#262638' };
@@ -63,7 +64,7 @@ function fondo(g, transparente = false) {
 }
 function texto(g, t, x, y, { tam = 40, peso = 600, color = C.texto, alin = 'left', max = 0, base = 'alphabetic' } = {}) {
   g.font = `${peso} ${tam}px ${FUENTE}`; g.fillStyle = color; g.textAlign = alin; g.textBaseline = base;
-  let s = String(t);
+  let s = String(IDI.t(t)); // v2.74.0 se recorta ya traducido
   if (max) while (s.length > 1 && g.measureText(s).width > max) s = s.slice(0, -2) + '…';
   g.fillText(s, x, y);
   return g.measureText(s).width;

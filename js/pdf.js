@@ -1,6 +1,7 @@
 // Informe PDF de una serie, generado en el telefono con jsPDF (sin internet ni servidores).
 import { resumenPesas, resumenActividad } from './sencillo.js';
 import { traducirPDF } from './idioma.js';
+import * as IDI from './idioma.js';
 const BASE = new URL('../vendor/jspdf/', import.meta.url).href;
 let cargado = null;
 function script(src) {
@@ -17,7 +18,7 @@ function cargarLibreria() {
 
 const fmt = (x, d = 0) => (Number.isFinite(x) ? x.toLocaleString('es-EC', { minimumFractionDigits: d, maximumFractionDigits: d }) : '--');
 // Las fuentes estandar del PDF no tienen algunos simbolos: se reemplazan por equivalentes
-const limpio = (t) => String(t ?? '').replace(/<[^>]+>/g, '')
+const limpio = (t) => String(IDI.t(t) ?? '').replace(/<[^>]+>/g, '') // v2.74.0 primero se traduce (inglés)
   .replace(/→/g, '->').replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/≈/g, '~').replace(/−/g, '-').replace(/±/g, '+/-')
   .replace(/✓/g, 'OK').replace(/⚠️?/g, '!').replace(/[«»]/g, '"').replace(/R²/g, 'R2').replace(/[\u{1F300}-\u{1FAFF}☀-➿\uFE0F\u200D]/gu, '').trim();
 
@@ -112,7 +113,7 @@ export async function crearPDF(inf, { video, graficas, notas, textoTrayectoria, 
   const fecha = new Date(inf.fecha || Date.now());
   let y = 0;
   const seccion = (titulo, yy, anchoS = ancho) => {
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text(titulo.toUpperCase(), M, yy);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.verde); doc.text(limpio(titulo).toUpperCase(), M, yy);
     doc.setDrawColor(...C.linea); doc.line(M, yy + 1.6, M + anchoS, yy + 1.6);
     return yy + 6.5;
   };

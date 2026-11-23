@@ -13,6 +13,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 - **Hecho:** nombres en inglés de los 199 ejercicios (js/ejercicios_en.js, también para el buscador) y sus 70 consejos;
   pasos en inglés (js/pasos_en.js); glosario en inglés; números y fechas en formato de EE. UU.; textos de lienzos
   (tarjetas, video con telemetría) y del PDF traducidos (traducirPDF). Probado el análisis completo en inglés.
+- **Revisión (otro Claude):** se corrigió el lector de números (con libras en inglés los récords salían ×10), el
+  buscador usa un campo aparte (nombreEn) para no afectar el importador de Hevy, más textos del PDF y del video,
+  recorte de tarjetas ya traducido, y nombres/pasos/glosario en inglés más precisos.
 - **Pendiente 2b:** «En palabras simples», respuestas de la IA en inglés y avisos con partes que cambian.
 
 ### 12:30 · v2.73.0 — Inglés, etapa 1 (motor de idiomas y pantallas principales)
