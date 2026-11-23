@@ -54,7 +54,7 @@ export function resumenPesas(inf, cargaTexto = '') {
 
 // ---------------------------------------------------------------- cardio y deportes
 const QUE = { natacion: 'brazadas', carrera: 'pasos', caminata: 'pasos', bici: 'pedaladas', cuerda: 'saltos', boxeo: 'golpes', remo: 'paladas' };
-const QUE_EN = { brazadas: 'strokes', pasos: 'steps', pedaladas: 'pedal strokes', saltos: 'jumps', golpes: 'punches', paladas: 'strokes', repeticiones: 'reps', patadas: 'kicks', tiros: 'shots', remates: 'spikes' };
+const QUE_EN = { brazadas: 'strokes', pasos: 'steps', pedaladas: 'pedal strokes', saltos: 'jumps', golpes: 'punches', paladas: 'strokes', repeticiones: 'reps', patadas: 'kicks', tiros: 'shots', remates: 'spikes', vueltas: 'laps', remadas: 'strokes', ciclos: 'cycles' };
 export function resumenActividad(a) {
   const out = [], ev = a.eventos || [], n = a.total ?? ev.length;
   if (!n) return [L('🤔 No detectamos el movimiento. Graba con el cuerpo completo en la imagen y el celular quieto.', "🤔 We didn't detect the movement. Film with your whole body in the frame and the phone still.")];

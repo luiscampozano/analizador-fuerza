@@ -109,7 +109,7 @@ ${u.proveedor === 'correo' ? '<button type="button" id="pf-clave">🔑 Cambiar c
   };
   $('pf-borrar-cuenta').onclick = async () => {
     if (!confirm('¿Eliminar tu cuenta? Se borran para siempre todos tus datos de la nube. Lo que está en este teléfono se queda.')) return;
-    if (prompt('Para confirmar escribe ELIMINAR') !== 'ELIMINAR') return;
+    if (!['ELIMINAR', 'DELETE'].includes(String(prompt('Para confirmar escribe ELIMINAR') || '').trim().toUpperCase())) return; // v2.75.0 en inglés se pide DELETE
     try { await nube.borrarCuenta(); alert('Tu cuenta y tus datos de la nube fueron eliminados.'); } catch (e) { alert(e.message || String(e)); }
     pintarNube();
   };

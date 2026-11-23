@@ -13,6 +13,9 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 - **Hecho:** «En palabras simples» (sencillo.js) en los dos idiomas; la IA responde en inglés (cabecera x-idioma
   desde nube.api; el servidor agrega la instrucción en llamarClaude; prueba en ia_test); notas del análisis, avisos
   de técnica, ~100 avisos del navegador y los mensajes de error del servidor en el diccionario.
+- **Revisión (otro Claude):** la IA mantiene en español los valores fijos (desayuno/almuerzo, alta/media/baja, ids)
+  para no romper comidas ni menús; avisos de cardio/deportes (cadencia, rebote, sillín…) y unidades de ritmo traducidos;
+  borrar cuenta acepta DELETE o ELIMINAR; patrones de resumen más estrictos.
 
 ### 14:30 · v2.74.0 — Inglés, etapa 2a
 - **Pidió:** Luis: seguir con la etapa 2 (y confirmó que se pueda buscar un ejercicio en inglés con la app en español: ya funciona).
