@@ -1571,3 +1571,7 @@ html.ios body::before { content: ''; position: fixed; top: 0; left: 0; right: 0;
 .mu-ficha { margin: 8px 0 12px; }
 .mu-pasos-t { display: block; margin-top: 12px; font-size: 15px; }
 .mu-pasos li { margin: 4px 0; color: var(--text-main); }
+
+/* v2.73.0 idioma en la bienvenida */
+.bv-idioma { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px; }
+.bv-idioma .chip { padding: 4px 12px; }

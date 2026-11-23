@@ -1,6 +1,7 @@
 // Pestaña Perfil: datos del atleta, marcas de powerlifting (total y DOTS), estadisticas de entrenamiento,
 // registro de peso corporal, ajustes y respaldo completo de todos los datos del telefono.
 import * as almacen from './almacen.js';
+import * as IDI from './idioma.js'; // v2.73.0
 import * as P from './progreso.js';
 import * as nube from './nube.js';
 import * as bienvenida from './bienvenida.js';
@@ -53,7 +54,7 @@ export function iniciar(d) {
   // ventanas de Perfil: Estadisticas y Ejercicios las pinta Entrenar (tiene el registro); Medidas y Ajustes, aqui
   const abrir = (id) => { $(id).style.display = 'flex'; };
   const cerrar = (id) => () => { $(id).style.display = 'none'; };
-  $('pf-ajustes').onclick = () => { abrir('pf-ajustes-modal'); pintarConexiones(); pintarUnidades(); };
+  $('pf-ajustes').onclick = () => { abrir('pf-ajustes-modal'); pintarConexiones(); pintarUnidades(); pintarIdioma(); };
   $('pf-ir-estad').onclick = () => deps.abrirEstadisticas();
   $('pf-musc').onclick = () => deps.abrirEstadisticas(7);
   $('pf-ir-ejs').onclick = () => deps.abrirEjercicios();
@@ -300,6 +301,19 @@ function registrarPeso() {
 }
 
 // ------------------------------------------------------------------ unidades de peso (v2.67.0)
+// v2.73.0 idioma: automático (el del teléfono), español o inglés; al cambiar se recarga la app
+function pintarIdioma() {
+  const caja = $('pf-idioma'); if (!caja) return;
+  const p = IDI.preferencia();
+  caja.querySelectorAll('[data-idi]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.idi === p);
+    b.onclick = () => { if (b.dataset.idi !== p) IDI.ponerPreferencia(b.dataset.idi); };
+  });
+  const tel = IDI.telefono() === 'en' ? 'English' : 'Español';
+  $('pf-idioma-nota').textContent = IDI.enIngles()
+    ? `«Automatic» uses your phone's language (now: ${tel}). In English, weights start in pounds; you can change it below.`
+    : `«Automático» usa el idioma de tu teléfono (ahora: ${tel}). Si eliges English, el peso empieza en libras; puedes cambiarlo abajo.`;
+}
 function pintarUnidades() {
   const u = U.global();
   $('pf-unidades').querySelectorAll('[data-u]').forEach((b) => {

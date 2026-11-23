@@ -8,6 +8,16 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-23
 
+### 12:30 · v2.73.0 — Inglés, etapa 1 (motor de idiomas y pantallas principales)
+- **Pidió:** Luis: empezar la versión 1.2 de iPhone (inglés + cámara). Aprobó el boceto del selector y las decisiones:
+  idioma automático según el teléfono e inglés con libras por defecto.
+- **Hecho:** js/idioma.js (af_idioma auto/es/en; traduce la página con un diccionario y un observador, también los
+  textos que se crean después y los avisos alert/confirm; data-sin-traducir para excluir) y js/idioma_en.js (~600
+  textos de menú, Analizar, resultados, Entrenar, Nutrición, Comunidad, Perfil, Ajustes, guía y bienvenida). Selector
+  «🌐 Idioma · Language» en Ajustes y ES | EN en la bienvenida. Las pruebas e2e fijan español (af_idioma=es).
+- **Pendiente:** etapa 2 (nombres de ejercicios, pasos, glosario, tarjetas, PDF, IA en inglés, formato de números),
+  etapa 3 (guía/tour y páginas legales), etapa 4 (App Store en inglés) y cámara nativa.
+
 ### 10:06 · Google Play: solicitud de acceso a producción enviada
 - **Pasó:** Luis completó la prueba cerrada (12+ testers, 14 días) y envió el formulario (respuestas en inglés,
   ≤300 caracteres, con datos reales de 30 días: 22 cuentas activas, 126 análisis, 213 comidas). Google responde en ~7 días.

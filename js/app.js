@@ -1,3 +1,4 @@
+import './idioma.js'; // v2.73.0 primero: idioma (traduce la página si es inglés)
 // FuerzaPro — interfaz principal. Todo el procesamiento ocurre en el dispositivo.
 import { resumenPesas, resumenActividad } from './sencillo.js';
 import { EJERCICIOS, POR_ID, GRUPOS, GRUPOS_MUSCULO, GRUPO_PROPIOS, agregarPropio, quitarPropio } from './ejercicios.js';
@@ -52,7 +53,7 @@ import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 
-const VERSION = '2.72.0';
+const VERSION = '2.73.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');

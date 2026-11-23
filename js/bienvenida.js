@@ -1,6 +1,7 @@
 // Pantalla de bienvenida: aparece la primera vez que se abre la app sin sesion. Permite entrar con Google,
 // crear una cuenta o ingresar con cualquier correo, o explorar sin cuenta (todo queda solo en el telefono).
 import * as nube from './nube.js';
+import * as IDI from './idioma.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -30,7 +31,8 @@ function cerrar(omitida = false) {
 const legal = '<p class="bv-legal">Al continuar aceptas la <a href="privacidad.html" target="_blank" rel="noopener">política de privacidad</a> y las <a href="normas.html" target="_blank" rel="noopener">normas de la comunidad</a>.</p>';
 
 function pintarInicio() {
-  $('bv-caja').innerHTML = `<div class="bv-marca"><img src="iconos/logo.png" alt=""><h1>FuerzaPro</h1><p>Entrena con datos. Mide tu fuerza con la cámara.</p></div>
+  const idi = IDI.idioma(); // v2.73.0 cambiar idioma desde la bienvenida
+  $('bv-caja').innerHTML = `<div class="bv-idioma" data-sin-traducir><button type="button" class="chip${idi === 'es' ? ' active' : ''}" data-idi="es">ES</button><button type="button" class="chip${idi === 'en' ? ' active' : ''}" data-idi="en">EN</button></div><div class="bv-marca"><img src="iconos/logo.png" alt=""><h1>FuerzaPro</h1><p>Entrena con datos. Mide tu fuerza con la cámara.</p></div>
     <ul class="bv-lista">
       <li><span>🎥</span><div><b>Analiza tus series con video</b><small>Velocidad de la barra, RPE, RIR y 1RM estimado con la cámara del celular.</small></div></li>
       <li><span>🏋️</span><div><b>Registra tus entrenamientos</b><small>Rutinas, récords y progreso. Importa tu historial de Hevy o Strong.</small></div></li>
@@ -43,6 +45,7 @@ function pintarInicio() {
       <p class="pf-nube-error" id="bv-error" style="display:none"></p>
       <button type="button" class="bv-omitir" id="bv-omitir">Explorar sin cuenta</button>
     </div>${legal}`;
+  $('bv-caja').querySelectorAll('[data-idi]').forEach((b) => { b.onclick = () => { if (b.dataset.idi !== IDI.idioma()) IDI.ponerPreferencia(b.dataset.idi); }; });
   $('bv-correo').onclick = () => pintarCorreo('registro');
   $('bv-omitir').onclick = () => {
     if (confirm('Sin cuenta, tus datos se guardan solo en este teléfono y no podrás usar la Comunidad. Puedes crear tu cuenta después en Perfil. ¿Continuar?')) cerrar(true);
