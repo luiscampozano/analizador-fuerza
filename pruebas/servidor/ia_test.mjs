@@ -83,3 +83,10 @@ respuesta=claude('{"id":"inventado","maquina":"Prensa","consejos":["a"],"otras":
 respuesta=claude('{"kcal":null,"nota":"No veo la tabla nutricional."}');
 [s,r]=await call(A,'POST','ia/etiqueta',{imagen:foto}); ok(s===200&&r.cobrado===false&&r.quedan===9,'v2.64.0 etiqueta sin tabla: no se cobra');
 [s,r]=await call(A,'DELETE','cuenta'); ok(s===200&&db.prepare('select count(*) n from uso_ia').get().n===0,'borrar la cuenta borra su uso');
+// v2.75.0 idioma de la IA (al final, con otra cuenta, para no mover los contadores de arriba)
+const B2=(await call(null,'POST','auth/correo',{modo:'registro',email:'idioma@x.com',clave:'fuerza2026',nombre:'Ida'}))[1].token;
+respuesta=claude('{"alimentos":[{"nombre":"Rice","gramos":150,"kcal":195,"p":4,"c":42,"g":0.4}]}');
+[s,r]=await call(B2,'POST','ia/plato',{imagen:foto});
+ok(!/The user reads the app in English/.test(ultimo.body.system),'v2.75.0 en español la IA no recibe la instrucción de inglés');
+{ const r2=await W.fetch(new Request('https://x.dev/api/ia/plato',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+B2,'x-idioma':'en'},body:JSON.stringify({imagen:foto})}),env);
+  ok(r2.status===200&&/The user reads the app in English/.test(ultimo.body.system),'v2.75.0 con la app en inglés la IA responde en inglés'); }

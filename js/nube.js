@@ -3,6 +3,7 @@
 // mantiene al dia en segundo plano. Se detectan los cambios comparando una huella (hash) de cada elemento con
 // la que tenia en la ultima sincronizacion. Los videos no se suben (pesan demasiado).
 import * as almacen from './almacen.js';
+import { enIngles } from './idioma.js';
 import * as hist from './historial.js';
 import * as consentia from './consentia.js';
 
@@ -33,7 +34,7 @@ export async function api(metodo, ruta, cuerpo) {
   const s = sesion();
   const r = await fetch(ruta, {
     method: metodo, cache: 'no-store',
-    headers: { 'content-type': cuerpo instanceof Blob ? 'application/octet-stream' : 'application/json', ...(s && s.token ? { authorization: 'Bearer ' + s.token } : {}) },
+    headers: { 'content-type': cuerpo instanceof Blob ? 'application/octet-stream' : 'application/json', ...(s && s.token ? { authorization: 'Bearer ' + s.token } : {}), ...(enIngles() ? { 'x-idioma': 'en' } : {}) }, // v2.75.0 la IA responde en inglés
     body: cuerpo instanceof Blob ? cuerpo : cuerpo ? JSON.stringify(cuerpo) : undefined, // Blob: partes del video
   });
   let datos = null;

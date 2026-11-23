@@ -28,6 +28,7 @@ export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req);
+    env = { ...env, IDIOMA: req.headers.get('x-idioma') === 'en' ? 'en' : 'es' }; // v2.75.0 idioma de la app (la IA responde en ese idioma)
     try {
       return await api(req, env, url);
     } catch (e) {
@@ -1480,7 +1481,9 @@ async function renovarApple(env, uid) {
 }
 // v2.41.4 pensar=true (nutricion): pensamiento adaptativo con esfuerzo bajo y espacio extra para que no se quede sin texto.
 // pensar=false (explicaciones, etiquetas): sin pensamiento, mas rapido. Si pensando falla o sale vacio, reintenta sin pensar.
+const EN_INGLES = '\n\nIMPORTANT: The user reads the app in English. Write every text meant for the user (explanations, advice, names of foods and dishes, notes) in natural US English, even though these instructions are in Spanish. Keep JSON keys, field names and units exactly as specified.';
 async function llamarClaude(env, system, content, maxTokens = 900, pensar = false) {
+  if (env.IDIOMA === 'en' && typeof system === 'string' && !system.includes('The user reads the app in English')) system += EN_INGLES;
   const extra = pensar ? { thinking: { type: 'adaptive' }, output_config: { effort: 'low' } } : { thinking: { type: 'disabled' } };
   const t0 = Date.now(); let r;
   try {

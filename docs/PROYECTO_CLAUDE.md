@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 23 de noviembre de 2026 · **Versión en producción:** v2.74.0
+**Actualizado:** 23 de noviembre de 2026 · **Versión en producción:** v2.75.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -355,6 +355,7 @@ bloqueos, reportes, fallos.
 | v2.72.0 | Muñeco etapa 3: js/pasos.js (PASOS[id] = 3 pasos) mostrado como «Cómo hacerlo» en vista3d (ficha de Analizar y de Entrenar). |
 | v2.73.0 | Inglés etapa 1: js/idioma.js (af_idioma auto/es/en; diccionario + MutationObserver; libras por defecto la primera vez en inglés; alert/confirm/prompt traducidos; data-sin-traducir) y js/idioma_en.js (EN + PATRONES). Selector en Ajustes y ES/EN en la bienvenida. e2e fija af_idioma=es. |
 | v2.74.0 | Inglés etapa 2a: js/ejercicios_en.js (EJ_EN nombre/corto, HINTS_EN; nombre en inglés agregado al campo `en` del buscador), js/pasos_en.js, glosario T_EN, toLocaleString/Intl con en-US, fillText/strokeText/measureText traducidos, traducirPDF(doc) en pdf.js. |
+| v2.75.0 | Inglés etapa 2b: sencillo.js bilingüe (L(es,en)); cabecera x-idioma en nube.api → env.IDIOMA en _worker.js → llamarClaude agrega EN_INGLES al system; notas, técnica (PATRONES/TEC), avisos y errores del servidor en idioma_en.js. |
 | v2.60.0 | Créditos IA por mes 10/90/300/900 y tope global 1.000/día. Avisos una sola vez: 🎁 regalo de plan (con sus días) y ⭐ llegada de los planes (solo a Gratis). En la web, enlaces a App Store (id6832380426) y «Google Play muy pronto». |
 | v2.59.0 | Precisión «Automática · recomendada» (nueva por defecto): empieza en Normal y, si el análisis va a tardar más de 70 s (límite también del botón manual), pasa sola a Rápida en ese video y avisa. Quien tenía «Normal» guardada pasa una vez a Automática (af_calidad_auto). |
 | v2.58.0 | Si el análisis va a tardar más de 40 s aparece «⚡ Seguir en modo Rápido» (reinicia con la IA liviana y la deja elegida). La imagen de 960 px se descartó (banco: 2/5 vs 3/5 reps, velocidades hasta ±16 %). |

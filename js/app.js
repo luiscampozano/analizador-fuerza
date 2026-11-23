@@ -1,4 +1,4 @@
-import './idioma.js'; // v2.73.0 primero: idioma (traduce la página si es inglés)
+import * as IDI from './idioma.js'; // v2.73.0 primero: idioma (traduce la página si es inglés)
 // FuerzaPro — interfaz principal. Todo el procesamiento ocurre en el dispositivo.
 import { resumenPesas, resumenActividad } from './sencillo.js';
 import { EJERCICIOS, POR_ID, GRUPOS, GRUPOS_MUSCULO, GRUPO_PROPIOS, agregarPropio, quitarPropio } from './ejercicios.js';
@@ -53,7 +53,7 @@ import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 
-const VERSION = '2.74.0';
+const VERSION = '2.75.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -877,7 +877,7 @@ function informeDesdeRegistro(r) {
 let informeActual = null, videoActual = null, vistaPrevia = 'v-form';
 function textoCarga(inf) {
   const { ej: e, datos: d } = inf;
-  return e.perfil === 'corporal' ? `peso corporal${d.peso ? (e.asistido ? ' − ' : ' + ') + pk(d.peso, 1) + ' ' + UN() : ''}` : pk(d.carga, 1) + ' ' + UN();
+  return e.perfil === 'corporal' ? `${IDI.t('peso corporal')}${d.peso ? (e.asistido ? ' − ' : ' + ') + pk(d.peso, 1) + ' ' + UN() : ''}` : pk(d.carga, 1) + ' ' + UN();
 }
 // notas que dependen del ejercicio y del perfil (se calculan al mostrar)
 function notasInforme(inf) {
