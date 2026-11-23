@@ -6,6 +6,14 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-23
+
+### 10:06 · Google Play: solicitud de acceso a producción enviada
+- **Pasó:** Luis completó la prueba cerrada (12+ testers, 14 días) y envió el formulario (respuestas en inglés,
+  ≤300 caracteres, con datos reales de 30 días: 22 cuentas activas, 126 análisis, 213 comidas). Google responde en ~7 días.
+- **Decisión:** al aprobarse, publicar a producción la app actual (TWA, ya probada); la versión Capacitor (cámara,
+  Health Connect, avisos, compras nativas, inglés) sale después como actualización normal, respetando suscripciones.
+
 ## 2026-11-22
 
 ### 14:45 · v2.72.0 — Muñeco etapa 3: 3 pasos por ejercicio
