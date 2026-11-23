@@ -450,6 +450,8 @@ combinado es 41/59. Detalle en `docs/DIARIO.md`.
   vibración/compartir nativos, Health Connect y compras con Google Play Billing nativo (hoy la TWA usa Digital Goods).
   Pedir el acceso a producción ~23 nov igual (no obliga a publicar); publicar cuando la versión completa esté probada.
   Formularios de Play: Health Connect (justificar cada dato) y permisos de notificación/alarmas.
+- **Cambio (23 nov, Luis aprobó):** se pidió el acceso a producción el 23 nov; al aprobarse se publica la app actual
+  (TWA, ya probada) y la versión Capacitor sale después como actualización normal (respetando suscripciones existentes).
 
 **Después (solo cuando Luis lo pida):**
 
