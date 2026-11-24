@@ -136,6 +136,7 @@ const T = {
   // ---- hombros
   press_militar: { A: P({ brazos: BARRA_PECHO }), B: P({ brazos: [[175, 180]] }), eq: 'barra_mano' },
   press_hombro_mancuernas: { A: P({ H: [0, -0.55], suelo: false, tau: -5, piernas: [[90, 0]], brazos: [[70, 175]] }), B: P({ H: [0, -0.55], suelo: false, tau: -5, piernas: [[90, 0]], brazos: [[175, 180]] }), eq: 'mancuernas', props: ['asiento', 'respaldo'] },
+  press_militar_sentado: { A: P({ H: [0, -0.55], suelo: false, tau: -5, piernas: [[90, 0]], brazos: BARRA_PECHO }), B: P({ H: [0, -0.55], suelo: false, tau: -5, piernas: [[90, 0]], brazos: [[175, 180]] }), eq: 'barra_mano', props: ['asiento', 'respaldo'] },
   push_press: { A: P({ tau: 5, piernas: [[30, -15]], brazos: BARRA_PECHO }), B: P({ brazos: [[175, 180]] }), eq: 'barra_mano' },
   landmine: { A: P({ tau: 10, piernas: [[0, 0], [-15, -10]], brazos: [[40, 165]] }), B: P({ tau: 15, piernas: [[0, 0], [-15, -10]], brazos: [[140, 140]] }), eq: 'landmine' },
   laterales: { frente: true, A: { brazos: [[8, 0]] }, B: { brazos: [[88, 0]] }, eq: 'mancuernas_frente' },
@@ -238,7 +239,7 @@ const MAPA = [
   [/^jalon_brazos_rectos$/, 'jalon_brazos_rectos'], [/^(remo_barra|remo_pendlay)$/, 'remo_barra'], [/^remo_t$/, 'remo_t'], [/^remo_mancuerna$/, 'remo_mancuerna'],
   [/^remo_mancuernas_pecho$/, 'remo_pecho'], [/^(remo_polea|remo_polea_unilateral)$/, 'remo_sentado'], [/^(remo_riel|remo_maquina|remo_unilateral_maquina)$/, 'remo_maquina'],
   [/^remo_invertido$/, 'remo_invertido'], [/^encogimientos$/, 'encogimientos'], [/^face_pull$/, 'face_pull'],
-  [/^(press_militar|smith_militar)$/, 'press_militar'], [/^(press_hombro_mancuernas|press_hombro_unilateral|press_hombro_maquina)$/, 'press_hombro_mancuernas'], [/^press_arnold$/, 'arnold'],
+  [/^(press_militar|smith_militar)$/, 'press_militar'], [/^press_militar_sentado$/, 'press_militar_sentado'], [/^(press_hombro_mancuernas|press_hombro_unilateral|press_hombro_maquina)$/, 'press_hombro_mancuernas'], [/^press_arnold$/, 'arnold'],
   [/^push_press$/, 'push_press'], [/^landmine_press$/, 'landmine'], [/^(elevaciones_laterales|laterales_maquina)$/, 'laterales'], [/^lateral_unilateral$/, 'lateral_uno'],
   [/^laterales_polea$/, 'laterales_polea'], [/^elevaciones_frontales$/, 'frontales'], [/^(pajaro|pajaro_polea|reverse_pec_deck)$/, 'pajaro'], [/^remo_menton$/, 'remo_menton'],
   [/^(curl|curl_z|curl_invertido)$/, 'curl'], [/^(curl_mancuernas|curl_martillo|curl_zottman)$/, 'curl_mancuernas'], [/^(curl_alterno|curl_martillo_alterno)$/, 'curl_alterno'],

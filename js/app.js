@@ -53,7 +53,7 @@ import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 
-const VERSION = '2.75.0';
+const VERSION = '2.75.1';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');
@@ -894,7 +894,7 @@ function notasInforme(inf) {
 const r2 = (x, d = 2) => (Number.isFinite(x) ? Math.round(x * 10 ** d) / 10 ** d : null);
 // v2.43.0 levantamientos grandes (fuerza, potencia y halterofilia): el PDF con IA agrega «Cómo mejorar tu levantamiento»
 const GRANDES = new Set(['sentadilla', 'sentadilla_frontal', 'sentadilla_box', 'sentadilla_pausa', 'press_banca', 'press_banca_pausa',
-  'press_agarre_cerrado', 'press_inclinado', 'press_militar', 'push_press', 'remo_barra', 'remo_pendlay', 'peso_muerto', 'peso_muerto_sumo',
+  'press_agarre_cerrado', 'press_inclinado', 'press_militar', 'press_militar_sentado', 'push_press', 'remo_barra', 'remo_pendlay', 'peso_muerto', 'peso_muerto_sumo',
   'peso_muerto_hex', 'peso_muerto_deficit', 'peso_muerto_rumano', 'hip_thrust', 'cargada', 'cargada_colgante', 'arranque', 'envion',
   'thruster', 'dominadas', 'fondos']);
 const esGrande = (inf) => !!(inf && inf.ej && GRANDES.has(inf.ej.id));

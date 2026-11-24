@@ -111,6 +111,7 @@ export const PASOS = {
   face_pull: ['Cuerda en la polea alta, a la altura de la cara.', 'Jala la cuerda hacia la frente abriendo las manos y los codos hacia afuera.', 'Vuelve controlado hasta estirar los brazos.'],
   // ---------------------------------------------------------------- hombros
   press_militar: ['De pie con la barra sobre la parte alta del pecho y glúteos apretados.', 'Empuja la barra hacia arriba pasando cerca de la cara.', 'Estira los brazos sobre la cabeza y baja controlado.'],
+  press_militar_sentado: ['Sentado con la espalda apoyada y la barra sobre la parte alta del pecho.', 'Empuja la barra hacia arriba pasando cerca de la cara.', 'Estira los brazos sobre la cabeza y baja controlado hasta el pecho.'],
   press_hombro_mancuernas: ['Sentado con espalda apoyada y las mancuernas a la altura de los hombros.', 'Empuja hacia arriba hasta casi estirar los brazos.', 'Baja controlado hasta la altura de las orejas.'],
   press_hombro_unilateral: ['Sentado o de pie con una mancuerna a la altura del hombro.', 'Empuja hacia arriba sin inclinar el cuerpo.', 'Baja controlado; luego cambia de brazo.'],
   press_arnold: ['Sentado con las mancuernas al frente y las palmas hacia ti.', 'Empuja hacia arriba girando las palmas hacia el frente.', 'Baja deshaciendo el giro.'],

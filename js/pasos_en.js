@@ -110,6 +110,7 @@ export const PASOS_EN = {
   face_pull: ['Rope on the high pulley, at face height.', 'Pull the rope to your forehead, spreading your hands and elbows out.', 'Return under control until your arms are straight.'],
   // shoulders
   press_militar: ['Stand with the bar on your upper chest and glutes squeezed.', 'Press the bar up, passing close to your face.', 'Straighten your arms overhead and lower under control.'],
+  press_militar_sentado: ['Sit with your back supported and the bar on your upper chest.', 'Press the bar up, passing close to your face.', 'Straighten your arms overhead and lower under control to your chest.'],
   press_hombro_mancuernas: ['Sit with your back supported and the dumbbells at shoulder height.', 'Press up until your arms are almost straight.', 'Lower under control to ear height.'],
   press_hombro_unilateral: ['Seated or standing with a dumbbell at shoulder height.', 'Press up without leaning your body.', 'Lower under control; then switch arms.'],
   press_arnold: ['Sit with the dumbbells in front and palms facing you.', 'Press up rotating your palms to face forward.', 'Lower reversing the rotation.'],

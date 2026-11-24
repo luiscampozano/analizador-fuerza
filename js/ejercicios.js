@@ -188,6 +188,8 @@ export const EJERCICIOS = [
   // ---------------------------------------------------------------- HOMBROS
   E('press_militar', 'Hombros', 'barra', '🙌', 'Press militar', 'Press militar', { ...MANOS('arriba', 'cadera'), mvt: 0.19,
     hint: BARRA + ' Con mancuernas: la suma de ambas y Barra en 0.' }, 'overhead press ohp military press'),
+  E('press_militar_sentado', 'Hombros', 'barra', '🪑', 'Press militar sentado (barra)', 'Militar sentado', { ...MANOS('arriba', 'cadera'), mvt: 0.19,
+    hint: BARRA + ' Graba de lado, con el banco y la barra a la vista.' }, 'seated barbell overhead press seated military press shoulder press barbell'),
   E('press_hombro_mancuernas', 'Hombros', 'mancuernas', '🙌', 'Press de hombro con mancuernas', 'Press hombro manc.', { ...MANOS('arriba', 'cadera'), mvt: 0.20 }, 'dumbbell shoulder press seated'),
   E('press_hombro_unilateral', 'Hombros', 'mancuerna', '🙌', 'Press de hombro a un brazo', 'Press hombro 1 brazo', { ...MANOS('arriba', 'cadera'), mvt: 0.20, unilateral: true, hint: UNI_B }, 'single arm dumbbell shoulder press'),
   E('press_arnold', 'Hombros', 'mancuernas', '🙌', 'Press Arnold', 'Press Arnold', { ...MANOS('arriba', 'cadera'), mvt: 0.20 }, 'arnold press'),
@@ -362,7 +364,7 @@ export const ALIAS_IMPORTAR = {
   'extension de pierna': 'extension_cuadriceps', 'extensiones a una pierna': 'extension_unilateral', 'curl de piernas acostado (maquina)': 'curl_femoral_tumbado',
   'curl de pierna sentado': 'curl_femoral_sentado', 'peso muerto (barra)': 'peso_muerto', 'aperturas (maquina)': 'pec_deck',
   'levantamiento de piernas tumbado': 'elevacion_piernas_suelo', 'curl de biceps (mancuerna)': 'curl_mancuernas', 'press de piernas': 'prensa_45',
-  'pies a barra': 'elevacion_piernas_colgado', 'press de hombros sentado (barra)': 'press_militar', 'press de hombros (barra)': 'press_militar',
+  'pies a barra': 'elevacion_piernas_colgado', 'press de hombros sentado (barra)': 'press_militar_sentado', 'press de hombros (barra)': 'press_militar',
   'press de banca en declive (maquina)': 'press_declinado', 'press de banca en declive (barra)': 'press_declinado', 'press de banca inclinado (barra)': 'press_inclinado',
   'press de banca (mancuerna)': 'press_mancuernas', 'elevacion lateral (mancuerna)': 'elevaciones_laterales', 'sentadilla (maquina)': 'hack',
   'curl sobre cabeza (cable)': 'curl_polea', 'jalon de remo a un brazo': 'remo_polea_unilateral', 'press de hombros (maquina smith)': 'smith_militar',

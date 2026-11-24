@@ -8,6 +8,13 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-24
 
+### 17:15 · v2.75.1 — Ejercicio nuevo: Press militar sentado (barra)
+- **Pidió:** Luis notó que faltaba el press de hombro con barra sentado.
+- **Hecho:** `press_militar_sentado` en el catálogo (Hombros, barra), con nombre en inglés, 3 pasos en los dos idiomas,
+  muñeco sentado con respaldo y barra, músculos (hombros; tríceps y trapecios) y consejo de grabación. Las series de
+  Hevy «Press de hombros sentado (barra)» que se importen desde ahora van a este ejercicio (las ya importadas no cambian).
+- **Pendiente:** nada.
+
 ### 11:25 · (sin cambio de versión) — Google Play pide 14 días más de prueba cerrada
 - **Pasó:** Google respondió (24-nov, 11:01) «More testing required»: testers poco activos y sin actualizaciones visibles
   (la TWA se actualiza por la web y el paquete de Play no cambió). Se puede volver a aplicar desde el 8-dic.

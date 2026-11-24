@@ -33,7 +33,7 @@ export const EJ_EN = {
   remo_mancuerna: ['One-arm dumbbell row', 'DB row'], remo_mancuernas_pecho: ['Chest-supported row', 'Chest-supp. row'], remo_riel: ['Plate-loaded machine row', 'Machine row'],
   remo_maquina: ['Seated machine row', 'Seated row mach.'], remo_unilateral_maquina: ['Iso-lateral row (one arm)', 'Iso row'], remo_polea: ['Seated cable row', 'Cable row'],
   remo_polea_unilateral: ['Single-arm cable row', 'Cable row 1 arm'], remo_invertido: ['Inverted row', 'Inverted row'], encogimientos: ['Shrugs (traps)', 'Shrugs'], face_pull: ['Face pull', 'Face pull'],
-  press_militar: ['Overhead press', 'Overhead press'], press_hombro_mancuernas: ['Dumbbell shoulder press', 'DB shoulder press'], press_hombro_unilateral: ['Single-arm shoulder press', 'Shoulder press 1 arm'],
+  press_militar: ['Overhead press', 'Overhead press'], press_militar_sentado: ['Seated barbell overhead press', 'Seated OHP'], press_hombro_mancuernas: ['Dumbbell shoulder press', 'DB shoulder press'], press_hombro_unilateral: ['Single-arm shoulder press', 'Shoulder press 1 arm'],
   press_arnold: ['Arnold press', 'Arnold press'], push_press: ['Push press', 'Push press'], smith_militar: ['Smith overhead press', 'Smith OHP'], press_hombro_maquina: ['Machine shoulder press', 'Shoulder press mach.'],
   landmine_press: ['Landmine press', 'Landmine'], elevaciones_laterales: ['Lateral raise', 'Lateral raise'], lateral_unilateral: ['Single-arm lateral raise', 'Lateral 1 arm'],
   laterales_polea: ['Cable lateral raise', 'Cable lateral'], elevaciones_frontales: ['Front raise', 'Front raise'], pajaro: ['Rear delt fly', 'Rear delt fly'], reverse_pec_deck: ['Reverse pec deck', 'Rev. pec deck'],
