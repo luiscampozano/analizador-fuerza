@@ -6,6 +6,17 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-24
+
+### 11:25 · (sin cambio de versión) — Google Play pide 14 días más de prueba cerrada
+- **Pasó:** Google respondió (24-nov, 11:01) «More testing required»: testers poco activos y sin actualizaciones visibles
+  (la TWA se actualiza por la web y el paquete de Play no cambió). Se puede volver a aplicar desde el 8-dic.
+- **Hecho:** reclamo enviado por Play Console (la IA de soporte confirmó que no hay apelación, pero acepta explicar las
+  mejoras por web en el formulario); mensaje a los 20 testers del grupo (instalar desde el enlace de Play, abrir 2-3
+  veces, dejar comentario); Luis subirá versiones nuevas a la prueba cerrada con PWABuilder (código de versión mayor,
+  misma llave que guarda él).
+- **Pendiente:** 3-4 versiones en la prueba hasta el 8-dic; respuestas nuevas del formulario explicando las mejoras web.
+
 ## 2026-11-23
 
 ### 15:45 · v2.75.0 — Inglés, etapa 2b
