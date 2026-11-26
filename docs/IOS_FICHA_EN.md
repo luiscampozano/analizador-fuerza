@@ -86,4 +86,8 @@ Novedades de la 1.2:
 
 ## URLs (English U.S.)
 - Support URL: https://fuerzapro.pages.dev
-- Privacy Policy URL: https://fuerzapro.pages.dev/privacidad.html (todavía en español; ver etapa 3)
+- Privacy Policy URL: https://fuerzapro.pages.dev/privacy.html
+
+## Capturas en inglés (5, 1320×2868)
+Entregadas a Luis el 26-nov-2026 (appstore_en_1…5.png), hechas con el análisis de sentadilla de pruebas/e2e en inglés y libras.
+Se suben en English (U.S.) → iPhone 6,9". Si no se suben, Apple usa las de español.

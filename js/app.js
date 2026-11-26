@@ -53,7 +53,7 @@ import * as vista3d from './vista3d.js';
 import * as consentia from './consentia.js';
 import * as salud from './salud.js';
 
-const VERSION = '2.75.1';
+const VERSION = '2.76.0';
 // v2.48.1 app de iPhone: que se sienta como app y no como página web (sin zoom al tocar campos, sin rebote ni arrastre)
 if (/FuerzaProiOS/.test(navigator.userAgent || '')) {
   const vp = document.querySelector('meta[name="viewport"]');

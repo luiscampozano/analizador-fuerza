@@ -1,7 +1,7 @@
 # FuerzaPro — Documento maestro para el Proyecto de Claude
 
 **Autor del proyecto:** Ing. Luis Campozano, MBA
-**Actualizado:** 24 de noviembre de 2026 · **Versión en producción:** v2.75.1
+**Actualizado:** 26 de noviembre de 2026 · **Versión en producción:** v2.76.0
 **App:** https://fuerzapro.pages.dev · **Repositorio:** https://github.com/luiscampozano/analizador-fuerza
 
 Este documento tiene cuatro partes:
@@ -357,6 +357,7 @@ bloqueos, reportes, fallos.
 | v2.74.0 | Inglés etapa 2a: js/ejercicios_en.js (EJ_EN nombre/corto, HINTS_EN; nombre en inglés agregado al campo `en` del buscador), js/pasos_en.js, glosario T_EN, toLocaleString/Intl con en-US, fillText/strokeText/measureText traducidos, traducirPDF(doc) en pdf.js. |
 | v2.75.0 | Inglés etapa 2b: sencillo.js bilingüe (L(es,en)); cabecera x-idioma en nube.api → env.IDIOMA en _worker.js → llamarClaude agrega EN_INGLES al system; notas, técnica (PATRONES/TEC), avisos y errores del servidor en idioma_en.js. |
 | v2.75.1 | Ejercicio nuevo `press_militar_sentado` (Press militar sentado, barra): catálogo, inglés, pasos, muñeco sentado con barra (figura.js), GRANDES; la importación de Hevy «press de hombros sentado (barra)» ya apunta a él. |
+| v2.76.0 | Inglés etapa 3: privacy.html, terms.html, guidelines.html y delete-account.html (las páginas en español redirigen solas si la app o el teléfono están en inglés; ?lang=es las mantiene, sessionStorage af_legal_es); tour en inglés sin el video en español; pantalla de resultados del análisis traducida (fatiga, zonas, estadísticas, trayectoria, métodos del 1RM); sw.js: sin conexión busca ignorando ?lang. |
 | v2.60.0 | Créditos IA por mes 10/90/300/900 y tope global 1.000/día. Avisos una sola vez: 🎁 regalo de plan (con sus días) y ⭐ llegada de los planes (solo a Gratis). En la web, enlaces a App Store (id6832380426) y «Google Play muy pronto». |
 | v2.59.0 | Precisión «Automática · recomendada» (nueva por defecto): empieza en Normal y, si el análisis va a tardar más de 70 s (límite también del botón manual), pasa sola a Rápida en ese video y avisa. Quien tenía «Normal» guardada pasa una vez a Automática (af_calidad_auto). |
 | v2.58.0 | Si el análisis va a tardar más de 40 s aparece «⚡ Seguir en modo Rápido» (reinicia con la IA liviana y la deja elegida). La imagen de 960 px se descartó (banco: 2/5 vs 3/5 reps, velocidades hasta ±16 %). |

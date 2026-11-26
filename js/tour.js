@@ -1,5 +1,6 @@
 // Tour de bienvenida (v2.41.0): la primera vez que se abre la app, burbujas que señalan cada pestaña y explican para qué
 // sirve. v2.42.0: en la bienvenida también se puede ver el video tutorial. Se puede saltar y volver a ver desde Perfil → Más → «Ver el tour de la app».
+import { enIngles } from './idioma.js';
 const CLAVE = 'af_tour';
 const PASOS = [
   { titulo: '👋 ¡Bienvenido a FuerzaPro!', texto: 'Te muestro la app en 30 segundos, o mira el video tutorial de 1 minuto.' },
@@ -24,7 +25,7 @@ export function iniciar(forzar = false) {
   function pintar() {
     const p = PASOS[i], el = p.sel && document.querySelector(p.sel), r = el && el.getBoundingClientRect();
     caja.innerHTML = `<b>${p.titulo}</b><p>${p.texto}</p><div class="tour-pie"><small>${i + 1} de ${PASOS.length}</small>
-      <span>${i < PASOS.length - 1 ? '<button type="button" class="btn-sec" data-t="saltar">Omitir</button>' : ''}${i === 0 ? '<button type="button" class="btn-sec" data-t="video">▶ Video</button>' : ''}
+      <span>${i < PASOS.length - 1 ? '<button type="button" class="btn-sec" data-t="saltar">Omitir</button>' : ''}${i === 0 && !enIngles() ? '<button type="button" class="btn-sec" data-t="video">▶ Video</button>' : ''}
       <button type="button" class="btn-primary" data-t="sig">${i === 0 ? 'Empezar' : i === PASOS.length - 1 ? 'Empezar a usar' : 'Siguiente'}</button></span></div>`;
     if (r && r.width) {
       const m = 6; luz.style.cssText = `display:block;left:${r.left - m}px;top:${r.top - m}px;width:${r.width + 2 * m}px;height:${r.height + 2 * m}px`;

@@ -8,6 +8,18 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-26
 
+### 11:10 · v2.76.0 — Inglés, etapa 3 + capturas de la App Store en inglés
+- **Pidió:** Luis: las imágenes de la tienda en inglés (eran parte de la etapa 4) y hacer también la etapa 3.
+- **Hecho:** páginas legales en inglés (privacy, terms, guidelines, delete-account); las de español abren la de inglés
+  si la app está en inglés (o el teléfono, sin idioma elegido; misma regla que js/idioma.js) y tienen enlace
+  «English»/«Español». Tour de bienvenida y formulario de correo en inglés (el botón del video, en español, se oculta).
+  Al hacer las capturas apareció la pantalla de resultados del análisis con mucho texto en español: se tradujo
+  (completas, fatiga, zonas, re-analizar, técnica, trayectoria, estadísticas, «Estimado con», progreso «Detectando pose»,
+  error de la IA de pose). 5 capturas 1320×2868 en inglés y libras entregadas a Luis.
+- **Revisión (otro Claude):** traducciones fieles; se igualó la regla de idioma con la app (cualquier idioma que no sea
+  español → inglés), «Español» se recuerda en la pestaña y sin conexión se abre la página aunque tenga ?lang=es.
+- **Pendiente:** fuentes.html sigue en español (son referencias científicas). Luis: compilar 1.2 en Codemagic y enviar.
+
 ### 10:45 · (sin cambio de versión web) — iPhone 1.2, etapa 4: app en inglés y ficha en inglés
 - **Pidió:** Luis: hacer la etapa 4 con Apple; la versión de Android para la prueba cerrada queda para el fin de semana.
 - **Hecho:** codemagic.yaml declara español e inglés (CFBundleLocalizations es,en; `movil/idiomas/agregar_idiomas.rb`
