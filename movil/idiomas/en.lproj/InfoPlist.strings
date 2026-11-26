@@ -1,0 +1,7 @@
+/* FuerzaPro: permission texts in English (version 1.2) */
+"NSCameraUsageDescription" = "FuerzaPro uses the camera to record your set and count your reps on your phone. The video is not uploaded to the internet.";
+"NSMicrophoneUsageDescription" = "To record the audio of your workout video.";
+"NSPhotoLibraryUsageDescription" = "To choose a video from your library and analyze it, or a photo of your meal.";
+"NSPhotoLibraryAddUsageDescription" = "To save the video with telemetry to your library.";
+"NSHealthShareUsageDescription" = "FuerzaPro reads your weight and height from Apple Health to calculate your relative strength and calories.";
+"NSHealthUpdateUsageDescription" = "FuerzaPro saves your strength workouts to Apple Health so they count toward your Apple Fitness rings.";

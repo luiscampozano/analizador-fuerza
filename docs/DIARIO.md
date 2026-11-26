@@ -6,6 +6,20 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-26
+
+### 10:45 · (sin cambio de versión web) — iPhone 1.2, etapa 4: app en inglés y ficha en inglés
+- **Pidió:** Luis: hacer la etapa 4 con Apple; la versión de Android para la prueba cerrada queda para el fin de semana.
+- **Hecho:** codemagic.yaml declara español e inglés (CFBundleLocalizations es,en; `movil/idiomas/agregar_idiomas.rb`
+  agrega los InfoPlist.strings con los textos de permisos en cada idioma y deja es como idioma base) y sube a
+  MARKETING_VERSION 1.2. Con los dos idiomas declarados, la vista web recibe el idioma del iPhone. El script se probó
+  sobre un proyecto generado con «cap add ios» (queda bien y se puede correr dos veces). Ficha en inglés para
+  App Store Connect en `docs/IOS_FICHA_EN.md` (nombre, subtítulo, texto promocional, descripción, palabras clave,
+  novedades en los dos idiomas).
+- **Pendiente (Luis):** compilar en Codemagic, probar en TestFlight con el iPhone en inglés y en español, crear la
+  versión 1.2 en App Store Connect, agregar English (U.S.), pegar la ficha y enviar. Pendiente (Claude): etapa 3
+  (guía de bienvenida y páginas legales en inglés) antes de enviar; cámara nativa (0,5×, 60 fps).
+
 ## 2026-11-24
 
 ### 17:15 · v2.75.1 — Ejercicio nuevo: Press militar sentado (barra)

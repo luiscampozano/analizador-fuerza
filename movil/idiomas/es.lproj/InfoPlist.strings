@@ -1,0 +1,7 @@
+/* FuerzaPro: textos de permisos en español (versión 1.2) */
+"NSCameraUsageDescription" = "FuerzaPro usa la cámara para grabar tu serie y contar tus repeticiones en el celular. El video no se sube a internet.";
+"NSMicrophoneUsageDescription" = "Para grabar el audio de tu video de entrenamiento.";
+"NSPhotoLibraryUsageDescription" = "Para elegir un video de tu galería y analizarlo, o una foto de tu comida.";
+"NSPhotoLibraryAddUsageDescription" = "Para guardar en tu galería el video con telemetría.";
+"NSHealthShareUsageDescription" = "FuerzaPro lee tu peso y estatura de Apple Salud para calcular tu fuerza relativa y tus calorías.";
+"NSHealthUpdateUsageDescription" = "FuerzaPro guarda tus entrenamientos de fuerza en Apple Salud para que cuenten en tus anillos de Apple Fitness.";

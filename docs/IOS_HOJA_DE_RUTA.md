@@ -32,6 +32,8 @@ parte importante de los usuarios use iPhone o lo pidan seguido (Luis dirá «vam
   Firma por referencia: certificado `fuerzapro_distribucion` (Apple Distribution, generado por Codemagic) y perfil
   `fuerzapro_perfil` («FuerzaPro App Store»). Ojo: Codemagic muestra los perfiles/certificados repetidos en pantalla;
   NO borrar el «duplicado» (se borra el único y se pierde la llave privada del certificado).
+- 2026-11-26: versión 1.2 (inglés): codemagic.yaml con es+en y MARKETING_VERSION 1.2; ficha en inglés en
+  docs/IOS_FICHA_EN.md.
 - Siguiente: probador interno en TestFlight (iPhone prestado) → fase 3 (Iniciar sesión con Apple, ocultar Google Play,
   compras con Apple, funciones nativas) → ficha → revisión.
 
