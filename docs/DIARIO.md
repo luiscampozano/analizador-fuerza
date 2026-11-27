@@ -6,6 +6,15 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ---
 
+## 2026-11-27
+
+### 13:05 · (sin cambio de versión) — iPhone 1.2 enviada a revisión de Apple
+- **Hecho:** Luis llenó la ficha en inglés (nombre y subtítulo por idioma, descripción sin emojis —Apple los rechaza—,
+  notas al revisor con «Continue with email» y la línea NEW IN 1.2) y subió las capturas en inglés. La sección
+  «iPhone con Dynamic Island (pantalla mediana)» pide 1206×2622 (se entregaron también 1284×2778 y 1320×2868).
+  Nombre en español: «FuerzaPro: Entrenador con IA» / «Cuenta reps y mide velocidad».
+- **Pendiente:** respuesta de Apple; Android: subir versión 1.0.1 a la prueba cerrada y mensaje a testers (8-dic).
+
 ## 2026-11-26
 
 ### 19:05 · v2.76.1 — Barra del entrenamiento flotante (se mueve)
