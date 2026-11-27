@@ -19,11 +19,11 @@ Count reps, measure velocity
 Record your set and AI counts your reps, measures the speed of each one and estimates your strength and 1RM, right on your iPhone. Now in English, in kg or lb.
 ```
 
-## Description (4000)
+## Description (4000) — sin emojis: Apple los rechaza en la descripción
 ```
 FuerzaPro turns your iPhone into a training lab. Record your set and artificial intelligence counts your reps, measures the speed of each one and estimates the force you applied, all on your phone: your videos are not uploaded to any server (unless you ask for the AI explanation, which uses 4 frames of the video).
 
-🎥 AI VIDEO ANALYZER
+AI VIDEO ANALYZER
 • Counts reps automatically in about 200 exercises.
 • Speed of each rep, velocity loss, estimated RIR/RPE and 1RM.
 • Applied force based on your body weight, the load and the type of machine.
@@ -31,27 +31,27 @@ FuerzaPro turns your iPhone into a training lab. Record your set and artificial 
 • Video with telemetry: skeleton, force arrows and charts to share.
 • PDF report for each set.
 
-⚽ SPORTS AND CARDIO
+SPORTS AND CARDIO
 • Boxing: punches, pace, hand speed and approximate punch force.
 • Soccer, basketball, volleyball and tennis/padel: foot or hand speed, ball speed and impact force.
 • Running, cycling, rowing, jump rope, burpees and more: pace and technique.
 
-🏋️ WORKOUT LOG
+WORKOUT LOG
 • Routines, sets, weights and rest timer.
 • Warm-up calculator and personal records.
 • History, progress by muscle and an animated 3D figure for each exercise that shows how to do it and which muscles it works.
 • Saves your workouts to Apple Health.
 
-🥗 NUTRITION
+NUTRITION
 • Calorie and macro goals.
 • Barcode scanner and food search.
 • Meal photo, written meal and nutrition label with AI.
 • AI meal plans and menus based on your goals.
 
-👥 COMMUNITY
+COMMUNITY
 • Share your workouts and analyses, follow other athletes and comment.
 
-☁️ YOUR DATA, UNDER YOUR CONTROL
+YOUR DATA, UNDER YOUR CONTROL
 • Use it without an account, or sign in with Apple or email to sync and back up.
 • Kilograms or pounds, English or Spanish.
 • No ads. We don't sell your data.
