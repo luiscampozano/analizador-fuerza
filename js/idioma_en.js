@@ -296,7 +296,7 @@ export const EN = {
   'Omitir': 'Skip', 'Empezar': 'Start', 'Empezar a usar': 'Start using', 'Siguiente': 'Next', 'Cerrar video': 'Close video',
   'No pude cargar la IA de pose. Revisa tu conexión a internet y vuelve a intentarlo.': "I couldn't load the pose AI. Check your internet connection and try again.",
   // v2.76.0 resultados del análisis (lo que faltaba)
-  '← Volver': '← Back', 'Serie del historial': 'Set from history', 'completas': 'full', 'corregido a mano': 'corrected by hand', 'carga vertical': 'vertical load', 'de tu cuerpo − asistencia': 'your body − assistance', 'de tu cuerpo + lastre': 'your body + added weight',
+  '← Volver': '← Back', 'Toca para volver · arrastra para moverla': 'Tap to go back · drag to move it', 'Serie del historial': 'Set from history', 'completas': 'full', 'corregido a mano': 'corrected by hand', 'carga vertical': 'vertical load', 'de tu cuerpo − asistencia': 'your body − assistance', 'de tu cuerpo + lastre': 'your body + added weight',
   '🔄 ¿Elegiste otro ejercicio o salió muy mal?': '🔄 Picked the wrong exercise or did it go badly?',
   'Vuelve a analizar este mismo video: puedes cambiar el ejercicio, recortarlo o usar calidad Máxima.': 'Analyze this same video again: you can change the exercise, trim it or use Maximum quality.',
   'Analizar de nuevo · gratis': 'Analyze again · free', '1 vez gratis por video. El conteo y el peso se siguen corrigiendo sin volver a analizar.': 'Once free per video. You can still correct the count and the weight without analyzing again.',

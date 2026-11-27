@@ -8,6 +8,12 @@ versión publicada y qué quedó pendiente. Escribe en español sencillo.
 
 ## 2026-11-26
 
+### 19:05 · v2.76.1 — Barra del entrenamiento flotante (se mueve)
+- **Pidió:** Luis: la barra «Entrenamiento de la tarde · Volver» tapaba el botón Analizar; le sugirieron poder moverla.
+- **Hecho:** se arrastra hacia arriba o abajo (agarradera ⠿) y recuerda la posición (af_barra_y); tocarla sin arrastrar
+  vuelve al entrenamiento. Probado en celular y computadora (arrastrar, recargar, tocar); Luis aprobó con capturas.
+- **Pendiente:** nada.
+
 ### 11:10 · v2.76.0 — Inglés, etapa 3 + capturas de la App Store en inglés
 - **Pidió:** Luis: las imágenes de la tienda en inglés (eran parte de la etapa 4) y hacer también la etapa 3.
 - **Hecho:** páginas legales en inglés (privacy, terms, guidelines, delete-account); las de español abren la de inglés

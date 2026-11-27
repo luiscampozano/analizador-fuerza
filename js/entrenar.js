@@ -175,7 +175,19 @@ export async function iniciar(d) {
   $('en-titulo').oninput = () => { activo.titulo = $('en-titulo').value; guardarBorrador(); };
   $('en-descanso').value = leerLS('af_descanso') || '120';
   $('en-descanso').onchange = () => guardarLS('af_descanso', $('en-descanso').value);
-  $('en-barra').onclick = () => deps.vista('v-entrenar');
+  { // v2.76.1 la barra del entrenamiento flota: se arrastra arriba o abajo para no tapar botones (se recuerda en af_barra_y)
+    const b = $('en-barra'); let ini = null, movio = false;
+    const poner = (y) => { y = Math.max(0, Math.min(innerHeight - 160, y || 0)); b.style.bottom = `calc(${68 + y}px + env(safe-area-inset-bottom))`; return y; };
+    let y = poner(+leerLS('af_barra_y') || 0);
+    b.title = 'Toca para volver · arrastra para moverla';
+    b.addEventListener('pointerdown', (e) => { ini = { p: e.clientY, y }; movio = false; try { b.setPointerCapture(e.pointerId); } catch (er) { /* nada */ } });
+    b.addEventListener('pointermove', (e) => { if (!ini) return; const d = ini.p - e.clientY;
+      if (!movio && Math.abs(d) > 8) movio = true;
+      if (movio) y = poner(ini.y + d); });
+    const soltar = () => { if (ini && movio) guardarLS('af_barra_y', String(Math.round(y))); ini = null; };
+    b.addEventListener('pointerup', soltar); b.addEventListener('pointercancel', soltar);
+    b.onclick = () => { if (movio) { movio = false; return; } deps.vista('v-entrenar'); };
+  }
   $('en-buscar').oninput = pintarSelector;
   $('en-sel-cerrar').onclick = () => { reemplazarIndex = null; $('en-selector').style.display = 'none'; };
   // v2.55.0 ¿Qué máquina es? foto -> la IA elige el ejercicio de la biblioteca
